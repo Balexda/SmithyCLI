@@ -103,14 +103,25 @@ program
 
     const agentsToSetup = agent === 'all' ? ['gemini', 'claude', 'codex'] : [agent];
 
+    const basePromptsDir = path.join(templatesBaseDir, 'base');
+    const baseFiles = fs.existsSync(basePromptsDir) ? fs.readdirSync(basePromptsDir).filter(f => f.endsWith('.md')) : [];
+
     for (const a of agentsToSetup) {
-      const srcDir = path.join(templatesBaseDir, a);
-      
-      let destDir = targetDir;
       if (a === 'gemini') {
-         destDir = path.join(targetDir, '.gemini');
-         console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${destDir}...`));
-         copyDirSync(path.join(srcDir, 'skills'), path.join(destDir, 'skills'));
+         const destDir = path.join(targetDir, '.gemini');
+         const skillsDir = path.join(destDir, 'skills');
+         console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
+         
+         for (const file of baseFiles) {
+           const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
+           const match = content.match(/^---\nname:\s*([^\n]+)\ndescription:\s*"([^"]+)"\n---\n/);
+           if (match) {
+             const name = match[1].trim();
+             const skillPath = path.join(skillsDir, name);
+             if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
+             fs.writeFileSync(path.join(skillPath, 'SKILL.md'), content);
+           }
+         }
          
          if (initPermissions) {
            const configPath = path.join(destDir, 'config.json');
@@ -128,13 +139,20 @@ program
                 config.permissions.allowed_commands = [...new Set([...config.permissions.allowed_commands, ...defaultPermissionsList])];
               } catch(e) {}
            }
+           if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
            console.log(picocolors.blue(`  Added default permissions to ${configPath}`));
          }
       } else if (a === 'claude') {
-         destDir = path.join(targetDir, '.claude', 'prompts');
+         const destDir = path.join(targetDir, '.claude', 'prompts');
          console.log(picocolors.green(`\nInitializing Claude prompts in ${destDir}...`));
-         copyDirSync(path.join(srcDir, 'prompts'), destDir);
+         if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+         
+         for (const file of baseFiles) {
+           const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
+           const strippedContent = content.replace(/^---\nname:[^\n]+\ndescription:[^\n]+\n---\n/, '');
+           fs.writeFileSync(path.join(destDir, file), strippedContent);
+         }
          
          if (initPermissions) {
            const claudeBaseDir = path.join(targetDir, '.claude');
@@ -145,9 +163,15 @@ program
            console.log(picocolors.blue(`  Added default permissions to ${configPath}`));
          }
       } else if (a === 'codex') {
-         destDir = path.join(targetDir, 'tools', 'codex', 'prompts');
+         const destDir = path.join(targetDir, 'tools', 'codex', 'prompts');
          console.log(picocolors.green(`\nInitializing Codex prompts in ${destDir}...`));
-         copyDirSync(path.join(srcDir, 'prompts'), destDir);
+         if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+         
+         for (const file of baseFiles) {
+           const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
+           const strippedContent = content.replace(/^---\nname:[^\n]+\ndescription:[^\n]+\n---\n/, '');
+           fs.writeFileSync(path.join(destDir, file), strippedContent);
+         }
          
          if (initPermissions) {
            const codexBaseDir = path.join(targetDir, '.codex');

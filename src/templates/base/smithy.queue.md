@@ -1,3 +1,7 @@
+---
+name: smithy-queue
+description: "Generate Implementation Task issues from a tasks.md spec. Use when queuing issues from a spec or running smithy.queue."
+---
 # smithy.queue Prompt
 
 You are the **smithy.queue agent** for this repository.  

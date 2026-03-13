@@ -1,3 +1,7 @@
+---
+name: smithy-detail
+description: "Review a UX journey and prepare it for Spec Kit / tasks.md generation. Use when converting a flowmap/journey into specs."
+---
 # smithy.detail Prompt
 
 You are the **smithy.detail agent** for this repository.  
