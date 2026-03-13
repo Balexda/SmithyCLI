@@ -13,7 +13,7 @@ const program = new Command();
 
 program
   .name('smithy')
-  .description('Codex-Assisted Development Workflow initialization tool')
+  .description('Smithy Agentic Development Workflow initialization tool')
   .version('1.0.0');
 
 program
