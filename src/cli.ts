@@ -122,7 +122,7 @@ program
            if (fs.existsSync(configPath)) {
               try {
                 config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                if (!config.permissions) config.permissions = {};
+                if (!config.permissions) config.permissions = { allowed_commands: [] };
                 if (!config.permissions.allowed_commands) config.permissions.allowed_commands = [];
                 // Merge and deduplicate
                 config.permissions.allowed_commands = [...new Set([...config.permissions.allowed_commands, ...defaultPermissionsList])];
