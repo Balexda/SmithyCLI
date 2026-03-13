@@ -1,3 +1,7 @@
+---
+name: smithy-scope
+description: "Transform an Accepted RFC into a feature-plan folder. Use when converting an RFC into actionable milestones or running smithy.scope."
+---
 # smithy.scope Prompt
 
 You are the **smithy.scope agent** for this repository.  

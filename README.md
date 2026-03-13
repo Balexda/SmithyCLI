@@ -1,6 +1,6 @@
 # Smithy CLI
 
-An initialization tool for the **Codex-Assisted Development Workflow**. This package provides a CLI that easily sets up the `smithy` prompt templates for various AI assistant workflows, including Gemini CLI, Claude, and Codex.
+An initialization tool for the **Smithy Agentic Development Workflow**. This package provides a CLI that easily sets up the `smithy` prompt templates for various AI assistant workflows, including Gemini CLI, Claude, and Codex.
 
 ## Installation
 

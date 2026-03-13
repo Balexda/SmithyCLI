@@ -1,3 +1,7 @@
+---
+name: smithy-segment
+description: "Convert a feature-plan milestone into GitHub Task Stub issues. Use when breaking down a milestone or running smithy.segment."
+---
 # smithy.segment Prompt
 
 You are the **smithy.segment agent** for this repository.  

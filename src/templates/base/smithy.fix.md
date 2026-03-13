@@ -1,3 +1,7 @@
+---
+name: smithy-fix
+description: "Apply targeted microfixes for CI failures, local failures, or code review feedback. Use when there is an isolated issue to repair or when requested."
+---
 # smithy.fix Prompt (Microfix)
 
 You are the **smithy.fix agent** (Microfix) for this repository.  

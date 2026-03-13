@@ -1,3 +1,7 @@
+---
+name: smithy-stage
+description: "Implement a spec phase end-to-end and open a PR. Use when executing a phase from tasks.md or running smithy.stage."
+---
 # smithy.stage Prompt
 
 You are the **smithy.stage agent** for this repository.  
