@@ -1,0 +1,41 @@
+{
+  "name": "smithycli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsup src/cli.ts --format esm --clean",
+    "start": "node dist/cli.js",
+    "prebuild": "node scripts/build-templates.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Balexda/SmithyCLI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Balexda/SmithyCLI/issues"
+  },
+  "homepage": "https://github.com/Balexda/SmithyCLI#readme",
+  "description": "",
+  "dependencies": {
+    "@inquirer/prompts": "^8.3.0",
+    "commander": "^14.0.3",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  },
+  "bin": {
+    "smithy": "./dist/cli.js"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "src/templates"
+  ]
+}

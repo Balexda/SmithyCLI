@@ -1,0 +1,6 @@
+node_modules
+dist
+src/templates/claude
+src/templates/codex
+src/templates/gemini
+.gemini/
