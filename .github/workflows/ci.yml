@@ -27,3 +27,6 @@ jobs:
 
     - name: Typecheck
       run: npx tsc --noEmit
+
+    - name: Smoke Test
+      run: npm test
