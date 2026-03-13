@@ -114,9 +114,9 @@ program
          
          for (const file of baseFiles) {
            const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
-           const match = content.match(/^---\nname:\s*([^\n]+)\ndescription:\s*"([^"]+)"\n---\n/);
-           if (match) {
-             const name = match[1].trim();
+           const nameMatch = content.match(/^---\s*\nname:\s*([^\n]+)/m);
+           if (nameMatch && nameMatch[1]) {
+             const name = nameMatch[1].trim();
              const skillPath = path.join(skillsDir, name);
              if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
              fs.writeFileSync(path.join(skillPath, 'SKILL.md'), content);
@@ -150,7 +150,7 @@ program
          
          for (const file of baseFiles) {
            const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
-           const strippedContent = content.replace(/^---\nname:[^\n]+\ndescription:[^\n]+\n---\n/, '');
+           const strippedContent = content.replace(/^---\s*[\s\S]*?\n---\s*\n/, '');
            fs.writeFileSync(path.join(destDir, file), strippedContent);
          }
          
@@ -169,7 +169,7 @@ program
          
          for (const file of baseFiles) {
            const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
-           const strippedContent = content.replace(/^---\nname:[^\n]+\ndescription:[^\n]+\n---\n/, '');
+           const strippedContent = content.replace(/^---\s*[\s\S]*?\n---\s*\n/, '');
            fs.writeFileSync(path.join(destDir, file), strippedContent);
          }
          
