@@ -6,7 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsup src/cli.ts --format esm --clean",
     "start": "node dist/cli.js",
-    "prebuild": "node scripts/build-templates.js"
+    "prebuild": "node scripts/build-templates.js",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
