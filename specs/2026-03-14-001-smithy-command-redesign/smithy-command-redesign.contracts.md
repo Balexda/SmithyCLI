@@ -32,7 +32,7 @@ Commands locate artifacts by folder convention:
 |---------|----------|
 | `docs/rfcs/<YYYY-NNN-slug>/` | RFC + maps |
 | `specs/<YYYY-MM-DD-NNN-slug>/` | Spec + data-model + contracts + tasks |
-| `specs/strikes/` | Strike task files |
+| `specs/strikes/` | Strike plans |
 
 #### Error Conditions
 
