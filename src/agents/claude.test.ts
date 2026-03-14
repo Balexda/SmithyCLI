@@ -40,7 +40,7 @@ describe('buildClaudeAllowList', () => {
     // npm
     expect(list).toContain('Bash(npm run build)');
     expect(list).toContain('Bash(npm run typecheck)');
-    expect(list).toContain('Bash(npm test)');
+    expect(list).toContain('Bash(npm test *)');
     // gradle
     expect(list).toContain('Bash(gradle build)');
     expect(list).toContain('Bash(gradle test)');

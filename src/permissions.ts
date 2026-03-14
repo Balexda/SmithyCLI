@@ -71,7 +71,7 @@ export const permissions: Record<string, PermissionEntry> = {
     "run start": [],
     "install": [],
     "ci": [],
-    "test": [],
+    "test": ["*"],
     "ls": [],
     "outdated": [],
     "audit": [],
