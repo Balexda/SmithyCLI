@@ -14,13 +14,14 @@ Purpose: A markdown file produced by a smithy command, identifiable by its exten
 |-------|------|----------|-------|
 | `extension` | Enum | Yes | One of: `.rfc.md`, `.map.md`, `.spec.md`, `.data-model.md`, `.contracts.md`, `.tasks.md`, `.strike.md` |
 | `slug` | String | Yes | Kebab-case name derived from the feature/RFC description |
-| `folder` | Path | Yes | Parent folder, either `docs/rfcs/<YYYY-NNN-slug>/` or `specs/<YYYY-MM-DD-NNN-slug>/` |
+| `folder` | Path | Yes | Parent folder: `docs/rfcs/<YYYY-NNN-slug>/`, `specs/<YYYY-MM-DD-NNN-slug>/`, or `specs/strikes/` |
 
 Validation rules:
 - Extension must be one of the seven recognized types.
 - Slug must be kebab-case, derived from the artifact's subject.
 - RFC-level folders use `YYYY-NNN-slug` format (coarser granularity).
 - Spec-level folders use `YYYY-MM-DD-NNN-slug` format (finer granularity).
+- Strike files use `specs/strikes/` (flat folder, no per-strike subfolder).
 
 ### 2) RFC Folder (`docs/rfcs/<YYYY-NNN-slug>/`)
 
