@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getBaseTemplateFiles, readTemplate, stripFrontmatter, isCommandTemplate } from '../templates.js';
-import { flattenPermissions, claudeToolPermissions } from '../permissions.js';
+import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
 export function deploy(targetDir: string, initPermissions: boolean): void {
@@ -52,6 +52,13 @@ export function buildClaudeAllowList(): string[] {
 }
 
 /**
+ * Build the Claude Code deny-list from the shared deny permissions.
+ */
+export function buildClaudeDenyList(): string[] {
+  return denyPermissions.map(cmd => `Bash(${cmd})`);
+}
+
+/**
  * Write permissions to .claude/settings.json using Claude Code's schema:
  *   { "permissions": { "allow": ["Bash(...)", "WebSearch", ...] } }
  *
@@ -63,9 +70,10 @@ export function writePermissions(targetDir: string): void {
 
   const settingsPath = path.join(claudeBaseDir, 'settings.json');
   const allowList = buildClaudeAllowList();
+  const denyList = buildClaudeDenyList();
 
   let config: Record<string, unknown> = {
-    permissions: { allow: allowList },
+    permissions: { allow: allowList, deny: denyList },
   };
 
   if (fs.existsSync(settingsPath)) {
@@ -73,20 +81,23 @@ export function writePermissions(targetDir: string): void {
       const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
       const existingPerms = existing['permissions'] as Record<string, unknown> | undefined;
       const existingAllow = (existingPerms?.['allow'] ?? []) as string[];
+      const existingDeny = (existingPerms?.['deny'] ?? []) as string[];
 
-      // Merge: union of existing and new allow entries
-      const merged = [...new Set([...existingAllow, ...allowList])];
+      // Merge: union of existing and new entries
+      const mergedAllow = [...new Set([...existingAllow, ...allowList])];
+      const mergedDeny = [...new Set([...existingDeny, ...denyList])];
 
       config = {
         ...existing,
         permissions: {
           ...(existingPerms ?? {}),
-          allow: merged,
+          allow: mergedAllow,
+          deny: mergedDeny,
         },
       };
     } catch {
       // If parse fails, overwrite with defaults
-      config = { permissions: { allow: allowList } };
+      config = { permissions: { allow: allowList, deny: denyList } };
     }
   }
 

@@ -1,7 +1,7 @@
 import path from 'path';
 import picocolors from 'picocolors';
 import { promptAgent, promptPermissions, promptIssueTemplates, promptTargetDir } from '../interactive.js';
-import { copyDirSync, issueTemplatesSrcDir } from '../utils.js';
+import { copyDirSync, issueTemplatesSrcDir, agentGitignoreEntries, addToGitignore } from '../utils.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -29,6 +29,16 @@ export async function initAction(): Promise<void> {
       claude.deploy(targetDir, initPermissions);
     } else if (a === 'codex') {
       codex.deploy(targetDir, initPermissions);
+    }
+  }
+
+  const gitignoreEntries = agentsToSetup.flatMap(a => agentGitignoreEntries[a] ?? []);
+  if (gitignoreEntries.length > 0) {
+    const added = addToGitignore(targetDir, gitignoreEntries);
+    if (added > 0) {
+      console.log(picocolors.blue(`  Added ${added} agent director${added === 1 ? 'y' : 'ies'} to .gitignore`));
+    } else {
+      console.log(picocolors.dim('  .gitignore already up to date'));
     }
   }
 

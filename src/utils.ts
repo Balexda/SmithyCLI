@@ -28,6 +28,36 @@ export function copyDirSync(src: string, dest: string): void {
   }
 }
 
+export const agentGitignoreEntries: Record<string, string[]> = {
+  claude: ['.claude/'],
+  gemini: ['.gemini/'],
+  codex: ['.codex/', 'tools/codex/'],
+};
+
+/**
+ * Add entries to .gitignore in targetDir, deduplicating against existing lines.
+ * Returns the count of entries actually added.
+ */
+export function addToGitignore(targetDir: string, entries: string[]): number {
+  const gitignorePath = path.join(targetDir, '.gitignore');
+
+  let existing = '';
+  if (fs.existsSync(gitignorePath)) {
+    existing = fs.readFileSync(gitignorePath, 'utf8');
+  }
+
+  const existingLines = new Set(existing.split('\n').map(l => l.trim()));
+  const toAdd = entries.filter(e => !existingLines.has(e));
+
+  if (toAdd.length === 0) return 0;
+
+  const block = '\n# Smithy agent directories\n' + toAdd.join('\n') + '\n';
+  const separator = existing.length > 0 && !existing.endsWith('\n') ? '\n' : '';
+  fs.writeFileSync(gitignorePath, existing + separator + block);
+
+  return toAdd.length;
+}
+
 export function removeIfExists(p: string): boolean {
   if (fs.existsSync(p)) {
     const stats = fs.statSync(p);

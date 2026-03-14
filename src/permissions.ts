@@ -1,7 +1,7 @@
 export type PermissionEntry = string[] | Record<string, string[]>;
 
 export const permissions: Record<string, PermissionEntry> = {
-  // --- Git (non-destructive) ---
+  // --- Git ---
   git: {
     "status": [],
     "fetch": ["*"],
@@ -16,7 +16,8 @@ export const permissions: Record<string, PermissionEntry> = {
     "merge": ["*"],
     "rebase": ["*"],
     "tag": ["*"],
-    "remote": ["*"],
+    "remote -v": [],
+    "remote show": ["*"],
     "rev-parse": ["*"],
     "show": ["*"],
     "blame": ["*"],
@@ -46,7 +47,6 @@ export const permissions: Record<string, PermissionEntry> = {
   dirname: ["*"],
   basename: ["*"],
   tee: ["*"],
-  xargs: ["*"],
   realpath: ["*"],
   readlink: ["*"],
 
@@ -141,11 +141,36 @@ export const permissions: Record<string, PermissionEntry> = {
   env: [],
   true: [],
   test: ["*"],
-  curl: ["*"],
   tar: ["*"],
   zip: ["*"],
   unzip: ["*"],
 };
+
+/**
+ * Deny list — blocks dangerous subcommands even when the parent is allowed.
+ * In Claude Code, deny takes precedence over allow.
+ */
+export const denyPermissions: string[] = [
+  // Git branch deletion
+  "git branch -d *",
+  "git branch -D *",
+  "git branch --delete *",
+  // Git destructive checkout
+  "git checkout -- *",
+  "git checkout .",
+  // Git stash destruction
+  "git stash drop *",
+  "git stash clear",
+  // Git tag deletion
+  "git tag -d *",
+  "git tag --delete *",
+  // Git force push & destructive reset
+  "git push --force *",
+  "git push -f *",
+  "git push --force-with-lease *",
+  "git reset --hard *",
+  "git clean *",
+];
 
 /**
  * Non-Bash tool permissions specific to Claude Code.

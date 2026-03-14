@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { buildClaudeAllowList, writePermissions } from './claude.js';
+import { buildClaudeAllowList, buildClaudeDenyList, writePermissions } from './claude.js';
 
 describe('buildClaudeAllowList', () => {
   it('wraps all commands in Bash()', () => {
@@ -71,6 +71,50 @@ describe('buildClaudeAllowList', () => {
     expect(joined).not.toMatch(/\bkill\b/);
     expect(joined).not.toMatch(/branch -[dD]/);
     expect(joined).not.toMatch(/reset --hard/);
+    expect(joined).not.toMatch(/\bcurl\b/);
+    expect(joined).not.toMatch(/\bxargs\b/);
+  });
+
+  it('restricts git remote to read-only operations', () => {
+    const list = buildClaudeAllowList();
+    const remoteEntries = list.filter(e => e.includes('git remote'));
+    // Should only have read-only remote operations
+    expect(remoteEntries).toContain('Bash(git remote -v)');
+    expect(remoteEntries).toContain('Bash(git remote show *)');
+    // Should NOT have broad wildcard
+    expect(remoteEntries).not.toContain('Bash(git remote *)');
+    expect(remoteEntries.length).toBe(2);
+  });
+});
+
+describe('buildClaudeDenyList', () => {
+  it('wraps all deny entries in Bash()', () => {
+    const list = buildClaudeDenyList();
+    for (const entry of list) {
+      expect(entry.startsWith('Bash(')).toBe(true);
+    }
+  });
+
+  it('blocks destructive git branch operations', () => {
+    const list = buildClaudeDenyList();
+    expect(list).toContain('Bash(git branch -D *)');
+    expect(list).toContain('Bash(git branch -d *)');
+    expect(list).toContain('Bash(git branch --delete *)');
+  });
+
+  it('blocks force push and hard reset', () => {
+    const list = buildClaudeDenyList();
+    expect(list).toContain('Bash(git push --force *)');
+    expect(list).toContain('Bash(git push -f *)');
+    expect(list).toContain('Bash(git reset --hard *)');
+  });
+
+  it('blocks destructive checkout and stash operations', () => {
+    const list = buildClaudeDenyList();
+    expect(list).toContain('Bash(git checkout -- *)');
+    expect(list).toContain('Bash(git checkout .)');
+    expect(list).toContain('Bash(git stash drop *)');
+    expect(list).toContain('Bash(git stash clear)');
   });
 });
 
@@ -110,7 +154,11 @@ describe('writePermissions', () => {
 
     expect(config).toHaveProperty('permissions');
     expect(config.permissions).toHaveProperty('allow');
+    expect(config.permissions).toHaveProperty('deny');
     expect(Array.isArray(config.permissions.allow)).toBe(true);
+    expect(Array.isArray(config.permissions.deny)).toBe(true);
+    // Deny list should contain destructive git operations
+    expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
 
@@ -157,8 +205,8 @@ describe('writePermissions', () => {
 
     // Preserved non-permissions keys
     expect(config.model).toBe('claude-sonnet-4-6');
-    // Preserved existing deny list
-    expect(config.permissions.deny).toEqual(['Bash(rm *)']);
+    // Preserved existing deny entry merged with smithy deny list
+    expect(config.permissions.deny).toContain('Bash(rm *)');
     // Merged: existing custom command is still present
     expect(config.permissions.allow).toContain('Bash(custom-command)');
     // Merged: new smithy permissions are present
