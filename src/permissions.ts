@@ -179,6 +179,7 @@ export const denyPermissions: string[] = [
 export const claudeToolPermissions: string[] = [
   "WebSearch",
   "WebFetch",
+  "Write(//tmp/**)",
   "Skill(smithy.*:*)",
 ];
 
