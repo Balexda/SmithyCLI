@@ -6,11 +6,11 @@ labels: ["implementation"]
 assignees: []
 ---
 
-> Reference [`smithy.queue`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyqueue)
-> when drafting this issue and [`smithy.stage`](../../docs/dev/codex-workflow.md#f-implementation--pr-codex-or-copilot--smithystage-smithystage)
+> Reference [`smithy-load`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyload)
+> when drafting this issue and [`smithy-forge`](../../docs/dev/codex-workflow.md#f-implementation--pr-codex-or-copilot--smithyforge-smithyforge)
 > when executing it. Those sections describe the required validation commands,
 > acceptable outputs, and the agent escalation path.
-> Use the smithy.stage agent to implement this issue (`codex run /prompt:smithy.stage ...`),
+> Use the smithy-forge agent to implement this issue (`codex run /prompt:smithy-forge ...`),
 > and include that directive when assigning Copilot.
 
 ## Summary
@@ -23,7 +23,7 @@ assignees: []
 
 ## Implementation Notes (for Codex / Copilot)
 When an automation agent implements this issue, it MUST:
-- Use the smithy.stage agent to execute this issue (`codex run /prompt:smithy.stage ...`) and
+- Use the smithy-forge agent to execute this issue (`codex run /prompt:smithy-forge ...`) and
   include that directive when assigning Copilot or other agents.
 - Follow repo conventions in `CONTRIBUTING.md`, `AGENTS.md`, `docs/dev/coding-standards.md`, and relevant docs.
 - Prefer **minimal diffs** and avoid refactors outside the stated scope.
@@ -34,7 +34,7 @@ When an automation agent implements this issue, it MUST:
 
 ## Acceptance Criteria
 - [ ] Behavior matches the spec and journeys referenced above.
-- [ ] All UI states covered (loading / empty / error / success) where applicable.
+- [ ] All states covered (loading / empty / error / success for UI; edge cases for APIs/Libraries) where applicable.
 - [ ] No console / runtime warnings introduced.
 - [ ] No breaking changes to public APIs unless explicitly approved.
 - [ ] All tests for touched modules are updated / created and passing.
@@ -47,9 +47,9 @@ When an automation agent implements this issue, it MUST:
 - Other:
 
 ## Testing & Validation Focus
-<!-- Describe the key validation areas (not exact commands) smithy.stage/humans must cover.
+<!-- Describe the key validation areas (not exact commands) smithy-forge/humans must cover.
      Example: “Project Hub empty/loading/error states”, “Rust CLI smoke tests”, “Manual regression slug X”. -->
 - [ ] Unit / integration coverage expectations:
-- [ ] UI/story/snapshot expectations:
+- [ ] Visual / snapshot / behavioral expectations:
 - [ ] Manual regression slugs to run (see docs/tests/manual-regressions.md):
 - [ ] Other validation focus:

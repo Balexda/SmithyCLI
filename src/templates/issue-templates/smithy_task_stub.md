@@ -1,20 +1,20 @@
 ---
-name: [Smithy] Task Stub (smithy.segment)
-about: Break a feature-plan milestone into smithy.segment units for journey creation
+name: [Smithy] Task Stub (smithy-slice)
+about: Break a feature-plan milestone into smithy-slice units for journey creation
 title: "[Stub] "
 labels: ["task-stub"]
 assignees: []
 ---
 
-> See [`docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithysegment`](../../docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithysegment)
+> See [`docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithyslice`](../../docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithyslice)
 > for guidance. Journeys derived from this stub will follow
-> [`smithy.flowmap`](../../docs/dev/codex-workflow.md#c-task-stub--journey-smithyflowmap).
+> [`smithy-trace`](../../docs/dev/codex-workflow.md#c-task-stub--journey-smithytrace).
 
 ## Intent
 <!-- Describe the user intent or outcome in one paragraph. -->
 
 ## Entry Conditions
-<!-- When does the user/system enter this flow? Include persona, surface, or prerequisite data. -->
+<!-- When does the user/system enter this flow? Include persona, surface/API/module, or prerequisite data. -->
 
 ## Exit Conditions
 <!-- What is true when this stub is considered complete from a user perspective? -->
@@ -28,7 +28,7 @@ assignees: []
 - Spec(s) or journeys that might be reused:
 - GitHub milestone (if assigned):
 
-## Notes for `smithy.flowmap`
+## Notes for `smithy-trace`
 - Data interactions to explore:
-- Surfaces / tools involved:
+- Surfaces / components / APIs involved:
 - Open questions to resolve before specs:

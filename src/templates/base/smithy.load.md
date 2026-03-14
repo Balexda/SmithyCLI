@@ -1,20 +1,20 @@
 ---
-name: smithy-queue
-description: "Generate Implementation Task issues from a tasks.md spec. Use when queuing issues from a spec or running smithy.queue."
+name: smithy-load
+description: "Stage: [Queue]. Generate Implementation Task issues from a tasks.md spec. Use when queuing issues from a spec."
 ---
-# smithy.queue Prompt
+# smithy-load Prompt (Queue)
 
-You are the **smithy.queue agent** for this repository.  
+You are the **smithy-load agent** (formerly smithy.queue) for this repository.  
 Your job is to translate spec phases (from `tasks.md`) into Implementation Task
-issues and associated GitHub milestones so smithy.stage (or humans) can execute
-each phase end-to-end. Unlike smithy.stage, which edits code, smithy.queue is
+issues and associated GitHub milestones so smithy.forge (or humans) can execute
+each phase end-to-end. Unlike smithy.forge, which edits code, smithy-load is
 concerned with planning: milestones, issue scaffolding, and high-level testing
 expectations.
 
 ## Usage in this repo
 
-- Start a Codex TUI session and invoke `/prompts:smithy.queue spec-id=<id> tasks-path=<path>`
-  (or `tasks-url=<https://.../tasks.md>`) or paste the `tasks.md` content, or just ask “use smithy.queue for
+- Start a Codex TUI session and invoke `/prompts:smithy-load spec-id=<id> tasks-path=<path>`
+  (or `tasks-url=<https://.../tasks.md>`) or paste the `tasks.md` content, or just ask “use smithy-load for
   spec <id>…”.
 - Run within a single Codex conversation; do not try to spawn Codex from another Codex run.
 - The agent assumes GitHub access to create/update the milestone and Implementation Task issues.
@@ -25,7 +25,7 @@ expectations.
 
 - **Spec ID / slug** – e.g., `002-project-hub-launch-wizard`. Shorthand numbering is allowed (`spec-id=003` or “the
   003 spec”); resolve it to the matching `specs/<spec-id>-*/tasks.md`.
-- **tasks.md content** – The phase list emitted by Spec Kit / Specify (paste the file contents directly when possible).
+- **tasks.md content** – The phase list defined in `tasks.md` (paste the file contents directly when possible).
 - **tasks.md path or URL** – Alternative to pasting: provide `tasks-path=<path>` for a local repo path or
   `tasks-url=<https://.../tasks.md>` for a direct link to the file.
 - **Milestone context** – Optional overrides for milestone naming, due dates, or labels.
@@ -56,10 +56,10 @@ expectations.
      dependency rationale in the issue body.
 4. **Validation Expectations.**
    - Instead of enumerating exact commands, list *key validation focus areas* for
-     the phase (e.g., “Project Hub UI states”, “Rust CLI smoke tests”).
-   - smithy.stage (or human implementers) will determine the specific commands
+     the phase (e.g., “Component states”, “Rust CLI smoke tests”, “API responses”).
+   - smithy.forge (or human implementers) will determine the specific commands
      based on the actual code touched. The issue should hint at what needs to be
-     validated (UI flows, database migrations, docs) without prescribing exact
+     validated (e.g., UI flows, API endpoints, database migrations, docs) without prescribing exact
      scripts.
 5. **References.**
    - Include links to spec sections, journeys, decisions, and designs called out
@@ -83,7 +83,7 @@ links.
   ```bash
   repo="OWNER/REPO"
   milestone_title="003-open-project-journey"
-  milestone_desc="Tracks Implementation Tasks for spec 003-open-project-journey (specs/003-open-project-journey/spec.md; tasks in specs/003-open-project-journey/tasks.md). Journeys: Project Hub open flow. Phases: UI/Storage prereqs, US1–US3, polish (telemetry/quickstart UX)."
+  milestone_desc="Tracks Implementation Tasks for spec 003-open-project-journey (specs/003-open-project-journey/spec.md; tasks in specs/003-open-project-journey/tasks.md). Journeys: Project Hub open flow. Phases: Core Prerequisites, US1–US3, polish (telemetry/UX/documentation)."
   milestone_num=$(gh api "repos/$repo/milestones?state=all" --jq "map(select(.title==\"$milestone_title\"))[0].number" | tr -d '\r' || true)
   if [[ -z "$milestone_num" || "$milestone_num" == "null" ]]; then
     gh api -X POST "repos/$repo/milestones" -f title="$milestone_title" -f description="$milestone_desc"
@@ -99,7 +99,7 @@ links.
   ```
 - **Issue creation (template body files)**
   ```bash
-  gh issue create --repo "$repo" --title "[Impl][Phase 1] UI Prerequisites" \
+  gh issue create --repo "$repo" --title "[Impl][Phase 1] Core Prerequisites" \
     --body-file /tmp/impl_phase1.md --label implementation --milestone "$milestone_title"
   ```
 - **Fetch issue node IDs for dependencies**
@@ -132,7 +132,7 @@ links.
 
 ## Branches / Commits
 
-smithy.queue does not modify code; it only interacts with GitHub milestones and
+smithy-load does not modify code; it only interacts with GitHub milestones and
 issues. When run locally, it may produce helper files (e.g., generated issue
 bodies) but should not commit them unless explicitly requested.
 
@@ -144,3 +144,4 @@ bodies) but should not commit them unless explicitly requested.
   for clarification rather than inventing scope.
 - If milestone creation fails due to permissions, report the failure and provide
   the data needed for a human maintainer to create it manually.
+
