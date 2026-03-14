@@ -305,22 +305,52 @@ Once approved, create the spec folder and write all three files.
 
 ---
 
-## Phase 0: Review Loop (Repeat to Audit)
+## Phase 0: Review Loop (Repeat to Refine)
 
 **If spec artifacts already exist for this feature** (detected by branch name
 matching a `specs/` folder, or by the user pointing to an existing spec):
 
-1. Read the existing spec, data model, and contracts files.
-2. Perform a **self-audit**:
-   - Are user stories complete and testable?
-   - Are requirements traceable to user stories?
-   - Is the data model consistent with requirements?
-   - Do contracts cover all integration boundaries?
-   - Are there gaps, contradictions, or stale content?
-3. Present audit findings and ask the user whether to **refine** the existing
-   spec or **start fresh**.
+### 0a. Audit Scan
 
-This phase runs INSTEAD of Phases 1-6 when repeating the command.
+Read the existing spec, data model, and contracts files. Perform a structured
+audit across these categories:
+
+| Category | What to check |
+|----------|---------------|
+| **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
+| **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
+| **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
+| **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
+| **Data Model Integrity** | Are relationships, state transitions, and validation rules internally consistent? Are there entities referenced but not defined, or defined but never referenced? |
+| **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
+| **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
+| **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
+
+For each category, assess: **Sound**, **Weak**, or **Gap**.
+
+### 0b. Refinement Questions
+
+Present the audit findings as a summary table, then ask **up to 5 refinement
+questions** — one at a time, with a **recommended resolution** for each.
+
+Questions should target the most impactful Weak/Gap categories first. For each:
+
+- State the finding (what's wrong or missing).
+- Provide a recommended fix or addition with reasoning.
+- The user can accept the recommendation or provide their own answer.
+- After each answer, acknowledge it and move to the next question.
+
+**STOP after each question and wait for the user to respond.**
+
+### 0c. Apply Refinements
+
+After all questions are answered, update the existing spec, data-model, and/or
+contracts files to incorporate the refinements. Present the changes for user
+approval before writing.
+
+This phase runs INSTEAD of Phases 1-6 when repeating the command. If more
+refinement is needed, the user can re-run the command again (another pass
+through Phase 0).
 
 ---
 
@@ -344,7 +374,7 @@ This phase runs INSTEAD of Phases 1-6 when repeating the command.
 
 ## Output
 
-1. **Audit Report** (if repeating the command on existing artifacts).
+1. **Audit findings and refinements** (if repeating the command on existing artifacts).
 2. Created/updated spec files:
    - `specs/<date>-<NNN>-<slug>/<slug>.spec.md`
    - `specs/<date>-<NNN>-<slug>/<slug>.data-model.md`
