@@ -22,7 +22,7 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
-    "push -u origin": ["*"],
+    "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
     "push origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
   },
 

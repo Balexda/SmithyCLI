@@ -11,7 +11,7 @@ describe('buildClaudeAllowList', () => {
     // Every entry is either Bash(...) or a Claude tool permission
     for (const entry of list) {
       expect(
-        entry.startsWith('Bash(') || ['WebSearch', 'WebFetch'].includes(entry) || entry.startsWith('Skill(')
+        entry.startsWith('Bash(') || ['WebSearch', 'WebFetch'].includes(entry) || entry.startsWith('Skill(') || entry.startsWith('Write(')
       ).toBe(true);
     }
     // Should have many Bash entries
@@ -32,7 +32,7 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(git commit *)');
     expect(list).toContain('Bash(git diff *)');
     expect(list).toContain('Bash(git log *)');
-    expect(list).toContain('Bash(git push -u origin *)');
+    expect(list).toContain('Bash(git push -u origin feature/*)');
   });
 
   it('includes multi-language build tool commands', () => {
@@ -123,16 +123,15 @@ describe('writePermissions', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('writes to .claude/settings.json (not config.json)', () => {
-    // Suppress console output
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     writePermissions(tmpDir);
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
@@ -141,12 +140,9 @@ describe('writePermissions', () => {
     expect(fs.existsSync(settingsPath)).toBe(true);
     expect(fs.existsSync(configPath)).toBe(false);
 
-    vi.restoreAllMocks();
   });
 
   it('uses correct schema with permissions.allow array', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     writePermissions(tmpDir);
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
@@ -162,12 +158,9 @@ describe('writePermissions', () => {
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
 
-    vi.restoreAllMocks();
   });
 
   it('entries are Bash()-wrapped or Claude tool names', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     writePermissions(tmpDir);
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
@@ -175,11 +168,10 @@ describe('writePermissions', () => {
 
     for (const entry of config.permissions.allow) {
       expect(
-        entry.startsWith('Bash(') || entry === 'WebSearch' || entry === 'WebFetch' || entry.startsWith('Skill(')
+        entry.startsWith('Bash(') || entry === 'WebSearch' || entry === 'WebFetch' || entry.startsWith('Skill(') || entry.startsWith('Write(')
       ).toBe(true);
     }
 
-    vi.restoreAllMocks();
   });
 
   it('merges with existing settings.json without clobbering other keys', () => {
@@ -213,7 +205,6 @@ describe('writePermissions', () => {
     expect(config.permissions.allow).toContain('Bash(git status)');
     expect(config.permissions.allow).toContain('WebSearch');
 
-    vi.restoreAllMocks();
   });
 
   it('handles malformed existing settings.json gracefully', () => {
@@ -229,7 +220,6 @@ describe('writePermissions', () => {
     const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
     expect(config.permissions.allow).toContain('Bash(git status)');
 
-    vi.restoreAllMocks();
   });
 
   it('creates .claude directory if it does not exist', () => {
@@ -243,6 +233,5 @@ describe('writePermissions', () => {
     const settingsPath = path.join(deepDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
 
-    vi.restoreAllMocks();
   });
 });
