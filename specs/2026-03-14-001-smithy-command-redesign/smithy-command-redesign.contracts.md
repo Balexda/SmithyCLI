@@ -42,6 +42,8 @@ Commands locate artifacts by folder convention:
 | Missing parent artifact | Warning + prompt | e.g., running cut without a spec file in the folder |
 | Folder naming mismatch | Error | Folder doesn't match expected `YYYY-*` pattern |
 
+Note: `.data-model.md` and `.contracts.md` are recognized artifact types for discovery purposes (e.g., audit can review them alongside a spec) but are **companion files** — they are not valid standalone targets for `orders` or `cut`. Commands that accept an artifact path must validate that the extension is a valid target for that command, not just a recognized type.
+
 ### Orders → GitHub Contract
 
 **Purpose**: Defines how `orders` creates GitHub issues from artifacts.
@@ -78,6 +80,7 @@ Commands locate artifacts by folder convention:
 |-----------|----------|-------------|
 | `gh` CLI not available | Error with install guidance | GitHub CLI required for ticket creation |
 | No GitHub remote | Error | Repository must have a GitHub remote |
+| Companion file passed (`.data-model.md`, `.contracts.md`) | Error with guidance | These are companion files, not valid orders targets. Suggest running orders on the parent `.spec.md` instead |
 | Duplicate tickets detected | Prompt user | Offer to update existing tickets rather than create duplicates |
 
 ### Forge Branch Context Contract
