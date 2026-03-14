@@ -211,4 +211,83 @@ program
     }
   });
 
+program
+  .command('uninit')
+  .description('Remove smithy prompts and templates from the current repository')
+  .action(async () => {
+    console.log(picocolors.cyan('🧹 Welcome to Smithy CLI (Uninit)\n'));
+
+    const confirmUninit = await confirm({
+      message: 'Are you sure you want to remove Smithy prompts and templates? (Permissions will not be touched)',
+      default: false
+    });
+
+    if (!confirmUninit) {
+      console.log(picocolors.yellow('\nOperation cancelled.'));
+      return;
+    }
+
+    const targetDirInput = await input({
+      message: 'Target directory?',
+      default: process.cwd()
+    });
+
+    const targetDir = path.resolve(targetDirInput);
+    const templatesBaseDir = path.join(__dirname, '../src/templates');
+    const basePromptsDir = path.join(templatesBaseDir, 'base');
+    const issueTemplatesSrc = path.join(templatesBaseDir, 'issue-templates');
+
+    // Helper to remove files/dirs if they exist
+    const removeIfExists = (p: string) => {
+      if (fs.existsSync(p)) {
+        const stats = fs.statSync(p);
+        if (stats.isDirectory()) {
+          fs.rmSync(p, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(p);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    let removedCount = 0;
+
+    // 1. Remove Gemini skills
+    if (fs.existsSync(basePromptsDir)) {
+      const baseFiles = fs.readdirSync(basePromptsDir).filter(f => f.endsWith('.md'));
+      const geminiSkillsDir = path.join(targetDir, '.gemini', 'skills');
+      
+      for (const file of baseFiles) {
+        const content = fs.readFileSync(path.join(basePromptsDir, file), 'utf8');
+        const nameMatch = content.match(/^---\s*\nname:\s*([^\n]+)/m);
+        if (nameMatch && nameMatch[1]) {
+          const name = nameMatch[1].trim();
+          if (removeIfExists(path.join(geminiSkillsDir, name))) removedCount++;
+        }
+        
+        // Also check for Claude/Codex prompts
+        if (removeIfExists(path.join(targetDir, '.claude', 'prompts', file))) removedCount++;
+        if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
+      }
+    }
+
+    // 2. Remove Issue Templates
+    if (fs.existsSync(issueTemplatesSrc)) {
+      const issueTemplates = fs.readdirSync(issueTemplatesSrc).filter(f => f.endsWith('.md') || f.endsWith('.yml'));
+      const issueTemplatesDest = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');
+      
+      for (const file of issueTemplates) {
+        if (removeIfExists(path.join(issueTemplatesDest, file))) removedCount++;
+      }
+    }
+
+    if (removedCount > 0) {
+      console.log(picocolors.green(`\n✅ Successfully removed ${removedCount} Smithy artifacts.`));
+      console.log(picocolors.blue('Note: Configuration and permission files were preserved.'));
+    } else {
+      console.log(picocolors.yellow('\nNo Smithy artifacts were found to remove.'));
+    }
+  });
+
 program.parse(process.argv);
