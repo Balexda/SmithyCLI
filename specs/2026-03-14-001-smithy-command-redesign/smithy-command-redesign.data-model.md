@@ -80,7 +80,7 @@ Validation rules:
 - Slices are numbered sequentially starting at 1.
 - A dependency order section must define the recommended implementation sequence.
 
-### 5) Strike File (`<slug>.strike.md`)
+### 5) Strike File (`<YYYY-MM-DD>-<slug>.strike.md`)
 
 Purpose: Self-contained planning + execution artifact for small, fast-track changes. Produced by `strike`. Contains inline requirements, data model, contracts, and exactly one slice.
 
