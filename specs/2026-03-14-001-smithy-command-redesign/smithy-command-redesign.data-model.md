@@ -107,7 +107,7 @@ Validation rules:
 ## Relationships
 
 - RFC Folder 1:N Map Files via milestone references in the RFC.
-- Map File (feature) 1:1 Spec Folder — each feature in a map produces one spec.
+- Map File 1:N Spec Folders — a map contains many features, each of which produces one spec folder.
 - Spec (feature) 1:N User Stories — each spec contains one or more user stories (max 99).
 - User Story 1:1 Tasks File — cut produces one `<NN>-<story-slug>.tasks.md` per user story.
 - Tasks File 1:N Slices — each slice becomes one forge/PR.
