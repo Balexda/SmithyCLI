@@ -7,18 +7,18 @@ assignees: []
 ---
 
 > Bug reports capture **behavior mismatches**—cases where the product does not
-> behave as expected. Use smithy-patch directly (no issue) for pure CI/local
+> behave as expected. Use smithy-fix directly (no issue) for pure CI/local
 > failures or reviewer follow-ups. For behavior mismatches, link this issue to
-> [`smithy-patch`](../../docs/dev/codex-workflow.md#g-repairs--smithypatch-long-tail-smithypatch)
-> so Codex/Copilot can apply the smithy-patch (Microfix) protocol
-> (`tools/codex/prompts/smithy-patch.md`). Include the data an agent needs to choose
+> [`smithy-fix`](../../docs/dev/codex-workflow.md#g-repairs--smithyfix)
+> so Codex/Copilot can apply the smithy-fix protocol
+> (`tools/codex/prompts/smithy-fix.md`). Include the data an agent needs to choose
 > the correct Trigger Type and reproduce the issue offline.
 
 ## Summary
 <!-- One or two sentences describing the bug and its impact. -->
 
 ## Trigger Type
-<!-- Use BEHAVIOR_MISMATCH for bug reports. (CI/LOCAL/REVIEW fixes should run smithy-patch without opening this template.) -->
+<!-- Use BEHAVIOR_MISMATCH for bug reports. (CI/LOCAL/REVIEW fixes should run smithy-fix without opening this template.) -->
 
 ## Environment
 ...

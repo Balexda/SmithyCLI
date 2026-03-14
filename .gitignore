@@ -1,8 +1,12 @@
+# Node
 node_modules
 dist
-.gemini/
+
+# Editors
+.vscode/
 
 # Smithy agent directories
+.gemini/
 .claude/
 .codex/
 tools/codex/
