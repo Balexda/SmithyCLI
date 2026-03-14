@@ -38,7 +38,7 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | **Technical** | `smithy.refine` | **Detail**: Turn a Journey into a `tasks.md` spec (Analyze -> Plan -> Tasks). |
 | **Queuing** | `smithy.load` | **Queue**: Load Implementation Tasks into GitHub. |
 | **Forging** | `smithy.forge` | **Stage**: Implement a phase and forge a PR. |
-| **Repair** | `smithy.patch` | **Fix**: Apply a small patch for a bug or failure. |
+| **Repair** | `smithy.fix` | **Fix**: Diagnose and fix errors from CI failures, test failures, or bugs. |
 | **Shortcut** | `smithy.strike` | **Direct**: Strike while the iron is hot (Idea -> Tasks). |
 | **Review** | `smithy.audit` | **Audit**: Universal auditor for any Smithy artifact. |
 
