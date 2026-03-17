@@ -75,6 +75,27 @@ describe('buildClaudeAllowList', () => {
     expect(joined).not.toMatch(/\bxargs\b/);
   });
 
+  it('generates both bare and wildcard gh permissions from ["", "*"] args', () => {
+    const list = buildClaudeAllowList();
+    // Commands with ["", "*"] should produce both bare and wildcard entries
+    expect(list).toContain('Bash(gh pr list)');
+    expect(list).toContain('Bash(gh pr list *)');
+    expect(list).toContain('Bash(gh pr edit)');
+    expect(list).toContain('Bash(gh pr edit *)');
+    expect(list).toContain('Bash(gh pr create)');
+    expect(list).toContain('Bash(gh pr create *)');
+    expect(list).toContain('Bash(gh pr view)');
+    expect(list).toContain('Bash(gh pr view *)');
+    expect(list).toContain('Bash(gh pr diff)');
+    expect(list).toContain('Bash(gh pr diff *)');
+    expect(list).toContain('Bash(gh issue list)');
+    expect(list).toContain('Bash(gh issue list *)');
+    expect(list).toContain('Bash(gh issue view)');
+    expect(list).toContain('Bash(gh issue view *)');
+    expect(list).toContain('Bash(gh issue create)');
+    expect(list).toContain('Bash(gh issue create *)');
+  });
+
   it('restricts git remote to read-only operations', () => {
     const list = buildClaudeAllowList();
     const remoteEntries = list.filter(e => e.includes('git remote'));
