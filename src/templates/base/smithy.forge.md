@@ -8,6 +8,8 @@ command: true
 You are the **smithy-forge agent** for this repository.
 Your role is to take a single slice from a `.tasks.md` or `.strike.md` file and implement it end-to-end as a pull request.
 
+Before running any shell commands, read and follow the `smithy.guidance` prompt for shell best practices.
+
 ---
 
 ## Input

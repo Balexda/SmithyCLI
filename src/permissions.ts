@@ -119,19 +119,22 @@ export const permissions: Record<string, PermissionEntry> = {
   },
 
   // --- GitHub CLI ---
+  // Entries with ["", "*"] generate both bare and wildcard permissions,
+  // e.g. `gh pr list` AND `gh pr list *`.
   gh: {
-    "pr create": ["*"],
+    "pr create": ["", "*"],
     "pr status": [],
-    "pr view": ["*"],
-    "pr list": ["*"],
+    "pr view": ["", "*"],
+    "pr list": ["", "*"],
+    "pr edit": ["", "*"],
     "pr checkout": ["*"],
-    "pr diff": ["*"],
-    "issue list": ["*"],
-    "issue view": ["*"],
-    "issue create": ["*"],
+    "pr diff": ["", "*"],
+    "issue list": ["", "*"],
+    "issue view": ["", "*"],
+    "issue create": ["", "*"],
     "label list": [],
     "run list": [],
-    "run view": ["*"],
+    "run view": ["", "*"],
     "api": ["repos/*"],
   },
 
@@ -212,7 +215,11 @@ export function flattenPermissions(): string[] {
           result.push(`${cmd} ${sub}`);
         } else {
           for (const arg of args) {
-            result.push(`${cmd} ${sub} ${arg}`);
+            if (arg === "") {
+              result.push(`${cmd} ${sub}`);
+            } else {
+              result.push(`${cmd} ${sub} ${arg}`);
+            }
           }
         }
       }
