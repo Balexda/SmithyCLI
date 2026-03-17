@@ -48,8 +48,8 @@ The smithy workflow operates on a strict hierarchy of planning abstractions:
 docs/rfcs/
   2026-001-my-idea/
     my-idea.rfc.md           ← ignite output
-    milestone-1.features.md       ← render output
-    milestone-2.features.md       ← render output
+    01-milestone-1.features.md    ← render output
+    02-milestone-2.features.md    ← render output
 
 specs/
   2026-03-14-001-feature-a/
@@ -227,7 +227,7 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 - **FR-004**: All pipeline commands MUST enter a review/refinement loop when re-run against existing artifacts.
 - **FR-005**: Artifact type MUST be identifiable by file extension (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`, `.strike.md`).
 - **FR-006**: `ignite` output MUST be written to `docs/rfcs/<YYYY-NNN-slug>/`.
-- **FR-007**: `render` output MUST be co-located with its source RFC in `docs/rfcs/<YYYY-NNN-slug>/`.
+- **FR-007**: `render` output MUST be co-located with its source RFC in `docs/rfcs/<YYYY-NNN-slug>/` as `<NN>-<milestone-slug>.features.md`, where `<NN>` is the zero-padded milestone number.
 - **FR-008**: `mark` output MUST be written to `specs/<YYYY-MM-DD-NNN-slug>/` with spec, data-model, and contracts files.
 - **FR-009**: `cut` operates on a single user story from a spec and MUST write its output as `<NN>-<story-slug>.tasks.md` in the same spec folder, where `<NN>` is the zero-padded user story number (01-99).
 - **FR-010**: `strike` MUST produce a self-contained `.strike.md` with exactly one slice, including inline requirements, data model, contracts, and a validation plan.

@@ -30,7 +30,7 @@ Purpose: Groups an RFC and its derivative milestone maps together.
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `rfc_file` | File | Yes | Exactly one `<slug>.rfc.md` |
-| `map_files` | File[] | No | Zero or more `<milestone-slug>.features.md` files |
+| `map_files` | File[] | No | Zero or more `<NN>-<milestone-slug>.features.md` files |
 
 Validation rules:
 - Folder must contain exactly one `.rfc.md` file.
@@ -134,7 +134,7 @@ Note: These states are conceptual — they are not tracked in the files themselv
 
 - RFC folders are uniquely identified by `YYYY-NNN-slug`.
 - Spec folders are uniquely identified by `YYYY-MM-DD-NNN-slug`.
-- Within an RFC folder, files are unique by extension (one `.rfc.md`, multiple `.features.md` distinguished by milestone slug).
+- Within an RFC folder, files are unique by extension (one `.rfc.md`, multiple `.features.md` distinguished by milestone number prefix `<NN>-`).
 - Within a spec folder, `.spec.md`, `.data-model.md`, and `.contracts.md` are unique (one each). `.tasks.md` files are unique by user story number prefix (`<NN>-`), not by extension — multiple are expected.
 - Within `specs/strikes/`, `.strike.md` files are unique by date + slug prefix, not by extension — multiple are expected.
 - Sequential numbering (`NNN`) is determined by scanning existing folders at creation time.
