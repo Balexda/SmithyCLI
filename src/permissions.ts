@@ -22,7 +22,11 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
-    "symbolic-ref": ["*"],
+    "mv": ["*"],
+    // Read-only lookups only — no wildcard to prevent the mutating
+    // form `git symbolic-ref <name> <ref>` from repointing refs.
+    "symbolic-ref HEAD": [],
+    "symbolic-ref refs/remotes/origin/HEAD": [],
     "push": [],
     "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
     "push origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
@@ -119,19 +123,22 @@ export const permissions: Record<string, PermissionEntry> = {
   },
 
   // --- GitHub CLI ---
+  // Entries with ["", "*"] generate both bare and wildcard permissions,
+  // e.g. `gh pr list` AND `gh pr list *`.
   gh: {
-    "pr create": ["*"],
+    "pr create": ["", "*"],
     "pr status": [],
-    "pr view": ["*"],
-    "pr list": ["*"],
+    "pr view": ["", "*"],
+    "pr list": ["", "*"],
+    "pr edit": ["", "*"],
     "pr checkout": ["*"],
-    "pr diff": ["*"],
-    "issue list": ["*"],
-    "issue view": ["*"],
-    "issue create": ["*"],
+    "pr diff": ["", "*"],
+    "issue list": ["", "*"],
+    "issue view": ["", "*"],
+    "issue create": ["", "*"],
     "label list": [],
     "run list": [],
-    "run view": ["*"],
+    "run view": ["", "*"],
     "api": ["repos/*"],
   },
 
@@ -172,7 +179,9 @@ export const denyPermissions: string[] = [
   "git push --force-with-lease *",
   "git reset --hard *",
   "git clean *",
-  // Git symbolic-ref deletion
+  // Git symbolic-ref mutation (repointing and deletion)
+  "git symbolic-ref -m *",
+  "git symbolic-ref --message *",
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
 ];
@@ -212,7 +221,11 @@ export function flattenPermissions(): string[] {
           result.push(`${cmd} ${sub}`);
         } else {
           for (const arg of args) {
-            result.push(`${cmd} ${sub} ${arg}`);
+            if (arg === "") {
+              result.push(`${cmd} ${sub}`);
+            } else {
+              result.push(`${cmd} ${sub} ${arg}`);
+            }
           }
         }
       }
