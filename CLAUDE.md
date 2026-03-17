@@ -48,9 +48,12 @@ The same template source serves all three agents. Gemini keeps frontmatter (for 
 ```bash
 npm run build        # Build with tsup
 npm run typecheck    # Type-check without emitting
+npm test             # Run all tests
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow
 ```
+
+**Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.
 
 ## Testing Notes
 
