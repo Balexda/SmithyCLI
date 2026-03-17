@@ -55,7 +55,8 @@ Example: `001/us-03-bar/slice-2`
 
 Before creating the branch:
 - Check if the branch already exists. If it does, ask the user whether to continue on it or abort.
-- Create the branch from the main branch and check it out.
+- Create the branch from the repository's default branch and check it out.
+  Discover the default branch dynamically (e.g., `git symbolic-ref refs/remotes/origin/HEAD`) rather than assuming `main`.
 
 ---
 
