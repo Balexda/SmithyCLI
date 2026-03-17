@@ -22,6 +22,7 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
+    "mv": ["*"],
     // Read-only lookups only — no wildcard to prevent the mutating
     // form `git symbolic-ref <name> <ref>` from repointing refs.
     "symbolic-ref HEAD": [],
