@@ -22,7 +22,10 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
-    "symbolic-ref": ["*"],
+    // Read-only lookups only — no wildcard to prevent the mutating
+    // form `git symbolic-ref <name> <ref>` from repointing refs.
+    "symbolic-ref HEAD": [],
+    "symbolic-ref refs/remotes/origin/HEAD": [],
     "push": [],
     "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
     "push origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
@@ -175,7 +178,8 @@ export const denyPermissions: string[] = [
   "git push --force-with-lease *",
   "git reset --hard *",
   "git clean *",
-  // Git symbolic-ref deletion
+  // Git symbolic-ref mutation (repointing and deletion)
+  "git symbolic-ref -m *",
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
 ];
