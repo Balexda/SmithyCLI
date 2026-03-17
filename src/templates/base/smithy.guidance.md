@@ -13,7 +13,7 @@ whenever you are executing shell commands as part of a smithy workflow.
 
 ### Never embed subshells in commands
 
-Do **not** use `$(...)` or backtick subshells inside a command. Claude Code's
+Do **not** use `$(...)` or backtick subshells inside a command. The host CLI's
 permission system evaluates the literal command string and cannot verify commands
 that contain subshell expansions, even when both the outer and inner commands are
 individually permitted.
