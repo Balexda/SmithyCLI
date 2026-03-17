@@ -180,6 +180,7 @@ export const denyPermissions: string[] = [
   "git clean *",
   // Git symbolic-ref mutation (repointing and deletion)
   "git symbolic-ref -m *",
+  "git symbolic-ref --message *",
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
 ];
