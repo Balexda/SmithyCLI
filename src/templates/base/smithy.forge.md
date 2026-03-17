@@ -89,7 +89,7 @@ Include the command output summary in your final response so reviewers know what
 
 Create the PR using `gh pr create` with:
 
-- **Title**: `<slice goal>` — concise, under 70 characters
+- **Title**: `<slice goal>` — concise, under 70 characters, descriptive text only (do NOT reference FR numbers or acceptance scenario IDs in the title — those are spec-internal and meaningless to later readers)
 - **Body** must include:
   - **Source**: Link to the spec file and tasks file (relative paths)
   - **Slice**: Which slice number and its goal
