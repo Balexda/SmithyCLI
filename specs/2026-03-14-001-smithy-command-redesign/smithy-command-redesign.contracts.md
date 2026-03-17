@@ -9,7 +9,7 @@ The smithy command redesign introduces no new programmatic APIs or integration b
 ### Artifact Discovery Contract
 
 **Purpose**: Defines how any smithy command locates and identifies artifacts.
-**Consumers**: All smithy commands (audit, orders, cut, forge, stoke, and review loops).
+**Consumers**: All smithy commands (audit, orders, cut, forge, render, and review loops).
 **Providers**: The filesystem via naming conventions.
 
 #### Convention
@@ -19,10 +19,10 @@ Commands identify artifact type by file extension:
 | Extension | Artifact Type | Producing Command |
 |-----------|--------------|-------------------|
 | `.rfc.md` | RFC | ignite |
-| `.map.md` | Feature Map | stoke |
-| `.spec.md` | Feature Spec | shape |
-| `.data-model.md` | Data Model | shape |
-| `.contracts.md` | Contracts | shape |
+| `.features.md` | Feature Map | render |
+| `.spec.md` | Feature Spec | mark |
+| `.data-model.md` | Data Model | mark |
+| `.contracts.md` | Contracts | mark |
 | `.tasks.md` | Task Slices | cut |
 | `.strike.md` | Strike Plan | strike |
 
@@ -68,8 +68,8 @@ Note: `.data-model.md` and `.contracts.md` are recognized artifact types for dis
 
 | Artifact Extension | Parent Ticket | Child Tickets |
 |--------------------|---------------|---------------|
-| `.rfc.md` | Epic/tracking issue for the RFC | One issue per milestone (next step: stoke) |
-| `.map.md` | Milestone issue (if exists) | One issue per feature (next step: shape) |
+| `.rfc.md` | Epic/tracking issue for the RFC | One issue per milestone (next step: render) |
+| `.features.md` | Milestone issue (if exists) | One issue per feature (next step: mark) |
 | `.spec.md` | (none) | One issue per user story (next step: cut) |
 | `.tasks.md` | User story issue (if exists) | One issue per slice (next step: forge) |
 | `.strike.md` | (none) | Single issue for the strike |

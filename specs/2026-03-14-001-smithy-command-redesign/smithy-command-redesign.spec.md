@@ -10,7 +10,7 @@
 
 ### Session 2026-03-14
 
-- Q: What is the pipeline command sequence and naming? → A: `ignite → stoke → shape → cut → forge`. All names follow the forge/smithing metaphor. "shape" replaces the former "design"; "cut" replaces "refine"; "stoke" replaces "slice"/"trace".
+- Q: What is the pipeline command sequence and naming? → A: `ignite → render → mark → cut → forge`. All names follow the forge/smithing metaphor. "mark" replaces the former "design"; "cut" replaces "refine"; "render" replaces "slice"/"trace".
 - Q: What is the artifact hierarchy? → A: RFC → Milestone → Feature → User Story → Slice → Tasks. Six levels. "Capability" was collapsed into "Feature" since they mapped 1:1.
 - Q: Where do artifacts live? → A: RFC + maps in `docs/rfcs/<YYYY-NNN-slug>/` (co-located). Specs + tasks in `specs/<YYYY-MM-DD-NNN-slug>/`. Strikes in `specs/strikes/`.
 - Q: How do `.tasks.md` and `.strike.md` differ? → A: `.tasks.md` decomposes a single user story into slices (produced by `cut`, one file per story named `<NN>-<story-slug>.tasks.md`). `.strike.md` is self-contained with inline requirements, data model, contracts, and exactly one slice.
@@ -36,8 +36,8 @@ The smithy workflow operates on a strict hierarchy of planning abstractions:
 | Command | Produces | Location | Extension |
 |---------|----------|----------|-----------|
 | ignite | RFC with milestones | `docs/rfcs/<YYYY-NNN-slug>/` | `.rfc.md` |
-| stoke | Feature map for a milestone | `docs/rfcs/<YYYY-NNN-slug>/` | `.map.md` |
-| shape | Feature spec + data model + contracts | `specs/<YYYY-MM-DD-NNN-slug>/` | `.spec.md`, `.data-model.md`, `.contracts.md` |
+| render | Feature map for a milestone | `docs/rfcs/<YYYY-NNN-slug>/` | `.features.md` |
+| mark | Feature spec + data model + contracts | `specs/<YYYY-MM-DD-NNN-slug>/` | `.spec.md`, `.data-model.md`, `.contracts.md` |
 | cut | Slices of tasks for a user story | `specs/<YYYY-MM-DD-NNN-slug>/` | `<NN>-<story-slug>.tasks.md` (one per user story) |
 | forge | Pull request | GitHub | — |
 | strike | Self-contained strike plan (fast track) | `specs/strikes/` | `.strike.md` (single slice, includes inline requirements/model/contracts) |
@@ -48,14 +48,14 @@ The smithy workflow operates on a strict hierarchy of planning abstractions:
 docs/rfcs/
   2026-001-my-idea/
     my-idea.rfc.md           ← ignite output
-    milestone-1.map.md       ← stoke output
-    milestone-2.map.md       ← stoke output
+    01-milestone-1.features.md    ← render output
+    02-milestone-2.features.md    ← render output
 
 specs/
   2026-03-14-001-feature-a/
-    feature-a.spec.md        ← shape output
-    feature-a.data-model.md  ← shape output
-    feature-a.contracts.md   ← shape output
+    feature-a.spec.md        ← mark output
+    feature-a.data-model.md  ← mark output
+    feature-a.contracts.md   ← mark output
     01-first-story.tasks.md  ← cut output (user story 1)
     02-second-story.tasks.md ← cut output (user story 2)
 
@@ -69,7 +69,7 @@ specs/strikes/
 
 As a developer with a broad idea, I want to interactively workshop it into a structured RFC with milestones so that I have a reviewable starting point for a large initiative.
 
-**Why this priority**: Ignite is the highest-level entry point but the core loop (shape/cut/forge/strike) must work first. Ignite extends the pipeline upward once the foundation is solid.
+**Why this priority**: Ignite is the highest-level entry point but the core loop (mark/cut/forge/strike) must work first. Ignite extends the pipeline upward once the foundation is solid.
 
 **Independent Test**: Run `smithy.ignite "build a plugin system"` and verify it produces a well-structured `.rfc.md` with clearly defined milestones, asks clarifying questions, and writes to `docs/rfcs/`.
 
@@ -82,35 +82,35 @@ As a developer with a broad idea, I want to interactively workshop it into a str
 
 ---
 
-### User Story 2 — Stoke: Break Milestone into Features (Priority: P2)
+### User Story 2 — Render: Break Milestone into Features (Priority: P2)
 
 As a developer with an approved RFC, I want to break a milestone down into a feature map so that I can see the discrete units of functionality I need to build.
 
-**Why this priority**: Stoke depends on ignite output and extends the pipeline upward. Core loop must be solid first.
+**Why this priority**: Render depends on ignite output and extends the pipeline upward. Core loop must be solid first.
 
-**Independent Test**: Point `smithy.stoke` at an RFC milestone and verify it produces a `.map.md` file listing features with descriptions, co-located with the RFC.
+**Independent Test**: Point `smithy.render` at an RFC milestone and verify it produces a `.features.md` file listing features with descriptions, co-located with the RFC.
 
 **Acceptance Scenarios**:
 
-1. **Given** an RFC with milestones, **When** I run `smithy.stoke` pointing at a specific milestone, **Then** the agent interactively breaks it into features and writes a `.map.md` alongside the RFC.
-2. **Given** an existing `.map.md`, **When** I run `smithy.stoke` again, **Then** the agent enters a review loop to refine the feature breakdown.
+1. **Given** an RFC with milestones, **When** I run `smithy.render` pointing at a specific milestone, **Then** the agent interactively breaks it into features and writes a `.features.md` alongside the RFC.
+2. **Given** an existing `.features.md`, **When** I run `smithy.render` again, **Then** the agent enters a review loop to refine the feature breakdown.
 3. **Given** a milestone with overlapping concerns, **When** the agent identifies ambiguous feature boundaries, **Then** it asks clarifying questions before finalizing.
 
 ---
 
-### User Story 3 — Shape: Specify a Feature (Priority: P1)
+### User Story 3 — Mark: Specify a Feature (Priority: P1)
 
 As a developer ready to build a feature, I want to produce a detailed feature specification so that implementation is well-scoped and reviewable before any code is written.
 
-**Why this priority**: Shape is the second entry point into the system — usable both after stoke and standalone from a description. It produces the core artifact (spec) that cut and forge consume.
+**Why this priority**: Mark is the second entry point into the system — usable both after render and standalone from a description. It produces the core artifact (spec) that cut and forge consume.
 
-**Independent Test**: Run `smithy.shape "add webhook support"` and verify it produces `.spec.md`, `.data-model.md`, and `.contracts.md` in a properly named specs folder with a git branch.
+**Independent Test**: Run `smithy.mark "add webhook support"` and verify it produces `.spec.md`, `.data-model.md`, and `.contracts.md` in a properly named specs folder with a git branch.
 
 **Acceptance Scenarios**:
 
-1. **Given** a feature from a map, **When** I run `smithy.shape` referencing it, **Then** the agent produces a feature spec with user stories, requirements, and acceptance scenarios.
-2. **Given** a standalone feature description, **When** I run `smithy.shape "description"`, **Then** the agent treats it as a mid-pipeline entry point and produces the same spec artifacts.
-3. **Given** an existing spec, **When** I run `smithy.shape` again, **Then** the agent enters a review loop to refine the spec.
+1. **Given** a feature from a map, **When** I run `smithy.mark` referencing it, **Then** the agent produces a feature spec with user stories, requirements, and acceptance scenarios.
+2. **Given** a standalone feature description, **When** I run `smithy.mark "description"`, **Then** the agent treats it as a mid-pipeline entry point and produces the same spec artifacts.
+3. **Given** an existing spec, **When** I run `smithy.mark` again, **Then** the agent enters a review loop to refine the spec.
 4. **Given** a feature that involves data, **When** the spec is produced, **Then** a `.data-model.md` with entities, relationships, and state transitions is included.
 5. **Given** a feature that involves integration boundaries, **When** the spec is produced, **Then** a `.contracts.md` with interface definitions is included.
 6. **Given** a feature with no data or integration needs, **When** the spec is produced, **Then** minimal placeholder `.data-model.md` and `.contracts.md` files are still created.
@@ -179,7 +179,7 @@ As a developer, I want to audit any smithy artifact and get a tailored review so
 **Acceptance Scenarios**:
 
 1. **Given** a `.rfc.md` file, **When** I run `smithy.audit path/to/file.rfc.md`, **Then** the audit checks for ambiguity, milestone completeness, and feasibility.
-2. **Given** a `.map.md` file, **When** I run `smithy.audit path/to/file.map.md`, **Then** the audit checks feature coverage, gaps, and overlap.
+2. **Given** a `.features.md` file, **When** I run `smithy.audit path/to/file.features.md`, **Then** the audit checks feature coverage, gaps, and overlap.
 3. **Given** a `.spec.md` file, **When** I run `smithy.audit path/to/file.spec.md`, **Then** the audit checks requirement traceability, acceptance coverage, and data model consistency.
 4. **Given** a `.tasks.md` file, **When** I run `smithy.audit path/to/file.tasks.md`, **Then** the audit checks slice scoping, testability, and edge case coverage.
 5. **Given** a `.strike.md` file, **When** I run `smithy.audit path/to/file.strike.md`, **Then** the audit checks requirement completeness, slice scoping, validation plan coverage, and that data model/contracts sections are present.
@@ -198,8 +198,8 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 
 **Acceptance Scenarios**:
 
-1. **Given** a `.rfc.md` file, **When** I run `smithy.orders path/to/file.rfc.md`, **Then** one epic/tracking issue is created plus one issue per milestone (next step: stoke each).
-2. **Given** a `.map.md` file, **When** I run `smithy.orders path/to/file.map.md`, **Then** one issue per feature is created, linked to the milestone issue if it exists (next step: shape each).
+1. **Given** a `.rfc.md` file, **When** I run `smithy.orders path/to/file.rfc.md`, **Then** one epic/tracking issue is created plus one issue per milestone (next step: render each).
+2. **Given** a `.features.md` file, **When** I run `smithy.orders path/to/file.features.md`, **Then** one issue per feature is created, linked to the milestone issue if it exists (next step: mark each).
 3. **Given** a `.spec.md` file, **When** I run `smithy.orders path/to/file.spec.md`, **Then** one issue per user story is created (representing the next step: running `cut` on each).
 4. **Given** a `.tasks.md` file, **When** I run `smithy.orders path/to/file.tasks.md`, **Then** one issue per slice is created (representing the next step: running `forge` on each), linked to the user story issue if it exists.
 5. **Given** an artifact type, **When** orders detects the type via file extension, **Then** no flags or mode arguments are required.
@@ -208,8 +208,8 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 
 ### Edge Cases
 
-- Running `stoke` without an existing RFC — should prompt user to run `ignite` first or provide a milestone description inline.
-- Running `shape` with both a feature reference from a map and a standalone description — feature reference takes precedence.
+- Running `render` without an existing RFC — should prompt user to run `ignite` first or provide a milestone description inline.
+- Running `mark` with both a feature reference from a map and a standalone description — feature reference takes precedence.
 - Running `orders` on an artifact that already has tickets — should detect existing tickets and offer to update rather than duplicate.
 - Running `forge` on a slice that's already been forged — should warn and confirm before proceeding.
 - Running `audit` on a forge branch with no upstream spec artifacts — should still audit the code but note the missing context.
@@ -221,14 +221,14 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST support five pipeline commands (`ignite`, `stoke`, `shape`, `cut`, `forge`) that operate on the artifact hierarchy.
+- **FR-001**: The system MUST support five pipeline commands (`ignite`, `render`, `mark`, `cut`, `forge`) that operate on the artifact hierarchy.
 - **FR-002**: The system MUST support four utility commands (`strike`, `audit`, `orders`, `fix`) that operate independently or across the hierarchy.
 - **FR-003**: All pipeline commands MUST ask clarifying questions before producing artifacts (no YOLO).
 - **FR-004**: All pipeline commands MUST enter a review/refinement loop when re-run against existing artifacts.
-- **FR-005**: Artifact type MUST be identifiable by file extension (`.rfc.md`, `.map.md`, `.spec.md`, `.tasks.md`, `.strike.md`).
+- **FR-005**: Artifact type MUST be identifiable by file extension (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`, `.strike.md`).
 - **FR-006**: `ignite` output MUST be written to `docs/rfcs/<YYYY-NNN-slug>/`.
-- **FR-007**: `stoke` output MUST be co-located with its source RFC in `docs/rfcs/<YYYY-NNN-slug>/`.
-- **FR-008**: `shape` output MUST be written to `specs/<YYYY-MM-DD-NNN-slug>/` with spec, data-model, and contracts files.
+- **FR-007**: `render` output MUST be co-located with its source RFC in `docs/rfcs/<YYYY-NNN-slug>/` as `<NN>-<milestone-slug>.features.md`, where `<NN>` is the zero-padded milestone number.
+- **FR-008**: `mark` output MUST be written to `specs/<YYYY-MM-DD-NNN-slug>/` with spec, data-model, and contracts files.
 - **FR-009**: `cut` operates on a single user story from a spec and MUST write its output as `<NN>-<story-slug>.tasks.md` in the same spec folder, where `<NN>` is the zero-padded user story number (01-99).
 - **FR-010**: `strike` MUST produce a self-contained `.strike.md` with exactly one slice, including inline requirements, data model, contracts, and a validation plan.
 - **FR-011**: `cut` output (`.tasks.md`) MUST reference its source spec artifacts and user story, contain slices as H2 sections numbered sequentially, each with FR/acceptance scenario traceability, a standalone goal, and ordered task checklists.
@@ -266,7 +266,7 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 ### Measurable Outcomes
 
 - **SC-001**: Total user-facing commands reduced from 10 to 9, with clear single-word names that fit a forge metaphor.
-- **SC-002**: A developer can describe the full pipeline in one sentence: "ignite, stoke, shape, cut, forge."
+- **SC-002**: A developer can describe the full pipeline in one sentence: "ignite, render, mark, cut, forge."
 - **SC-003**: No command requires the user to remember which other command to run for review — repeat the command or use audit.
 - **SC-004**: Every artifact file is identifiable by extension without reading its contents.
 - **SC-005**: `orders` and `audit` require zero flags — artifact type detection is automatic.

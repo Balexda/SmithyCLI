@@ -24,7 +24,7 @@ describe('deploy', () => {
     expect(fs.existsSync(promptsDir)).toBe(true);
 
     const files = fs.readdirSync(promptsDir);
-    expect(files.length).toBe(10);
+    expect(files.length).toBe(11);
     for (const file of files) {
       expect(file.endsWith('.md')).toBe(true);
     }
