@@ -12,7 +12,7 @@ Purpose: A markdown file produced by a smithy command, identifiable by its exten
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `extension` | Enum | Yes | One of: `.rfc.md`, `.map.md`, `.spec.md`, `.data-model.md`, `.contracts.md`, `.tasks.md`, `.strike.md` |
+| `extension` | Enum | Yes | One of: `.rfc.md`, `.features.md`, `.spec.md`, `.data-model.md`, `.contracts.md`, `.tasks.md`, `.strike.md` |
 | `slug` | String | Yes | Kebab-case name derived from the feature/RFC description |
 | `folder` | Path | Yes | Parent folder: `docs/rfcs/<YYYY-NNN-slug>/`, `specs/<YYYY-MM-DD-NNN-slug>/`, or `specs/strikes/` |
 
@@ -30,11 +30,11 @@ Purpose: Groups an RFC and its derivative milestone maps together.
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `rfc_file` | File | Yes | Exactly one `<slug>.rfc.md` |
-| `map_files` | File[] | No | Zero or more `<milestone-slug>.map.md` files |
+| `map_files` | File[] | No | Zero or more `<milestone-slug>.features.md` files |
 
 Validation rules:
 - Folder must contain exactly one `.rfc.md` file.
-- Each `.map.md` must correspond to a milestone defined in the RFC.
+- Each `.features.md` must correspond to a milestone defined in the RFC.
 
 ### 3) Spec Folder (`specs/<YYYY-MM-DD-NNN-slug>/`)
 
@@ -48,7 +48,7 @@ Purpose: Groups a feature spec with its supporting artifacts.
 | `tasks_files` | File[] | No | Zero or more `<NN>-<story-slug>.tasks.md` files (produced by cut, one per user story) |
 
 Validation rules:
-- Folder must contain spec, data-model, and contracts files (shape produces all three).
+- Folder must contain spec, data-model, and contracts files (mark produces all three).
 - Tasks files are added later by cut, one per user story.
 - Tasks file numbering (`NN`) must match user story numbering in the spec (01-99).
 - A spec folder with more than 99 user stories indicates the feature should be split.
@@ -134,7 +134,7 @@ Note: These states are conceptual — they are not tracked in the files themselv
 
 - RFC folders are uniquely identified by `YYYY-NNN-slug`.
 - Spec folders are uniquely identified by `YYYY-MM-DD-NNN-slug`.
-- Within an RFC folder, files are unique by extension (one `.rfc.md`, multiple `.map.md` distinguished by milestone slug).
+- Within an RFC folder, files are unique by extension (one `.rfc.md`, multiple `.features.md` distinguished by milestone slug).
 - Within a spec folder, `.spec.md`, `.data-model.md`, and `.contracts.md` are unique (one each). `.tasks.md` files are unique by user story number prefix (`<NN>-`), not by extension — multiple are expected.
 - Within `specs/strikes/`, `.strike.md` files are unique by date + slug prefix, not by extension — multiple are expected.
 - Sequential numbering (`NNN`) is determined by scanning existing folders at creation time.
