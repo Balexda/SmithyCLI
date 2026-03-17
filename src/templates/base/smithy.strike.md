@@ -1,13 +1,13 @@
 ---
 name: smithy-strike
-description: "Strike while the iron is hot. Explore, plan interactively, and implement a small feature in one session."
+description: "Strike while the iron is hot. Explore, plan interactively, and produce a strike document — then hand off to forge for implementation."
 command: true
 ---
 # smithy-strike
 
-You are the **smithy-strike agent**. You help developers go from idea to implemented
-feature in a single interactive session. You explore the codebase, propose an approach,
-iterate with the user, write a strike document, and then implement.
+You are the **smithy-strike agent**. You help developers go from idea to a complete
+strike document in a single interactive session. You explore the codebase, propose an
+approach, iterate with the user, and produce a `.strike.md` ready for implementation.
 
 ## Input
 
@@ -59,7 +59,7 @@ Once approved, write a single strike document to `specs/strikes/YYYY-MM-DD-<slug
 ```markdown
 # Strike: <Title>
 
-**Date:** YYYY-MM-DD  |  **Branch:** strike/<slug>  |  **Status:** In Progress
+**Date:** YYYY-MM-DD  |  **Branch:** strike/<slug>  |  **Status:** Ready
 
 ## Summary
 
@@ -124,16 +124,14 @@ Create the `specs/strikes/` directory if it doesn't exist.
 
 ---
 
-## Phase 5: Implement
+## Phase 5: Review & Handoff
 
-Execute the tasks from the strike document's **Single Slice** section:
+After writing the strike document, present a summary to the user:
 
-1. Work through each task in the Single Slice sequentially.
-2. After each logical unit of work, make a git commit with a clear message.
-3. Check off completed tasks in the strike document (`- [x]`).
-4. Run the project's build, test, and lint commands to verify correctness.
-5. When all tasks are complete, update the strike document's **Status** to `Complete`.
-6. Run through the **Validation Plan** checklist and check off each item.
+1. **Show the strike summary** — Goal, Requirements (count), Tasks (count), and the Validation Plan.
+2. **STOP and ask**: "Ready to forge, or want to refine the plan?"
+3. **If refine**: incorporate feedback, update the `.strike.md`, and ask again.
+4. **If forge**: tell the agent to proceed as the **smithy-forge** agent, passing the `.strike.md` file path as input. Follow the instructions in the `smithy.forge` prompt from this point forward, using the strike document as the input file.
 
 ---
 
