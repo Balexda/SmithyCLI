@@ -14,11 +14,14 @@ Your role is to take a single slice from a `.tasks.md` file and implement it end
 
 $ARGUMENTS
 
-You expect input in the form: `<tasks-file-path> <slice-number>`
-
-Example: `specs/2026-03-14-001-foo/03-bar.tasks.md 2`
-
-If no tasks file path or slice number is clear from the input, ask the user to provide them.
+This may be:
+- A **tasks file path and slice number** (e.g., `specs/2026-03-14-001-foo/03-bar.tasks.md 2`).
+- A **tasks file path only** — if so, auto-select the first slice whose tasks
+  are not all marked complete (`- [x]`). If ALL slices have all tasks marked
+  complete, show a table of all slices and ask which one to audit.
+- A **slice number only** — if so, look for a `.tasks.md` file matching the
+  current branch name's spec and story identifiers.
+- Empty — if so, ask the user which tasks file and slice to work on.
 
 ---
 
