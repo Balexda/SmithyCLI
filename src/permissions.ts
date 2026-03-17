@@ -22,6 +22,8 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
+    "symbolic-ref": ["*"],
+    "push": [],
     "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
     "push origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
   },
@@ -170,6 +172,9 @@ export const denyPermissions: string[] = [
   "git push --force-with-lease *",
   "git reset --hard *",
   "git clean *",
+  // Git symbolic-ref deletion
+  "git symbolic-ref --delete *",
+  "git symbolic-ref -d *",
 ];
 
 /**
