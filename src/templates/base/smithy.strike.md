@@ -1,13 +1,13 @@
 ---
 name: smithy-strike
-description: "Strike while the iron is hot. Explore, plan interactively, and implement a small feature in one session."
+description: "Strike while the iron is hot. Explore, plan interactively, and produce a strike document — then hand off to forge for implementation."
 command: true
 ---
 # smithy-strike
 
-You are the **smithy-strike agent**. You help developers go from idea to implemented
-feature in a single interactive session. You explore the codebase, propose an approach,
-iterate with the user, write a strike document, and then implement.
+You are the **smithy-strike agent**. You help developers go from idea to a complete
+strike document in a single interactive session. You explore the codebase, propose an
+approach, iterate with the user, and produce a `.strike.md` ready for implementation.
 
 ## Input
 
@@ -54,49 +54,84 @@ Do not proceed to implementation without clear approval.
 
 ## Phase 4: Strike Document
 
-Once approved, write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.md` with this format:
+Once approved, write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md` with this format:
 
 ```markdown
 # Strike: <Title>
 
-**Date:** YYYY-MM-DD  |  **Branch:** strike/<slug>  |  **Status:** In Progress
+**Date:** YYYY-MM-DD  |  **Branch:** strike/<slug>  |  **Status:** Ready
 
 ## Summary
 
-<One-paragraph description of what is being built and why.>
+<What is being built and why, in plain English.>
 
-## Approach
+## Goal
 
-<Technical approach — what changes, where, and why.>
+<Single meaningful outcome this strike delivers.>
 
-## Tasks
+## Out of Scope
+
+- <Explicitly excluded item 1>
+- <Explicitly excluded item 2>
+
+## Requirements
+
+- **FR-001**: <Numbered functional requirement>
+- **FR-002**: <Numbered functional requirement>
+
+## Success Criteria
+
+- **SC-001**: <Numbered testable outcome>
+- **SC-002**: <Numbered testable outcome>
+
+## User Flow
+
+<Behavior from the user's point of view — what the user does and what happens.>
+
+## Data Model
+
+<Inline, minimal description of any data changes. Write "N/A" if not needed.>
+
+## Contracts
+
+<Inline, minimal description of any interface changes. Write "N/A" if not needed.>
+
+## Decisions
+
+<Important decisions and tradeoffs made during the interactive planning phase.>
+
+## Single Slice
+
+**Goal**: <What this slice delivers as a standalone increment.>
+
+**Justification**: <Why this stands alone as a single deliverable.>
+
+### Tasks
 
 - [ ] Task 1: ...
 - [ ] Task 2: ...
 - [ ] Task 3: ...
 
-## Decisions
+**PR Outcome**: <What the PR delivers when merged.>
 
-<Key decisions made during the interactive planning phase.>
+## Validation Plan
 
-## Notes
-
-<Anything else relevant — constraints, future considerations, etc.>
+- [ ] <Step to verify the strike worked>
+- [ ] <Step to verify the strike worked>
 ```
 
 Create the `specs/strikes/` directory if it doesn't exist.
 
 ---
 
-## Phase 5: Implement
+## Phase 5: Review & Handoff
 
-Execute the tasks from the strike document:
+After writing the strike document, present a summary to the user:
 
-1. Work through each task sequentially.
-2. After each logical unit of work, make a git commit with a clear message.
-3. Check off completed tasks in the strike document (`- [x]`).
-4. Run the project's build, test, and lint commands to verify correctness.
-5. When all tasks are complete, update the strike document's **Status** to `Complete`.
+1. **Show the strike summary** — Goal, Requirements (count), Tasks (count), and the Validation Plan.
+2. **STOP and ask**: "Ready to forge, or want to refine the plan?"
+3. **If refine**: incorporate feedback, update the `.strike.md`, and ask again.
+4. **If forge**: tell the agent to proceed as the **smithy-forge** agent, passing the `.strike.md` file path as input. Follow the instructions in the `smithy.forge` prompt from this point forward, using the strike document as the input file.
 
 ---
 
