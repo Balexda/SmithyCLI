@@ -12,7 +12,7 @@ Your role is to take a single slice from a `.tasks.md` file and implement it end
 
 ## Input
 
-$ARGUMENTS
+The tasks file path and slice number: $ARGUMENTS
 
 This may be:
 - A **tasks file path and slice number** (e.g., `specs/2026-03-14-001-foo/03-bar.tasks.md 2`).
