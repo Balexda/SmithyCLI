@@ -88,10 +88,9 @@ Execute each task from the slice's checklist **in order**:
 
 1. Read and understand the task.
 2. Apply the necessary code changes.
-3. Run tests and build validation relevant to the changes.
-4. Mark the task complete — change `- [ ]` to `- [X]` for that task and include this edit in the implementation commit. For `.tasks.md` mode, update the checkbox in the tasks file's slice checklist. For `.strike.md` mode, update the checkbox in the strike file's Single Slice checklist.
-5. Only proceed to the next task once the current task's tests pass.
-6. If a task cannot be completed (missing information, conflicting requirements), stop and document the blocker. Do not guess.
+3. Run tests and build validation relevant to the changes. If tests fail, fix the issue before proceeding — do not mark the task complete.
+4. Once tests pass, mark the task complete — change `- [ ]` to `- [X]` for that task and include this edit in the implementation commit. For `.tasks.md` mode, update the checkbox in the tasks file's slice checklist. For `.strike.md` mode, update the checkbox in the strike file's Single Slice checklist.
+5. If a task cannot be completed (missing information, conflicting requirements), stop and document the blocker. Do not guess.
 
 Stay within the slice's scope. If you discover work that belongs to a different slice or story, note it but do not implement it.
 
