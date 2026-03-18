@@ -32,12 +32,25 @@ Before starting, determine the mode:
 2. If the input is a file path (not `.rfc.md`), read the file and go to **Phase 1: Intake**.
 3. If the input is a description string, go to **Phase 1: Intake**.
 
+**Mid-intake redirect**: During Phase 1, step 2 scans `docs/rfcs/` for existing
+folders. If a folder's slug is a close match to the derived slug for the new idea
+(e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user asks to
+"build a plugin system"), **stop intake** and ask the user:
+
+> "An existing RFC was found at `docs/rfcs/<YYYY-NNN-slug>/<slug>.rfc.md`.
+> Would you like to **review and refine** the existing RFC, or **create a new one**?"
+
+- If the user chooses to review, go to **Phase 0: Review Loop** with that `.rfc.md`.
+- If the user chooses to create new, continue Phase 1 with the next available `NNN`.
+
 ---
 
 ## Phase 0: Review Loop
 
-Triggered when the input points to an existing `.rfc.md` file or when a matching
-RFC is detected in `docs/rfcs/`.
+Triggered when:
+- The input explicitly points to an existing `.rfc.md` file, **or**
+- Phase 1 detected a matching RFC folder during the `docs/rfcs/` scan and the
+  user chose to review it (see Routing above).
 
 ### Phase 0a: Audit Scan
 
