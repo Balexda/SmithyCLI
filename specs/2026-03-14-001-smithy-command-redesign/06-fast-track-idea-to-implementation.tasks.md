@@ -17,8 +17,8 @@
 
 ### Tasks
 
-- [ ] Update Phase 4 strike document output path from `specs/strikes/YYYY-MM-DD-<slug>.md` to `specs/strikes/YYYY-MM-DD-<slug>.strike.md` (FR-005, AS 6.4)
-- [ ] Rewrite the Phase 4 strike document template to include all FR-010 required sections:
+- [X] Update Phase 4 strike document output path from `specs/strikes/YYYY-MM-DD-<slug>.md` to `specs/strikes/YYYY-MM-DD-<slug>.strike.md` (FR-005, AS 6.4)
+- [X] Rewrite the Phase 4 strike document template to include all FR-010 required sections:
   - Summary (what and why)
   - Goal (single meaningful outcome)
   - Out of Scope (explicitly excluded items)
@@ -30,9 +30,9 @@
   - Decisions (important decisions and tradeoffs from the interactive phase)
   - Single Slice (exactly one `## Single Slice` with Goal/Justification/Tasks/PR Outcome)
   - Validation Plan (checklist for verifying the strike worked)
-- [ ] Update Phase 5 (Implement) to reference the new slice structure — execute tasks from the Single Slice section, not a flat Tasks list
-- [ ] Verify the template still enforces interactive planning before implementation (FR-003, AS 6.3)
-- [ ] Verify the scope-growth guardrail remains (redirect to full pipeline if too large)
+- [X] Update Phase 5 (Implement) to reference the new slice structure — execute tasks from the Single Slice section, not a flat Tasks list
+- [X] Verify the template still enforces interactive planning before implementation (FR-003, AS 6.3)
+- [X] Verify the scope-growth guardrail remains (redirect to full pipeline if too large)
 
 **PR Outcome**: Running `/smithy.strike "description"` produces a `.strike.md` file with the full self-contained structure required by FR-010, saved with the correct extension for artifact discovery.
 
