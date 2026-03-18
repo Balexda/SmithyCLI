@@ -41,12 +41,12 @@
 
 ### Tasks
 
-- [ ] Delete `src/templates/base/smithy.design.md`
-- [ ] Update `CLAUDE.md` "Smithy Workflow Commands" section: replace `smithy.design` with `smithy.mark` and update its description
-- [ ] Update any other `CLAUDE.md` references to "design" that should now say "mark" (e.g., in the pipeline stages list)
-- [ ] Search codebase for remaining references to `smithy.design` (in `.ts` files, other templates, specs) and update or remove them
-- [ ] Verify `npm run build` succeeds with the template changes
-- [ ] Verify `npm run typecheck` passes
+- [X] Delete `src/templates/base/smithy.design.md`
+- [X] Update `CLAUDE.md` "Smithy Workflow Commands" section: replace `smithy.design` with `smithy.mark` and update its description
+- [X] Update any other `CLAUDE.md` references to "design" that should now say "mark" (e.g., in the pipeline stages list)
+- [X] Search codebase for remaining references to `smithy.design` (in `.ts` files, other templates, specs) and update or remove them
+- [X] Verify `npm run build` succeeds with the template changes
+- [X] Verify `npm run typecheck` passes
 
 **PR Outcome**: `smithy.design` is fully removed. All documentation and cross-references point to `smithy.mark`. The build passes cleanly.
 
