@@ -17,15 +17,15 @@
 
 ### Tasks
 
-- [ ] Copy `src/templates/base/smithy.design.md` to `src/templates/base/smithy.mark.md`
-- [ ] Update frontmatter: rename `name: smithy-design` to `name: smithy-mark`, update description to reference "mark" instead of "design"
-- [ ] Find-and-replace all references to "design" with "mark" in command name contexts (e.g., `smithy.design` → `smithy.mark`, "design agent" → "mark agent")
-- [ ] Update artifact hierarchy terminology to match the spec (RFC → Milestone → Feature → User Story → Slice → Tasks)
-- [ ] Verify folder naming convention references use `specs/<YYYY-MM-DD-NNN-slug>/` pattern per FR-008
-- [ ] Verify the template ensures all three output files are produced (`.spec.md`, `.data-model.md`, `.contracts.md`) including minimal placeholders when not needed (Acceptance Scenario 3.6)
-- [ ] Verify Phase 0 review loop is present and enters refinement when re-run on existing spec (FR-004, Acceptance Scenario 3.3)
-- [ ] Verify the template requires clarifying questions before producing artifacts (FR-003)
-- [ ] Confirm `command: true` remains in frontmatter so it deploys as a slash command
+- [X] Copy `src/templates/base/smithy.design.md` to `src/templates/base/smithy.mark.md`
+- [X] Update frontmatter: rename `name: smithy-design` to `name: smithy-mark`, update description to reference "mark" instead of "design"
+- [X] Find-and-replace all references to "design" with "mark" in command name contexts (e.g., `smithy.design` → `smithy.mark`, "design agent" → "mark agent")
+- [X] Update artifact hierarchy terminology to match the spec (RFC → Milestone → Feature → User Story → Slice → Tasks)
+- [X] Verify folder naming convention references use `specs/<YYYY-MM-DD-NNN-slug>/` pattern per FR-008
+- [X] Verify the template ensures all three output files are produced (`.spec.md`, `.data-model.md`, `.contracts.md`) including minimal placeholders when not needed (Acceptance Scenario 3.6)
+- [X] Verify Phase 0 review loop is present and enters refinement when re-run on existing spec (FR-004, Acceptance Scenario 3.3)
+- [X] Verify the template requires clarifying questions before producing artifacts (FR-003)
+- [X] Confirm `command: true` remains in frontmatter so it deploys as a slash command
 
 **PR Outcome**: `smithy.mark.md` exists as a deployable template with correct naming and spec-aligned content. Running `smithy init` would deploy it as `/smithy.mark`.
 
