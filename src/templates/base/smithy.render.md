@@ -36,7 +36,10 @@ Before starting, determine the mode:
       milestone, go to **Phase 0: Review Loop**. Otherwise, go to **Phase 1: Intake**.
    d. **RFC path only**: Auto-select the first milestone that doesn't have a
       `.features.md` yet. If **all** milestones already have maps, present a table
-      of milestones and ask the user which one to audit, then go to **Phase 0**.
+      of milestones with their `.features.md` paths and inform the user:
+      > "All milestones already have feature maps. The review loop is not yet
+      > implemented. To regenerate a feature map, delete its `.features.md` file
+      > and re-run render."
 3. **If the input is not a file path** (no `/` or `.` indicating a path, and does
    not end in `.rfc.md` or `.features.md`), abort with:
    > "Render works from an existing RFC. Run `smithy.ignite` first to workshop
