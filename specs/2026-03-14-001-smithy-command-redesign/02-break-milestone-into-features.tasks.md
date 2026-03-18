@@ -46,11 +46,11 @@
 
 ### Tasks
 
-- [ ] Add **Phase 0: Review Loop** to `src/templates/base/smithy.render.md`, placed before Phase 1. Triggered when the target milestone already has a `.features.md` file in the RFC folder.
-- [ ] Write **Phase 0a: Audit Scan** — read the existing map file alongside the source RFC milestone. Check for: feature coverage (are all aspects of the milestone represented?), gaps (missing features), overlap (features with unclear boundaries), dependency clarity, and alignment with the RFC's stated goals for the milestone. Assess each category as Sound, Weak, or Gap.
-- [ ] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question.
-- [ ] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing `.features.md` to incorporate refinements. Present changes for user approval before writing.
-- [ ] Update the input routing logic from Slice 1: when all milestones have maps and user selects one, or when a specific milestone with an existing map is targeted, route to Phase 0.
+- [X] Add **Phase 0: Review Loop** to `src/templates/base/smithy.render.md`, placed before Phase 1. Triggered when the target milestone already has a `.features.md` file in the RFC folder.
+- [X] Write **Phase 0a: Audit Scan** — read the existing map file alongside the source RFC milestone. Check for: feature coverage (are all aspects of the milestone represented?), gaps (missing features), overlap (features with unclear boundaries), dependency clarity, and alignment with the RFC's stated goals for the milestone. Assess each category as Sound, Weak, or Gap.
+- [X] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question.
+- [X] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing `.features.md` to incorporate refinements. Present changes for user approval before writing.
+- [X] Update the input routing logic from Slice 1: when all milestones have maps and user selects one, or when a specific milestone with an existing map is targeted, route to Phase 0.
 - [ ] Manually test: create a sample `.features.md` via Slice 1's render flow, then re-run `/smithy.render` targeting the same milestone and verify it enters the review loop with audit findings and refinement questions.
 
 **PR Outcome**: Re-running `/smithy.render` on a milestone with an existing feature map enters a structured audit and refinement flow. The "repeat to refine" convention is fully implemented for render.
