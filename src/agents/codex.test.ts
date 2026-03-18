@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { deploy, remove } from './codex.js';
+import { getBaseTemplateFiles } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -24,7 +25,8 @@ describe('deploy', () => {
     expect(fs.existsSync(promptsDir)).toBe(true);
 
     const files = fs.readdirSync(promptsDir);
-    expect(files.length).toBe(12);
+    const baseTemplates = getBaseTemplateFiles();
+    expect(files.length).toBe(baseTemplates.length);
     for (const file of files) {
       expect(file.endsWith('.md')).toBe(true);
     }
