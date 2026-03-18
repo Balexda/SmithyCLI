@@ -54,9 +54,24 @@ folder (either via direct `.features.md` path input, RFC path + milestone number
 targeting an existing map, or when all milestones have maps and the user selects
 one to audit).
 
+### Phase 0 — Resolve Source Context
+
+Before auditing, locate the source RFC and the specific milestone the map covers:
+
+1. **Read the `.features.md` header.** Extract the **Source RFC** path and the
+   **Milestone** number and title from the file's metadata block.
+2. **If the header fields are missing or unreadable**, fall back: look for a
+   co-located `.rfc.md` file in the same folder. If found, parse its milestones
+   and match by the milestone number in the `.features.md` filename prefix
+   (`<NN>-*.features.md` → milestone `<NN>`).
+3. **Read the matched RFC milestone section** so it is available as the baseline
+   for the audit scan.
+4. If neither the header nor the fallback resolves a valid RFC and milestone,
+   stop and ask the user to provide the RFC path and milestone number.
+
 ### Phase 0a: Audit Scan
 
-Read the existing `.features.md` file alongside the source RFC milestone. Assess
+Read the existing `.features.md` file alongside the **resolved RFC milestone**. Assess
 each of the following categories as **Sound**, **Weak**, or **Gap**:
 
 - **Feature Coverage** — Are all aspects of the milestone represented by at least
