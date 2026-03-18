@@ -17,14 +17,14 @@
 
 ### Tasks
 
-- [ ] Read the current `src/templates/base/smithy.ignite.md` and `src/templates/base/smithy.strike.md` (as a reference for mature template structure).
-- [ ] Rewrite `src/templates/base/smithy.ignite.md` frontmatter: add `command: true`, update description to match the spec's forge metaphor naming.
-- [ ] Write the **Input** section: accept `$ARGUMENTS` as either a broad idea description or a file path to a PRD/document. Include fallback: "If no input is clear, ask the user what idea they want to workshop."
-- [ ] Write **Phase 1: Intake** — parse input, determine if it's a description string or a file path (read the file if path), scan `docs/rfcs/` for existing folders to derive the next sequential `NNN` number, derive a kebab-case slug from the idea, and confirm the target folder (`docs/rfcs/<YYYY-NNN-slug>/`) with the user.
-- [ ] Write **Phase 2: Clarify** — structured ambiguity scan across categories (personas, value proposition, constraints, risks, scope). Present up to 5 questions **one at a time** with a recommended answer for each. STOP after each question and wait for user response.
-- [ ] Write **Phase 3: Draft RFC** — using the workshopped answers, produce a structured RFC containing: summary, motivation/problem statement, goals, proposal, milestones (each with title, description, and success criteria), design considerations, open questions. Present the full draft for user approval before writing.
-- [ ] Write **Phase 4: Output** — create the `docs/rfcs/<YYYY-NNN-slug>/` folder, write `<slug>.rfc.md`. Confirm the file path to the user and suggest next step: "Ready for `smithy.render` to break a milestone into features."
-- [ ] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, maintain "WHAT not HOW" tone, milestones must be clearly delineated.
+- [X] Read the current `src/templates/base/smithy.ignite.md` and `src/templates/base/smithy.strike.md` (as a reference for mature template structure).
+- [X] Rewrite `src/templates/base/smithy.ignite.md` frontmatter: add `command: true`, update description to match the spec's forge metaphor naming.
+- [X] Write the **Input** section: accept `$ARGUMENTS` as either a broad idea description or a file path to a PRD/document. Include fallback: "If no input is clear, ask the user what idea they want to workshop."
+- [X] Write **Phase 1: Intake** — parse input, determine if it's a description string or a file path (read the file if path), scan `docs/rfcs/` for existing folders to derive the next sequential `NNN` number, derive a kebab-case slug from the idea, and confirm the target folder (`docs/rfcs/<YYYY-NNN-slug>/`) with the user.
+- [X] Write **Phase 2: Clarify** — structured ambiguity scan across categories (personas, value proposition, constraints, risks, scope). Present up to 5 questions **one at a time** with a recommended answer for each. STOP after each question and wait for user response.
+- [X] Write **Phase 3: Draft RFC** — using the workshopped answers, produce a structured RFC containing: summary, motivation/problem statement, goals, proposal, milestones (each with title, description, and success criteria), design considerations, open questions. Present the full draft for user approval before writing.
+- [X] Write **Phase 4: Output** — create the `docs/rfcs/<YYYY-NNN-slug>/` folder, write `<slug>.rfc.md`. Confirm the file path to the user and suggest next step: "Ready for `smithy.render` to break a milestone into features."
+- [X] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, maintain "WHAT not HOW" tone, milestones must be clearly delineated.
 - [ ] Manually test: run `npm run build && node dist/cli.js init` targeting a test repo with Claude selected, restart Claude Code, invoke `/smithy.ignite "build a plugin system"`, and verify the interactive flow produces a well-structured RFC with milestones in the correct folder.
 
 **PR Outcome**: `/smithy.ignite` is a working slash command. Developers can workshop a broad idea or PRD into a structured RFC with milestones via interactive Q&A.
@@ -41,11 +41,11 @@
 
 ### Tasks
 
-- [ ] Add **Phase 0: Review Loop** to `src/templates/base/smithy.ignite.md`, placed before Phase 1. Triggered when input points to an existing `.rfc.md` file or when a matching RFC is detected in `docs/rfcs/`.
-- [ ] Write **Phase 0a: Audit Scan** — read the existing RFC and check for: ambiguity in problem statement or goals, milestone completeness (are milestones well-defined with clear scope?), feasibility concerns, scope drift, missing stakeholder perspectives. Assess each category as Sound, Weak, or Gap.
-- [ ] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question.
-- [ ] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing RFC to incorporate refinements. Present changes for user approval before writing.
-- [ ] Add routing logic at the top of the template: if input is an existing `.rfc.md` path, go to Phase 0 (review loop). If input is a description or PRD path, go to Phase 1 (new RFC generation).
+- [X] Add **Phase 0: Review Loop** to `src/templates/base/smithy.ignite.md`, placed before Phase 1. Triggered when input points to an existing `.rfc.md` file or when a matching RFC is detected in `docs/rfcs/`. *(Implemented in Slice 1 PR — Phase 0 was included alongside the core template since routing needed to reference it.)*
+- [X] Write **Phase 0a: Audit Scan** — read the existing RFC and check for: ambiguity in problem statement or goals, milestone completeness (are milestones well-defined with clear scope?), feasibility concerns, scope drift, missing stakeholder perspectives. Assess each category as Sound, Weak, or Gap. *(Implemented in Slice 1 PR.)*
+- [X] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question. *(Implemented in Slice 1 PR.)*
+- [X] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing RFC to incorporate refinements. Present changes for user approval before writing. *(Implemented in Slice 1 PR.)*
+- [X] Add routing logic at the top of the template: if input is an existing `.rfc.md` path, go to Phase 0 (review loop). If input is a description or PRD path, go to Phase 1 (new RFC generation). *(Implemented in Slice 1 PR, including mid-intake redirect for slug-matched RFCs.)*
 - [ ] Manually test: create a sample RFC via Slice 1's ignite flow, then re-run `/smithy.ignite path/to/existing.rfc.md` and verify it enters the review loop with audit findings and refinement questions.
 
 **PR Outcome**: Re-running `/smithy.ignite` on an existing RFC enters a structured audit and refinement flow. The "repeat to refine" convention is fully implemented for ignite.

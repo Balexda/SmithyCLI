@@ -18,7 +18,7 @@ The user's input: $ARGUMENTS
 
 This may be:
 - A **feature description** (e.g., "add webhook support for build events").
-- A **path to an RFC** (e.g., `docs/rfc/2026-03-10-webhook-support.md`).
+- A **path to an RFC** (e.g., `docs/rfcs/2026-001-webhook-support/webhook-support.rfc.md`).
 - Empty — if so, ask the user what they want to design.
 
 ---
