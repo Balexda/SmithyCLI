@@ -58,7 +58,7 @@ Read the existing RFC and evaluate each category:
 
 | Category | Check For | Rating |
 |----------|-----------|--------|
-| Problem Statement | Clearly states the problem, outlines how the RFC addresses it, and motivates why it matters | Sound / Weak / Gap |
+| Problem Statement | Problem clarity, solution outline, compelling motivation | Sound / Weak / Gap |
 | Goals | Concrete, achievable, non-overlapping | Sound / Weak / Gap |
 | Milestones | Well-defined scope, clear boundaries, success criteria | Sound / Weak / Gap |
 | Feasibility | Technical risks, dependency concerns, resource assumptions | Sound / Weak / Gap |
@@ -154,6 +154,16 @@ of not solving it?>
 <The "WHAT" — describe what will be built at a high level. Focus on outcomes
 and capabilities, not implementation details.>
 
+## Design Considerations
+
+<High-level architectural thoughts, tradeoffs, and constraints that will
+influence downstream design decisions. Keep this at "WHAT not HOW" level.>
+
+## Open Questions
+
+- <Question 1>
+- <Question 2>
+
 ## Milestones
 
 ### Milestone 1: <Title>
@@ -171,16 +181,6 @@ and capabilities, not implementation details.>
 **Success Criteria**:
 - <Measurable outcome 1>
 - <Measurable outcome 2>
-
-## Design Considerations
-
-<High-level architectural thoughts, tradeoffs, and constraints that will
-influence downstream design decisions. Keep this at "WHAT not HOW" level.>
-
-## Open Questions
-
-- <Question 1>
-- <Question 2>
 ```
 
 Present the **full draft** to the user for review.
