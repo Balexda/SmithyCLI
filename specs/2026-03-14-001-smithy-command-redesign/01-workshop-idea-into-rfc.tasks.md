@@ -41,11 +41,11 @@
 
 ### Tasks
 
-- [ ] Add **Phase 0: Review Loop** to `src/templates/base/smithy.ignite.md`, placed before Phase 1. Triggered when input points to an existing `.rfc.md` file or when a matching RFC is detected in `docs/rfcs/`.
-- [ ] Write **Phase 0a: Audit Scan** — read the existing RFC and check for: ambiguity in problem statement or goals, milestone completeness (are milestones well-defined with clear scope?), feasibility concerns, scope drift, missing stakeholder perspectives. Assess each category as Sound, Weak, or Gap.
-- [ ] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question.
-- [ ] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing RFC to incorporate refinements. Present changes for user approval before writing.
-- [ ] Add routing logic at the top of the template: if input is an existing `.rfc.md` path, go to Phase 0 (review loop). If input is a description or PRD path, go to Phase 1 (new RFC generation).
+- [X] Add **Phase 0: Review Loop** to `src/templates/base/smithy.ignite.md`, placed before Phase 1. Triggered when input points to an existing `.rfc.md` file or when a matching RFC is detected in `docs/rfcs/`. *(Implemented in Slice 1 PR — Phase 0 was included alongside the core template since routing needed to reference it.)*
+- [X] Write **Phase 0a: Audit Scan** — read the existing RFC and check for: ambiguity in problem statement or goals, milestone completeness (are milestones well-defined with clear scope?), feasibility concerns, scope drift, missing stakeholder perspectives. Assess each category as Sound, Weak, or Gap. *(Implemented in Slice 1 PR.)*
+- [X] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question. *(Implemented in Slice 1 PR.)*
+- [X] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing RFC to incorporate refinements. Present changes for user approval before writing. *(Implemented in Slice 1 PR.)*
+- [X] Add routing logic at the top of the template: if input is an existing `.rfc.md` path, go to Phase 0 (review loop). If input is a description or PRD path, go to Phase 1 (new RFC generation). *(Implemented in Slice 1 PR, including mid-intake redirect for slug-matched RFCs.)*
 - [ ] Manually test: create a sample RFC via Slice 1's ignite flow, then re-run `/smithy.ignite path/to/existing.rfc.md` and verify it enters the review loop with audit findings and refinement questions.
 
 **PR Outcome**: Re-running `/smithy.ignite` on an existing RFC enters a structured audit and refinement flow. The "repeat to refine" convention is fully implemented for ignite.
