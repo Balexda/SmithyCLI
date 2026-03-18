@@ -17,14 +17,14 @@
 
 ### Tasks
 
-- [ ] Read the current `src/templates/base/smithy.ignite.md` and `src/templates/base/smithy.strike.md` (as a reference for mature template structure).
-- [ ] Rewrite `src/templates/base/smithy.ignite.md` frontmatter: add `command: true`, update description to match the spec's forge metaphor naming.
-- [ ] Write the **Input** section: accept `$ARGUMENTS` as either a broad idea description or a file path to a PRD/document. Include fallback: "If no input is clear, ask the user what idea they want to workshop."
-- [ ] Write **Phase 1: Intake** — parse input, determine if it's a description string or a file path (read the file if path), scan `docs/rfcs/` for existing folders to derive the next sequential `NNN` number, derive a kebab-case slug from the idea, and confirm the target folder (`docs/rfcs/<YYYY-NNN-slug>/`) with the user.
-- [ ] Write **Phase 2: Clarify** — structured ambiguity scan across categories (personas, value proposition, constraints, risks, scope). Present up to 5 questions **one at a time** with a recommended answer for each. STOP after each question and wait for user response.
-- [ ] Write **Phase 3: Draft RFC** — using the workshopped answers, produce a structured RFC containing: summary, motivation/problem statement, goals, proposal, milestones (each with title, description, and success criteria), design considerations, open questions. Present the full draft for user approval before writing.
-- [ ] Write **Phase 4: Output** — create the `docs/rfcs/<YYYY-NNN-slug>/` folder, write `<slug>.rfc.md`. Confirm the file path to the user and suggest next step: "Ready for `smithy.render` to break a milestone into features."
-- [ ] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, maintain "WHAT not HOW" tone, milestones must be clearly delineated.
+- [X] Read the current `src/templates/base/smithy.ignite.md` and `src/templates/base/smithy.strike.md` (as a reference for mature template structure).
+- [X] Rewrite `src/templates/base/smithy.ignite.md` frontmatter: add `command: true`, update description to match the spec's forge metaphor naming.
+- [X] Write the **Input** section: accept `$ARGUMENTS` as either a broad idea description or a file path to a PRD/document. Include fallback: "If no input is clear, ask the user what idea they want to workshop."
+- [X] Write **Phase 1: Intake** — parse input, determine if it's a description string or a file path (read the file if path), scan `docs/rfcs/` for existing folders to derive the next sequential `NNN` number, derive a kebab-case slug from the idea, and confirm the target folder (`docs/rfcs/<YYYY-NNN-slug>/`) with the user.
+- [X] Write **Phase 2: Clarify** — structured ambiguity scan across categories (personas, value proposition, constraints, risks, scope). Present up to 5 questions **one at a time** with a recommended answer for each. STOP after each question and wait for user response.
+- [X] Write **Phase 3: Draft RFC** — using the workshopped answers, produce a structured RFC containing: summary, motivation/problem statement, goals, proposal, milestones (each with title, description, and success criteria), design considerations, open questions. Present the full draft for user approval before writing.
+- [X] Write **Phase 4: Output** — create the `docs/rfcs/<YYYY-NNN-slug>/` folder, write `<slug>.rfc.md`. Confirm the file path to the user and suggest next step: "Ready for `smithy.render` to break a milestone into features."
+- [X] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, maintain "WHAT not HOW" tone, milestones must be clearly delineated.
 - [ ] Manually test: run `npm run build && node dist/cli.js init` targeting a test repo with Claude selected, restart Claude Code, invoke `/smithy.ignite "build a plugin system"`, and verify the interactive flow produces a well-structured RFC with milestones in the correct folder.
 
 **PR Outcome**: `/smithy.ignite` is a working slash command. Developers can workshop a broad idea or PRD into a structured RFC with milestones via interactive Q&A.
