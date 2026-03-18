@@ -58,7 +58,7 @@ Read the existing RFC and evaluate each category:
 
 | Category | Check For | Rating |
 |----------|-----------|--------|
-| Problem Statement | Clarity, specificity, measurable impact | Sound / Weak / Gap |
+| Problem Statement | Clearly states the problem, outlines how the RFC addresses it, and motivates why it matters | Sound / Weak / Gap |
 | Goals | Concrete, achievable, non-overlapping | Sound / Weak / Gap |
 | Milestones | Well-defined scope, clear boundaries, success criteria | Sound / Weak / Gap |
 | Feasibility | Technical risks, dependency concerns, resource assumptions | Sound / Weak / Gap |
