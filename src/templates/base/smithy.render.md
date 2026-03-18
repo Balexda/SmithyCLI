@@ -36,10 +36,9 @@ Before starting, determine the mode:
       milestone, go to **Phase 0: Review Loop**. Otherwise, go to **Phase 1: Intake**.
    d. **RFC path only**: Auto-select the first milestone that doesn't have a
       `.features.md` yet. If **all** milestones already have maps, present a table
-      of milestones with their `.features.md` paths and inform the user:
-      > "All milestones already have feature maps. The review loop is not yet
-      > implemented. To regenerate a feature map, delete its `.features.md` file
-      > and re-run render."
+      of milestones with their `.features.md` paths and ask the user which
+      milestone to audit. Once selected, go to **Phase 0: Review Loop** with
+      that milestone's `.features.md`.
 3. **If the input is not a file path** (no `/` or `.` indicating a path, and does
    not end in `.rfc.md` or `.features.md`), abort with:
    > "Render works from an existing RFC. Run `smithy.ignite` first to workshop
@@ -50,10 +49,68 @@ Before starting, determine the mode:
 
 ## Phase 0: Review Loop
 
-> **Note**: This phase is planned for a future update. If you reach this routing
-> point, inform the user: "Review loop for existing feature maps is not yet
-> implemented. You can manually edit the `.features.md` file, or delete it and
-> re-run render to regenerate."
+Triggered when the target milestone already has a `.features.md` file in the RFC
+folder (either via direct `.features.md` path input, RFC path + milestone number
+targeting an existing map, or when all milestones have maps and the user selects
+one to audit).
+
+### Phase 0a: Audit Scan
+
+Read the existing `.features.md` file alongside the source RFC milestone. Assess
+each of the following categories as **Sound**, **Weak**, or **Gap**:
+
+- **Feature Coverage** — Are all aspects of the milestone represented by at least
+  one feature?
+- **Gaps** — Are there milestone goals or success criteria that no feature addresses?
+- **Overlap** — Are there features with unclear or overlapping boundaries?
+- **Dependency Clarity** — Are inter-feature dependencies within the milestone
+  evident, or are they hidden?
+- **RFC Alignment** — Does the feature map align with the RFC's stated goals and
+  success criteria for this milestone?
+
+Present findings as a summary table:
+
+```
+| Category           | Assessment | Notes                        |
+|--------------------|------------|------------------------------|
+| Feature Coverage   | Sound      |                              |
+| Gaps               | Weak       | No feature covers migration  |
+| Overlap            | Sound      |                              |
+| Dependency Clarity | Gap        | Features 2 and 4 share state |
+| RFC Alignment      | Sound      |                              |
+```
+
+**STOP and wait** for the user to review the audit findings before proceeding to
+refinement questions.
+
+### Phase 0b: Refinement Questions
+
+Based on the audit findings, formulate up to **5 refinement questions** targeting
+the most impactful **Weak** or **Gap** categories. Order questions by impact — address
+Gaps before Weak assessments.
+
+For each question:
+1. State the question clearly and reference the audit category it addresses.
+2. Explain what the current map says (or doesn't say) and why it matters.
+3. Provide a **recommended resolution** based on what you can infer from the RFC
+   and the existing map.
+4. **STOP and wait** for the user's response before asking the next question.
+
+If all categories are **Sound**, ask at least one question about whether any feature
+should be split, merged, or re-scoped based on lessons learned since the map was
+created.
+
+### Phase 0c: Apply Refinements
+
+After all refinement questions are answered:
+
+1. Incorporate the user's answers into an **updated feature map**.
+2. Present the **full updated draft** alongside a summary of what changed
+   (features added, removed, merged, re-scoped, or reworded).
+3. **STOP and wait** for user approval before writing the file.
+
+Once approved, overwrite the existing `.features.md` with the updated version.
+Confirm the file path to the user and suggest next steps.
 
 ---
 
