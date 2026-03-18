@@ -65,7 +65,7 @@ Parse the input and prepare the target:
 3. **Derive the slug.** Create a kebab-case slug from the milestone title
    (e.g., "Core Pipeline Commands" → `core-pipeline-commands`).
 4. **Derive the filename.** `<NN>-<milestone-slug>.features.md` where `<NN>` is the
-   zero-padded milestone number.
+   two-digit zero-padded milestone number (e.g., `01-`, `02-`, ... `09-`, `10-`).
 5. **Confirm the target with the user:**
    - RFC path
    - Milestone number and title
@@ -107,7 +107,7 @@ this format:
 ```markdown
 # Feature Map: <Milestone Title>
 
-**Source RFC**: `<path/to/rfc.rfc.md>`
+**Source RFC**: `<docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
 **Milestone**: <N> — <Milestone Title>
 **Created**: YYYY-MM-DD
 
