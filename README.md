@@ -32,8 +32,8 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | Stage | Agent | Purpose |
 | :--- | :--- | :--- |
 | **Ideation** | `smithy.ignite` | **Spark**: Workshop a broad idea into a structured RFC. |
-| **Planning** | `smithy.design` | **Scope**: Transform an RFC into a Feature Plan. |
-| **Breakdown** | `smithy.slice` | **Segment**: Slice a Feature Plan into Task Stubs. |
+| **Planning** | `smithy.mark` | **Scope**: Specify a feature with spec, data model, and contracts. |
+| **Breakdown** | `smithy.slice` | **Segment**: Slice a Feature Spec into Task Stubs. |
 | **Mapping** | `smithy.trace` | **Flowmap**: Map a Task Stub into an Experience Journey. |
 | **Technical** | `smithy.refine` | **Detail**: Turn a Journey into a `tasks.md` spec (Analyze -> Plan -> Tasks). |
 | **Queuing** | `smithy.load` | **Queue**: Load Implementation Tasks into GitHub. |
@@ -51,8 +51,8 @@ graph TD
     Ignite --> RFC{RFC}
     
     %% Planning
-    RFC --> Design[smithy.design]
-    Design --> Plan{Feature Plan}
+    RFC --> Mark[smithy.mark]
+    Mark --> Plan{Feature Spec}
     
     %% Breakdown
     Plan --> Slice[smithy.slice]
@@ -79,7 +79,7 @@ graph TD
     
     %% Review Loops
     Ignite -- "Repeat Cmd" --> IgniteReview(Self-Review)
-    Design -- "Repeat Cmd" --> DesignReview(Self-Review)
+    Mark -- "Repeat Cmd" --> MarkReview(Self-Review)
     Refine -- "Repeat Cmd" --> RefineReview(Self-Review)
     
     %% Universal Auditor
