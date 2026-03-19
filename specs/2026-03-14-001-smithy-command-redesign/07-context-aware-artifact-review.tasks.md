@@ -17,13 +17,13 @@
 
 ### Tasks
 
-- [ ] Define the marker convention: `<!-- audit-checklist-start -->` / `<!-- audit-checklist-end -->`
-- [ ] Add audit checklist section to `smithy.ignite.md` covering: ambiguity, milestone completeness, feasibility (AS 7.1)
-- [ ] Add audit checklist section to `smithy.render.md` (once created) covering: feature coverage, gaps, overlap (AS 7.2)
-- [ ] Add audit checklist section to `smithy.mark.md` (once created) covering: requirement traceability, acceptance coverage, data model consistency (AS 7.3)
-- [ ] Add audit checklist section to `smithy.cut.md` covering: slice scoping, testability, edge case coverage (AS 7.4) — align with existing Phase 0 categories
-- [ ] Add audit checklist section to `smithy.strike.md` covering: requirement completeness, slice scoping, validation plan coverage, data model/contracts presence (AS 7.5)
-- [ ] Ensure each checklist uses a consistent format (category table with "what to check" column) so `init` can extract uniformly
+- [x] Define the marker convention: `<!-- audit-checklist-start -->` / `<!-- audit-checklist-end -->`
+- [x] Add audit checklist section to `smithy.ignite.md` covering: ambiguity, milestone completeness, feasibility (AS 7.1)
+- [x] Add audit checklist section to `smithy.render.md` covering: feature coverage, gaps, overlap (AS 7.2)
+- [x] Add audit checklist section to `smithy.mark.md` covering: requirement traceability, acceptance coverage, data model consistency (AS 7.3)
+- [x] Add audit checklist section to `smithy.cut.md` covering: slice scoping, testability, edge case coverage (AS 7.4) — align with existing Phase 0 categories
+- [x] Add audit checklist section to `smithy.strike.md` covering: requirement completeness, slice scoping, validation plan coverage, data model/contracts presence (AS 7.5)
+- [x] Ensure each checklist uses a consistent format (category table with "what to check" column) so `init` can extract uniformly
 
 **PR Outcome**: All producing command templates contain marked audit checklists. Templates still function normally — markers are invisible to agents. No behavior change yet.
 
