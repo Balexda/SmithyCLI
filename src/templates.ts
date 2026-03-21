@@ -98,6 +98,13 @@ export function composeAuditTemplate(
 
   if (sections.length === 0) return auditTemplate;
 
+  if (!auditTemplate.includes(COMPOSED_CHECKLISTS_PLACEHOLDER)) {
+    throw new Error(
+      `Audit template is missing the "${COMPOSED_CHECKLISTS_PLACEHOLDER}" placeholder. ` +
+      `Cannot inject composed checklists.`,
+    );
+  }
+
   const composed = sections.join('\n\n');
   return auditTemplate.replace(COMPOSED_CHECKLISTS_PLACEHOLDER, composed);
 }

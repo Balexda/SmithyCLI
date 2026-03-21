@@ -84,6 +84,16 @@ describe('composeAuditTemplate', () => {
     expect(result).toBe(auditTemplate);
   });
 
+  it('throws when audit template is missing the placeholder', () => {
+    const templates = new Map<string, string>();
+    templates.set('smithy.ignite.md', makeChecklist('.rfc.md', 'Ambiguity'));
+
+    const auditTemplate = '# Audit\n\nNo placeholder here';
+    expect(() => composeAuditTemplate(templates, auditTemplate)).toThrow(
+      /missing the "<!-- composed-checklists -->" placeholder/,
+    );
+  });
+
   it('throws when checklist header does not match expected extension', () => {
     const templates = new Map<string, string>();
     // ignite should map to .rfc.md but checklist says .wrong.md
