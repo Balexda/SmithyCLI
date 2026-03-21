@@ -165,10 +165,12 @@ cat > /tmp/orders_body.md << 'BODY'
 
 **Parent**: #<parent-issue-number>
 **Source**: `<path-to-rfc>`
+**Milestone number**: <N>
 
 <milestone description>
 
-**Next step**: Run `smithy.render` on this milestone to produce a feature map.
+**Next step**: Run `/smithy.render <path-to-rfc> <N>` to produce a feature map for this milestone.
+(where `<N>` is this milestone's number — e.g., `/smithy.render docs/rfcs/2026-001-foo/foo.rfc.md 2`)
 BODY
 
 gh issue create --title "[RFC][Milestone] <milestone-title>" --body-file /tmp/orders_body.md
