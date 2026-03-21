@@ -226,7 +226,8 @@ As a <persona>, I want <goal> so that <benefit>.
 
 <acceptance scenarios from the spec>
 
-**Next step**: Run `smithy.cut` on this spec to produce task slices for this story.
+**Next step**: Run `smithy.cut <spec-folder> <story-number>` to produce task slices for this story.
+(e.g., `smithy.cut specs/2026-03-14-001-webhook-support 3` for User Story 3)
 BODY
 
 gh issue create --title "[Story] <story-title>" --body-file /tmp/orders_body.md
@@ -234,13 +235,19 @@ gh issue create --title "[Story] <story-title>" --body-file /tmp/orders_body.md
 
 ### Ticket mapping: `.tasks.md`
 
-**Parent linking**: Search for an existing user story issue to link to:
+**Parent linking**: Search for an existing user story issue to link to. The
+tasks file header references its source spec — read the spec to find the story
+title that matches this tasks file's story number (`<NN>` from the filename
+`<NN>-<story-slug>.tasks.md` maps to `User Story <NN>` in the spec). Then
+search using the same `[Story]` title prefix used when creating story tickets:
 
 ```bash
-gh issue list --search "[Story] <story-slug>" --state open --json number,title --limit 10
+gh issue list --search "[Story] <story-title>" --state open --json number,title --limit 10
 ```
 
-Match by story name. If found, reference it in the child ticket body.
+Match by story title (the `<story-title>` from `### User Story N — <Title>` in
+the spec — the same title used in the `[Story] <story-title>` issue created by
+the `.spec.md` mapping above). If found, reference it in the child ticket body.
 
 **Children**: One issue per slice.
 
