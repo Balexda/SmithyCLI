@@ -47,7 +47,6 @@ specific** to avoid false positives (e.g., `.data-model.md` before `.md`):
 | `.features.md` | Feature Map | Yes |
 | `.spec.md` | Feature Spec | Yes |
 | `.tasks.md` | Task Slices | Yes |
-| `.strike.md` | Strike Plan | Yes |
 
 ### Companion file rejection
 
@@ -62,7 +61,7 @@ If the file ends in `.data-model.md` or `.contracts.md`, stop with this error:
 If the file does not match any known extension, stop with:
 
 > Unrecognized artifact type. Orders supports: `.rfc.md`, `.features.md`,
-> `.spec.md`, `.tasks.md`, `.strike.md`.
+> `.spec.md`, `.tasks.md`.
 
 ---
 
@@ -94,12 +93,6 @@ Parse the spec to extract:
 Parse the tasks file to extract:
 - **Slices** — each `## Slice N: <Title>` section becomes a ticket. Extract the
   title, goal, and task checklist.
-
-### For `.strike.md`
-
-Parse the strike file to extract:
-- **Strike title** — from the H1 heading or `## Goal` section. Creates a single
-  ticket.
 
 ---
 
@@ -138,7 +131,6 @@ temporary file for issue bodies to avoid shell escaping problems.
 | `.features.md` | (link to existing milestone issue) | `[Feature] <feature-title>` |
 | `.spec.md` | (none) | `[Story] <story-title>` |
 | `.tasks.md` | (link to existing story issue) | `[Slice] <slice-title>` |
-| `.strike.md` | (none) | `[Strike] <strike-title>` |
 
 ### Ticket mapping: `.rfc.md`
 
@@ -184,13 +176,21 @@ gh issue create --title "[RFC][Milestone] <milestone-title>" --body-file /tmp/or
 
 ### Ticket mapping: `.features.md`
 
-**Parent linking**: Search for an existing milestone issue to link to:
+**Parent linking**: Search for an existing milestone issue to link to. Feature
+maps include `**Source RFC**` and `**Milestone**` metadata in their header —
+read both to disambiguate across RFCs. First extract the RFC title from the
+source RFC path, then search for a milestone issue that matches **both** the RFC
+title and the milestone title:
 
 ```bash
-gh issue list --search "[RFC][Milestone]" --state open --json number,title --limit 20
+# Use both RFC title and milestone title to avoid matching same-named milestones from different RFCs
+gh issue list --search "[RFC][Milestone] <milestone-title> in:title" --state open --json number,title,body --limit 10
 ```
 
-Match by milestone name. If found, reference it in the child ticket body.
+From the results, verify the match by checking that the issue body references
+the same source RFC path. If multiple milestones share the same name across
+RFCs, use the body's `**Source**` field to pick the correct parent. If found,
+reference it in the child ticket body.
 
 **Children**: One issue per feature.
 
@@ -226,8 +226,8 @@ As a <persona>, I want <goal> so that <benefit>.
 
 <acceptance scenarios from the spec>
 
-**Next step**: Run `smithy.cut <spec-folder> <story-number>` to produce task slices for this story.
-(e.g., `smithy.cut specs/2026-03-14-001-webhook-support 3` for User Story 3)
+**Next step**: Run `/smithy.cut <spec-folder-path> <N>` to produce task slices for this story.
+(where `<N>` is this story's number — e.g., `/smithy.cut specs/2026-03-14-001-webhook-support 3`)
 BODY
 
 gh issue create --title "[Story] <story-title>" --body-file /tmp/orders_body.md
@@ -270,24 +270,6 @@ cat > /tmp/orders_body.md << 'BODY'
 BODY
 
 gh issue create --title "[Slice] <slice-title>" --body-file /tmp/orders_body.md
-```
-
-### Ticket mapping: `.strike.md`
-
-**Single issue**: One ticket for the strike.
-
-```bash
-cat > /tmp/orders_body.md << 'BODY'
-## Strike: <strike-title>
-
-**Source**: `<path-to-strike-file>`
-
-<strike goal/summary>
-
-**Next step**: Run `smithy.forge` on this strike to implement it.
-BODY
-
-gh issue create --title "[Strike] <strike-title>" --body-file /tmp/orders_body.md
 ```
 
 ---
