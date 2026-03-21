@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractAuditChecklist,
   composeAuditTemplate,
+  getComposedTemplates,
   templateToExtension,
 } from './templates.js';
 
@@ -156,5 +157,29 @@ describe('templateToExtension', () => {
     expect(templateToExtension['smithy.mark.md']).toBe('.spec.md');
     expect(templateToExtension['smithy.cut.md']).toBe('.tasks.md');
     expect(templateToExtension['smithy.strike.md']).toBe('.strike.md');
+  });
+});
+
+describe('getComposedTemplates', () => {
+  it('composes the audit template with all 5 extension-specific checklists', () => {
+    const templates = getComposedTemplates();
+    const audit = templates.get('smithy.audit.md');
+    expect(audit).toBeDefined();
+
+    for (const ext of Object.values(templateToExtension)) {
+      expect(audit).toContain(`Audit Checklist (${ext})`);
+    }
+  });
+
+  it('replaces the composed-checklists placeholder', () => {
+    const templates = getComposedTemplates();
+    const audit = templates.get('smithy.audit.md')!;
+    expect(audit).not.toContain('<!-- composed-checklists -->');
+  });
+
+  it('preserves command: true in the audit template frontmatter', () => {
+    const templates = getComposedTemplates();
+    const audit = templates.get('smithy.audit.md')!;
+    expect(audit).toMatch(/command:\s*true/);
   });
 });

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getBaseTemplateFiles, readTemplate, stripFrontmatter, isCommandTemplate } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
@@ -12,8 +12,9 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
 
   const commandsDir = path.join(targetDir, '.claude', 'commands');
 
-  for (const file of getBaseTemplateFiles()) {
-    const content = readTemplate(file);
+  const templates = getComposedTemplates();
+
+  for (const [file, content] of templates) {
     const stripped = stripFrontmatter(content);
 
     // Deploy to prompts/

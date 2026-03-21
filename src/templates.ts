@@ -1,6 +1,8 @@
 import fs from 'fs';
 import { basePromptsDir } from './utils.js';
 
+const AUDIT_TEMPLATE_FILENAME = 'smithy.audit.md';
+
 export interface TemplateMeta {
   name?: string;
   command?: boolean;
@@ -107,4 +109,23 @@ export function composeAuditTemplate(
 
   const composed = sections.join('\n\n');
   return auditTemplate.replace(COMPOSED_CHECKLISTS_PLACEHOLDER, composed);
+}
+
+/**
+ * Reads all base templates and returns them as a Map, with the audit template
+ * already composed (checklists injected from producing command templates).
+ */
+export function getComposedTemplates(): Map<string, string> {
+  const files = getBaseTemplateFiles();
+  const templates = new Map<string, string>();
+  for (const file of files) {
+    templates.set(file, readTemplate(file));
+  }
+
+  const auditRaw = templates.get(AUDIT_TEMPLATE_FILENAME);
+  if (auditRaw) {
+    templates.set(AUDIT_TEMPLATE_FILENAME, composeAuditTemplate(templates, auditRaw));
+  }
+
+  return templates;
 }

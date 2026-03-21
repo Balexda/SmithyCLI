@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getBaseTemplateFiles, readTemplate, parseFrontmatterName } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, readTemplate, parseFrontmatterName } from '../templates.js';
 import { flattenPermissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
@@ -10,8 +10,9 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
 
-  for (const file of getBaseTemplateFiles()) {
-    const content = readTemplate(file);
+  const templates = getComposedTemplates();
+
+  for (const [, content] of templates) {
     const name = parseFrontmatterName(content);
     if (name) {
       const skillPath = path.join(skillsDir, name);
