@@ -17,17 +17,17 @@
 
 ### Tasks
 
-- [ ] Create `src/templates/base/smithy.orders.md` with `command: true` frontmatter
-- [ ] Define input handling: accept a file path, auto-detect artifact type by extension (FR-005, AS 8.5) — no flags or mode arguments
-- [ ] Add error handling for companion files (`.data-model.md`, `.contracts.md`) — reject with guidance to use the parent `.spec.md` instead (per contracts error conditions)
-- [ ] Define ticket mapping for `.rfc.md`: one epic/tracking issue + one issue per milestone, next step annotation "render" (AS 8.1)
-- [ ] Define ticket mapping for `.features.md`: one issue per feature, linked to milestone issue if it exists, next step "mark" (AS 8.2)
-- [ ] Define ticket mapping for `.spec.md`: one issue per user story, next step "cut" (AS 8.3)
-- [ ] Define ticket mapping for `.tasks.md`: one issue per slice, linked to user story issue if it exists, next step "forge" (AS 8.4)
-- [ ] Add parent-child linking instructions: search for parent tickets by title convention, link with GitHub issue references (FR-015)
-- [ ] Add simple duplicate detection: before creating, search `gh issue list --search` for issues matching the title convention, prompt user if matches found
-- [ ] Preserve useful GitHub CLI command patterns from `smithy.load.md` (milestone create/update, issue creation with `--body-file`, GraphQL blocked-by links)
-- [ ] Add output summary: list of created issues with numbers, links, and any follow-up actions
+- [X] Create `src/templates/base/smithy.orders.md` with `command: true` frontmatter
+- [X] Define input handling: accept a file path, auto-detect artifact type by extension (FR-005, AS 8.5) — no flags or mode arguments
+- [X] Add error handling for companion files (`.data-model.md`, `.contracts.md`) — reject with guidance to use the parent `.spec.md` instead (per contracts error conditions)
+- [X] Define ticket mapping for `.rfc.md`: one epic/tracking issue + one issue per milestone, next step annotation "render" (AS 8.1)
+- [X] Define ticket mapping for `.features.md`: one issue per feature, linked to milestone issue if it exists, next step "mark" (AS 8.2)
+- [X] Define ticket mapping for `.spec.md`: one issue per user story, next step "cut" (AS 8.3)
+- [X] Define ticket mapping for `.tasks.md`: one issue per slice, linked to user story issue if it exists, next step "forge" (AS 8.4)
+- [X] Add parent-child linking instructions: search for parent tickets by title convention, link with GitHub issue references (FR-015)
+- [X] Add simple duplicate detection: before creating, search `gh issue list --search` for issues matching the title convention, prompt user if matches found
+- [X] Preserve useful GitHub CLI command patterns from `smithy.load.md` (milestone create/update, issue creation with `--body-file`, GraphQL blocked-by links)
+- [X] Add output summary: list of created issues with numbers, links, and any follow-up actions
 
 **PR Outcome**: Running `/smithy.orders path/to/artifact` auto-detects the artifact type and creates the correct ticket structure with parent linking. Works for all 4 artifact extensions.
 
