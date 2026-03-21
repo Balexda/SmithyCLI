@@ -39,12 +39,12 @@
 
 ### Tasks
 
-- [ ] Add `extractAuditChecklist(content: string): string | null` function to `templates.ts` — extracts content between audit checklist markers, returns null if no markers found
-- [ ] Add `composeAuditTemplate(templates: Map<string, string>, auditTemplate: string): string` function to `templates.ts` — collects checklists from all templates, maps each to its artifact extension, injects them into the audit template at a designated placeholder
-- [ ] Define the audit template placeholder convention (e.g., `<!-- composed-checklists -->`) where composed checklists get injected
-- [ ] Map template names to artifact extensions for the composed output (e.g., `smithy-ignite` → `.rfc.md`, `smithy-cut` → `.tasks.md`)
-- [ ] Add unit tests for `extractAuditChecklist` and `composeAuditTemplate`
-- [ ] Verify `npm run build` and `npm run typecheck` pass
+- [X] Add `extractAuditChecklist(content: string): string | null` function to `templates.ts` — extracts content between audit checklist markers, returns null if no markers found
+- [X] Add `composeAuditTemplate(templates: Map<string, string>, auditTemplate: string): string` function to `templates.ts` — collects checklists from all templates, maps each to its artifact extension, injects them into the audit template at a designated placeholder
+- [X] Define the audit template placeholder convention (e.g., `<!-- composed-checklists -->`) where composed checklists get injected
+- [X] Map template names to artifact extensions for the composed output (e.g., `smithy-ignite` → `.rfc.md`, `smithy-cut` → `.tasks.md`)
+- [X] Add unit tests for `extractAuditChecklist` and `composeAuditTemplate`
+- [X] Verify `npm run build` and `npm run typecheck` pass
 
 **PR Outcome**: `templates.ts` exports composition functions that can assemble a complete audit template from source templates. Tested but not yet wired into `init`.
 
