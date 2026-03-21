@@ -84,6 +84,17 @@ describe('composeAuditTemplate', () => {
     expect(result).toBe(auditTemplate);
   });
 
+  it('throws when checklist header does not match expected extension', () => {
+    const templates = new Map<string, string>();
+    // ignite should map to .rfc.md but checklist says .wrong.md
+    templates.set('smithy.ignite.md', makeChecklist('.wrong.md', 'Ambiguity'));
+
+    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->';
+    expect(() => composeAuditTemplate(templates, auditTemplate)).toThrow(
+      /does not reference expected extension "\.rfc\.md"/,
+    );
+  });
+
   it('only processes known producing command templates', () => {
     const templates = new Map<string, string>();
     templates.set('smithy.forge.md', `Preamble\n\n${makeChecklist('.unknown', 'Forge')}`);

@@ -83,6 +83,16 @@ export function composeAuditTemplate(
     const checklist = extractAuditChecklist(content);
     if (!checklist) continue;
 
+    // Validate the checklist header references the expected artifact extension
+    // so the mapping can't silently drift out of sync with the templates.
+    const expectedHeader = `(${extension})`;
+    if (!checklist.includes(expectedHeader)) {
+      throw new Error(
+        `Audit checklist in ${filename} does not reference expected extension "${extension}". ` +
+        `Update templateToExtension or the checklist header to match.`,
+      );
+    }
+
     sections.push(checklist);
   }
 
