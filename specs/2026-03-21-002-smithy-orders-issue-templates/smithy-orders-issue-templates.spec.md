@@ -92,7 +92,7 @@ As a developer who hasn't created `.smithy/` templates, I want `smithy.orders` t
 ### Edge Cases
 
 - `.smithy/` templates contain invalid or unknown `{{placeholder}}` names — `orders` should leave them as-is (literal text) rather than erroring.
-- A template file exists but is empty — `orders` should fall back to the built-in default for that artifact type.
+- A template file exists but is empty — `orders` should still use it (issue gets a title with no body). The file's presence is the override signal, not its content.
 - User runs `smithy uninit` — `.smithy/` is NOT removed (it's user content, not smithy-deployed artifacts).
 - User manually creates `.smithy/` outside of `smithy init` — `orders` should still detect and use the templates.
 - `.smithy/` is gitignored but the user later wants to commit it — this is a manual git operation, not smithy's responsibility.

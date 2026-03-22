@@ -16,8 +16,8 @@ This feature introduces three integration boundaries: (1) `smithy init` provisio
 
 1. Determine artifact type from input file extension (`.rfc.md` → `rfc`, `.features.md` → `features`, `.spec.md` → `spec`, `.tasks.md` → `tasks`).
 2. Check for `.smithy/<type>.md` in the repository root.
-3. If found and non-empty, use it as the body template.
-4. If not found or empty, use the built-in default template for that type.
+3. If found, use it as the body template (even if empty — the title is set independently, so an empty body is valid).
+4. If not found, use the built-in default template for that type.
 
 #### Inputs
 
