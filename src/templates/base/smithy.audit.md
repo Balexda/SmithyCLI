@@ -56,7 +56,10 @@ When no file argument is provided and the current branch matches the forge branc
    - Find the spec folder matching `specs/*-<NNN>-*/`
    - Read the `.spec.md`, `.data-model.md`, and `.contracts.md` files
    - Read the `<NN>-*.tasks.md` file and extract the target slice
-3. Get the code diff: `git diff $(git merge-base HEAD <default-branch>)..HEAD`
+3. Get the code diff (run each command separately — do **not** use subshells):
+   1. Discover the default branch: `git symbolic-ref refs/remotes/origin/HEAD` (e.g., returns `refs/remotes/origin/master`)
+   2. Find the merge base: `git merge-base HEAD <default-branch>` using the branch name from step 1 (e.g., returns a commit hash)
+   3. Diff from the merge base: `git diff <merge-base-hash>..HEAD` using the hash from step 2
 4. Review the code changes against:
    - The slice's goal, tasks, and acceptance criteria
    - The feature spec's requirements and constraints
