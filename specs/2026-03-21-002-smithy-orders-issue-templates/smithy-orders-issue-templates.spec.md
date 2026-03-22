@@ -34,7 +34,8 @@ As a developer running `smithy init`, I want to be offered the option to create 
 
 1. **Given** a repo without `.smithy/`, **When** I run `smithy init` and accept the template prompt, **Then** `.smithy/` is created with `rfc.md`, `features.md`, `spec.md`, and `tasks.md` template files.
 2. **Given** a repo without `.smithy/`, **When** I run `smithy init` and decline the template prompt, **Then** no `.smithy/` directory is created.
-3. **Given** a repo with an existing `.smithy/` directory, **When** I run `smithy init`, **Then** the template prompt is skipped and existing templates are preserved.
+3. **Given** a repo with an existing `.smithy/` directory, **When** I run `smithy init`, **Then** init offers to *overwrite* the existing templates (not create). If the user declines, existing templates are preserved.
+4. **Given** a repo with an existing `.smithy/` directory, **When** I accept the overwrite prompt, **Then** the 4 template files are replaced with the current defaults.
 
 ---
 
@@ -103,8 +104,8 @@ As a developer who hasn't created `.smithy/` templates, I want `smithy.orders` t
 
 - **FR-001**: `smithy init` MUST prompt the user to create `.smithy/` issue templates after agent and permission setup.
 - **FR-002**: `smithy init` MUST create 4 template files when accepted: `.smithy/rfc.md`, `.smithy/features.md`, `.smithy/spec.md`, `.smithy/tasks.md`.
-- **FR-003**: `smithy init` MUST prompt the user to choose whether `.smithy/` is checked into the repo or added to `.gitignore`.
-- **FR-004**: `smithy init` MUST skip template creation if `.smithy/` already exists.
+- **FR-003**: When templates are created during this init run, `smithy init` MUST prompt the user to choose whether `.smithy/` is checked into the repo or added to `.gitignore`.
+- **FR-004**: When `.smithy/` already exists, `smithy init` MUST offer to *overwrite* existing templates rather than silently skipping or creating.
 - **FR-005**: `smithy.orders` MUST check for `.smithy/<artifact-type>.md` before creating issues and use it as the body template if found.
 - **FR-006**: `smithy.orders` MUST fall back to built-in default templates when `.smithy/` templates are absent.
 - **FR-007**: Templates MUST use `{{variable}}` placeholder syntax for values that `orders` interpolates.

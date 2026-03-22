@@ -85,12 +85,18 @@ This feature introduces three integration boundaries: (1) `smithy init` provisio
 
 #### Flow
 
-1. After agent selection and permission setup, prompt: "Create smithy issue templates in .smithy/? (Y/n)"
-2. If declined, skip — no directory created.
-3. If accepted, create `.smithy/` with 4 default template files.
-4. Prompt: "Check .smithy/ into the repo? (Y/n)"
-5. If yes, do nothing (templates are ready to `git add`).
-6. If no, append `.smithy/` to `.gitignore` (create `.gitignore` if needed, avoid duplicate entries).
+1. After agent selection and permission setup, check whether `.smithy/` already exists.
+2. If `.smithy/` does **not** exist:
+   1. Prompt: "Create smithy issue templates in .smithy/? (Y/n)"
+   2. If declined, skip — no directory created.
+   3. If accepted, create `.smithy/` with 4 default template files.
+   4. Prompt: "Check .smithy/ into the repo? (Y/n)"
+   5. If yes, do nothing (templates are ready to `git add`).
+   6. If no, append `.smithy/` to `.gitignore` (create `.gitignore` if needed, avoid duplicate entries).
+3. If `.smithy/` **already exists**:
+   1. Prompt: "Overwrite existing .smithy/ templates with defaults? (y/N)" (default no).
+   2. If declined, preserve existing templates and continue.
+   3. If accepted, replace the 4 template files with current defaults. The commit/gitignore prompt is NOT repeated — the user's prior choice is already in effect.
 
 #### Inputs
 
@@ -109,7 +115,7 @@ This feature introduces three integration boundaries: (1) `smithy init` provisio
 
 | Condition | Response | Description |
 |-----------|----------|-------------|
-| `.smithy/` already exists | Skip creation, inform user | Existing templates are preserved |
+| `.smithy/` already exists | Offer overwrite, default no | User chooses whether to replace templates with current defaults |
 | `.gitignore` is not writable | Warn and continue | Templates are created but gitignore step fails gracefully |
 
 ## Events / Hooks
