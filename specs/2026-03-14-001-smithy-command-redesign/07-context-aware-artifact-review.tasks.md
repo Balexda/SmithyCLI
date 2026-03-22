@@ -60,7 +60,7 @@
 
 ### Tasks
 
-- [ ] Rewrite `smithy.audit.md` template:
+- [X] Rewrite `smithy.audit.md` template:
   - Add `command: true` to frontmatter
   - Add input handling: accept a file path, detect artifact type by extension (FR-005), no flags needed
   - Add `<!-- composed-checklists -->` placeholder where per-extension checklists get injected
@@ -68,9 +68,9 @@
   - Add read-only enforcement: findings are presented but artifact is NOT modified (AS 7.7)
   - Add fallback: if on a forge branch with no upstream spec artifacts, audit code but note missing context
   - Remove old terminology (journeys, Feature Plans, coding-standards.md)
-- [ ] Update `init` deploy flow to call `composeAuditTemplate()` before deploying the audit template to any agent
-- [ ] Verify the composed audit template contains all 5 extension-specific checklists when deployed
-- [ ] Verify `npm run build` and `npm run typecheck` pass
+- [X] Update `init` deploy flow to call `composeAuditTemplate()` before deploying the audit template to any agent
+- [X] Verify the composed audit template contains all 5 extension-specific checklists when deployed
+- [X] Verify `npm run build` and `npm run typecheck` pass
 
 **PR Outcome**: Running `/smithy.audit path/to/file.spec.md` produces an extension-aware review. Running `/smithy.audit` on a forge branch reviews code against upstream context. Audit never modifies artifacts.
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getBaseTemplateFiles, readTemplate, stripFrontmatter } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter } from '../templates.js';
 import { permissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
@@ -10,8 +10,9 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
   console.log(picocolors.green(`\nInitializing Codex prompts in ${destDir}...`));
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
-  for (const file of getBaseTemplateFiles()) {
-    const content = readTemplate(file);
+  const templates = getComposedTemplates();
+
+  for (const [file, content] of templates) {
     const stripped = stripFrontmatter(content);
     fs.writeFileSync(path.join(destDir, file), stripped);
   }
