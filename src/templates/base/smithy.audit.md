@@ -37,8 +37,20 @@ When a file path is provided, detect the artifact type by its file extension:
 
 1. Read the file at the given path.
 2. Identify its extension from the table above.
-3. Use the matching **Extension-Specific Checklist** below.
-4. If the extension is not recognized, fall back to a general review using all checklists.
+3. **Gather context documents** — many checklists require cross-document checks. Before running the checklist, discover and read the related files for the artifact type:
+
+   | Target extension | Context to gather |
+   |-----------------|-------------------|
+   | `.rfc.md` | Any `.features.md` files in the same RFC folder (`docs/rfcs/<YYYY-NNN-slug>/`) |
+   | `.features.md` | The `.rfc.md` in the same RFC folder, to verify RFC alignment |
+   | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
+   | `.tasks.md` | The `.spec.md`, `.data-model.md`, and `.contracts.md` in the same spec folder, to verify FR traceability and slice-to-requirement mapping |
+   | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
+
+   If a context document is missing, note it as a finding rather than skipping the check.
+
+4. Use the matching **Extension-Specific Checklist** below, reviewing against both the target file and any context documents gathered.
+5. If the extension is not recognized, fall back to a general review using all checklists.
 
 ### Forge-Branch Mode
 
