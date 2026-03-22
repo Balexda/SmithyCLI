@@ -12,7 +12,7 @@ Purpose: Defines the body structure for GitHub issues created by `orders` for a 
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `file_name` | string | Yes | Matches artifact extension: `rfc.md`, `features.md`, `spec.md`, `tasks.md` |
+| `file_name` | string | Yes | Matches artifact type (rfc/features/spec/tasks) and uses filenames `rfc.md`, `features.md`, `spec.md`, `tasks.md` — these are template filenames, not artifact extensions |
 | `body` | markdown | Yes | Template body with `{{variable}}` placeholders |
 
 Validation rules:
