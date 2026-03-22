@@ -17,7 +17,7 @@ Purpose: Defines the body structure for GitHub issues created by `orders` for a 
 
 Validation rules:
 - File must be valid markdown
-- File must contain at least one `{{variable}}` placeholder to be useful (but not enforced — an empty/static file falls back to defaults)
+- A template with no `{{variable}}` placeholders is still a valid override — it will be used as-is for the issue body (the title is set independently by `orders`)
 
 ### 2) Template Variable
 
