@@ -36,7 +36,7 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | **Breakdown** | `smithy.slice` | **Segment**: Slice a Feature Spec into Task Stubs. |
 | **Mapping** | `smithy.trace` | **Flowmap**: Map a Task Stub into an Experience Journey. |
 | **Technical** | `smithy.refine` | **Detail**: Turn a Journey into a `tasks.md` spec (Analyze -> Plan -> Tasks). |
-| **Queuing** | `smithy.load` | **Queue**: Load Implementation Tasks into GitHub. |
+| **Ordering** | `smithy.orders` | **Order**: Create tickets from Smithy artifacts. |
 | **Forging** | `smithy.forge` | **Stage**: Implement a phase and forge a PR. |
 | **Repair** | `smithy.fix` | **Fix**: Diagnose and fix errors from CI failures, test failures, or bugs. |
 | **Shortcut** | `smithy.strike` | **Direct**: Strike while the iron is hot (Idea -> Tasks). |
@@ -68,8 +68,8 @@ graph TD
     Analyze --> Spec{tasks.md Spec}
     
     %% Queue & Forge
-    Spec --> Load[smithy.load]
-    Load --> Tasks{Implementation Tasks}
+    Spec --> Orders[smithy.orders]
+    Orders --> Tasks{Implementation Tasks}
     Tasks --> Forge[smithy.forge]
     Forge --> PR[Pull Request]
     

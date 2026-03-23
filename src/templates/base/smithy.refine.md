@@ -63,4 +63,4 @@ Produce the final `tasks.md` spec:
 1. **Audit Report** (if repeating the command).
 2. **Technical Analysis Summary**.
 3. **The generated `tasks.md` content**.
-4. **Next steps** (e.g., "Ready for smithy-load").
+4. **Next steps** (e.g., "Ready for smithy-orders").

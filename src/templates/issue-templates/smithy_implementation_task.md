@@ -6,7 +6,7 @@ labels: ["implementation"]
 assignees: []
 ---
 
-> Reference [`smithy-load`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyload)
+> Reference [`smithy-orders`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyorders)
 > when drafting this issue and [`smithy-forge`](../../docs/dev/codex-workflow.md#f-implementation--pr-codex-or-copilot--smithyforge-smithyforge)
 > when executing it. Those sections describe the required validation commands,
 > acceptable outputs, and the agent escalation path.

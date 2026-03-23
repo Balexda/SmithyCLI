@@ -43,10 +43,10 @@
 
 ### Tasks
 
-- [ ] Delete `src/templates/base/smithy.load.md`
-- [ ] Search codebase for references to `smithy.load` or `smithy-load` (in `.ts` files, other templates, CLAUDE.md, specs) and update or remove them
-- [ ] Verify `npm run build` succeeds
-- [ ] Verify `npm run typecheck` passes
+- [X] Delete `src/templates/base/smithy.load.md`
+- [X] Search codebase for references to `smithy.load` or `smithy-load` (in `.ts` files, other templates, CLAUDE.md, specs) and update or remove them
+- [X] Verify `npm run build` succeeds
+- [X] Verify `npm run typecheck` passes
 
 **PR Outcome**: `smithy.load` is fully removed. All references point to `smithy.orders`.
 
