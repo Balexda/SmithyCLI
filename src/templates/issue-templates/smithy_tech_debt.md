@@ -6,10 +6,6 @@ labels: ["tech-debt"]
 assignees: []
 ---
 
-> Reference [`smithy-orders`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyorders)
-> when describing scope/acceptance criteria and [`smithy-forge`](../../docs/dev/codex-workflow.md#f-implementation--pr-codex-or-copilot--smithyforge-smithyforge)
-> for validation expectations. Tech-debt fixes should still enumerate the CI-parity
-> commands an agent must run before opening a PR.
 
 ## Summary
 <!-- What area is being improved and why? -->
