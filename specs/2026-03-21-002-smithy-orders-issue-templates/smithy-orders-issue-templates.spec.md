@@ -135,15 +135,12 @@ The following defines the default body structure for each of the 4 templates cre
 ## Source
 
 - RFC: `{{rfc_path}}`
-- Artifact: `{{artifact_path}}`
+
+**Parent**: {{parent_issue}}
 
 ## Next Step
 
 Run `smithy.{{next_step}}` on this milestone to break it into a feature map.
-
-{{#parent_issue}}
-**Parent**: {{parent_issue}}
-{{/parent_issue}}
 ```
 
 ### `.smithy/features.md` — Feature issue
@@ -156,11 +153,8 @@ Run `smithy.{{next_step}}` on this milestone to break it into a feature map.
 ## Source
 
 - Feature map: `{{features_path}}`
-- Artifact: `{{artifact_path}}`
 
-{{#parent_issue}}
 **Milestone issue**: {{parent_issue}}
-{{/parent_issue}}
 
 ## Next Step
 
@@ -207,11 +201,8 @@ Run `smithy.{{next_step}}` on story #{{user_story_number}} to decompose into imp
 ## Context
 
 - Tasks file: `{{tasks_path}}`
-- Artifact: `{{artifact_path}}`
 
-{{#parent_issue}}
 **Story issue**: {{parent_issue}}
-{{/parent_issue}}
 
 ## Next Step
 

@@ -26,9 +26,8 @@ Purpose: A named placeholder within a template that `orders` replaces with artif
 | Variable | Available In | Content Type | Notes |
 |----------|-------------|--------------|-------|
 | `{{title}}` | all | inline | Mirrors the issue title for use as a body heading — does NOT control the `--title` argument passed to `gh issue create` |
-| `{{artifact_path}}` | all | path | Repo-relative path to the source artifact |
 | `{{next_step}}` | all | inline | The smithy command to run next (render/mark/cut/forge) |
-| `{{milestone_title}}` | rfc | inline | Milestone name from the RFC |
+| `{{parent_issue}}` | all | inline | Reference to parent issue if found (e.g., `#42`). Replaced with empty string if no parent exists |
 | `{{milestone_description}}` | rfc | inline | Milestone description text |
 | `{{rfc_path}}` | rfc | path | Path to the source `.rfc.md` |
 | `{{feature_title}}` | features | inline | Feature name from the feature map |
@@ -45,7 +44,6 @@ Purpose: A named placeholder within a template that `orders` replaces with artif
 | `{{slice_goal}}` | tasks | inline | Slice goal statement |
 | `{{slice_tasks}}` | tasks | inline | Task checklist for the slice |
 | `{{tasks_path}}` | tasks | path | Path to the source `.tasks.md` |
-| `{{parent_issue}}` | tasks, features | inline | Reference to parent issue if found (e.g., `#42`) |
 
 Validation rules:
 - Unknown `{{variable}}` names are left as literal text (no error)
