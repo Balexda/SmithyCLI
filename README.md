@@ -34,8 +34,7 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | **Ideation** | `smithy.ignite` | **Spark**: Workshop a broad idea into a structured RFC. |
 | **Planning** | `smithy.mark` | **Scope**: Specify a feature with spec, data model, and contracts. |
 | **Breakdown** | `smithy.slice` | **Segment**: Slice a Feature Spec into Task Stubs. |
-| **Mapping** | `smithy.trace` | **Flowmap**: Map a Task Stub into an Experience Journey. |
-| **Technical** | `smithy.refine` | **Detail**: Turn a Journey into a `tasks.md` spec (Analyze -> Plan -> Tasks). |
+| **Technical** | `smithy.refine` | **Detail**: Turn a spec into a `tasks.md` (Analyze -> Plan -> Tasks). |
 | **Ordering** | `smithy.orders` | **Order**: Create tickets from Smithy artifacts. |
 | **Forging** | `smithy.forge` | **Stage**: Implement a phase and forge a PR. |
 | **Repair** | `smithy.fix` | **Fix**: Diagnose and fix errors from CI failures, test failures, or bugs. |
@@ -57,13 +56,9 @@ graph TD
     %% Breakdown
     Plan --> Slice[smithy.slice]
     Slice --> Stubs{Task Stubs}
-    
-    %% Experience
-    Stubs --> Trace[smithy.trace]
-    Trace --> Journeys{Journeys}
-    
+
     %% Technical Spec
-    Journeys --> Refine[smithy.refine]
+    Stubs --> Refine[smithy.refine]
     Refine --> Analyze(Technical Analysis)
     Analyze --> Spec{tasks.md Spec}
     
@@ -85,7 +80,6 @@ graph TD
     %% Universal Auditor
     RFC -.-> Audit[smithy.audit]
     Plan -.-> Audit
-    Journeys -.-> Audit
     Spec -.-> Audit
     Tasks -.-> Audit
 ```
