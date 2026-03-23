@@ -25,7 +25,7 @@ Purpose: A named placeholder within a template that `orders` replaces with artif
 
 | Variable | Available In | Content Type | Notes |
 |----------|-------------|--------------|-------|
-| `{{title}}` | all | inline | Issue title derived from artifact |
+| `{{title}}` | all | inline | Mirrors the issue title for use as a body heading — does NOT control the `--title` argument passed to `gh issue create` |
 | `{{artifact_path}}` | all | path | Repo-relative path to the source artifact |
 | `{{next_step}}` | all | inline | The smithy command to run next (render/mark/cut/forge) |
 | `{{milestone_title}}` | rfc | inline | Milestone name from the RFC |
@@ -59,19 +59,28 @@ Validation rules:
 
 ## State Transitions
 
-### Template Lifecycle
+Templates have two independent dimensions of state:
+
+### Content Lifecycle
 
 1. `absent` → `created`
    - Trigger: User accepts template creation during `smithy init`
-   - Effects: `.smithy/` directory created with 4 template files
+   - Effects: `.smithy/` directory created with 4 default template files
 
 2. `created` → `customized`
    - Trigger: User manually edits template files
    - Effects: `orders` uses modified templates; no smithy tracking of changes
 
-3. `created` → `gitignored`
-   - Trigger: User chooses not to commit during init
-   - Effects: `.smithy/` added to `.gitignore`
+3. `created`/`customized` → `overwritten`
+   - Trigger: User accepts overwrite prompt during `smithy init` when `.smithy/` already exists
+   - Effects: The 4 known template files are replaced with current defaults; extra files in `.smithy/` are preserved
+
+### Visibility (independent of content)
+
+- `committed` — `.smithy/` is tracked by git (default if user chooses "check into repo")
+- `gitignored` — `.smithy/` is listed in `.gitignore` (if user chooses "do not check in")
+
+Visibility is set once during initial creation and is not re-prompted on overwrite.
 
 ## Identity & Uniqueness
 

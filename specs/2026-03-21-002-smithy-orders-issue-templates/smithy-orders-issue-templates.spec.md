@@ -53,7 +53,8 @@ As a developer running `smithy.orders`, I want the command to use my `.smithy/` 
 2. **Given** `.smithy/rfc.md` exists, **When** I run `smithy.orders path/to/idea.rfc.md`, **Then** the epic issue and per-milestone issues use the rfc template with milestone details filled in.
 3. **Given** `.smithy/features.md` exists, **When** I run `smithy.orders path/to/milestone.features.md`, **Then** per-feature issues use the features template with feature descriptions filled in.
 4. **Given** `.smithy/tasks.md` exists, **When** I run `smithy.orders path/to/story.tasks.md`, **Then** per-slice issues use the tasks template with slice goals and task checklists inlined.
-5. **Given** a template with `{{spec_path}}` and `{{data_model_path}}` placeholders, **When** `orders` creates an issue, **Then** the issue body contains repo-relative paths to the source artifacts for full context.
+5. **Given** a `.smithy/spec.md` template with `{{spec_path}}` and `{{data_model_path}}` placeholders, **When** `orders` creates issues from a `.spec.md` artifact, **Then** each issue body contains repo-relative paths to the source spec and companion files for full context.
+6. **Given** any artifact type, **When** `orders` creates an issue using a template with `{{next_step}}`, **Then** the placeholder is populated with the correct next smithy command (rfc→render, features→mark, spec→cut, tasks→forge).
 
 ---
 
@@ -97,6 +98,7 @@ As a developer who hasn't created `.smithy/` templates, I want `smithy.orders` t
 - User runs `smithy uninit` — `.smithy/` is NOT removed (it's user content, not smithy-deployed artifacts).
 - User manually creates `.smithy/` outside of `smithy init` — `orders` should still detect and use the templates.
 - `.smithy/` is gitignored but the user later wants to commit it — this is a manual git operation, not smithy's responsibility.
+- `.smithy/` contains extra files beyond the 4 known templates (e.g., `README.md`, custom templates) — overwrite during init replaces only the 4 known files and leaves extras untouched.
 
 ## Requirements
 
@@ -118,6 +120,103 @@ As a developer who hasn't created `.smithy/` templates, I want `smithy.orders` t
 - **Issue Template**: A markdown file in `.smithy/` containing a body structure with `{{variable}}` placeholders. One per artifact type (rfc, features, spec, tasks).
 - **Template Variable**: A named placeholder that `orders` replaces with artifact-derived content. Variables are type-specific (e.g., `spec.md` templates have `{{user_story}}` while `tasks.md` templates have `{{slice_goal}}`).
 - **Built-in Default Template**: A hardcoded fallback body format within the `orders` command, used when no `.smithy/` template exists for the artifact type.
+
+## Default Template Content
+
+The following defines the default body structure for each of the 4 templates created by `smithy init`. These are the files written to `.smithy/` and also serve as the built-in fallback when `.smithy/` is absent.
+
+### `.smithy/rfc.md` — RFC milestone issue
+
+```markdown
+# {{title}}
+
+{{milestone_description}}
+
+## Source
+
+- RFC: `{{rfc_path}}`
+- Artifact: `{{artifact_path}}`
+
+## Next Step
+
+Run `smithy.{{next_step}}` on this milestone to break it into a feature map.
+
+{{#parent_issue}}
+**Parent**: {{parent_issue}}
+{{/parent_issue}}
+```
+
+### `.smithy/features.md` — Feature issue
+
+```markdown
+# {{title}}
+
+{{feature_description}}
+
+## Source
+
+- Feature map: `{{features_path}}`
+- Artifact: `{{artifact_path}}`
+
+{{#parent_issue}}
+**Milestone issue**: {{parent_issue}}
+{{/parent_issue}}
+
+## Next Step
+
+Run `smithy.{{next_step}}` on this feature to produce a spec with user stories.
+```
+
+### `.smithy/spec.md` — User story issue
+
+```markdown
+# {{title}}
+
+**Priority**: {{priority}} | **Story #{{user_story_number}}**
+
+{{user_story}}
+
+## Acceptance Criteria
+
+{{acceptance_scenarios}}
+
+## Context
+
+- Spec: `{{spec_path}}`
+- Data Model: `{{data_model_path}}`
+- Contracts: `{{contracts_path}}`
+
+## Next Step
+
+Run `smithy.{{next_step}}` on story #{{user_story_number}} to decompose into implementable slices, then `smithy.forge` to implement each slice.
+```
+
+### `.smithy/tasks.md` — Slice issue
+
+```markdown
+# {{title}}
+
+**Slice {{slice_number}}**
+
+{{slice_goal}}
+
+## Tasks
+
+{{slice_tasks}}
+
+## Context
+
+- Tasks file: `{{tasks_path}}`
+- Artifact: `{{artifact_path}}`
+
+{{#parent_issue}}
+**Story issue**: {{parent_issue}}
+{{/parent_issue}}
+
+## Next Step
+
+Run `smithy.{{next_step}}` to implement this slice as a PR.
+```
 
 ## Assumptions
 
