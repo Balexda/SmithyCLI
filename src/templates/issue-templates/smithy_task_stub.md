@@ -7,8 +7,7 @@ assignees: []
 ---
 
 > See [`docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithyslice`](../../docs/dev/codex-workflow.md#b-feature-plan--task-stubs-smithyslice)
-> for guidance. Journeys derived from this stub will follow
-> [`smithy-trace`](../../docs/dev/codex-workflow.md#c-task-stub--journey-smithytrace).
+> for guidance.
 
 ## Intent
 <!-- Describe the user intent or outcome in one paragraph. -->
@@ -28,7 +27,7 @@ assignees: []
 - Spec(s) or journeys that might be reused:
 - GitHub milestone (if assigned):
 
-## Notes for `smithy-trace`
+## Notes for `smithy-refine`
 - Data interactions to explore:
 - Surfaces / components / APIs involved:
 - Open questions to resolve before specs:

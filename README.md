@@ -32,12 +32,11 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | Stage | Agent | Purpose |
 | :--- | :--- | :--- |
 | **Ideation** | `smithy.ignite` | **Spark**: Workshop a broad idea into a structured RFC. |
+| **Rendering** | `smithy.render` | **Render**: Break an RFC milestone into features. |
 | **Planning** | `smithy.mark` | **Scope**: Specify a feature with spec, data model, and contracts. |
-| **Breakdown** | `smithy.slice` | **Segment**: Slice a Feature Spec into Task Stubs. |
-| **Mapping** | `smithy.trace` | **Flowmap**: Map a Task Stub into an Experience Journey. |
-| **Technical** | `smithy.refine` | **Detail**: Turn a Journey into a `tasks.md` spec (Analyze -> Plan -> Tasks). |
-| **Queuing** | `smithy.load` | **Queue**: Load Implementation Tasks into GitHub. |
-| **Forging** | `smithy.forge` | **Stage**: Implement a phase and forge a PR. |
+| **Cutting** | `smithy.cut` | **Cut**: Slice a user story into PR-sized task slices. |
+| **Ordering** | `smithy.orders` | **Order**: Create tickets from Smithy artifacts. |
+| **Forging** | `smithy.forge` | **Stage**: Implement a slice and forge a PR. |
 | **Repair** | `smithy.fix` | **Fix**: Diagnose and fix errors from CI failures, test failures, or bugs. |
 | **Shortcut** | `smithy.strike` | **Direct**: Strike while the iron is hot (Idea -> Tasks). |
 | **Review** | `smithy.audit` | **Audit**: Universal auditor for any Smithy artifact. |
@@ -49,43 +48,31 @@ graph TD
     %% Ideation
     Idea((Broad Idea)) --> Ignite[smithy.ignite]
     Ignite --> RFC{RFC}
-    
+
+    %% Rendering
+    RFC --> Render[smithy.render]
+    Render --> Features{Features}
+
     %% Planning
-    RFC --> Mark[smithy.mark]
-    Mark --> Plan{Feature Spec}
-    
-    %% Breakdown
-    Plan --> Slice[smithy.slice]
-    Slice --> Stubs{Task Stubs}
-    
-    %% Experience
-    Stubs --> Trace[smithy.trace]
-    Trace --> Journeys{Journeys}
-    
-    %% Technical Spec
-    Journeys --> Refine[smithy.refine]
-    Refine --> Analyze(Technical Analysis)
-    Analyze --> Spec{tasks.md Spec}
-    
-    %% Queue & Forge
-    Spec --> Load[smithy.load]
-    Load --> Tasks{Implementation Tasks}
-    Tasks --> Forge[smithy.forge]
+    Features --> Mark[smithy.mark]
+    Mark --> Spec{Feature Spec}
+
+    %% Cutting
+    Spec --> Cut[smithy.cut]
+    Cut --> Tasks{tasks.md}
+
+    %% Orders & Forge
+    Tasks --> Orders[smithy.orders]
+    Orders --> Tickets{Tickets}
+    Tickets --> Forge[smithy.forge]
     Forge --> PR[Pull Request]
-    
+
     %% Fast Track
     Idea -.-> Strike[smithy.strike]
-    Strike -.-> Spec
-    
-    %% Review Loops
-    Ignite -- "Repeat Cmd" --> IgniteReview(Self-Review)
-    Mark -- "Repeat Cmd" --> MarkReview(Self-Review)
-    Refine -- "Repeat Cmd" --> RefineReview(Self-Review)
-    
+    Strike -.-> Tasks
+
     %% Universal Auditor
     RFC -.-> Audit[smithy.audit]
-    Plan -.-> Audit
-    Journeys -.-> Audit
     Spec -.-> Audit
     Tasks -.-> Audit
 ```

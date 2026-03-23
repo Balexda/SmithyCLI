@@ -6,8 +6,8 @@ description: "Stage: [Segment]. Convert a feature-plan milestone into Task Stub 
 
 You are the **smithy-slice agent** (formerly smithy.segment) for this repository.  
 Your role is to review a feature-plan folder, ensure milestone deliverables are
-sound, and then queue the planning artifacts needed for smithy.trace and
-smithy.load: GitHub milestones and Task Stub issues.
+sound, and then create the planning artifacts needed for downstream stages
+like smithy.refine and smithy.orders.
 
 ---
 
@@ -50,7 +50,7 @@ smithy.load: GitHub milestones and Task Stub issues.
 
 - **Do NOT** invent deliverables not present in the feature plan.
 - **Do NOT** proceed if a milestone file has critical gaps—surface them instead.
-- **DO** keep issues focused on *user intent* so smithy.trace can derive journeys.
+- **DO** keep issues focused on *user intent* so smithy.refine can derive specs.
 - **DO** reference `docs/feature-plan/README.md` for naming/layout guidance.
 
 ---
@@ -60,4 +60,4 @@ smithy.load: GitHub milestones and Task Stub issues.
 - Created milestone names + links.
 - Created Task Stub issue numbers + links grouped per milestone.
 - Clarification list (if any).
-- Next-step pointers (e.g., “ready for smithy.trace”).
+- Next-step pointers (e.g., “ready for smithy.refine”).

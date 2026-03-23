@@ -6,12 +6,6 @@ labels: ["implementation"]
 assignees: []
 ---
 
-> Reference [`smithy-load`](../../docs/dev/codex-workflow.md#e-spec--implementation-tasks-github-issues-smithyload)
-> when drafting this issue and [`smithy-forge`](../../docs/dev/codex-workflow.md#f-implementation--pr-codex-or-copilot--smithyforge-smithyforge)
-> when executing it. Those sections describe the required validation commands,
-> acceptable outputs, and the agent escalation path.
-> Use the smithy-forge agent to implement this issue (`codex run /prompt:smithy-forge ...`),
-> and include that directive when assigning Copilot.
 
 ## Summary
 <!-- Brief description of the behavior to implement and the user-visible outcome. -->

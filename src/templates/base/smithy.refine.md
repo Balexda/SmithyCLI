@@ -46,6 +46,9 @@ Produce the final `tasks.md` spec:
 - For each Phase, list the discrete, atomic **Tasks**.
 - Specify the **Validation Commands** for each phase (e.g., `npm run test -- <pattern>`).
 - Mark tasks as `[ ]` (Pending) or `[x]` (Complete).
+- **Save the file** to the spec folder (e.g., `specs/<spec-id>/<NN>-<slug>.tasks.md`).
+  Downstream commands like `smithy.orders` require a file path, so the output
+  must be persisted before the user can continue.
 
 ---
 
@@ -62,5 +65,5 @@ Produce the final `tasks.md` spec:
 
 1. **Audit Report** (if repeating the command).
 2. **Technical Analysis Summary**.
-3. **The generated `tasks.md` content**.
-4. **Next steps** (e.g., "Ready for smithy-load").
+3. **The saved `tasks.md` file path**.
+4. **Next steps** — e.g., "Saved to `specs/001-foo/03-bar.tasks.md`. Ready for `smithy.orders specs/001-foo/03-bar.tasks.md`".
