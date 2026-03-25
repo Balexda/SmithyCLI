@@ -54,15 +54,23 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
+    - name: Validate branch name
+      run: |
+        BRANCH="${{ inputs.branch }}"
+        if [[ ! "$BRANCH" =~ ^[a-zA-Z0-9_./-]+$ ]]; then
+          echo "::error::Invalid branch name: '$BRANCH'"
+          exit 1
+        fi
+
     - name: Bump version
       id: version
       run: |
-        npm version ${{ inputs.bump }} -m "release: v%s"
+        npm version "${{ inputs.bump }}" -m "release: v%s"
         echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
 
     - name: Push version commit and tag
       run: |
-        git push origin HEAD:${{ inputs.branch }}
+        git push origin "HEAD:refs/heads/${{ inputs.branch }}"
         git push origin "v${{ steps.version.outputs.version }}"
 
     - name: Publish to npm
