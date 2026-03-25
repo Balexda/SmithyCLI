@@ -36,6 +36,9 @@
     "smithycli": "./dist/cli.js"
   },
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "src/templates"
