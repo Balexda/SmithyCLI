@@ -1,5 +1,5 @@
 {
-  "name": "smithycli",
+  "name": "@balexda/smithy",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -36,6 +36,9 @@
     "smithycli": "./dist/cli.js"
   },
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist",
     "src/templates"
