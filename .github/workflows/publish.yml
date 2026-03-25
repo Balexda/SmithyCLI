@@ -1,0 +1,83 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      branch:
+        description: 'Branch to publish from'
+        required: true
+        default: 'master'
+        type: string
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Typecheck
+      run: npx tsc --noEmit
+
+    - name: Test
+      run: npm test
+
+    - name: Configure git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Validate branch name
+      run: |
+        BRANCH="${{ inputs.branch }}"
+        if [[ ! "$BRANCH" =~ ^[a-zA-Z0-9_./-]+$ ]]; then
+          echo "::error::Invalid branch name: '$BRANCH'"
+          exit 1
+        fi
+
+    - name: Bump version
+      id: version
+      run: |
+        npm version "${{ inputs.bump }}" -m "release: v%s"
+        echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
+
+    - name: Push version commit and tag
+      run: |
+        git push origin "HEAD:refs/heads/${{ inputs.branch }}"
+        git push origin "v${{ steps.version.outputs.version }}"
+
+    - name: Publish to npm
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
