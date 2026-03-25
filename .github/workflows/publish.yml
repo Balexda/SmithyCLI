@@ -18,6 +18,10 @@ on:
         default: 'master'
         type: string
 
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
