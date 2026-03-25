@@ -7,13 +7,13 @@ An initialization tool for the **Smithy Agentic Development Workflow**. This pac
 You can run Smithy directly via `npx` (recommended):
 
 ```bash
-npx smithycli init
+npx @balexda/smithy init
 ```
 
 Or install it globally:
 
 ```bash
-npm install -g smithycli
+npm install -g @balexda/smithy
 smithy init
 ```
 
