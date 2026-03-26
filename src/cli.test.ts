@@ -13,13 +13,6 @@ describe('CLI --version', () => {
     expect(output).toBe(pkg.version);
   });
 
-  it('version is 0.1.2', () => {
-    expect(pkg.version).toBe('0.1.2');
-    const output = execFileSync('node', ['dist/cli.js', '--version'], {
-      encoding: 'utf-8',
-    }).trim();
-    expect(output).toBe('0.1.2');
-  });
 });
 
 describe('CLI init', () => {
