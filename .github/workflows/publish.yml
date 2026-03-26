@@ -23,7 +23,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate branch name
+      run: |
+        BRANCH="${{ inputs.branch }}"
+        if [[ ! "$BRANCH" =~ ^[a-zA-Z0-9_./-]+$ ]]; then
+          echo "::error::Invalid branch name: '$BRANCH'"
+          exit 1
+        fi
+
   publish:
+    needs: validate
     runs-on: ubuntu-latest
 
     permissions:
@@ -59,14 +71,6 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-
-    - name: Validate branch name
-      run: |
-        BRANCH="${{ inputs.branch }}"
-        if [[ ! "$BRANCH" =~ ^[a-zA-Z0-9_./-]+$ ]]; then
-          echo "::error::Invalid branch name: '$BRANCH'"
-          exit 1
-        fi
 
     - name: Bump version
       id: version
