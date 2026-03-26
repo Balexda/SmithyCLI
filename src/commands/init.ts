@@ -5,14 +5,23 @@ import { copyDirSync, issueTemplatesSrcDir, agentGitignoreEntries, addToGitignor
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
+import type { AgentChoice } from '../interactive.js';
 
-export async function initAction(): Promise<void> {
+export interface InitOptions {
+  agent?: AgentChoice;
+  permissions?: boolean;
+  issueTemplates?: boolean;
+  targetDir?: string;
+  yes?: boolean;
+}
+
+export async function initAction(opts: InitOptions = {}): Promise<void> {
   console.log(picocolors.cyan('🔨 Welcome to Smithy CLI\n'));
 
-  const agent = await promptAgent();
-  const initPermissions = await promptPermissions();
-  const initIssueTemplates = await promptIssueTemplates();
-  const targetDir = path.resolve(await promptTargetDir());
+  const agent = opts.agent ?? (opts.yes ? 'all' : await promptAgent());
+  const initPermissions = opts.permissions ?? (opts.yes ? true : await promptPermissions());
+  const initIssueTemplates = opts.issueTemplates ?? (opts.yes ? true : await promptIssueTemplates());
+  const targetDir = path.resolve(opts.targetDir ?? (opts.yes ? process.cwd() : await promptTargetDir()));
 
   if (initIssueTemplates) {
     const issueTemplatesDest = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');

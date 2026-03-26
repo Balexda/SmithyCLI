@@ -3,6 +3,7 @@
   "version": "0.1.2",
   "main": "index.js",
   "scripts": {
+    "pretest": "tsup src/cli.ts --format esm --clean",
     "test": "vitest run",
     "build": "tsup src/cli.ts --format esm --clean",
     "start": "node dist/cli.js",
