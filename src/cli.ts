@@ -1,14 +1,18 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { initAction } from './commands/init.js';
 import { uninitAction } from './commands/uninit.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
 
 const program = new Command();
 
 program
   .name('smithy')
   .description('Smithy Agentic Development Workflow initialization tool')
-  .version('1.0.0');
+  .version(version);
 
 program
   .command('init')
