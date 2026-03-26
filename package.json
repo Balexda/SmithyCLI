@@ -1,6 +1,6 @@
 {
   "name": "@balexda/smithy",
-  "version": "1.0.2",
+  "version": "0.1.1",
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
