@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'fs';
 import os from 'os';
@@ -19,9 +19,13 @@ describe('CLI --version', () => {
 
 describe('CLI init (interactive)', () => {
   it('shows the interactive prompt when no flags are passed', () => {
-    const output = execSync('timeout 2 node dist/cli.js init 2>&1 || true', {
+    // Use Node-native timeout via spawnSync instead of shell `timeout` command
+    // so the test works cross-platform (Windows, macOS without coreutils).
+    const result = spawnSync('node', ['dist/cli.js', 'init'], {
       encoding: 'utf-8',
+      timeout: 2000,
     });
+    const output = result.stdout + result.stderr;
     expect(output).toContain('Welcome to Smithy CLI');
     expect(output).toContain('Which AI assistant CLI');
   });
