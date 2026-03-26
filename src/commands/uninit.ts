@@ -7,16 +7,28 @@ import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
 
-export async function uninitAction(): Promise<void> {
+export interface UninitOptions {
+  targetDir?: string;
+  yes?: boolean;
+}
+
+export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   console.log(picocolors.cyan('🧹 Welcome to Smithy CLI (Uninit)\n'));
 
-  const confirmed = await promptConfirmUninit();
+  let confirmed: boolean;
+  if (opts.yes) {
+    console.log(picocolors.yellow('Auto-confirming removal (--yes flag provided)'));
+    confirmed = true;
+  } else {
+    confirmed = await promptConfirmUninit();
+  }
+
   if (!confirmed) {
     console.log(picocolors.yellow('\nOperation cancelled.'));
     return;
   }
 
-  const targetDir = path.resolve(await promptTargetDir());
+  const targetDir = path.resolve(opts.targetDir ?? (opts.yes ? process.cwd() : await promptTargetDir()));
 
   let removedCount = 0;
 
