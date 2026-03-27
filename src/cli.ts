@@ -21,8 +21,10 @@ program
     new Option('-a, --agent <name>', 'AI assistant to configure')
       .choices(['gemini', 'claude', 'codex', 'all'])
   )
-  .option('--permissions', 'Initialize default smithy permissions')
-  .option('--no-permissions', 'Skip permissions setup')
+  .addOption(
+    new Option('--permissions <level>', 'Permission deployment level')
+      .choices(['repo', 'user', 'none'])
+  )
   .option('--issue-templates', 'Install GitHub issue templates')
   .option('--no-issue-templates', 'Skip issue templates')
   .option('-d, --target-dir <path>', 'Target directory')

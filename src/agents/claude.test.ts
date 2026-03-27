@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { buildClaudeAllowList, buildClaudeDenyList, writePermissions } from './claude.js';
+import { buildClaudeAllowList, buildClaudeDenyList, writePermissions, resolveSettingsPath } from './claude.js';
 
 describe('buildClaudeAllowList', () => {
   it('wraps all commands in Bash()', () => {
@@ -33,6 +33,12 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(git diff *)');
     expect(list).toContain('Bash(git log *)');
     expect(list).toContain('Bash(git push -u origin feature/*)');
+  });
+
+  it('includes claude/* branch push patterns', () => {
+    const list = buildClaudeAllowList();
+    expect(list).toContain('Bash(git push -u origin claude/*)');
+    expect(list).toContain('Bash(git push origin claude/*)');
   });
 
   it('includes multi-language build tool commands', () => {
@@ -139,6 +145,18 @@ describe('buildClaudeDenyList', () => {
   });
 });
 
+describe('resolveSettingsPath', () => {
+  it('returns repo-level path for "repo" level', () => {
+    const result = resolveSettingsPath('/my/project', 'repo');
+    expect(result).toBe(path.join('/my/project', '.claude', 'settings.json'));
+  });
+
+  it('returns user-level path for "user" level', () => {
+    const result = resolveSettingsPath('/my/project', 'user');
+    expect(result).toBe(path.join(os.homedir(), '.claude', 'settings.json'));
+  });
+});
+
 describe('writePermissions', () => {
   let tmpDir: string;
 
@@ -152,19 +170,15 @@ describe('writePermissions', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('writes to .claude/settings.json (not config.json)', () => {
-    writePermissions(tmpDir);
+  it('writes to .claude/settings.json for repo level', () => {
+    writePermissions(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
-    const configPath = path.join(tmpDir, '.claude', 'config.json');
-
     expect(fs.existsSync(settingsPath)).toBe(true);
-    expect(fs.existsSync(configPath)).toBe(false);
-
   });
 
-  it('uses correct schema with permissions.allow array', () => {
-    writePermissions(tmpDir);
+  it('uses correct schema with permissions.allow and permissions.deny arrays', () => {
+    writePermissions(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -178,11 +192,10 @@ describe('writePermissions', () => {
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
-
   });
 
   it('entries are Bash()-wrapped or Claude tool names', () => {
-    writePermissions(tmpDir);
+    writePermissions(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
@@ -192,12 +205,9 @@ describe('writePermissions', () => {
         entry.startsWith('Bash(') || entry === 'WebSearch' || entry === 'WebFetch' || entry.startsWith('Skill(') || entry.startsWith('Write(')
       ).toBe(true);
     }
-
   });
 
   it('merges with existing settings.json without clobbering other keys', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     const claudeDir = path.join(tmpDir, '.claude');
     fs.mkdirSync(claudeDir, { recursive: true });
     const settingsPath = path.join(claudeDir, 'settings.json');
@@ -212,7 +222,7 @@ describe('writePermissions', () => {
     };
     fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 2));
 
-    writePermissions(tmpDir);
+    writePermissions(tmpDir, 'repo');
 
     const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 
@@ -225,34 +235,46 @@ describe('writePermissions', () => {
     // Merged: new smithy permissions are present
     expect(config.permissions.allow).toContain('Bash(git status)');
     expect(config.permissions.allow).toContain('WebSearch');
-
   });
 
   it('handles malformed existing settings.json gracefully', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     const claudeDir = path.join(tmpDir, '.claude');
     fs.mkdirSync(claudeDir, { recursive: true });
     fs.writeFileSync(path.join(claudeDir, 'settings.json'), 'not valid json{{{');
 
     // Should not throw
-    writePermissions(tmpDir);
+    writePermissions(tmpDir, 'repo');
 
     const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
     expect(config.permissions.allow).toContain('Bash(git status)');
-
   });
 
   it('creates .claude directory if it does not exist', () => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-
     const deepDir = path.join(tmpDir, 'nested', 'project');
     fs.mkdirSync(deepDir, { recursive: true });
 
-    writePermissions(deepDir);
+    writePermissions(deepDir, 'repo');
 
     const settingsPath = path.join(deepDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
+  });
 
+  it('writes to user-level path for "user" level', () => {
+    // Use tmpDir as a fake home directory
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    writePermissions(tmpDir, 'user');
+
+    const settingsPath = path.join(fakeHome, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+
+    // Should NOT have written to the repo-level path
+    const repoSettingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(repoSettingsPath)).toBe(false);
   });
 });

@@ -1,11 +1,13 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
+import type { PermissionLevel } from '../interactive.js';
 
-export function deploy(targetDir: string, initPermissions: boolean): void {
+export function deploy(targetDir: string, permissionLevel: PermissionLevel): void {
   const promptsDir = path.join(targetDir, '.claude', 'prompts');
   console.log(picocolors.green(`\nInitializing Claude prompts in ${promptsDir}...`));
   if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
@@ -27,8 +29,8 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
     }
   }
 
-  if (initPermissions) {
-    writePermissions(targetDir);
+  if (permissionLevel !== 'none') {
+    writePermissions(targetDir, permissionLevel);
   }
 }
 
@@ -60,16 +62,27 @@ export function buildClaudeDenyList(): string[] {
 }
 
 /**
- * Write permissions to .claude/settings.json using Claude Code's schema:
+ * Resolve the settings file path based on the permission level.
+ *   - 'repo'  → <targetDir>/.claude/settings.json  (checked into git)
+ *   - 'user'  → ~/.claude/settings.json             (global, not checked in)
+ */
+export function resolveSettingsPath(targetDir: string, level: PermissionLevel): string {
+  if (level === 'user') {
+    return path.join(os.homedir(), '.claude', 'settings.json');
+  }
+  return path.join(targetDir, '.claude', 'settings.json');
+}
+
+/**
+ * Write permissions to the appropriate settings.json using Claude Code's schema:
  *   { "permissions": { "allow": ["Bash(...)", "WebSearch", ...] } }
  *
  * Merges with existing settings.json if present.
  */
-export function writePermissions(targetDir: string): void {
-  const claudeBaseDir = path.join(targetDir, '.claude');
-  if (!fs.existsSync(claudeBaseDir)) fs.mkdirSync(claudeBaseDir, { recursive: true });
-
-  const settingsPath = path.join(claudeBaseDir, 'settings.json');
+export function writePermissions(targetDir: string, level: PermissionLevel): void {
+  const settingsPath = resolveSettingsPath(targetDir, level);
+  const settingsDir = path.dirname(settingsPath);
+  if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
   const allowList = buildClaudeAllowList();
   const denyList = buildClaudeDenyList();
 

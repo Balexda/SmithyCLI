@@ -28,8 +28,8 @@ export const permissions: Record<string, PermissionEntry> = {
     "symbolic-ref HEAD": [],
     "symbolic-ref refs/remotes/origin/HEAD": [],
     "push": [],
-    "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
-    "push origin": ["feature/*", "fix/*", "chore/*", "strike/*"],
+    "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*", "claude/*"],
+    "push origin": ["feature/*", "fix/*", "chore/*", "strike/*", "claude/*"],
   },
 
   // --- Filesystem (read + create, no delete) ---
