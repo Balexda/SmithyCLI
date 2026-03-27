@@ -79,10 +79,4 @@ graph TD
 
 ## Contributing
 
-To build the tool locally:
-
-```bash
-npm install
-npm run build
-node dist/cli.js init
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing strategy, and pre-release checklist.

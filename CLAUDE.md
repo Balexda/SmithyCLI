@@ -8,7 +8,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 | Agent | Prompts | Commands (slash) | Permissions |
 |-------|---------|-------------------|-------------|
-| Claude | `.claude/prompts/` | `.claude/commands/` (if `command: true` in frontmatter) | `.claude/config.json` |
+| Claude | `.claude/prompts/` | `.claude/commands/` (if `command: true` in frontmatter) | `.claude/settings.json` |
 | Gemini | `.gemini/skills/<name>/SKILL.md` | (skills are invocable by default) | `.gemini/config.json` |
 | Codex | `tools/codex/prompts/` | `.agents/skills/<name>/SKILL.md` (if `command: true` in frontmatter) | `.codex/config.toml` |
 
@@ -56,8 +56,19 @@ node dist/cli.js uninit  # Test uninit flow
 
 **Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.
 
-## Testing Notes
+## Testing
 
-- The CLI uses interactive prompts (Inquirer), so it cannot be tested with piped stdin. Manual testing or a programmatic Node script that simulates the logic is needed.
-- To test slash command behavior in Claude Code: run `smithy init` targeting a test repo with Claude selected, then start a new Claude Code session in that repo and try `/smithy.strike "feature description"`. **Claude Code must be restarted to pick up new/changed commands.**
+Smithy uses a three-tier testing strategy:
+
+1. **Automated** (`npm test`): A comprehensive suite covering init/uninit flows, template composition, permissions, and utilities. Runs in CI on every push and PR.
+2. **Agent** (Claude Code session): Manual A-series test cases (A1-A4) verifying prompt visibility, slash command invocability, permissions enforcement, and stale artifact cleanup.
+3. **Human** (interactive terminal): Manual H-series test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
+
+Agent and human test cases are documented in **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** with step-by-step instructions and checkboxes.
+
+### Notes
+
+- The CLI uses interactive prompts (Inquirer), so interactive flows cannot be tested with piped stdin.
+- To test slash commands in Claude Code: run `smithy init` targeting a test repo, then start a **new** Claude Code session in that repo. Claude Code must be restarted to pick up new/changed commands.
+- The `--permissions` flag accepts a level: `repo` (`.claude/settings.json`, checked into git), `user` (`~/.claude/settings.json`, global), or `none` (skip).
 - The `templatesBaseDir` path in the built CLI resolves to `../src/templates` relative to `dist/`, so `src/templates/` must exist at runtime (it's included in `package.json` `files`).
