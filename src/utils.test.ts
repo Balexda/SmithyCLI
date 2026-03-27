@@ -190,7 +190,7 @@ describe('removeStaleSmithyArtifacts', () => {
   });
 
   it('returns 0 when directory does not exist', () => {
-    expect(removeStaleSmithyArtifacts('/nonexistent', 'smithy.', new Set())).toBe(0);
+    expect(removeStaleSmithyArtifacts(path.join(tmpDir, 'does-not-exist'), 'smithy.', new Set())).toBe(0);
   });
 
   it('does not remove entries that do not match prefix', () => {
