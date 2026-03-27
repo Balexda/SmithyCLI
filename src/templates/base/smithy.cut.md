@@ -1,6 +1,6 @@
 ---
 name: smithy-cut
-description: "Stage: [Cut]. Decompose a single user story from a feature spec into PR-sized slices with ordered tasks. Use when a spec exists and you need an implementation plan for one story."
+description: "Decompose a single user story from a feature spec into PR-sized slices with ordered tasks. Use when a spec exists and you need an implementation plan for one story."
 command: true
 ---
 # smithy.cut

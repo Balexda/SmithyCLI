@@ -1,6 +1,6 @@
 ---
 name: smithy-orders
-description: "Stage: [Orders]. Create GitHub tickets from any artifact file. Auto-detects artifact type by extension and creates the correct ticket structure."
+description: "Create GitHub tickets from any artifact file. Auto-detects artifact type by extension and creates the correct ticket structure."
 command: true
 ---
 # smithy.orders

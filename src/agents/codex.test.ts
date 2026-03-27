@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { deploy, remove } from './codex.js';
-import { getBaseTemplateFiles } from '../templates.js';
+import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate, parseFrontmatterName } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -63,6 +63,47 @@ describe('deploy', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
+  it('removes stale smithy artifacts on deploy', () => {
+    // Simulate a previously deployed template that has since been renamed
+    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# old template');
+
+    deploy(tmpDir, false);
+
+    // The stale file should be removed
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+    // Current templates should still exist
+    const files = fs.readdirSync(promptsDir);
+    expect(files).toContain('smithy.fix.md');
+  });
+
+  it('deploys command-flagged templates as skills to .agents/skills/', () => {
+    deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
+    expect(fs.existsSync(skillsDir)).toBe(true);
+
+    const skillDirs = fs.readdirSync(skillsDir);
+    expect(skillDirs.length).toBeGreaterThan(0);
+
+    // Verify only command-flagged templates with names become skills
+    const templates = getComposedTemplates();
+    const expectedSkills = [...templates.entries()]
+      .filter(([, content]) => isCommandTemplate(content) && parseFrontmatterName(content))
+      .map(([, content]) => parseFrontmatterName(content)!);
+
+    expect(skillDirs.sort()).toEqual(expectedSkills.sort());
+
+    // Verify each skill directory contains a SKILL.md with frontmatter preserved
+    for (const dir of skillDirs) {
+      const skillFile = path.join(skillsDir, dir, 'SKILL.md');
+      expect(fs.existsSync(skillFile)).toBe(true);
+      const content = fs.readFileSync(skillFile, 'utf8');
+      expect(content).toMatch(/^---\s*\n/);
+    }
+  });
+
   it('is idempotent — deploying twice does not duplicate content', () => {
     deploy(tmpDir, false);
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
@@ -95,18 +136,34 @@ describe('remove', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes deployed prompt files and returns count', () => {
+  it('removes deployed prompt files and skills, and returns count', () => {
     deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    const filesBefore = fs.readdirSync(promptsDir);
-    expect(filesBefore.length).toBeGreaterThan(0);
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
+    const promptsBefore = fs.readdirSync(promptsDir);
+    const skillsBefore = fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir) : [];
+    expect(promptsBefore.length).toBeGreaterThan(0);
 
     const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(filesBefore.length);
+    expect(removedCount).toBe(promptsBefore.length + skillsBefore.length);
 
     const filesAfter = fs.readdirSync(promptsDir);
     expect(filesAfter.length).toBe(0);
+    if (fs.existsSync(skillsDir)) {
+      expect(fs.readdirSync(skillsDir).length).toBe(0);
+    }
+  });
+
+  it('removes stale smithy artifacts during remove', () => {
+    // Plant a stale artifact that doesn't match any current template
+    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# stale');
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
   });
 
   it('returns 0 when no files exist to remove', () => {
@@ -177,6 +234,20 @@ describe('writePermissions (via deploy)', () => {
 
     // Non-wildcard entries like "git status" (no args) should produce args = []
     expect(content).toContain('args = []');
+  });
+
+  it('uses empty args_startswith for commands with bare wildcard and flag variants', () => {
+    deploy(tmpDir, true);
+
+    const configPath = path.join(tmpDir, '.codex', 'config.toml');
+    const content = fs.readFileSync(configPath, 'utf8');
+
+    // mkdir: ["*", "-p *"] should produce args_startswith = [], not ["-p "]
+    const mkdirRule = content.match(
+      /\[\[approvals\.rules\]\]\ncommand = "mkdir"\n(args\S* = [^\n]+)/
+    );
+    expect(mkdirRule).not.toBeNull();
+    expect(mkdirRule![1]).toBe('args_startswith = []');
   });
 
   it('does not overwrite existing config with approvals section', () => {

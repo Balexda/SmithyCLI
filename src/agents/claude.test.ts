@@ -2,7 +2,66 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { buildClaudeAllowList, buildClaudeDenyList, writePermissions, resolveSettingsPath } from './claude.js';
+import { buildClaudeAllowList, buildClaudeDenyList, deploy, remove, writePermissions, resolveSettingsPath } from './claude.js';
+
+describe('deploy', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('removes stale smithy artifacts from prompts on deploy', () => {
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# old template');
+
+    deploy(tmpDir, 'none');
+
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.fix.md'))).toBe(true);
+  });
+
+  it('removes stale smithy artifacts from commands on deploy', () => {
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    fs.mkdirSync(commandsDir, { recursive: true });
+    fs.writeFileSync(path.join(commandsDir, 'smithy.patch.md'), '# old command');
+
+    deploy(tmpDir, 'none');
+
+    expect(fs.existsSync(path.join(commandsDir, 'smithy.patch.md'))).toBe(false);
+  });
+});
+
+describe('remove', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('removes stale smithy artifacts during remove', () => {
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# stale');
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+  });
+});
 
 describe('buildClaudeAllowList', () => {
   it('wraps all commands in Bash()', () => {
@@ -129,11 +188,13 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git branch --delete *)');
   });
 
-  it('blocks force push and hard reset', () => {
+  it('blocks hard reset but not force push (force push requires approval)', () => {
     const list = buildClaudeDenyList();
-    expect(list).toContain('Bash(git push --force *)');
-    expect(list).toContain('Bash(git push -f *)');
     expect(list).toContain('Bash(git reset --hard *)');
+    // Force push is no longer denied — it triggers a user approval prompt instead
+    expect(list).not.toContain('Bash(git push --force *)');
+    expect(list).not.toContain('Bash(git push -f *)');
+    expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
 
   it('blocks destructive checkout and stash operations', () => {

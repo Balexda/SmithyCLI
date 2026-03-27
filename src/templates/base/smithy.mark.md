@@ -1,6 +1,6 @@
 ---
 name: smithy-mark
-description: "Stage: [Scope]. Transform an idea or RFC into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
+description: "Transform an idea or RFC into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
 command: true
 ---
 # smithy.mark
@@ -156,6 +156,8 @@ Guidelines for the spec:
 - User stories are numbered sequentially (User Story 1, 2, 3...) — this numbering
   is used by downstream commands to generate per-story task files.
 - Each user story has a priority (P1, P2, P3) with justification.
+- **User stories MUST be ordered by priority**: all P1 stories first, then P2, then P3.
+  Within the same priority level, order by dependency or natural workflow sequence.
 - Acceptance scenarios use Given/When/Then format.
 - Functional requirements are numbered FR-001, FR-002, etc.
 - Success criteria are measurable and testable.
@@ -322,6 +324,7 @@ audit across these categories:
 | Category | What to check |
 |----------|---------------|
 | **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
+| **Priority Ordering** | Are user stories ordered by priority (all P1 first, then P2, then P3)? If priorities have changed since the last revision, do the story numbers still reflect the correct priority order? Flag any out-of-order stories. |
 | **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
 | **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
 | **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
@@ -352,6 +355,12 @@ After all questions are answered, update the existing spec, data-model, and/or
 contracts files to incorporate the refinements. Present the changes for user
 approval before writing.
 
+**Priority re-ordering**: If any user story priorities changed during refinement,
+renumber and reorder the user stories so all P1 stories come first, then P2,
+then P3. Within the same priority level, preserve relative order. Update all
+story numbers (User Story 1, 2, 3...) to reflect the new order. Warn the user
+if existing `.tasks.md` files reference old story numbers that will change.
+
 This phase runs INSTEAD of Phases 1-6 when repeating the command. If more
 refinement is needed, the user can re-run the command again (another pass
 through Phase 0).
@@ -369,6 +378,8 @@ through Phase 0).
 - **DO** keep specs anchored to user value — every requirement should trace to
   a user story.
 - **DO** number user stories sequentially — downstream commands depend on this.
+- **DO** order user stories by priority (P1 first, then P2, then P3) and renumber
+  them when priorities change during refinement.
 - **DO** present clarifying questions one at a time with recommended answers.
 - **DO** create the git branch and spec folder automatically.
 - **DO** write minimal placeholder files for data-model and contracts when they
@@ -380,6 +391,7 @@ through Phase 0).
 | Category | What to check |
 |----------|---------------|
 | **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
+| **Priority Ordering** | Are user stories ordered by priority (all P1 first, then P2, then P3)? If any story appears out of priority order, flag it as a finding. |
 | **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
 | **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
 | **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
