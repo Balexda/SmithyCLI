@@ -75,7 +75,8 @@ console.log('Missing deny entries:', missing.length === 0 ? 'NONE (PASS)' : miss
 // 3. Claude tool permissions
 console.log('WebSearch:', allow.includes('WebSearch') ? 'PASS' : 'FAIL');
 console.log('WebFetch:', allow.includes('WebFetch') ? 'PASS' : 'FAIL');
-console.log('Skill(smithy.*):', allow.some(e => e.startsWith('Skill(smithy.')) ? 'PASS' : 'FAIL');
+const hasSmithySkill = allow.some(e => e.startsWith('Skill(smithy.'));
+console.log('Skill(smithy.*):', hasSmithySkill ? 'PASS' : 'FAIL');
 
 // 4. No duplicates
 console.log('Allow dupes:', allow.length - new Set(allow).size === 0 ? 'NONE (PASS)' : allow.length - new Set(allow).size);

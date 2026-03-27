@@ -7,7 +7,7 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
 1. Run the following validation commands in the repository root **before opening or ready-ing a PR**:
     ```bash
     npm run build
-    npx tsc --noEmit
+    npm run typecheck
     npm test
     ```
 2. If any command fails, stop, repair the failure, and re-run until all succeed.
@@ -20,7 +20,7 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
 - Always run the core build, type-checking, and test scripts prior to opening or updating a pull request:
   1. `npm install`
   2. `npm run build`
-  3. `npx tsc --noEmit`
+  3. `npm run typecheck`
   4. `npm test`
 - For changes affecting init/uninit flows, review the manual test cases in `tests/MANUAL_TEST_CASES.md`.
 - Before adding new templates or workflow steps, ensure they align with the `Smithy` stages (`smithy.scope`, `smithy.segment`, etc.) documented in the `README.md`.

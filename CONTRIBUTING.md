@@ -6,7 +6,7 @@
 npm install
 npm run build        # Build with tsup
 npm run typecheck    # Type-check without emitting
-npm test             # Run all tests (122 tests)
+npm test             # Run all tests
 ```
 
 Always use `npm run` scripts. Do not use `npx tsx`, `npx vitest`, or similar direct invocations.

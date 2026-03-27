@@ -60,9 +60,9 @@ node dist/cli.js uninit  # Test uninit flow
 
 Smithy uses a three-tier testing strategy:
 
-1. **Automated** (`npm test`): 122 tests across 7 files covering init/uninit flows, template composition, permissions, and utilities. Runs in CI on every push and PR.
-2. **Agent** (Claude Code session): 4 test cases (A1-A4) verifying prompt visibility, slash command invocability, permissions enforcement, and stale artifact cleanup.
-3. **Human** (interactive terminal): 4 test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
+1. **Automated** (`npm test`): A comprehensive suite covering init/uninit flows, template composition, permissions, and utilities. Runs in CI on every push and PR.
+2. **Agent** (Claude Code session): Manual A-series test cases (A1-A4) verifying prompt visibility, slash command invocability, permissions enforcement, and stale artifact cleanup.
+3. **Human** (interactive terminal): Manual H-series test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
 
 Agent and human test cases are documented in **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** with step-by-step instructions and checkboxes.
 

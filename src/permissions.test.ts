@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenPermissions, permissions, denyPermissions, claudeToolPermissions } from './permissions.js';
+import { flattenPermissions } from './permissions.js';
 
 describe('flattenPermissions', () => {
   it('returns an array of strings', () => {
