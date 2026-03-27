@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { buildClaudeAllowList, buildClaudeDenyList, deploy, remove, writePermissions, resolveSettingsPath } from './claude.js';
+import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -37,6 +38,82 @@ describe('deploy', () => {
 
     expect(fs.existsSync(path.join(commandsDir, 'smithy.patch.md'))).toBe(false);
   });
+
+  it('creates .claude/prompts/ from scratch on a fresh directory', () => {
+    deploy(tmpDir, 'none');
+
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    expect(fs.existsSync(promptsDir)).toBe(true);
+    // Should have deployed template files
+    const files = fs.readdirSync(promptsDir);
+    expect(files.length).toBeGreaterThan(0);
+  });
+
+  it('writes all base templates to prompts/', () => {
+    deploy(tmpDir, 'none');
+
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    const deployedFiles = fs.readdirSync(promptsDir).sort();
+    const baseFiles = getBaseTemplateFiles().sort();
+
+    expect(deployedFiles).toEqual(baseFiles);
+  });
+
+  it('writes command-flagged templates to both prompts/ and commands/', () => {
+    deploy(tmpDir, 'none');
+
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+
+    expect(fs.existsSync(commandsDir)).toBe(true);
+
+    const commandFiles = fs.readdirSync(commandsDir);
+    expect(commandFiles.length).toBeGreaterThan(0);
+
+    // Every command file should also be in prompts
+    for (const file of commandFiles) {
+      expect(fs.existsSync(path.join(promptsDir, file))).toBe(true);
+    }
+
+    // Verify command files match templates with command: true
+    const templates = getComposedTemplates();
+    const expectedCommands = [...templates.entries()]
+      .filter(([_, content]) => isCommandTemplate(content))
+      .map(([file]) => file)
+      .sort();
+
+    expect(commandFiles.sort()).toEqual(expectedCommands);
+  });
+
+  it('strips frontmatter from deployed files', () => {
+    deploy(tmpDir, 'none');
+
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    const files = fs.readdirSync(promptsDir);
+
+    for (const file of files) {
+      const content = fs.readFileSync(path.join(promptsDir, file), 'utf8');
+      // Should not start with frontmatter delimiter
+      expect(content).not.toMatch(/^---\s*\n/);
+    }
+  });
+
+  it('creates settings.json when permissionLevel is "repo"', () => {
+    deploy(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+  });
+
+  it('does not create settings.json when permissionLevel is "none"', () => {
+    deploy(tmpDir, 'none');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(false);
+  });
 });
 
 describe('remove', () => {
@@ -60,6 +137,45 @@ describe('remove', () => {
     const removedCount = remove(tmpDir);
     expect(removedCount).toBeGreaterThanOrEqual(1);
     expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+  });
+
+  it('returns accurate count matching deployed prompt + command files', () => {
+    // Deploy first so there is something to remove
+    deploy(tmpDir, 'none');
+
+    const promptCount = fs.readdirSync(path.join(tmpDir, '.claude', 'prompts')).length;
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    const commandCount = fs.existsSync(commandsDir) ? fs.readdirSync(commandsDir).length : 0;
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBe(promptCount + commandCount);
+  });
+
+  it('returns 0 on empty/nonexistent directory without throwing', () => {
+    const emptyDir = path.join(tmpDir, 'nonexistent');
+    expect(remove(emptyDir)).toBe(0);
+  });
+
+  it('preserves non-smithy files in prompts/', () => {
+    deploy(tmpDir, 'none');
+
+    // Add a user-created file
+    const userFile = path.join(tmpDir, '.claude', 'prompts', 'my-custom-prompt.md');
+    fs.writeFileSync(userFile, '# Custom');
+
+    remove(tmpDir);
+
+    expect(fs.existsSync(userFile)).toBe(true);
+  });
+
+  it('cleans stale artifacts from commands/ dir', () => {
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    fs.mkdirSync(commandsDir, { recursive: true });
+    fs.writeFileSync(path.join(commandsDir, 'smithy.obsolete.md'), '# stale command');
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(commandsDir, 'smithy.obsolete.md'))).toBe(false);
   });
 });
 
@@ -337,5 +453,38 @@ describe('writePermissions', () => {
     // Should NOT have written to the repo-level path
     const repoSettingsPath = path.join(tmpDir, '.claude', 'settings.json');
     expect(fs.existsSync(repoSettingsPath)).toBe(false);
+  });
+
+  it('produces no duplicates when called twice (idempotency)', () => {
+    writePermissions(tmpDir, 'repo');
+    writePermissions(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+
+    // Check that allow list has no duplicates
+    const allowSet = new Set(config.permissions.allow);
+    expect(config.permissions.allow.length).toBe(allowSet.size);
+
+    // Check that deny list has no duplicates
+    const denySet = new Set(config.permissions.deny);
+    expect(config.permissions.deny.length).toBe(denySet.size);
+  });
+
+  it('handles existing permissions object with no allow/deny keys', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, 'settings.json'),
+      JSON.stringify({ permissions: { someCustomFlag: true } }),
+    );
+
+    writePermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+    expect(config.permissions.deny).toContain('Bash(git branch -D *)');
+    // Custom key should be preserved
+    expect(config.permissions.someCustomFlag).toBe(true);
   });
 });
