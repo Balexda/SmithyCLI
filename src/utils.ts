@@ -59,6 +59,32 @@ export function addToGitignore(targetDir: string, entries: string[]): number {
   return toAdd.length;
 }
 
+/**
+ * Scans `dir` for entries matching `prefix` and removes any not in `currentNames`.
+ * Used to clean up stale artifacts after template renames.
+ *
+ * An optional `isArtifact` predicate gates removal: only entries for which it
+ * returns true are considered Smithy-deployed artifacts. This prevents
+ * accidental deletion of user-created files/dirs that happen to share the prefix.
+ */
+export function removeStaleSmithyArtifacts(
+  dir: string,
+  prefix: string,
+  currentNames: Set<string>,
+  isArtifact?: (entryPath: string) => boolean,
+): number {
+  if (!fs.existsSync(dir)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(dir)) {
+    if (entry.startsWith(prefix) && !currentNames.has(entry)) {
+      const entryPath = path.join(dir, entry);
+      if (isArtifact && !isArtifact(entryPath)) continue;
+      if (removeIfExists(entryPath)) removed++;
+    }
+  }
+  return removed;
+}
+
 export function removeIfExists(p: string): boolean {
   if (fs.existsSync(p)) {
     const stats = fs.statSync(p);

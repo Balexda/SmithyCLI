@@ -3,7 +3,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter } from '../templates.js';
 import { permissions } from '../permissions.js';
-import { removeIfExists } from '../utils.js';
+import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 
 export function deploy(targetDir: string, initPermissions: boolean): void {
   const destDir = path.join(targetDir, 'tools', 'codex', 'prompts');
@@ -11,11 +11,17 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
   if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
   const templates = getComposedTemplates();
+  const currentFilenames = new Set<string>();
 
   for (const [file, content] of templates) {
+    currentFilenames.add(file);
     const stripped = stripFrontmatter(content);
     fs.writeFileSync(path.join(destDir, file), stripped);
   }
+
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removeStaleSmithyArtifacts(destDir, 'smithy.', currentFilenames, isMdFile);
 
   if (initPermissions) {
     writePermissions(targetDir);
@@ -28,6 +34,10 @@ export function remove(targetDir: string): number {
   for (const file of getBaseTemplateFiles()) {
     if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
   }
+
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set(), isMdFile);
 
   return removedCount;
 }
