@@ -31,9 +31,10 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
     }
   }
 
-  // Remove stale artifacts from renamed/deleted templates
-  removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames);
-  removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames);
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames, isMdFile);
+  removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames, isMdFile);
 
   if (initPermissions) {
     writePermissions(targetDir);
@@ -48,9 +49,10 @@ export function remove(targetDir: string): number {
     if (removeIfExists(path.join(targetDir, '.claude', 'commands', file))) removedCount++;
   }
 
-  // Remove stale artifacts from renamed/deleted templates
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'prompts'), 'smithy.', new Set());
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'commands'), 'smithy.', new Set());
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'prompts'), 'smithy.', new Set(), isMdFile);
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'commands'), 'smithy.', new Set(), isMdFile);
 
   return removedCount;
 }

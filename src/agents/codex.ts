@@ -19,8 +19,9 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
     fs.writeFileSync(path.join(destDir, file), stripped);
   }
 
-  // Remove stale artifacts from renamed/deleted templates
-  removeStaleSmithyArtifacts(destDir, 'smithy.', currentFilenames);
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removeStaleSmithyArtifacts(destDir, 'smithy.', currentFilenames, isMdFile);
 
   if (initPermissions) {
     writePermissions(targetDir);
@@ -34,8 +35,9 @@ export function remove(targetDir: string): number {
     if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
   }
 
-  // Remove stale artifacts from renamed/deleted templates
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set());
+  // Remove stale .md artifacts from renamed/deleted templates
+  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set(), isMdFile);
 
   return removedCount;
 }

@@ -23,7 +23,10 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
     }
   }
 
-  removeStaleSmithyArtifacts(skillsDir, 'smithy-', currentNames);
+  // Only remove dirs that look like Smithy-deployed skills (contain SKILL.md)
+  const isGeminiSkill = (p: string) =>
+    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
+  removeStaleSmithyArtifacts(skillsDir, 'smithy-', currentNames, isGeminiSkill);
 
   if (initPermissions) {
     writePermissions(destDir);
@@ -43,7 +46,9 @@ export function remove(targetDir: string): number {
   }
 
   // Remove any stale smithy skills from renamed/deleted templates
-  removedCount += removeStaleSmithyArtifacts(skillsDir, 'smithy-', new Set());
+  const isGeminiSkill = (p: string) =>
+    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
+  removedCount += removeStaleSmithyArtifacts(skillsDir, 'smithy-', new Set(), isGeminiSkill);
 
   return removedCount;
 }
