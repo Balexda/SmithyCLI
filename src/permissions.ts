@@ -173,10 +173,7 @@ export const denyPermissions: string[] = [
   // Git tag deletion
   "git tag -d *",
   "git tag --delete *",
-  // Git force push & destructive reset
-  "git push --force *",
-  "git push -f *",
-  "git push --force-with-lease *",
+  // Git destructive reset
   "git reset --hard *",
   "git clean *",
   // Git symbolic-ref mutation (repointing and deletion)
