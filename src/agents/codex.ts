@@ -1,27 +1,40 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
 import { permissions } from '../permissions.js';
 import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 
 export function deploy(targetDir: string, initPermissions: boolean): void {
-  const destDir = path.join(targetDir, 'tools', 'codex', 'prompts');
-  console.log(picocolors.green(`\nInitializing Codex prompts in ${destDir}...`));
-  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+  const promptsDir = path.join(targetDir, 'tools', 'codex', 'prompts');
+  console.log(picocolors.green(`\nInitializing Codex prompts in ${promptsDir}...`));
+  if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
+
+  const commandsDir = path.join(targetDir, 'tools', 'codex', 'commands');
 
   const templates = getComposedTemplates();
-  const currentFilenames = new Set<string>();
+  const allFilenames = new Set<string>();
+  const commandFilenames = new Set<string>();
 
   for (const [file, content] of templates) {
-    currentFilenames.add(file);
+    allFilenames.add(file);
     const stripped = stripFrontmatter(content);
-    fs.writeFileSync(path.join(destDir, file), stripped);
+
+    // Deploy to prompts/
+    fs.writeFileSync(path.join(promptsDir, file), stripped);
+
+    // Deploy command-flagged templates to commands/
+    if (isCommandTemplate(content)) {
+      commandFilenames.add(file);
+      if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
+      fs.writeFileSync(path.join(commandsDir, file), stripped);
+    }
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removeStaleSmithyArtifacts(destDir, 'smithy.', currentFilenames, isMdFile);
+  removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames, isMdFile);
+  removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames, isMdFile);
 
   if (initPermissions) {
     writePermissions(targetDir);
@@ -33,11 +46,13 @@ export function remove(targetDir: string): number {
 
   for (const file of getBaseTemplateFiles()) {
     if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
+    if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'commands', file))) removedCount++;
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
   removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set(), isMdFile);
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'commands'), 'smithy.', new Set(), isMdFile);
 
   return removedCount;
 }

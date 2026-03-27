@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { deploy, remove } from './codex.js';
-import { getBaseTemplateFiles } from '../templates.js';
+import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -78,6 +78,30 @@ describe('deploy', () => {
     expect(files).toContain('smithy.fix.md');
   });
 
+  it('deploys command-flagged templates to commands directory', () => {
+    deploy(tmpDir, false);
+
+    const commandsDir = path.join(tmpDir, 'tools', 'codex', 'commands');
+    expect(fs.existsSync(commandsDir)).toBe(true);
+
+    const commandFiles = fs.readdirSync(commandsDir);
+    expect(commandFiles.length).toBeGreaterThan(0);
+
+    // Verify only command-flagged templates are in commands/
+    const templates = getComposedTemplates();
+    const expectedCommands = [...templates.entries()]
+      .filter(([, content]) => isCommandTemplate(content))
+      .map(([file]) => file);
+
+    expect(commandFiles.sort()).toEqual(expectedCommands.sort());
+
+    // Verify frontmatter is stripped from command files
+    for (const file of commandFiles) {
+      const content = fs.readFileSync(path.join(commandsDir, file), 'utf8');
+      expect(content).not.toMatch(/^---\s*\n/);
+    }
+  });
+
   it('is idempotent — deploying twice does not duplicate content', () => {
     deploy(tmpDir, false);
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
@@ -114,14 +138,19 @@ describe('remove', () => {
     deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    const filesBefore = fs.readdirSync(promptsDir);
-    expect(filesBefore.length).toBeGreaterThan(0);
+    const commandsDir = path.join(tmpDir, 'tools', 'codex', 'commands');
+    const promptsBefore = fs.readdirSync(promptsDir);
+    const commandsBefore = fs.existsSync(commandsDir) ? fs.readdirSync(commandsDir) : [];
+    expect(promptsBefore.length).toBeGreaterThan(0);
 
     const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(filesBefore.length);
+    expect(removedCount).toBe(promptsBefore.length + commandsBefore.length);
 
     const filesAfter = fs.readdirSync(promptsDir);
     expect(filesAfter.length).toBe(0);
+    if (fs.existsSync(commandsDir)) {
+      expect(fs.readdirSync(commandsDir).length).toBe(0);
+    }
   });
 
   it('removes stale smithy artifacts during remove', () => {

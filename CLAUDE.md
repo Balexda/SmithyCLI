@@ -10,7 +10,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 |-------|---------|-------------------|-------------|
 | Claude | `.claude/prompts/` | `.claude/commands/` (if `command: true` in frontmatter) | `.claude/config.json` |
 | Gemini | `.gemini/skills/<name>/SKILL.md` | (skills are invocable by default) | `.gemini/config.json` |
-| Codex | `tools/codex/prompts/` | (no separate mechanism) | `.codex/config.toml` |
+| Codex | `tools/codex/prompts/` | `tools/codex/commands/` (if `command: true` in frontmatter) | `.codex/config.toml` |
 
 `smithy uninit` removes all deployed artifacts (but preserves config/permissions).
 
