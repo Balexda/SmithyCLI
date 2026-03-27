@@ -34,7 +34,10 @@
 ### Permissions & Configuration
 - [ ] Gemini Config: `.gemini/config.json` correctly formed and merged.
 - [ ] Codex Config: `.codex/config.toml` contains correct `[[approvals.rules]]`.
-- [ ] Claude Config: `.claude/config.json` correctly formed.
+- [ ] Claude Config: `.claude/settings.json` correctly formed.
+
+### Manual Test Cases
+- [ ] Reviewed applicable cases in [`tests/MANUAL_TEST_CASES.md`](tests/MANUAL_TEST_CASES.md) (if init/uninit flows changed)
 
 ## Issue
 - Fixes #

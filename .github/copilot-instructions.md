@@ -8,6 +8,7 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
     ```bash
     npm run build
     npx tsc --noEmit
+    npm test
     ```
 2. If any command fails, stop, repair the failure, and re-run until all succeed.
 3. Open the PR as **Draft**.
@@ -16,10 +17,12 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
 
 ## Validation Steps Before Submitting Changes
 
-- Always run the core build and type-checking scripts prior to opening or updating a pull request:
+- Always run the core build, type-checking, and test scripts prior to opening or updating a pull request:
   1. `npm install`
   2. `npm run build`
   3. `npx tsc --noEmit`
+  4. `npm test`
+- For changes affecting init/uninit flows, review the manual test cases in `tests/MANUAL_TEST_CASES.md`.
 - Before adding new templates or workflow steps, ensure they align with the `Smithy` stages (`smithy.scope`, `smithy.segment`, etc.) documented in the `README.md`.
 - When documentation (`*.md`) or prompt (`src/templates/base/*.md`) files change, verify they render correctly and the YAML frontmatter (for Gemini) is valid.
 - If any command fails, fix the underlying issue and rerun the script. Do **not** proceed with the PR until all commands succeed.

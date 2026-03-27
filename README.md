@@ -79,10 +79,13 @@ graph TD
 
 ## Contributing
 
-To build the tool locally:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing strategy, and pre-release checklist.
+
+Quick start:
 
 ```bash
 npm install
 npm run build
+npm test
 node dist/cli.js init
 ```
