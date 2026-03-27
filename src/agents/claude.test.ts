@@ -123,11 +123,13 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git branch --delete *)');
   });
 
-  it('blocks force push and hard reset', () => {
+  it('blocks hard reset but not force push (force push requires approval)', () => {
     const list = buildClaudeDenyList();
-    expect(list).toContain('Bash(git push --force *)');
-    expect(list).toContain('Bash(git push -f *)');
     expect(list).toContain('Bash(git reset --hard *)');
+    // Force push is no longer denied — it triggers a user approval prompt instead
+    expect(list).not.toContain('Bash(git push --force *)');
+    expect(list).not.toContain('Bash(git push -f *)');
+    expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
 
   it('blocks destructive checkout and stash operations', () => {
