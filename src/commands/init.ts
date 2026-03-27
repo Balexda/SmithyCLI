@@ -5,11 +5,11 @@ import { copyDirSync, issueTemplatesSrcDir, agentGitignoreEntries, addToGitignor
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
-import type { AgentChoice } from '../interactive.js';
+import type { AgentChoice, PermissionLevel } from '../interactive.js';
 
 export interface InitOptions {
   agent?: AgentChoice;
-  permissions?: boolean;
+  permissions?: PermissionLevel;
   issueTemplates?: boolean;
   targetDir?: string;
   yes?: boolean;
@@ -19,7 +19,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   console.log(picocolors.cyan('🔨 Welcome to Smithy CLI\n'));
 
   const agent = opts.agent ?? (opts.yes ? 'all' : await promptAgent());
-  const initPermissions = opts.permissions ?? (opts.yes ? true : await promptPermissions());
+  const permissionLevel = opts.permissions ?? (opts.yes ? 'repo' : await promptPermissions());
   const initIssueTemplates = opts.issueTemplates ?? (opts.yes ? true : await promptIssueTemplates());
   const targetDir = path.resolve(opts.targetDir ?? (opts.yes ? process.cwd() : await promptTargetDir()));
 
@@ -31,11 +31,13 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   const agentsToSetup = agent === 'all' ? ['gemini', 'claude', 'codex'] as const : [agent] as const;
 
+  // Gemini/Codex only support repo-level permissions; skip for user/none
+  const initPermissions = permissionLevel === 'repo';
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
       gemini.deploy(targetDir, initPermissions);
     } else if (a === 'claude') {
-      claude.deploy(targetDir, initPermissions);
+      claude.deploy(targetDir, permissionLevel);
     } else if (a === 'codex') {
       codex.deploy(targetDir, initPermissions);
     }

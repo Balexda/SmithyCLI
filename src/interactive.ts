@@ -1,6 +1,7 @@
 import { select, input, confirm } from '@inquirer/prompts';
 
 export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
+export type PermissionLevel = 'repo' | 'user' | 'none';
 
 export async function promptAgent(): Promise<AgentChoice> {
   return await select<AgentChoice>({
@@ -14,10 +15,14 @@ export async function promptAgent(): Promise<AgentChoice> {
   });
 }
 
-export async function promptPermissions(): Promise<boolean> {
-  return await confirm({
-    message: 'Would you like to initialize default smithy permissions for the selected agent(s)? (Grants access to non-destructive repo actions)',
-    default: true,
+export async function promptPermissions(): Promise<PermissionLevel> {
+  return await select<PermissionLevel>({
+    message: 'Where should smithy permissions be deployed?',
+    choices: [
+      { name: 'Repo (.claude/settings.json)', value: 'repo', description: 'Checked into git — shared across worktrees and team members' },
+      { name: 'User (~/.claude/settings.json)', value: 'user', description: 'Global per-user — not checked in, applies to all repos' },
+      { name: 'None', value: 'none', description: 'Skip permissions setup' },
+    ],
   });
 }
 

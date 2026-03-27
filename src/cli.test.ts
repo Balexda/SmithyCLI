@@ -76,12 +76,12 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.github', 'ISSUE_TEMPLATE'))).toBe(false);
   });
 
-  it('skips permissions with --no-permissions', () => {
-    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--no-permissions', '-y', '-d', tmpDir], {
+  it('skips permissions with --permissions none', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--permissions', 'none', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
-    // No permissions file when --no-permissions
+    // No permissions file when --permissions none
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
   });
 
