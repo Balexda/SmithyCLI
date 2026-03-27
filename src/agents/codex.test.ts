@@ -236,6 +236,20 @@ describe('writePermissions (via deploy)', () => {
     expect(content).toContain('args = []');
   });
 
+  it('uses empty args_startswith for commands with bare wildcard and flag variants', () => {
+    deploy(tmpDir, true);
+
+    const configPath = path.join(tmpDir, '.codex', 'config.toml');
+    const content = fs.readFileSync(configPath, 'utf8');
+
+    // mkdir: ["*", "-p *"] should produce args_startswith = [], not ["-p "]
+    const mkdirRule = content.match(
+      /\[\[approvals\.rules\]\]\ncommand = "mkdir"\n(args\S* = [^\n]+)/
+    );
+    expect(mkdirRule).not.toBeNull();
+    expect(mkdirRule![1]).toBe('args_startswith = []');
+  });
+
   it('does not overwrite existing config with approvals section', () => {
     const codexDir = path.join(tmpDir, '.codex');
     fs.mkdirSync(codexDir, { recursive: true });
