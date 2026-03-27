@@ -31,7 +31,8 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   const agentsToSetup = agent === 'all' ? ['gemini', 'claude', 'codex'] as const : [agent] as const;
 
-  const initPermissions = permissionLevel !== 'none';
+  // Gemini/Codex only support repo-level permissions; skip for user/none
+  const initPermissions = permissionLevel === 'repo';
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
       gemini.deploy(targetDir, initPermissions);
