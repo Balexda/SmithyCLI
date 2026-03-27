@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { deploy, remove } from './codex.js';
-import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate } from '../templates.js';
+import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate, parseFrontmatterName } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -78,27 +78,29 @@ describe('deploy', () => {
     expect(files).toContain('smithy.fix.md');
   });
 
-  it('deploys command-flagged templates to commands directory', () => {
+  it('deploys command-flagged templates as skills to .agents/skills/', () => {
     deploy(tmpDir, false);
 
-    const commandsDir = path.join(tmpDir, 'tools', 'codex', 'commands');
-    expect(fs.existsSync(commandsDir)).toBe(true);
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
+    expect(fs.existsSync(skillsDir)).toBe(true);
 
-    const commandFiles = fs.readdirSync(commandsDir);
-    expect(commandFiles.length).toBeGreaterThan(0);
+    const skillDirs = fs.readdirSync(skillsDir);
+    expect(skillDirs.length).toBeGreaterThan(0);
 
-    // Verify only command-flagged templates are in commands/
+    // Verify only command-flagged templates with names become skills
     const templates = getComposedTemplates();
-    const expectedCommands = [...templates.entries()]
-      .filter(([, content]) => isCommandTemplate(content))
-      .map(([file]) => file);
+    const expectedSkills = [...templates.entries()]
+      .filter(([, content]) => isCommandTemplate(content) && parseFrontmatterName(content))
+      .map(([, content]) => parseFrontmatterName(content)!);
 
-    expect(commandFiles.sort()).toEqual(expectedCommands.sort());
+    expect(skillDirs.sort()).toEqual(expectedSkills.sort());
 
-    // Verify frontmatter is stripped from command files
-    for (const file of commandFiles) {
-      const content = fs.readFileSync(path.join(commandsDir, file), 'utf8');
-      expect(content).not.toMatch(/^---\s*\n/);
+    // Verify each skill directory contains a SKILL.md with frontmatter preserved
+    for (const dir of skillDirs) {
+      const skillFile = path.join(skillsDir, dir, 'SKILL.md');
+      expect(fs.existsSync(skillFile)).toBe(true);
+      const content = fs.readFileSync(skillFile, 'utf8');
+      expect(content).toMatch(/^---\s*\n/);
     }
   });
 
@@ -134,22 +136,22 @@ describe('remove', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes deployed prompt files and returns count', () => {
+  it('removes deployed prompt files and skills, and returns count', () => {
     deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    const commandsDir = path.join(tmpDir, 'tools', 'codex', 'commands');
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
     const promptsBefore = fs.readdirSync(promptsDir);
-    const commandsBefore = fs.existsSync(commandsDir) ? fs.readdirSync(commandsDir) : [];
+    const skillsBefore = fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir) : [];
     expect(promptsBefore.length).toBeGreaterThan(0);
 
     const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(promptsBefore.length + commandsBefore.length);
+    expect(removedCount).toBe(promptsBefore.length + skillsBefore.length);
 
     const filesAfter = fs.readdirSync(promptsDir);
     expect(filesAfter.length).toBe(0);
-    if (fs.existsSync(commandsDir)) {
-      expect(fs.readdirSync(commandsDir).length).toBe(0);
+    if (fs.existsSync(skillsDir)) {
+      expect(fs.readdirSync(skillsDir).length).toBe(0);
     }
   });
 

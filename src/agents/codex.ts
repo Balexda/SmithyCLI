@@ -1,40 +1,47 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate, parseFrontmatterName, readTemplate } from '../templates.js';
 import { permissions } from '../permissions.js';
 import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 
 export function deploy(targetDir: string, initPermissions: boolean): void {
   const promptsDir = path.join(targetDir, 'tools', 'codex', 'prompts');
+  const skillsDir = path.join(targetDir, '.agents', 'skills');
   console.log(picocolors.green(`\nInitializing Codex prompts in ${promptsDir}...`));
   if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
 
-  const commandsDir = path.join(targetDir, 'tools', 'codex', 'commands');
-
   const templates = getComposedTemplates();
-  const allFilenames = new Set<string>();
-  const commandFilenames = new Set<string>();
+  const promptFilenames = new Set<string>();
+  const skillNames = new Set<string>();
 
   for (const [file, content] of templates) {
-    allFilenames.add(file);
+    promptFilenames.add(file);
     const stripped = stripFrontmatter(content);
 
     // Deploy to prompts/
     fs.writeFileSync(path.join(promptsDir, file), stripped);
 
-    // Deploy command-flagged templates to commands/
+    // Deploy command-flagged templates as Codex skills (.agents/skills/<name>/SKILL.md)
     if (isCommandTemplate(content)) {
-      commandFilenames.add(file);
-      if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
-      fs.writeFileSync(path.join(commandsDir, file), stripped);
+      const name = parseFrontmatterName(content);
+      if (name) {
+        skillNames.add(name);
+        const skillPath = path.join(skillsDir, name);
+        if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
+        fs.writeFileSync(path.join(skillPath, 'SKILL.md'), content);
+      }
     }
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames, isMdFile);
-  removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames, isMdFile);
+  removeStaleSmithyArtifacts(promptsDir, 'smithy.', promptFilenames, isMdFile);
+
+  // Remove stale skill directories from renamed/deleted templates
+  const isCodexSkill = (p: string) =>
+    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
+  removeStaleSmithyArtifacts(skillsDir, 'smithy-', skillNames, isCodexSkill);
 
   if (initPermissions) {
     writePermissions(targetDir);
@@ -43,16 +50,27 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
 
 export function remove(targetDir: string): number {
   let removedCount = 0;
+  const skillsDir = path.join(targetDir, '.agents', 'skills');
 
   for (const file of getBaseTemplateFiles()) {
     if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
-    if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'commands', file))) removedCount++;
+
+    // Remove corresponding skill directory
+    const content = readTemplate(file);
+    const name = parseFrontmatterName(content);
+    if (name) {
+      if (removeIfExists(path.join(skillsDir, name))) removedCount++;
+    }
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
   removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set(), isMdFile);
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'commands'), 'smithy.', new Set(), isMdFile);
+
+  // Remove stale skill directories
+  const isCodexSkill = (p: string) =>
+    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
+  removedCount += removeStaleSmithyArtifacts(skillsDir, 'smithy-', new Set(), isCodexSkill);
 
   return removedCount;
 }
