@@ -59,6 +59,25 @@ export function addToGitignore(targetDir: string, entries: string[]): number {
   return toAdd.length;
 }
 
+/**
+ * Scans `dir` for entries matching `prefix` and removes any not in `currentNames`.
+ * Used to clean up stale artifacts after template renames.
+ */
+export function removeStaleSmithyArtifacts(
+  dir: string,
+  prefix: string,
+  currentNames: Set<string>,
+): number {
+  if (!fs.existsSync(dir)) return 0;
+  let removed = 0;
+  for (const entry of fs.readdirSync(dir)) {
+    if (entry.startsWith(prefix) && !currentNames.has(entry)) {
+      if (removeIfExists(path.join(dir, entry))) removed++;
+    }
+  }
+  return removed;
+}
+
 export function removeIfExists(p: string): boolean {
   if (fs.existsSync(p)) {
     const stats = fs.statSync(p);

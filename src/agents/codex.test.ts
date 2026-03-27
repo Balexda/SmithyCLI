@@ -63,6 +63,21 @@ describe('deploy', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
+  it('removes stale smithy artifacts on deploy', () => {
+    // Simulate a previously deployed template that has since been renamed
+    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# old template');
+
+    deploy(tmpDir, false);
+
+    // The stale file should be removed
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+    // Current templates should still exist
+    const files = fs.readdirSync(promptsDir);
+    expect(files).toContain('smithy.fix.md');
+  });
+
   it('is idempotent — deploying twice does not duplicate content', () => {
     deploy(tmpDir, false);
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
@@ -107,6 +122,17 @@ describe('remove', () => {
 
     const filesAfter = fs.readdirSync(promptsDir);
     expect(filesAfter.length).toBe(0);
+  });
+
+  it('removes stale smithy artifacts during remove', () => {
+    // Plant a stale artifact that doesn't match any current template
+    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
+    fs.mkdirSync(promptsDir, { recursive: true });
+    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# stale');
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
   });
 
   it('returns 0 when no files exist to remove', () => {

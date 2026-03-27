@@ -3,7 +3,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getBaseTemplateFiles, readTemplate, parseFrontmatterName } from '../templates.js';
 import { flattenPermissions } from '../permissions.js';
-import { removeIfExists } from '../utils.js';
+import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 
 export function deploy(targetDir: string, initPermissions: boolean): void {
   const destDir = path.join(targetDir, '.gemini');
@@ -11,15 +11,19 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
 
   const templates = getComposedTemplates();
+  const currentNames = new Set<string>();
 
   for (const [, content] of templates) {
     const name = parseFrontmatterName(content);
     if (name) {
+      currentNames.add(name);
       const skillPath = path.join(skillsDir, name);
       if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
       fs.writeFileSync(path.join(skillPath, 'SKILL.md'), content);
     }
   }
+
+  removeStaleSmithyArtifacts(skillsDir, 'smithy-', currentNames);
 
   if (initPermissions) {
     writePermissions(destDir);
@@ -37,6 +41,9 @@ export function remove(targetDir: string): number {
       if (removeIfExists(path.join(skillsDir, name))) removedCount++;
     }
   }
+
+  // Remove any stale smithy skills from renamed/deleted templates
+  removedCount += removeStaleSmithyArtifacts(skillsDir, 'smithy-', new Set());
 
   return removedCount;
 }
