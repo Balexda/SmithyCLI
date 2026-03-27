@@ -1,6 +1,6 @@
 ---
 name: smithy-mark
-description: "Stage: [Scope]. Transform an idea or RFC into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
+description: "Transform an idea or RFC into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
 command: true
 ---
 # smithy.mark

@@ -1,6 +1,6 @@
 ---
 name: smithy-slice
-description: "Stage: [Segment]. Convert a feature-plan milestone into Task Stub issues. Use when breaking down a milestone."
+description: "Convert a feature-plan milestone into Task Stub issues. Use when breaking down a milestone."
 ---
 # smithy-slice Prompt (Segment)
 

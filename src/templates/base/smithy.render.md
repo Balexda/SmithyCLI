@@ -1,6 +1,6 @@
 ---
 name: smithy-render
-description: "Stage: [Render]. Break an RFC milestone into a feature map."
+description: "Break an RFC milestone into a feature map."
 command: true
 ---
 # smithy-render

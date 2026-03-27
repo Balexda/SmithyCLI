@@ -1,6 +1,6 @@
 ---
 name: smithy-refine
-description: "Stage: [Detail]. Review a journey and break it into technical tasks.md. Use when converting a flowmap/journey into specs."
+description: "Review a journey and break it into technical tasks.md. Use when converting a flowmap/journey into specs."
 ---
 # smithy-refine Prompt (Detail)
 
