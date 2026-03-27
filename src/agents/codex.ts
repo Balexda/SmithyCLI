@@ -45,6 +45,9 @@ function writePermissions(targetDir: string): void {
       // Simple command like cp ["*"]
       if (value.length === 0) {
         tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs = []\n\n`;
+      } else if (value.includes('*')) {
+        // Bare "*" = allow any arguments; flag variants are subsumed
+        tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs_startswith = []\n\n`;
       } else {
         const hasWildcard = value.some(arg => arg.includes('*'));
         if (hasWildcard) {
