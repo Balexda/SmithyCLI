@@ -37,7 +37,7 @@ export const permissions: Record<string, PermissionEntry> = {
   cat: ["*"],
   head: ["*"],
   tail: ["*"],
-  mkdir: ["*"],
+  mkdir: ["*", "-p *"],
   cp: ["*"],
   mv: ["*"],
   touch: ["*"],
