@@ -199,9 +199,10 @@ Guidelines for slicing:
 
 ---
 
-## Phase 5: Review
+## Phase 5: Write & Review
 
-Present the complete tasks file to the user:
+Write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md` (where `<NN>` is
+the zero-padded user story number), then present a summary to the user:
 
 1. Show a summary:
    - Number of slices with their titles.
@@ -209,10 +210,13 @@ Present the complete tasks file to the user:
    - The recommended implementation order.
    - Estimated complexity per slice (small / medium / large).
 2. Highlight any risks, open questions, or tradeoffs in the slicing.
-3. **STOP and wait for user approval before writing the file.**
+3. **Do NOT dump the full file contents into the terminal.** The file is on
+   disk — the user can review it in their editor.
+4. **STOP and ask**: "Review the tasks at `<path>` and let me know if you'd
+   like changes, or approve to finalize."
 
-Once approved, write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md`
-where `<NN>` is the zero-padded user story number.
+If the user requests changes, incorporate them, update the file on disk, and
+ask again.
 
 ---
 

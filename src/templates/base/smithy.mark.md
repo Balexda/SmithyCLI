@@ -295,9 +295,10 @@ Existing contracts remain unchanged.
 
 ---
 
-## Phase 6: Review
+## Phase 6: Write & Review
 
-Present the complete spec package to the user:
+Create the spec folder and write all three files to disk first, then present a
+summary to the user:
 
 1. Show a summary of what was produced:
    - Spec folder path and branch name.
@@ -305,9 +306,13 @@ Present the complete spec package to the user:
    - Key entities from the data model (if any).
    - Contracts/interfaces identified (if any).
 2. Highlight any remaining risks or open questions.
-3. **STOP and wait for user approval before writing files.**
+3. **Do NOT dump the full file contents into the terminal.** The files are on
+   disk — the user can review them in their editor.
+4. **STOP and ask**: "Review the files at `<path>` and let me know if you'd like
+   changes, or approve to finalize."
 
-Once approved, create the spec folder and write all three files.
+If the user requests changes, incorporate them, update the files on disk, and
+ask again.
 
 ---
 
