@@ -163,6 +163,13 @@ description and success criteria as input:
 - **Dependency Relationships** — Do any features depend on others within this milestone?
 - **Scope Within the Milestone** — Is anything in the milestone too large for a single feature, or too small to be its own feature?
 - **Integration Points** — Does the milestone touch external systems, APIs, or other milestones?
+- **Cross-Milestone Boundaries** — Does this milestone depend on or overlap with
+  other milestones in the RFC? Boundaries between milestones are resolved at the
+  RFC level — note them but do not ask about them.
+
+**Note**: Cross-Milestone Boundaries should almost always be clear — the RFC
+defines milestone scope. Only flag as ambiguous if the RFC itself is unclear
+about which milestone owns a piece of functionality.
 
 From this scan, formulate up to **5 clarifying questions**, ordered by impact.
 
@@ -212,6 +219,16 @@ this format:
 - Excludes: <what is explicitly out of scope>
 
 <!-- Repeat for each feature -->
+
+## Cross-Milestone Dependencies
+
+Direction must be either `depends on` or `depended upon by`.
+
+| Dependency | Direction | Notes |
+|------------|-----------|-------|
+| Milestone <X>: <title> | depends on | <what this milestone needs from or provides to the other> |
+
+_If no cross-milestone dependencies exist, state "None — this milestone is self-contained."_
 ```
 
 ## Phase 4: Write & Review
@@ -240,6 +257,15 @@ again. Once approved, suggest the next step:
 - **DO** ensure each feature is a discrete unit of user-facing functionality.
 - **DO** surface overlapping concerns and ambiguous boundaries during clarification.
 - **DO** keep feature descriptions concise — a feature map is a breakdown, not a design doc.
+- **DO NOT** expand scope to include work belonging to other milestones in the
+  same RFC. Your scope is the single assigned milestone — nothing more.
+- **DO NOT** ask whether to include functionality that belongs to another
+  milestone. If this milestone references capabilities from another milestone,
+  assume that work will be mapped separately.
+- **DO** assume other milestones in the same RFC may be getting rendered in
+  parallel by other agents. Each agent owns exactly one milestone.
+- **DO** note cross-milestone dependencies in the feature map (as
+  "Cross-Milestone Dependencies") without pulling that work into your features.
 
 <!-- audit-checklist-start -->
 ## Audit Checklist (.features.md)

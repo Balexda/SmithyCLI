@@ -107,6 +107,10 @@ Phase 0).
    - Which modules, files, and systems are affected by this user story.
    - Existing patterns, conventions, and test infrastructure relevant to the
      changes.
+   - Base your analysis on the codebase **as it exists now**. If this story
+     depends on functionality that another story would introduce, note the
+     dependency but do not plan to build it — assume it will be delivered
+     separately.
 2. Map each acceptance scenario to the code areas it will touch.
 3. Identify natural boundaries for PR-sized slices:
    - Look for layers (data, logic, interface) that can be delivered
@@ -127,8 +131,13 @@ Perform a structured ambiguity scan across these categories:
 | **Testing Strategy** | Is it clear how each slice should be tested? Are there integration test concerns? |
 | **Scope Edges** | Are there changes that could be in or out of scope? Adjacent refactors? |
 | **Technical Risk** | Are there unknowns, library limitations, or performance concerns? |
+| **Inter-Story Boundaries** | Does this story depend on or overlap with other stories in the spec? Boundaries between stories are resolved at the spec level — note them but do not ask about them. |
 
 For each category, assess: **Clear**, **Partial**, or **Missing**.
+
+**Note**: Inter-Story Boundaries should almost always be **Clear** — the spec,
+data model, and contracts define story boundaries. Only flag as Partial/Missing
+if the spec itself is ambiguous about which story owns a piece of functionality.
 
 Then ask **up to 5 clarifying questions**, presented **one at a time**:
 
@@ -186,6 +195,16 @@ Recommended implementation sequence:
 1. **Slice N** — <why this comes first>
 2. **Slice M** — <why this follows>
 3. ...
+
+### Cross-Story Dependencies
+
+Direction must be either `depends on` or `depended upon by`.
+
+| Dependency | Direction | Notes |
+|------------|-----------|-------|
+| User Story <X>: <title> | depends on | <what this story needs from or provides to the other story> |
+
+_If no cross-story dependencies exist, state "None — this story is self-contained."_
 ```
 
 Guidelines for slicing:
@@ -237,6 +256,17 @@ ask again.
   slicing — the data model and contracts inform implementation boundaries.
 - **DO** explore the codebase to ground slices in reality — don't slice in
   the abstract.
+- **DO NOT** expand scope to include work belonging to other user stories in the
+  same spec. Your scope is the single assigned story — nothing more.
+- **DO NOT** ask whether to build functionality that belongs to another user
+  story. If your story references capabilities from another story, assume that
+  work will be done separately.
+- **DO** assume other stories in the same spec may be getting cut or forged in
+  parallel by other agents. Each agent owns exactly one story.
+- **DO** treat the codebase as it exists TODAY when analyzing. Do not account
+  for in-progress work from other stories.
+- **DO** note cross-story dependencies in the Dependency Order section (as
+  "Cross-Story Dependencies") without pulling that work into your slices.
 
 <!-- audit-checklist-start -->
 ## Audit Checklist (.tasks.md)
