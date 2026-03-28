@@ -64,8 +64,10 @@ Target the most impactful Weak/Gap categories first. For each question:
 
 ### 0c. Apply Refinements
 
-After all questions are answered, update the existing tasks file to incorporate
-the refinements. Present the changes for user approval before writing.
+After all questions are answered, update the existing tasks file on disk to
+incorporate the refinements. Present a summary of what changed — do not dump
+the full file contents into the terminal. **STOP and ask** the user to review
+the updated file at its path and let you know if further changes are needed.
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through

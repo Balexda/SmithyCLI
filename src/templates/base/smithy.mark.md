@@ -357,8 +357,10 @@ Questions should target the most impactful Weak/Gap categories first. For each:
 ### 0c. Apply Refinements
 
 After all questions are answered, update the existing spec, data-model, and/or
-contracts files to incorporate the refinements. Present the changes for user
-approval before writing.
+contracts files on disk to incorporate the refinements. Present a summary of
+what changed — do not dump the full file contents into the terminal. **STOP
+and ask** the user to review the updated files at their paths and let you know
+if further changes are needed.
 
 **Priority re-ordering**: If any user story priorities changed during refinement,
 renumber and reorder the user stories so all P1 stories come first, then P2,

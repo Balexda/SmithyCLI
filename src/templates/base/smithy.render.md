@@ -234,7 +234,8 @@ again. Once approved, suggest the next step:
 
 - **DO NOT** write code or implementation details. Feature maps are "WHAT not HOW".
 - **DO NOT** skip clarification. Always ask at least one question, even for well-defined milestones.
-- **DO NOT** write the feature map file until the user explicitly approves the draft.
+- **DO** write the feature map file to disk before asking for review — do not
+  dump the full contents into the terminal.
 - **DO NOT** treat render as an entry point — it requires an existing RFC from `smithy.ignite`. If the user provides a description instead of a file path, redirect them to ignite.
 - **DO** ensure each feature is a discrete unit of user-facing functionality.
 - **DO** surface overlapping concerns and ambiguous boundaries during clarification.
