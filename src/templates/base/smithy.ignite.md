@@ -183,21 +183,20 @@ influence downstream design decisions. Keep this at "WHAT not HOW" level.>
 - <Measurable outcome 2>
 ```
 
-Present the **full draft** to the user for review.
-
-**STOP and wait** for user approval before writing the file. If the user wants
-changes, incorporate them and present the updated draft.
-
----
-
-## Phase 4: Output
-
-Once the user approves the draft:
+## Phase 4: Write & Review
 
 1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
 2. Write the RFC to `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
-3. Confirm the file path to the user.
-4. Suggest the next step: "Ready for `smithy.render` to break a milestone into features."
+3. Present a **summary** of the draft — title, problem statement, milestone
+   count and titles, key decisions.
+4. **Do NOT dump the full RFC contents into the terminal.** The file is on
+   disk — the user can review it in their editor.
+5. **STOP and ask**: "Review the RFC at `<path>` and let me know if you'd like
+   changes, or approve to move on."
+
+If the user wants changes, incorporate them, update the file on disk, and ask
+again. Once approved, suggest the next step: "Ready for `smithy.render` to
+break a milestone into features."
 
 ---
 
@@ -205,7 +204,8 @@ Once the user approves the draft:
 
 - **DO NOT** write code or implementation details. RFCs are "WHAT not HOW".
 - **DO NOT** skip clarification. Always ask at least one question, even for well-specified ideas.
-- **DO NOT** write the RFC file until the user explicitly approves the draft.
+- **DO** write the RFC file to disk before asking for review — do not dump
+  the full contents into the terminal.
 - **DO** maintain a "WHAT not HOW" tone throughout.
 - **DO** ensure milestones are clearly delineated with distinct scope and success criteria.
 - **DO** challenge assumptions and surface risks during clarification.

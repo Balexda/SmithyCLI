@@ -120,12 +120,15 @@ created.
 After all refinement questions are answered:
 
 1. Incorporate the user's answers into an **updated feature map**.
-2. Present the **full updated draft** alongside a summary of what changed
-   (features added, removed, merged, re-scoped, or reworded).
-3. **STOP and wait** for user approval before writing the file.
+2. Overwrite the existing `.features.md` with the updated version.
+3. Present a **summary** of what changed (features added, removed, merged,
+   re-scoped, or reworded). **Do NOT dump the full file contents into the
+   terminal** — the file is on disk for the user to review.
+4. **STOP and ask**: "Review the updated map at `<path>` and let me know if
+   you'd like changes, or approve to move on."
 
-Once approved, overwrite the existing `.features.md` with the updated version.
-Confirm the file path to the user and suggest next steps.
+If the user requests changes, incorporate them, update the file on disk, and
+ask again. Once approved, confirm the file path and suggest next steps.
 
 ---
 
@@ -211,22 +214,19 @@ this format:
 <!-- Repeat for each feature -->
 ```
 
-Present the **full draft** to the user for review.
-
-**STOP and wait** for user approval before writing the file. If the user wants
-changes, incorporate them and present the updated draft.
-
----
-
-## Phase 4: Output
-
-Once the user approves the draft:
+## Phase 4: Write & Review
 
 1. Write the feature map to the RFC folder as `<NN>-<milestone-slug>.features.md`,
    co-located with the source RFC.
-2. Confirm the file path to the user.
-3. Suggest the next step:
-   > "Ready for `smithy.mark` to specify each feature."
+2. Present a **summary** of the draft — feature count, feature titles, and key
+   scope boundaries. **Do NOT dump the full file contents into the terminal** —
+   the file is on disk for the user to review.
+3. **STOP and ask**: "Review the feature map at `<path>` and let me know if
+   you'd like changes, or approve to move on."
+
+If the user wants changes, incorporate them, update the file on disk, and ask
+again. Once approved, suggest the next step:
+> "Ready for `smithy.mark` to specify each feature."
 
 ---
 
@@ -234,7 +234,8 @@ Once the user approves the draft:
 
 - **DO NOT** write code or implementation details. Feature maps are "WHAT not HOW".
 - **DO NOT** skip clarification. Always ask at least one question, even for well-defined milestones.
-- **DO NOT** write the feature map file until the user explicitly approves the draft.
+- **DO** write the feature map file to disk before asking for review — do not
+  dump the full contents into the terminal.
 - **DO NOT** treat render as an entry point — it requires an existing RFC from `smithy.ignite`. If the user provides a description instead of a file path, redirect them to ignite.
 - **DO** ensure each feature is a discrete unit of user-facing functionality.
 - **DO** surface overlapping concerns and ambiguous boundaries during clarification.

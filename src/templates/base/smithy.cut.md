@@ -64,8 +64,10 @@ Target the most impactful Weak/Gap categories first. For each question:
 
 ### 0c. Apply Refinements
 
-After all questions are answered, update the existing tasks file to incorporate
-the refinements. Present the changes for user approval before writing.
+After all questions are answered, update the existing tasks file on disk to
+incorporate the refinements. Present a summary of what changed — do not dump
+the full file contents into the terminal. **STOP and ask** the user to review
+the updated file at its path and let you know if further changes are needed.
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through
@@ -199,9 +201,10 @@ Guidelines for slicing:
 
 ---
 
-## Phase 5: Review
+## Phase 5: Write & Review
 
-Present the complete tasks file to the user:
+Write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md` (where `<NN>` is
+the zero-padded user story number), then present a summary to the user:
 
 1. Show a summary:
    - Number of slices with their titles.
@@ -209,10 +212,13 @@ Present the complete tasks file to the user:
    - The recommended implementation order.
    - Estimated complexity per slice (small / medium / large).
 2. Highlight any risks, open questions, or tradeoffs in the slicing.
-3. **STOP and wait for user approval before writing the file.**
+3. **Do NOT dump the full file contents into the terminal.** The file is on
+   disk — the user can review it in their editor.
+4. **STOP and ask**: "Review the tasks at `<path>` and let me know if you'd
+   like changes, or approve to finalize."
 
-Once approved, write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md`
-where `<NN>` is the zero-padded user story number.
+If the user requests changes, incorporate them, update the file on disk, and
+ask again.
 
 ---
 
