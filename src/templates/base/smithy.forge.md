@@ -44,8 +44,10 @@ This may be:
 5. **Check cross-story dependencies.** If the tasks file includes a
    "Cross-Story Dependencies" section listing stories this slice depends on,
    check whether those stories' slices have been implemented:
-   - Look for merged PRs or completed task checkboxes (`- [X]`) in the
-     dependent stories' `.tasks.md` files.
+   - Treat the dependent stories' `.tasks.md` files as the primary source of
+     truth: look for completed task checkboxes (`- [x]`) in the relevant slices.
+     Optionally, if your environment provides repository metadata, you may also
+     look for merged PRs corresponding to those slices.
    - If dependent work is **not yet complete**, present the dependencies to the
      user and ask how to proceed: wait, stub/mock the missing functionality
      against the contracts and data model, or proceed assuming it will land
@@ -100,7 +102,7 @@ Execute each task from the slice's checklist **in order**:
 1. Read and understand the task.
 2. Apply the necessary code changes.
 3. Run tests and build validation relevant to the changes. If tests fail, fix the issue before proceeding — do not mark the task complete.
-4. Once tests pass, mark the task complete — change `- [ ]` to `- [X]` for that task and include this edit in the implementation commit. For `.tasks.md` mode, update the checkbox in the tasks file's slice checklist. For `.strike.md` mode, update the checkbox in the strike file's Single Slice checklist.
+4. Once tests pass, mark the task complete — change `- [ ]` to `- [x]` for that task and include this edit in the implementation commit. For `.tasks.md` mode, update the checkbox in the tasks file's slice checklist. For `.strike.md` mode, update the checkbox in the strike file's Single Slice checklist.
 5. If a task cannot be completed (missing information, conflicting requirements), stop and document the blocker. Do not guess.
 
 Stay within the slice's scope. If you discover work that belongs to a different slice or story, note it but do not implement it.

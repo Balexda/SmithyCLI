@@ -219,9 +219,11 @@ this format:
 
 ## Cross-Milestone Dependencies
 
+Direction must be either `depends on` or `depended upon by`.
+
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
-| Milestone <X>: <title> | depends on / depended upon by | <what this milestone needs from or provides to the other> |
+| Milestone <X>: <title> | depends on | <what this milestone needs from or provides to the other> |
 
 _If no cross-milestone dependencies exist, state "None — this milestone is self-contained."_
 ```

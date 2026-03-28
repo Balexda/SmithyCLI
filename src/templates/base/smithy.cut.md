@@ -196,9 +196,11 @@ Recommended implementation sequence:
 
 ### Cross-Story Dependencies
 
+Direction must be either `depends on` or `depended upon by`.
+
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
-| User Story <X>: <title> | depends on / depended upon by | <what this story needs from or provides to the other story> |
+| User Story <X>: <title> | depends on | <what this story needs from or provides to the other story> |
 
 _If no cross-story dependencies exist, state "None — this story is self-contained."_
 ```
