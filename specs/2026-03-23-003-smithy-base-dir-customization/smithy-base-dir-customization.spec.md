@@ -31,7 +31,7 @@ As a developer running `smithy init`, I want to choose a base directory for all 
 **Acceptance Scenarios**:
 
 1. **Given** a new repository, **When** I run `smithy init`, **Then** I am prompted for a base directory (defaulting to the repo root `.`).
-2. **Given** I provide `module-foo` as the base directory, **When** `init` completes, **Then** `.smithy/local.settings.json` contains `baseDir: "module-foo"`.
+2. **Given** I provide `module-foo` as the base directory, **When** `init` completes, **Then** `.smithy/local.settings.json` contains `"baseDir": "module-foo"`.
 
 ---
 
@@ -77,7 +77,7 @@ As a developer using smithy skills (like `/smithy.strike` or `/smithy.mark`), I 
 **Acceptance Scenarios**:
 
 1. **Given** a base directory of `foo`, **When** I run a command that creates an RFC, **Then** it is placed in `foo/docs/rfcs/`.
-2. **Given** a custom RFC override of `docs/planning`, **When** I run a command that creates an RFC, **Then** it is placed in `foo/docs/planning/` (relative to base) or `docs/planning/` (if absolute).
+2. **Given** a custom RFC override of `docs/planning` (a relative path), **When** I run a command that creates an RFC, **Then** it is placed in `foo/docs/planning/`. If instead I provide an absolute path override (e.g., `/docs/planning` on POSIX or `C:\docs\planning` on Windows), **Then** the RFC is placed at that absolute path and the base directory is not prefixed.
 
 ---
 
