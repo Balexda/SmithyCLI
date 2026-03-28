@@ -20,7 +20,7 @@ Purpose: Stores workspace-specific configurations that should not necessarily be
 
 Validation rules:
 - `baseDir` must be a valid relative or absolute path.
-- `paths` entries must be valid relative paths.
+- `paths` entries must be valid paths. Relative `paths` entries are resolved against `baseDir`; absolute `paths` entries are used as-is.
 
 ## Identity & Uniqueness
 
