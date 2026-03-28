@@ -108,6 +108,19 @@ describe('deploy', () => {
     expect(config.permissions.allow).toContain('Bash(git status)');
   });
 
+  it('creates settings.local.json when permissionLevel is "local"', () => {
+    deploy(tmpDir, 'local');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.local.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+
+    // Should NOT create repo-level settings.json
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
   it('does not create settings.json when permissionLevel is "none"', () => {
     deploy(tmpDir, 'none');
 
@@ -328,6 +341,11 @@ describe('resolveSettingsPath', () => {
     expect(result).toBe(path.join('/my/project', '.claude', 'settings.json'));
   });
 
+  it('returns local-level path for "local" level', () => {
+    const result = resolveSettingsPath('/my/project', 'local');
+    expect(result).toBe(path.join('/my/project', '.claude', 'settings.local.json'));
+  });
+
   it('returns user-level path for "user" level', () => {
     const result = resolveSettingsPath('/my/project', 'user');
     expect(result).toBe(path.join(os.homedir(), '.claude', 'settings.json'));
@@ -434,6 +452,20 @@ describe('writePermissions', () => {
 
     const settingsPath = path.join(deepDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
+  });
+
+  it('writes to local-level path for "local" level', () => {
+    writePermissions(tmpDir, 'local');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.local.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+
+    // Should NOT have written to the repo-level path
+    const repoSettingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(repoSettingsPath)).toBe(false);
   });
 
   it('writes to user-level path for "user" level', () => {

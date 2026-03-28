@@ -77,12 +77,16 @@ export function buildClaudeDenyList(): string[] {
 
 /**
  * Resolve the settings file path based on the permission level.
- *   - 'repo'  → <targetDir>/.claude/settings.json  (checked into git)
- *   - 'user'  → ~/.claude/settings.json             (global, not checked in)
+ *   - 'repo'  → <targetDir>/.claude/settings.json        (checked into git)
+ *   - 'local' → <targetDir>/.claude/settings.local.json  (not checked in, per-machine)
+ *   - 'user'  → ~/.claude/settings.json                   (global, not checked in)
  */
 export function resolveSettingsPath(targetDir: string, level: PermissionLevel): string {
   if (level === 'user') {
     return path.join(os.homedir(), '.claude', 'settings.json');
+  }
+  if (level === 'local') {
+    return path.join(targetDir, '.claude', 'settings.local.json');
   }
   return path.join(targetDir, '.claude', 'settings.json');
 }
