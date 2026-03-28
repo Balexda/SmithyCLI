@@ -33,7 +33,7 @@ As a developer running `smithy init`, I want to be offered the option to create 
 **Acceptance Scenarios**:
 
 1. **Given** a repo without `.smithy/`, **When** I run `smithy init` and accept the template prompt, **Then** `.smithy/` is created with `rfc.md`, `features.md`, `spec.md`, and `tasks.md` template files.
-2. **Given** a repo without `.smithy/`, **When** I run `smithy init` and decline the template prompt, **Then** no `.smithy/` directory is created.
+2. **Given** a repo without `.smithy/`, **When** I run `smithy init` and decline the template prompt, **Then** `.smithy/` may still be created (e.g., for `local.settings.json` per the base directory customization spec), but no template files are written.
 3. **Given** a repo with an existing `.smithy/` directory, **When** I run `smithy init`, **Then** init offers to *overwrite* the existing templates (not create). If the user declines, existing templates are preserved.
 4. **Given** a repo with an existing `.smithy/` directory, **When** I accept the overwrite prompt, **Then** the 4 template files are replaced with the current defaults.
 
