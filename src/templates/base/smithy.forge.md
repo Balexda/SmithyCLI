@@ -41,6 +41,17 @@ This may be:
    - **Tasks** — the ordered checklist of implementation steps
    - **Addresses** — the FRs and acceptance scenarios this slice covers
 4. **Read the source spec.** The tasks file header references its source spec (`.spec.md`), data model (`.data-model.md`), and contracts (`.contracts.md`). Read these for context on requirements, entities, and interfaces.
+5. **Check cross-story dependencies.** If the tasks file includes a
+   "Cross-Story Dependencies" section listing stories this slice depends on,
+   check whether those stories' slices have been implemented:
+   - Look for merged PRs or completed task checkboxes (`- [X]`) in the
+     dependent stories' `.tasks.md` files.
+   - If dependent work is **not yet complete**, present the dependencies to the
+     user and ask how to proceed: wait, stub/mock the missing functionality
+     against the contracts and data model, or proceed assuming it will land
+     soon.
+   - If dependent work **is complete** (or there are no cross-story
+     dependencies), proceed normally.
 
 ### `.strike.md` mode (lightweight strike)
 
@@ -94,6 +105,12 @@ Execute each task from the slice's checklist **in order**:
 
 Stay within the slice's scope. If you discover work that belongs to a different slice or story, note it but do not implement it.
 
+If you encounter missing functionality that the Cross-Story Dependencies section
+identifies as coming from another story, do NOT implement it yourself. Instead,
+code against the interfaces defined in the `.contracts.md` and `.data-model.md`
+files. If the contracts are insufficient to proceed, stop and ask the user for
+guidance.
+
 ---
 
 ## Validation
@@ -141,6 +158,9 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
 - **Slice already forged (PR exists)**: Warn the user and confirm before proceeding.
 - **Test failure mid-slice**: Stop, report the failure, and do not proceed to the next task.
 - **`.strike.md` with all tasks already complete**: Warn and confirm before proceeding.
+- **Cross-story dependency not met**: If a required story/slice hasn't been
+  implemented, present the dependency to the user with options: wait, stub
+  against contracts and data model, or proceed optimistically.
 
 ---
 
