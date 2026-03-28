@@ -21,8 +21,8 @@
 - [ ] Create `src/templates/smithy-issue-templates/features.md` with the default feature issue template content from the spec
 - [ ] Create `src/templates/smithy-issue-templates/spec.md` with the default user story issue template content from the spec
 - [ ] Create `src/templates/smithy-issue-templates/tasks.md` with the default slice issue template content from the spec
-- [ ] Add a `deploySmithyTemplates(targetDir: string)` function (in `src/utils.ts` or a new module) that creates `.smithy/` and writes all 4 files — overwrites existing files if present, preserves extra files in the directory
-- [ ] Add a `addSmithyToGitignore(targetDir: string)` function leveraging the existing `addToGitignore` pattern
+- [ ] Add a `deploySmithyTemplates(targetDir: string, options?: { overwrite?: boolean })` function (in `src/utils.ts` or a new module) that creates `.smithy/` and writes all 4 files — requires `overwrite: true` to replace existing files, preserves extra files in the directory
+- [ ] Add an `addSmithyToGitignore(targetDir: string)` function leveraging the existing `addToGitignore` pattern
 - [ ] Add unit tests: verify template files are written with correct content, overwrite replaces only the 4 known files, gitignore append works (including dedup and create-from-scratch cases)
 
 **PR Outcome**: The provisioning utility is tested and ready to be called from the init flow. No user-facing behavior change yet.
@@ -43,9 +43,9 @@
 - [ ] Add `promptCreateSmithyTemplates()` prompt in `src/interactive.ts`: "Create smithy issue templates in .smithy/? (Y/n)" — default yes
 - [ ] Add `promptOverwriteSmithyTemplates()` prompt in `src/interactive.ts`: "Overwrite existing .smithy/ templates with defaults? (y/N)" — default no
 - [ ] Add `promptCommitSmithyTemplates()` prompt in `src/interactive.ts`: "Check .smithy/ into the repo? (Y/n)" — default yes; if declined, call `addSmithyToGitignore()`
-- [ ] Wire into `src/commands/init.ts`: after target dir is resolved but before agent deployment — check if `.smithy/` exists to decide create vs overwrite prompt; `--yes` defaults to creating templates; skip commit/gitignore prompt on overwrite (per contracts spec)
+- [ ] Wire into `src/commands/init.ts`: after target dir is resolved and after agent selection and permission setup are complete (per contracts spec) — check if `.smithy/` exists to decide create vs overwrite prompt; `--yes` defaults to creating templates; skip commit/gitignore prompt on overwrite (per contracts spec)
 - [ ] Verify `src/commands/uninit.ts` does NOT touch `.smithy/` — add an explicit test that `.smithy/` survives uninit
-- [ ] Add integration tests in `src/cli.test.ts`: (a) `--yes` creates `.smithy/` with 4 files, (b) `--no-smithy-templates` skips creation, (c) double-init offers overwrite (tested via `--yes` which overwrites), (d) uninit preserves `.smithy/`
+- [ ] Add integration tests in `src/cli.test.ts`: (a) `--yes` creates `.smithy/` with 4 files, (b) `--no-smithy-templates` skips creation, (c) double-init with `--yes` preserves existing `.smithy/` (since `--yes` accepts default "no" for overwrite), (d) uninit preserves `.smithy/`
 
 **PR Outcome**: Running `smithy init` prompts for `.smithy/` templates. All 4 acceptance scenarios pass. `smithy uninit` leaves `.smithy/` untouched.
 
