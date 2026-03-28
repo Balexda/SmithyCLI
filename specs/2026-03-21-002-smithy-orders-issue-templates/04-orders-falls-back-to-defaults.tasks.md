@@ -21,9 +21,10 @@
 - [ ] Create `src/templates/smithy-templates/features.md` with the default features template from the spec (lines 147-160).
 - [ ] Create `src/templates/smithy-templates/spec.md` with the default spec/user-story template from the spec (lines 164-186).
 - [ ] Create `src/templates/smithy-templates/tasks.md` with the default tasks/slice template from the spec (lines 189-209).
-- [ ] Add tests in `src/templates.test.ts` verifying: all 4 files exist, each contains the expected `{{variable}}` placeholders for its type (per the data model's variable table), and each is valid markdown.
+- [ ] Wire the new `src/templates/smithy-templates/` directory into the build/deploy pipeline: add a helper in `src/templates.ts` (e.g., `getSmithyTemplateFiles()` / `readSmithyTemplate(type)`) so that init and the orders prompt can reference these files, and update `package.json` `files` if needed to ensure the directory is included in the published package.
+- [ ] Add tests in `src/templates.test.ts` verifying: all 4 files exist, each contains the expected `{{variable}}` placeholders for its type (per the data model's variable table), has no unclosed code fences, and only uses placeholders that match the pattern `{{[a-z0-9_]+}}`.
 
-**PR Outcome**: 4 default issue template files exist in `src/templates/smithy-templates/` with correct `{{variable}}` placeholders, verified by tests.
+**PR Outcome**: 4 default issue template files exist in `src/templates/smithy-templates/` with correct `{{variable}}` placeholders, wired into the template system, and verified by tests.
 
 ---
 
