@@ -250,6 +250,18 @@ describe('CLI init lifecycle and idempotency', () => {
     expect(content).not.toContain('tools/codex/');
   });
 
+  it('does not add directory-level gitignore entries for gemini or codex', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-y', '-d', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    const content = fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8');
+    expect(content).toContain('.claude/settings.local.json');
+    expect(content).not.toContain('.gemini/');
+    expect(content).not.toContain('.codex/');
+    expect(content).not.toContain('tools/codex/');
+  });
+
   it('creates settings.json with --agent claude --permissions repo', () => {
     execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--permissions', 'repo', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
