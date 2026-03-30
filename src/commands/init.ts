@@ -18,6 +18,7 @@ import {
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
+import { agentDeployLocations } from '../interactive.js';
 import type { AgentChoice, DeployLocation } from '../interactive.js';
 
 export interface InitOptions {
@@ -37,6 +38,17 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   // 2. Deploy location (limited by agent capabilities)
   const deployLocation = opts.location ?? (opts.yes ? 'repo' : await promptDeployLocation(agent));
+
+  // Validate that the deploy location is supported by the selected agent
+  const supportedLocations = agentDeployLocations[agent];
+  if (!supportedLocations.includes(deployLocation)) {
+    console.error(picocolors.red(
+      `Error: Deploy location '${deployLocation}' is not supported by ${agent}. ` +
+      `Supported locations: ${supportedLocations.join(', ')}`,
+    ));
+    process.exitCode = 1;
+    return;
+  }
 
   // 3. Permissions — multi-select of deploy locations (interactive), or boolean (CLI)
   let permissionLocations: DeployLocation[];
@@ -77,8 +89,8 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     } else if (a === 'claude') {
       // Deploy prompts/commands without permissions, then write permissions per selected location
       claude.deploy(targetDir, 'none');
-      for (const level of permissionLocations) {
-        claude.writePermissions(targetDir, level);
+      for (const location of permissionLocations) {
+        claude.writePermissions(targetDir, location);
       }
     } else if (a === 'codex') {
       codex.deploy(targetDir, permissionLocations.includes('repo'));

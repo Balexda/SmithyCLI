@@ -1,12 +1,12 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { promptConfirmUninit, promptTargetDir } from '../interactive.js';
-import { removeIfExists, issueTemplatesSrcDir } from '../utils.js';
+import { removeIfExists, issueTemplatesSrcDir, resolveIssueTemplatePath } from '../utils.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
+import type { DeployLocation } from '../interactive.js';
 
 export interface UninitOptions {
   targetDir?: string;
@@ -38,26 +38,18 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   removedCount += claude.remove(targetDir);
   removedCount += codex.remove(targetDir);
 
-  // Remove issue templates from all possible deploy locations
+  // Remove issue templates from repo-scoped deploy locations only.
+  // User-global (~/.smithy/) is intentionally skipped — it may be shared
+  // across repos and should not be removed by a per-repo uninit.
   if (fs.existsSync(issueTemplatesSrcDir)) {
     const issueTemplates = fs.readdirSync(issueTemplatesSrcDir).filter(f => f.endsWith('.md') || f.endsWith('.yml'));
 
-    // Repo: .smithy/
-    const repoSmithyDir = path.join(targetDir, '.smithy');
-    for (const file of issueTemplates) {
-      if (removeIfExists(path.join(repoSmithyDir, file))) removedCount++;
-    }
-
-    // Local: .smithy/local/
-    const localSmithyDir = path.join(targetDir, '.smithy', 'local');
-    for (const file of issueTemplates) {
-      if (removeIfExists(path.join(localSmithyDir, file))) removedCount++;
-    }
-
-    // User: ~/.smithy/
-    const userSmithyDir = path.join(os.homedir(), '.smithy');
-    for (const file of issueTemplates) {
-      if (removeIfExists(path.join(userSmithyDir, file))) removedCount++;
+    const repoScopedLocations: DeployLocation[] = ['repo', 'local'];
+    for (const loc of repoScopedLocations) {
+      const dir = resolveIssueTemplatePath(targetDir, loc);
+      for (const file of issueTemplates) {
+        if (removeIfExists(path.join(dir, file))) removedCount++;
+      }
     }
 
     // Legacy: .github/ISSUE_TEMPLATE/ (clean up old deployments)

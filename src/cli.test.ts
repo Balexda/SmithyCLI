@@ -94,6 +94,16 @@ describe('CLI init --yes (non-interactive)', () => {
     }).toThrow();
   });
 
+  it('rejects --location incompatible with agent', () => {
+    const result = spawnSync('node', ['dist/cli.js', 'init', '-a', 'gemini', '--location', 'local', '-y', '-d', tmpDir], {
+      encoding: 'utf-8',
+    });
+    const output = result.stdout + result.stderr;
+    expect(output).toContain('not supported by gemini');
+    // Should not deploy anything
+    expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
+  });
+
   it('accepts --location flag', () => {
     execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--location', 'repo', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
