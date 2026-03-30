@@ -40,4 +40,5 @@
 - [ ] Reviewed applicable cases in [`tests/MANUAL_TEST_CASES.md`](tests/MANUAL_TEST_CASES.md) (if init/uninit flows changed)
 
 ## Issue
-- Fixes #
+<!-- Link the GitHub issue(s) this PR addresses using a closing keyword (Closes, Fixes, Resolves) so they auto-close on merge. One issue per line. -->
+- Closes #
