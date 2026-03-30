@@ -2,6 +2,7 @@ import { select, input, confirm } from '@inquirer/prompts';
 
 export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
 export type PermissionLevel = 'repo' | 'local' | 'user' | 'none';
+export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;
 
 export async function promptAgent(): Promise<AgentChoice> {
   return await select<AgentChoice>({
