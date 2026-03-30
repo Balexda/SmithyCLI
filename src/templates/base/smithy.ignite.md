@@ -105,20 +105,18 @@ Parse the input to set up the RFC:
 
 ## Phase 2: Clarify
 
-Perform a structured ambiguity scan across these categories:
+Use the **smithy-clarify** sub-agent. Pass it:
 
-- **Personas** — Who are the users/stakeholders? Who benefits?
-- **Value Proposition** — What specific problem does this solve? Why now?
-- **Constraints** — What must we avoid? What are hard limits?
-- **Risks** — What could go wrong? What are the unknowns?
-- **Scope** — What is explicitly out of scope?
-
-From this scan, use the **smithy-clarify** sub-agent to triage findings into
-assumptions and questions. Pass it your scan findings and their assessments,
-and the context that this is an RFC.
-
-If the idea is already well-specified (e.g., from a detailed PRD), the sub-agent
-may produce more assumptions and fewer questions. Never skip clarification entirely.
+- **Criteria**:
+  - **Personas** — Who are the users/stakeholders? Who benefits?
+  - **Value Proposition** — What specific problem does this solve? Why now?
+  - **Constraints** — What must we avoid? What are hard limits?
+  - **Risks** — What could go wrong? What are the unknowns?
+  - **Scope** — What is explicitly out of scope?
+- **Context**: this is an RFC; include the idea description or PRD path from Phase 1.
+- **Special instructions**: if the idea is already well-specified (e.g., from a
+  detailed PRD), expect more assumptions and fewer questions. Never skip
+  clarification entirely.
 
 ---
 

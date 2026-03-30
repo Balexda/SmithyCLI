@@ -46,24 +46,24 @@ This may be:
 
 ## Phase 2: Clarify
 
-Perform a structured ambiguity scan across these categories:
+Use the **smithy-clarify** sub-agent. Pass it:
 
-| Category | What to check |
-|----------|---------------|
-| **Functional Scope** | What's included vs. excluded? Are boundaries clear? |
-| **Domain & Data Model** | Are entities, ownership, and relationships defined? |
-| **Interaction & UX** | Are user-facing surfaces and flows clear? |
-| **Non-Functional Quality** | Performance, security, reliability expectations? |
-| **Integration** | External systems, APIs, dependencies? |
-| **Edge Cases** | Failure modes, concurrency, boundary conditions? |
-| **Constraints** | Technology, timeline, compatibility limits? |
-| **Terminology** | Are domain terms used consistently and unambiguously? |
+- **Criteria** (assess each as Clear / Partial / Missing):
 
-For each category, assess: **Clear**, **Partial**, or **Missing**.
+  | Category | What to check |
+  |----------|---------------|
+  | **Functional Scope** | What's included vs. excluded? Are boundaries clear? |
+  | **Domain & Data Model** | Are entities, ownership, and relationships defined? |
+  | **Interaction & UX** | Are user-facing surfaces and flows clear? |
+  | **Non-Functional Quality** | Performance, security, reliability expectations? |
+  | **Integration** | External systems, APIs, dependencies? |
+  | **Edge Cases** | Failure modes, concurrency, boundary conditions? |
+  | **Constraints** | Technology, timeline, compatibility limits? |
+  | **Terminology** | Are domain terms used consistently and unambiguously? |
 
-Then use the **smithy-clarify** sub-agent to triage findings into assumptions
-and questions. Pass it your scan findings and their assessments, and the context
-that this is a feature specification. If all categories are Clear, skip to Phase 3.
+- **Context**: this is a feature specification; include the feature description
+  or RFC path and relevant codebase paths from Phase 1.
+- **Special instructions**: if all categories are Clear, skip to Phase 3.
 
 Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
 

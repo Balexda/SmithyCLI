@@ -100,14 +100,16 @@ refinement questions.
 
 ### Phase 0b: Refinement Questions
 
-Based on the audit findings, use the **smithy-clarify** sub-agent to triage
-findings into assumptions and questions. Pass it the audit findings (including
-category assessments and notes) and the context that this is a feature map
-refinement.
+Use the **smithy-clarify** sub-agent. Pass it:
 
-If all categories are **Sound**, instruct the sub-agent to ask at least one
-question about whether any feature should be split, merged, or re-scoped based
-on lessons learned since the map was created.
+- **Criteria** (assess each as Sound / Weak / Gap): Feature Coverage, Gaps,
+  Overlap, Dependency Clarity, RFC Alignment (same categories from the Phase 0a
+  audit scan table above).
+- **Context**: this is a feature map refinement; include the `.features.md` path,
+  the resolved RFC milestone, and the audit summary from Phase 0a.
+- **Special instructions**: if all categories are **Sound**, ask at least one
+  question about whether any feature should be split, merged, or re-scoped based
+  on lessons learned since the map was created.
 
 ### Phase 0c: Apply Refinements
 
@@ -149,28 +151,24 @@ Parse the input and prepare the target:
 
 ## Phase 2: Clarify
 
-Perform a structured ambiguity scan across these categories, using the milestone's
-description and success criteria as input:
+Use the **smithy-clarify** sub-agent. Pass it:
 
-- **Feature Boundaries** — Where does one feature end and another begin?
-- **Overlap Between Features** — Are there concerns that could belong to multiple features?
-- **Dependency Relationships** — Do any features depend on others within this milestone?
-- **Scope Within the Milestone** — Is anything in the milestone too large for a single feature, or too small to be its own feature?
-- **Integration Points** — Does the milestone touch external systems, APIs, or other milestones?
-- **Cross-Milestone Boundaries** — Does this milestone depend on or overlap with
-  other milestones in the RFC? Boundaries between milestones are resolved at the
-  RFC level — note them but do not ask about them.
-
-**Note**: Cross-Milestone Boundaries should almost always be clear — the RFC
-defines milestone scope. Only flag as ambiguous if the RFC itself is unclear
-about which milestone owns a piece of functionality.
-
-From this scan, use the **smithy-clarify** sub-agent to triage findings into
-assumptions and questions. Pass it your scan findings and their assessments,
-and the context that this is a feature map.
-
-If the milestone is well-defined with clear boundaries, the sub-agent may produce
-more assumptions and fewer questions. Never skip clarification entirely.
+- **Criteria** (using the milestone's description and success criteria as input):
+  - **Feature Boundaries** — Where does one feature end and another begin?
+  - **Overlap Between Features** — Are there concerns that could belong to multiple features?
+  - **Dependency Relationships** — Do any features depend on others within this milestone?
+  - **Scope Within the Milestone** — Is anything in the milestone too large for a single feature, or too small to be its own feature?
+  - **Integration Points** — Does the milestone touch external systems, APIs, or other milestones?
+  - **Cross-Milestone Boundaries** — Does this milestone depend on or overlap with
+    other milestones in the RFC? Boundaries between milestones are resolved at the
+    RFC level — note them but do not ask about them.
+- **Context**: this is a feature map; include the RFC path and the target milestone
+  number and title from Phase 1.
+- **Special instructions**: Cross-Milestone Boundaries should almost always be
+  clear — the RFC defines milestone scope. Only flag as ambiguous if the RFC
+  itself is unclear about which milestone owns a piece of functionality. If the
+  milestone is well-defined, expect more assumptions and fewer questions. Never
+  skip clarification entirely.
 
 ---
 
