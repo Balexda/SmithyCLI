@@ -36,9 +36,46 @@ Then present to the user:
 1. **Summary** — What you understand the feature to be.
 2. **Approach** — What files you'd change, what you'd add, and why.
 3. **Risks** — Anything that could go wrong or get complicated.
-4. **Clarifying Questions** — 2–4 questions about scope, edge cases, or preferences.
 
-**STOP here and wait for the user to respond.** Do not proceed until the user answers.
+### Clarifying Questions & Assumptions
+
+Internally, prepare **up to 8 clarifying questions** about scope, edge cases, or
+preferences. For each question, assign:
+
+- **Impact**: Critical / High / Medium / Low — how much does getting this wrong
+  affect the outcome?
+- **Confidence**: High / Medium / Low — how confident are you in the recommended
+  answer based on codebase context and conventions?
+
+Provide a **recommended answer** for every question.
+
+#### Triage into Assumptions vs Questions
+
+1. **Assumptions** — Items that are **not Critical impact** and have **High confidence**
+   in the recommendation. These are presented as assumptions the agent will proceed
+   with unless the user objects.
+2. **Questions** — Everything else. Always include all **Critical impact** items
+   regardless of confidence. Then fill remaining slots (up to a **max of 5 questions**)
+   with the highest-impact items from what remains.
+
+#### Present to the user
+
+First, print the assumptions block:
+
+> **Assumptions** (we'll proceed with these unless you say otherwise):
+> - _Assumption 1_ `[Impact: High · Confidence: High]`
+> - _Assumption 2_ `[Impact: Medium · Confidence: High]`
+> - …
+
+Then present the questions **one at a time**, each showing:
+
+- The question text
+- The **recommended answer**
+- The qualifiers: `[Impact: <level> · Confidence: <level>]`
+
+**STOP after the assumptions block and the first question. Wait for the user to
+respond.** The user may accept or adjust assumptions, and answer the question.
+Then present the next question. Continue until all questions are answered.
 
 ---
 

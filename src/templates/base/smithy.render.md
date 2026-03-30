@@ -100,16 +100,38 @@ refinement questions.
 
 ### Phase 0b: Refinement Questions
 
-Based on the audit findings, formulate up to **5 refinement questions** targeting
-the most impactful **Weak** or **Gap** categories. Order questions by impact — address
-Gaps before Weak assessments.
+Based on the audit findings, internally prepare up to **8 refinement questions** targeting
+the most impactful **Weak** or **Gap** categories. For each question, assign:
+
+- **Impact**: Critical / High / Medium / Low — how much does this affect the feature map?
+- **Confidence**: High / Medium / Low — how confident are you in the recommended resolution?
 
 For each question:
 1. State the question clearly and reference the audit category it addresses.
 2. Explain what the current map says (or doesn't say) and why it matters.
 3. Provide a **recommended resolution** based on what you can infer from the RFC
    and the existing map.
-4. **STOP and wait** for the user's response before asking the next question.
+
+#### Triage into Assumptions vs Questions
+
+1. **Assumptions** — Items that are **not Critical impact** and have **High confidence**.
+   Present these as assumptions the agent will proceed with unless the user objects.
+2. **Questions** — Always include all **Critical impact** items. Fill remaining slots
+   (up to a **max of 5 questions**) with the highest-impact items from what remains.
+
+#### Present to the user
+
+First, print the assumptions block:
+
+> **Assumptions** (we'll proceed with these unless you say otherwise):
+> - _Assumption 1_ `[Impact: High · Confidence: High]`
+> - _Assumption 2_ `[Impact: Medium · Confidence: High]`
+> - …
+
+Then present each question **one at a time**, showing the qualifiers:
+`[Impact: <level> · Confidence: <level>]`
+
+**STOP after the assumptions block and the first question. Wait for the user to respond.**
 
 If all categories are **Sound**, ask at least one question about whether any feature
 should be split, merged, or re-scoped based on lessons learned since the map was
@@ -171,16 +193,39 @@ description and success criteria as input:
 defines milestone scope. Only flag as ambiguous if the RFC itself is unclear
 about which milestone owns a piece of functionality.
 
-From this scan, formulate up to **5 clarifying questions**, ordered by impact.
+From this scan, internally prepare **up to 8 clarifying questions**, ordered by impact.
+For each question, assign:
 
-For each question:
-1. State the question clearly.
-2. Explain why it matters for the feature breakdown.
-3. Provide a **recommended answer** based on what you can infer from the RFC.
-4. **STOP and wait** for the user's response before asking the next question.
+- **Impact**: Critical / High / Medium / Low — how much does this affect the feature breakdown?
+- **Confidence**: High / Medium / Low — how confident are you in the recommended answer?
 
-If the milestone is well-defined with clear boundaries, you may ask fewer questions.
-Never skip clarification entirely — ask at least one question.
+Provide a **recommended answer** with reasoning for every question.
+
+#### Triage into Assumptions vs Questions
+
+1. **Assumptions** — Items that are **not Critical impact** and have **High confidence**.
+   Present these as assumptions the agent will proceed with unless the user objects.
+2. **Questions** — Always include all **Critical impact** items. Fill remaining slots
+   (up to a **max of 5 questions**) with the highest-impact items from what remains.
+
+#### Present to the user
+
+First, print the assumptions block:
+
+> **Assumptions** (we'll proceed with these unless you say otherwise):
+> - _Assumption 1_ `[Impact: High · Confidence: High]`
+> - _Assumption 2_ `[Impact: Medium · Confidence: High]`
+> - …
+
+Then present each question **one at a time**, showing:
+- The question text
+- The **recommended answer**
+- The qualifiers: `[Impact: <level> · Confidence: <level>]`
+
+**STOP after the assumptions block and the first question. Wait for the user to respond.**
+
+If the milestone is well-defined with clear boundaries, you may have more assumptions
+and fewer questions. Never skip clarification entirely — ask at least one question.
 
 ---
 

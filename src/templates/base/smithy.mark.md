@@ -61,18 +61,42 @@ Perform a structured ambiguity scan across these categories:
 
 For each category, assess: **Clear**, **Partial**, or **Missing**.
 
-Then ask **up to 5 clarifying questions**, presented **one at a time**:
+Then internally prepare **up to 8 clarifying questions**. For each question, assign:
 
-- For each question, provide a **recommended answer** with reasoning.
-- Present alternatives as a short options table when applicable.
-- The user can accept the recommendation (e.g., "yes", "recommended", "sounds good")
-  or provide their own answer.
-- After each answer, acknowledge it and move to the next question.
-- If all categories are Clear, skip to Phase 3.
+- **Impact**: Critical / High / Medium / Low — how much does getting this wrong affect the spec?
+- **Confidence**: High / Medium / Low — how confident are you in the recommended answer?
 
-Record all Q&A for inclusion in the Clarifications section of the spec.
+Provide a **recommended answer** with reasoning for every question.
+Present alternatives as a short options table when applicable.
 
-**STOP after each question and wait for the user to respond.**
+#### Triage into Assumptions vs Questions
+
+1. **Assumptions** — Items that are **not Critical impact** and have **High confidence**.
+   Present these as assumptions the agent will proceed with unless the user objects.
+2. **Questions** — Always include all **Critical impact** items. Fill remaining slots
+   (up to a **max of 5 questions**) with the highest-impact items from what remains.
+
+#### Present to the user
+
+First, print the assumptions block:
+
+> **Assumptions** (we'll proceed with these unless you say otherwise):
+> - _Assumption 1_ `[Impact: High · Confidence: High]`
+> - _Assumption 2_ `[Impact: Medium · Confidence: High]`
+> - …
+
+Then present each question **one at a time**, showing:
+- The question text
+- The **recommended answer**
+- The qualifiers: `[Impact: <level> · Confidence: <level>]`
+
+The user can accept the recommendation (e.g., "yes", "recommended", "sounds good")
+or provide their own answer. After each answer, acknowledge it and move to the next question.
+If all categories are Clear, skip to Phase 3.
+
+Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
+
+**STOP after the assumptions block and the first question. Wait for the user to respond.**
 
 ---
 

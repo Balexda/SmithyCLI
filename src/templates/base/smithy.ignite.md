@@ -113,15 +113,40 @@ Perform a structured ambiguity scan across these categories:
 - **Risks** — What could go wrong? What are the unknowns?
 - **Scope** — What is explicitly out of scope?
 
-From this scan, formulate up to **5 clarifying questions**, ordered by impact.
+From this scan, internally prepare **up to 8 clarifying questions**, ordered by impact.
 
-For each question:
-1. State the question clearly.
-2. Provide a **recommended answer** based on what you can infer.
-3. **STOP and wait** for the user's response before asking the next question.
+For each question, assign:
+- **Impact**: Critical / High / Medium / Low — how much does getting this wrong affect the RFC?
+- **Confidence**: High / Medium / Low — how confident are you in the recommended answer?
 
-If the idea is already well-specified (e.g., from a detailed PRD), you may ask
-fewer questions. Never skip clarification entirely.
+Provide a **recommended answer** for every question.
+
+#### Triage into Assumptions vs Questions
+
+1. **Assumptions** — Items that are **not Critical impact** and have **High confidence**.
+   Present these as assumptions the agent will proceed with unless the user objects.
+2. **Questions** — Always include all **Critical impact** items. Fill remaining slots
+   (up to a **max of 5 questions**) with the highest-impact items from what remains.
+
+#### Present to the user
+
+First, print the assumptions block:
+
+> **Assumptions** (we'll proceed with these unless you say otherwise):
+> - _Assumption 1_ `[Impact: High · Confidence: High]`
+> - _Assumption 2_ `[Impact: Medium · Confidence: High]`
+> - …
+
+Then present each question **one at a time**, showing:
+- The question text
+- The **recommended answer**
+- The qualifiers: `[Impact: <level> · Confidence: <level>]`
+
+**STOP after the assumptions block and the first question. Wait for the user to
+respond.** Then present the next question after each answer.
+
+If the idea is already well-specified (e.g., from a detailed PRD), you may have
+more assumptions and fewer questions. Never skip clarification entirely.
 
 ---
 
