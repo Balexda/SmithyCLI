@@ -40,4 +40,4 @@ If multiple issues are addressed:
 
 ## Closing Keyword Placement
 
-The closing keyword (`Closes #N`) **must** appear in the PR body (not just the title or a commit message) for GitHub to reliably auto-close the issue on merge.
+For consistency and reliability, place the closing keyword (`Closes #N`) in the PR body. GitHub can also auto-close issues when closing keywords appear in commit messages that land on the default branch (depending on the merge strategy), but PR titles alone do not trigger auto-closing.
