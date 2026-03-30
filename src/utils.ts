@@ -30,8 +30,8 @@ export function copyDirSync(src: string, dest: string): void {
 
 export const agentGitignoreEntries: Record<string, string[]> = {
   claude: ['.claude/settings.local.json'],
-  gemini: ['.gemini/'],
-  codex: ['.codex/', 'tools/codex/'],
+  gemini: [],
+  codex: [],
 };
 
 /**
