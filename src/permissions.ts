@@ -152,6 +152,7 @@ export const permissions: Record<string, PermissionEntry> = {
   // Entries with ["", "*"] generate both bare and wildcard permissions,
   // e.g. `gh pr list` AND `gh pr list *`.
   gh: {
+    "--version": [],
     "pr create": ["", "*"],
     "pr status": [],
     "pr view": ["", "*"],
@@ -166,6 +167,7 @@ export const permissions: Record<string, PermissionEntry> = {
     "run list": [],
     "run view": ["", "*"],
     "api": ["repos/*"],
+    "repo view": ["", "*"],
   },
 
   // --- Misc utilities ---
