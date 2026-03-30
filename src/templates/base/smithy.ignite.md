@@ -127,7 +127,12 @@ fewer questions. Never skip clarification entirely.
 
 ## Phase 3: Draft RFC
 
-Using the workshopped answers from Phase 2, draft a structured RFC with this format:
+Using the workshopped answers from Phase 2, draft a structured RFC with this format.
+
+**Important — Decisions vs Open Questions**: Items discussed during clarification
+that have been resolved belong in **Decisions** (document what was decided and why).
+Only genuinely unresolved unknowns that need further investigation or stakeholder
+input belong in **Open Questions**. Do not list resolved items as open questions.
 
 ```markdown
 # RFC: <Title>
@@ -159,10 +164,15 @@ and capabilities, not implementation details.>
 <High-level architectural thoughts, tradeoffs, and constraints that will
 influence downstream design decisions. Keep this at "WHAT not HOW" level.>
 
+## Decisions
+
+- <Decision 1 — what was decided and the rationale>
+- <Decision 2>
+
 ## Open Questions
 
-- <Question 1>
-- <Question 2>
+- <Genuinely unresolved question 1>
+- <Genuinely unresolved question 2>
 
 ## Milestones
 
@@ -221,4 +231,5 @@ break a milestone into features."
 | **Feasibility** | Are there known technical risks, dependencies, or unknowns that could block milestones? Are constraints realistic? |
 | **Persona Clarity** | Are target personas identified? Is it clear who benefits and how? |
 | **Scope Boundaries** | Is it clear what is explicitly out of scope? Are there adjacent concerns that could cause scope creep? |
+| **Decisions vs Open Questions** | Are resolved items listed under Decisions (not Open Questions)? Do Open Questions contain only genuinely unresolved unknowns? |
 <!-- audit-checklist-end -->
