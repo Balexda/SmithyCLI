@@ -1,7 +1,8 @@
 import { select, input, confirm } from '@inquirer/prompts';
 
 export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
-export type PermissionLevel = 'repo' | 'user' | 'none';
+export type PermissionLevel = 'repo' | 'local' | 'user' | 'none';
+export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;
 
 export async function promptAgent(): Promise<AgentChoice> {
   return await select<AgentChoice>({
@@ -20,6 +21,7 @@ export async function promptPermissions(): Promise<PermissionLevel> {
     message: 'Where should smithy permissions be deployed?',
     choices: [
       { name: 'Repo (.claude/settings.json)', value: 'repo', description: 'Checked into git — shared across worktrees and team members' },
+      { name: 'Local (.claude/settings.local.json)', value: 'local', description: 'Per-machine — not checked in, applies only to this repo' },
       { name: 'User (~/.claude/settings.json)', value: 'user', description: 'Global per-user — not checked in, applies to all repos' },
       { name: 'None', value: 'none', description: 'Skip permissions setup' },
     ],

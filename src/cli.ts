@@ -23,7 +23,7 @@ program
   )
   .addOption(
     new Option('--permissions <level>', 'Permission deployment level')
-      .choices(['repo', 'user', 'none'])
+      .choices(['repo', 'local', 'user', 'none'])
   )
   .option('--issue-templates', 'Install GitHub issue templates')
   .option('--no-issue-templates', 'Skip issue templates')

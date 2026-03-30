@@ -5,7 +5,7 @@ import picocolors from 'picocolors';
 import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
 import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
-import type { PermissionLevel } from '../interactive.js';
+import type { PermissionLevel, DeployablePermissionLevel } from '../interactive.js';
 
 export function deploy(targetDir: string, permissionLevel: PermissionLevel): void {
   const promptsDir = path.join(targetDir, '.claude', 'prompts');
@@ -77,12 +77,18 @@ export function buildClaudeDenyList(): string[] {
 
 /**
  * Resolve the settings file path based on the permission level.
- *   - 'repo'  → <targetDir>/.claude/settings.json  (checked into git)
- *   - 'user'  → ~/.claude/settings.json             (global, not checked in)
+ *   - 'repo'  → <targetDir>/.claude/settings.json        (checked into git)
+ *   - 'local' → <targetDir>/.claude/settings.local.json  (not checked in, per-machine)
+ *   - 'user'  → ~/.claude/settings.json                   (global, not checked in)
+ *
+ * Accepts only deployable levels ('repo' | 'local' | 'user'); 'none' is excluded.
  */
-export function resolveSettingsPath(targetDir: string, level: PermissionLevel): string {
+export function resolveSettingsPath(targetDir: string, level: DeployablePermissionLevel): string {
   if (level === 'user') {
     return path.join(os.homedir(), '.claude', 'settings.json');
+  }
+  if (level === 'local') {
+    return path.join(targetDir, '.claude', 'settings.local.json');
   }
   return path.join(targetDir, '.claude', 'settings.json');
 }
@@ -93,7 +99,7 @@ export function resolveSettingsPath(targetDir: string, level: PermissionLevel): 
  *
  * Merges with existing settings.json if present.
  */
-export function writePermissions(targetDir: string, level: PermissionLevel): void {
+export function writePermissions(targetDir: string, level: DeployablePermissionLevel): void {
   const settingsPath = resolveSettingsPath(targetDir, level);
   const settingsDir = path.dirname(settingsPath);
   if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
