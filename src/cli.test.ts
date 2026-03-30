@@ -54,8 +54,8 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
 
-    // Issue templates deployed
-    expect(fs.existsSync(path.join(tmpDir, '.github', 'ISSUE_TEMPLATE'))).toBe(true);
+    // Issue templates deployed to .smithy/ (repo default)
+    expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(true);
   });
 
   it('deploys only claude when --agent claude is specified', () => {
@@ -73,15 +73,15 @@ describe('CLI init --yes (non-interactive)', () => {
     execFileSync('node', ['dist/cli.js', 'init', '--no-issue-templates', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
-    expect(fs.existsSync(path.join(tmpDir, '.github', 'ISSUE_TEMPLATE'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(false);
   });
 
-  it('skips permissions with --permissions none', () => {
-    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--permissions', 'none', '-y', '-d', tmpDir], {
+  it('skips permissions with --no-permissions', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--no-permissions', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
-    // No permissions file when --permissions none
+    // No permissions file when --no-permissions
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
   });
 
@@ -92,6 +92,35 @@ describe('CLI init --yes (non-interactive)', () => {
         stdio: 'pipe',
       });
     }).toThrow();
+  });
+
+  it('accepts --location flag', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--location', 'repo', '-y', '-d', tmpDir], {
+      encoding: 'utf-8',
+    });
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);
+  });
+
+  it('deploys permissions to local with --location local', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--location', 'local', '-y', '-d', tmpDir], {
+      encoding: 'utf-8',
+    });
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+    // Local permissions go to settings.local.json
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.local.json'))).toBe(true);
+    // Repo-level settings.json should NOT be created
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('deploys issue templates to .smithy/local/ with --location local', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--location', 'local', '-y', '-d', tmpDir], {
+      encoding: 'utf-8',
+    });
+    expect(fs.existsSync(path.join(tmpDir, '.smithy', 'local'))).toBe(true);
+    // .smithy/local/ should be in gitignore
+    const gitignore = fs.readFileSync(path.join(tmpDir, '.gitignore'), 'utf8');
+    expect(gitignore).toContain('.smithy/local/');
   });
 });
 
@@ -262,8 +291,8 @@ describe('CLI init lifecycle and idempotency', () => {
     expect(content).not.toContain('tools/codex/');
   });
 
-  it('creates settings.json with --agent claude --permissions repo', () => {
-    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--permissions', 'repo', '-y', '-d', tmpDir], {
+  it('creates settings.json with --agent claude --permissions', () => {
+    execFileSync('node', ['dist/cli.js', 'init', '-a', 'claude', '--permissions', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
 
@@ -275,13 +304,13 @@ describe('CLI init lifecycle and idempotency', () => {
     expect(config.permissions.deny.length).toBeGreaterThan(0);
   });
 
-  it('deploys actual issue template files (not just the directory)', () => {
+  it('deploys actual issue template files to .smithy/', () => {
     execFileSync('node', ['dist/cli.js', 'init', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
 
-    const templateDir = path.join(tmpDir, '.github', 'ISSUE_TEMPLATE');
-    const files = fs.readdirSync(templateDir);
+    const smithyDir = path.join(tmpDir, '.smithy');
+    const files = fs.readdirSync(smithyDir);
     // Should contain at least config.yml and some .md templates
     expect(files.some(f => f.endsWith('.yml'))).toBe(true);
     expect(files.some(f => f.endsWith('.md'))).toBe(true);
@@ -293,15 +322,15 @@ describe('CLI init lifecycle and idempotency', () => {
       encoding: 'utf-8',
     });
 
-    // Add a custom issue template
-    const customTemplate = path.join(tmpDir, '.github', 'ISSUE_TEMPLATE', 'custom-bug.md');
-    fs.writeFileSync(customTemplate, '---\nname: Custom Bug\n---\nCustom template');
+    // Add a custom file in .smithy/
+    const customFile = path.join(tmpDir, '.smithy', 'custom-template.md');
+    fs.writeFileSync(customFile, '---\nname: Custom\n---\nCustom template');
 
     execFileSync('node', ['dist/cli.js', 'uninit', '-y', '-d', tmpDir], {
       encoding: 'utf-8',
     });
 
-    // Custom template should survive
-    expect(fs.existsSync(customTemplate)).toBe(true);
+    // Custom file should survive (uninit only removes known smithy files)
+    expect(fs.existsSync(customFile)).toBe(true);
   });
 });

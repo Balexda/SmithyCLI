@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { promptConfirmUninit, promptTargetDir } from '../interactive.js';
@@ -37,13 +38,32 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   removedCount += claude.remove(targetDir);
   removedCount += codex.remove(targetDir);
 
-  // Remove issue templates
+  // Remove issue templates from all possible deploy locations
   if (fs.existsSync(issueTemplatesSrcDir)) {
     const issueTemplates = fs.readdirSync(issueTemplatesSrcDir).filter(f => f.endsWith('.md') || f.endsWith('.yml'));
-    const issueTemplatesDest = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');
 
+    // Repo: .smithy/
+    const repoSmithyDir = path.join(targetDir, '.smithy');
     for (const file of issueTemplates) {
-      if (removeIfExists(path.join(issueTemplatesDest, file))) removedCount++;
+      if (removeIfExists(path.join(repoSmithyDir, file))) removedCount++;
+    }
+
+    // Local: .smithy/local/
+    const localSmithyDir = path.join(targetDir, '.smithy', 'local');
+    for (const file of issueTemplates) {
+      if (removeIfExists(path.join(localSmithyDir, file))) removedCount++;
+    }
+
+    // User: ~/.smithy/
+    const userSmithyDir = path.join(os.homedir(), '.smithy');
+    for (const file of issueTemplates) {
+      if (removeIfExists(path.join(userSmithyDir, file))) removedCount++;
+    }
+
+    // Legacy: .github/ISSUE_TEMPLATE/ (clean up old deployments)
+    const legacyDir = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');
+    for (const file of issueTemplates) {
+      if (removeIfExists(path.join(legacyDir, file))) removedCount++;
     }
   }
 
