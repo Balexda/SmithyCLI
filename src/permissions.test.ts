@@ -56,6 +56,17 @@ describe('flattenPermissions', () => {
     expect(result).toContain('git push -u origin feature/*');
   });
 
+  it('flattens gh --version as a bare command', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('gh --version');
+  });
+
+  it('flattens gh repo view with bare and wildcard variants', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('gh repo view');
+    expect(result).toContain('gh repo view *');
+  });
+
   it('does not produce empty strings or undefined entries', () => {
     const result = flattenPermissions();
     for (const entry of result) {
