@@ -339,6 +339,13 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(gh issue view *)');
     expect(list).toContain('Bash(gh issue create)');
     expect(list).toContain('Bash(gh issue create *)');
+    expect(list).toContain('Bash(gh repo view)');
+    expect(list).toContain('Bash(gh repo view *)');
+  });
+
+  it('allows gh --version', () => {
+    const list = buildClaudeAllowList();
+    expect(list).toContain('Bash(gh --version)');
   });
 
   it('restricts git remote to read-only operations', () => {

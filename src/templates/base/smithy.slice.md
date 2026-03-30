@@ -34,7 +34,7 @@ like smithy.refine and smithy.orders.
 
 3. **Task Stub Creation**
    - Within each milestone file, convert deliverables into Task Stub issues
-     (using `.github/ISSUE_TEMPLATE/smithy_task_stub.md`):
+     (using `.smithy/smithy_task_stub.md`):
      - Title: `[Stub][M<index>] <deliverable title>`
      - Link to the milestone file and RFC sections.
      - Capture intent, entry/exit criteria, constraints.

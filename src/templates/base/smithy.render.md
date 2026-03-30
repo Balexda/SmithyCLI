@@ -133,7 +133,7 @@ Parse the input and prepare the target:
 1. **Read the RFC file.** Parse the Milestones section to extract all milestones
    (each `### Milestone N: <Title>` heading).
 2. **Validate the target milestone.** If a milestone number was specified, confirm
-   it exists. If auto-selected, confirm the choice with the user.
+   it exists. If auto-selected, proceed with that choice (step 5 will confirm).
 3. **Derive the slug.** Create a kebab-case slug from the milestone title
    (e.g., "Core Pipeline Commands" → `core-pipeline-commands`).
 4. **Derive the filename.** `<NN>-<milestone-slug>.features.md` where `<NN>` is the

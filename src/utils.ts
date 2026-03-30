@@ -1,6 +1,8 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import type { DeployLocation } from './interactive.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -8,6 +10,22 @@ const __dirname = path.dirname(__filename);
 export const templatesBaseDir = path.join(__dirname, '../src/templates');
 export const basePromptsDir = path.join(templatesBaseDir, 'base');
 export const issueTemplatesSrcDir = path.join(templatesBaseDir, 'issue-templates');
+
+/**
+ * Resolve the destination path for issue templates based on deploy location.
+ *   - 'repo'  → <targetDir>/.smithy/
+ *   - 'local' → <targetDir>/.smithy/local/
+ *   - 'user'  → ~/.smithy/
+ */
+export function resolveIssueTemplatePath(targetDir: string, location: DeployLocation): string {
+  if (location === 'user') {
+    return path.join(os.homedir(), '.smithy');
+  }
+  if (location === 'local') {
+    return path.join(targetDir, '.smithy', 'local');
+  }
+  return path.join(targetDir, '.smithy');
+}
 
 export function copyDirSync(src: string, dest: string): void {
   if (!fs.existsSync(dest)) {
@@ -33,6 +51,9 @@ export const agentGitignoreEntries: Record<string, string[]> = {
   gemini: [],
   codex: [],
 };
+
+/** Gitignore entries needed when deploying to the 'local' location. */
+export const localDeployGitignoreEntries = ['.smithy/local/'];
 
 /**
  * Add entries to .gitignore in targetDir, deduplicating against existing lines.
