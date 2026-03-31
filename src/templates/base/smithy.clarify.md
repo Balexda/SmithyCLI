@@ -152,7 +152,13 @@ question. Repeat until all questions are answered.
   one question.
 - **Do not batch questions.** Present exactly one question per message after the
   assumptions block.
-- **Do not proceed past questions.** Return the resolved assumptions and answers
-  to the parent agent. The parent agent handles subsequent phases.
+- **You own the user interaction.** You talk directly to the user for the full
+  scan → assumptions → questions flow. The parent agent does not relay messages.
+- **Return a summary when done.** After all questions are answered, return a
+  structured summary to the parent agent containing:
+  1. The final list of **assumptions** (with any user adjustments).
+  2. Each **question** and the user's **answer** (or accepted recommendation).
+  3. Any **decisions** made during the conversation.
+  The parent agent uses this summary to continue its next phase.
 - **Be transparent about uncertainty.** If confidence is Low, say so — do not
   inflate confidence to avoid asking.

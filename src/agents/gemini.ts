@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, readTemplate, parseFrontmatterName } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, readTemplate, parseFrontmatterName, isAgentTemplate } from '../templates.js';
 import { flattenPermissions } from '../permissions.js';
 import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 
@@ -14,6 +14,9 @@ export function deploy(targetDir: string, initPermissions: boolean): void {
   const currentNames = new Set<string>();
 
   for (const [, content] of templates) {
+    // Skip agent-only templates — they are sub-agents, not invocable skills
+    if (isAgentTemplate(content)) continue;
+
     const name = parseFrontmatterName(content);
     if (name) {
       currentNames.add(name);
