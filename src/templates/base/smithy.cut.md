@@ -50,17 +50,19 @@ For each category, assess: **Sound**, **Weak**, or **Gap**.
 
 ### 0b. Refinement Questions
 
-Present the audit findings as a summary table, then ask **up to 5 refinement
-questions** — one at a time, with a **recommended resolution** for each.
+Present the audit findings as a summary table, then internally generate **up to 5 refinement
+questions** with a **recommended resolution** for each. Do NOT output all questions at once —
+queue them internally and present them one at a time.
 
 Target the most impactful Weak/Gap categories first. For each question:
 
 - State the finding (what's wrong or missing).
 - Provide a recommended fix with reasoning.
 - The user can accept the recommendation or provide their own answer.
-- After each answer, acknowledge it and move to the next question.
+- **STOP and wait** for the user to respond.
+- After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
 
-**STOP after each question and wait for the user to respond.**
+Never reveal future queued questions in advance.
 
 ### 0c. Apply Refinements
 
@@ -245,7 +247,7 @@ ask again.
 - **DO** keep slices PR-sized. If a slice feels too large, split it further.
 - **DO** use zero-padded two-digit numbering for the filename (`01-`, `02-`,
   ..., `99-`) for consistent sort order.
-- **DO** present clarifying questions one at a time with recommended answers.
+- **DO** internally generate all clarifying questions first, then present them one at a time with recommended answers.
 - **DO** read all three spec artifacts (spec, data model, contracts) before
   slicing — the data model and contracts inform implementation boundaries.
 - **DO** explore the codebase to ground slices in reality — don't slice in

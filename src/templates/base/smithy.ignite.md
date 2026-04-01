@@ -67,13 +67,17 @@ Read the existing RFC and evaluate each category:
 
 ### Phase 0b: Refinement Questions
 
-Present the audit findings as a summary table, then ask up to 5 refinement
-questions **one at a time**, targeting the most impactful Weak/Gap categories.
+Present the audit findings as a summary table, then internally generate up to 5 refinement
+questions targeting the most impactful Weak/Gap categories. Do NOT output all questions at
+once — queue them internally and present them one at a time.
 
 For each question:
 1. State the finding and why it matters.
 2. Provide a **recommended resolution**.
-3. **STOP and wait** for the user's response before asking the next question.
+3. **STOP and wait** for the user to respond.
+4. After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
+
+Never reveal future queued questions in advance.
 
 ### Phase 0c: Apply Refinements
 

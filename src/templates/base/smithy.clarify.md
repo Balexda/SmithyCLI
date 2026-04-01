@@ -130,6 +130,8 @@ Incorporate any changes before continuing to questions.
 ## Step 5: Present Questions (one at a time)
 
 After the user responds to assumptions, present questions **one per message**.
+Questions were already generated in Step 2 — do not regenerate or re-analyze
+them between answers. Simply reveal the next queued question.
 
 For each question, always include all three elements:
 
@@ -138,8 +140,8 @@ For each question, always include all three elements:
 3. **Qualifiers**: `[Impact: <level> · Confidence: <level>]`
 
 **STOP after each question and wait for the user to respond.** After the user
-answers, acknowledge their answer in your **next message** and present the next
-question. Repeat until all questions are answered.
+answers, immediately present the next queued question — do not re-analyze or
+regenerate remaining questions. Repeat until all questions are answered.
 
 ---
 
@@ -148,7 +150,8 @@ question. Repeat until all questions are answered.
 - **Never skip clarification.** Even if everything looks clear, present at least
   one question.
 - **Do not batch questions.** Present exactly one question per message after the
-  assumptions block.
+  assumptions block. Questions are pre-generated in Step 2 — reveal them
+  sequentially without re-analysis between answers.
 - **You own the user interaction.** You talk directly to the user for the full
   scan → assumptions → questions flow. The parent agent does not relay messages.
 - **Return a summary when done.** After all questions are answered, return a
