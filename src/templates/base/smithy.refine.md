@@ -58,14 +58,19 @@ Present the findings as a summary table:
 **STOP and wait for the user to respond.** The user may:
 - Acknowledge the findings and ask you to continue to questions
 - Ask about specific findings before proceeding
-- Indicate they want to skip refinement (in which case, return to parent)
+- Indicate they want to skip refinement — if so, return a structured summary
+  to the parent agent containing the audit findings table and a
+  `refinement: skipped` flag. The parent agent should skip Phase 0c entirely
+  and leave artifacts unchanged.
 
 ---
 
 ## Step 2: Prepare Questions
 
-From your audit assessments, internally prepare **up to 5 refinement questions**
-targeting the most impactful Weak and Gap categories first.
+From your audit assessments, internally prepare refinement questions targeting
+the most impactful Weak and Gap categories first. Always include **all
+Critical-impact items** regardless of count, then fill remaining slots with the
+highest-impact non-Critical items up to a **total of 5 non-Critical questions**.
 
 For each question, produce all three elements:
 
@@ -89,9 +94,9 @@ For each question, produce all three elements:
 
 ### Question ordering
 
-1. **All Critical-impact items** — always presented, even if there are more
-   than 5.
-2. **Highest-impact remaining items** — fill up to a **total of 5 questions**
+1. **All Critical-impact items** — always presented, regardless of count.
+   Critical items are never capped or dropped.
+2. **Highest-impact remaining items** — fill up to **5 non-Critical questions**
    with the highest-impact non-Critical items.
 
 ### Edge cases
@@ -100,8 +105,6 @@ For each question, produce all three elements:
   instructions (which may require at least one question). If no special
   instructions apply, present a single question about the highest-risk Sound
   category — confirm with the user that no refinement is needed.
-- If more than 5 items are Critical, present all Critical items (exceeding the
-  5-question cap).
 
 ---
 

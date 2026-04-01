@@ -83,9 +83,10 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Dependency Clarity** | Are inter-feature dependencies within the milestone evident, or are they hidden? |
   | **RFC Alignment** | Does the feature map align with the RFC's stated goals and success criteria for this milestone? |
 
-- **Target files**: the `.features.md` file.
-- **Context**: this is a feature map review; include the `.features.md` path and
-  the resolved RFC milestone from Phase 0 — Resolve Source Context.
+- **Target files**: the `.features.md` file and the source `.rfc.md` file
+  (resolved in Phase 0 — Resolve Source Context above).
+- **Context**: this is a feature map review; include the `.features.md` path,
+  the source `.rfc.md` path, and the resolved RFC milestone number and title.
 - **Special instructions**: if all categories are **Sound**, ask at least one
   question about whether any feature should be split, merged, or re-scoped based
   on lessons learned since the map was created.
