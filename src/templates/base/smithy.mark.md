@@ -71,6 +71,10 @@ Record all Q&A and assumptions for inclusion in the Clarifications section of th
 
 ## Phase 3: Specify
 
+**Title conventions**: Before writing, read the `smithy.titles` prompt for
+canonical title formats and check for repo-level overrides in the project's
+CLAUDE.md. Apply those conventions to all headings in this artifact.
+
 Draft the `<slug>.spec.md` file with this structure:
 
 ```markdown
@@ -95,7 +99,7 @@ RFC → Milestone → Feature → User Story → Slice → Tasks
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 — <Title> (Priority: P<N>)
+### User Story 1: <Title> (Priority: P<N>)
 
 As a <persona>, I want <goal> so that <benefit>.
 
@@ -110,7 +114,7 @@ As a <persona>, I want <goal> so that <benefit>.
 
 ---
 
-### User Story N — ...
+### User Story N: ...
 
 ### Edge Cases
 

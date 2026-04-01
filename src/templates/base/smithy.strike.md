@@ -55,6 +55,10 @@ Do not proceed to implementation without clear approval.
 
 ## Phase 4: Strike Document
 
+**Title conventions**: Before writing, read the `smithy.titles` prompt for
+canonical title formats and check for repo-level overrides in the project's
+CLAUDE.md. Apply those conventions to all headings in this artifact.
+
 Once approved, write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md` with this format:
 
 ```markdown

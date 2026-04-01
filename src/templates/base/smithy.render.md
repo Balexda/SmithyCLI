@@ -173,6 +173,10 @@ Use the **smithy-clarify** sub-agent. Pass it:
 
 ## Phase 3: Draft Feature Map
 
+**Title conventions**: Before writing, read the `smithy.titles` prompt for
+canonical title formats and check for repo-level overrides in the project's
+CLAUDE.md. Apply those conventions to all headings in this artifact.
+
 Using the workshopped answers from Phase 2, draft a structured `.features.md` with
 this format:
 
