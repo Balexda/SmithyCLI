@@ -36,9 +36,10 @@ Then present to the user:
 1. **Summary** — What you understand the feature to be.
 2. **Approach** — What files you'd change, what you'd add, and why.
 3. **Risks** — Anything that could go wrong or get complicated.
-4. **Clarifying Questions** — 2–4 questions about scope, edge cases, or preferences.
-
-**STOP here and wait for the user to respond.** Do not proceed until the user answers.
+4. **Clarifying Questions** — Use the **smithy-clarify** sub-agent. Pass it:
+   - **Criteria**: Scope, Edge Cases, Preferences, Architecture Fit, Testing Strategy
+   - **Context**: this is a strike document; include the feature description and
+     the relevant file paths you discovered during exploration.
 
 ---
 

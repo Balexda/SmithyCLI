@@ -34,6 +34,12 @@ export function isCommandTemplate(content: string): boolean {
   return /command:\s*true/.test(frontmatterMatch[1]!);
 }
 
+export function isAgentTemplate(content: string): boolean {
+  const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/m);
+  if (!frontmatterMatch) return false;
+  return /tools:\s*.+/.test(frontmatterMatch[1]!);
+}
+
 const AUDIT_CHECKLIST_START = '<!-- audit-checklist-start -->';
 const AUDIT_CHECKLIST_END = '<!-- audit-checklist-end -->';
 const COMPOSED_CHECKLISTS_PLACEHOLDER = '<!-- composed-checklists -->';

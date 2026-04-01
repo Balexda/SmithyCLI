@@ -100,20 +100,15 @@ refinement questions.
 
 ### Phase 0b: Refinement Questions
 
-Based on the audit findings, formulate up to **5 refinement questions** targeting
-the most impactful **Weak** or **Gap** categories. Order questions by impact — address
-Gaps before Weak assessments.
+Use the **smithy-clarify** sub-agent. Pass it:
 
-For each question:
-1. State the question clearly and reference the audit category it addresses.
-2. Explain what the current map says (or doesn't say) and why it matters.
-3. Provide a **recommended resolution** based on what you can infer from the RFC
-   and the existing map.
-4. **STOP and wait** for the user's response before asking the next question.
-
-If all categories are **Sound**, ask at least one question about whether any feature
-should be split, merged, or re-scoped based on lessons learned since the map was
-created.
+- **Criteria**: Feature Coverage, Gaps, Overlap, Dependency Clarity, RFC
+  Alignment (same categories from the Phase 0a audit scan table above).
+- **Context**: this is a feature map refinement; include the `.features.md` path,
+  the resolved RFC milestone, and the audit summary from Phase 0a.
+- **Special instructions**: if all categories are **Sound**, ask at least one
+  question about whether any feature should be split, merged, or re-scoped based
+  on lessons learned since the map was created.
 
 ### Phase 0c: Apply Refinements
 
@@ -155,32 +150,24 @@ Parse the input and prepare the target:
 
 ## Phase 2: Clarify
 
-Perform a structured ambiguity scan across these categories, using the milestone's
-description and success criteria as input:
+Use the **smithy-clarify** sub-agent. Pass it:
 
-- **Feature Boundaries** — Where does one feature end and another begin?
-- **Overlap Between Features** — Are there concerns that could belong to multiple features?
-- **Dependency Relationships** — Do any features depend on others within this milestone?
-- **Scope Within the Milestone** — Is anything in the milestone too large for a single feature, or too small to be its own feature?
-- **Integration Points** — Does the milestone touch external systems, APIs, or other milestones?
-- **Cross-Milestone Boundaries** — Does this milestone depend on or overlap with
-  other milestones in the RFC? Boundaries between milestones are resolved at the
-  RFC level — note them but do not ask about them.
-
-**Note**: Cross-Milestone Boundaries should almost always be clear — the RFC
-defines milestone scope. Only flag as ambiguous if the RFC itself is unclear
-about which milestone owns a piece of functionality.
-
-From this scan, formulate up to **5 clarifying questions**, ordered by impact.
-
-For each question:
-1. State the question clearly.
-2. Explain why it matters for the feature breakdown.
-3. Provide a **recommended answer** based on what you can infer from the RFC.
-4. **STOP and wait** for the user's response before asking the next question.
-
-If the milestone is well-defined with clear boundaries, you may ask fewer questions.
-Never skip clarification entirely — ask at least one question.
+- **Criteria** (using the milestone's description and success criteria as input):
+  - **Feature Boundaries** — Where does one feature end and another begin?
+  - **Overlap Between Features** — Are there concerns that could belong to multiple features?
+  - **Dependency Relationships** — Do any features depend on others within this milestone?
+  - **Scope Within the Milestone** — Is anything in the milestone too large for a single feature, or too small to be its own feature?
+  - **Integration Points** — Does the milestone touch external systems, APIs, or other milestones?
+  - **Cross-Milestone Boundaries** — Does this milestone depend on or overlap with
+    other milestones in the RFC? Boundaries between milestones are resolved at the
+    RFC level — note them but do not ask about them.
+- **Context**: this is a feature map; include the RFC path and the target milestone
+  number and title from Phase 1.
+- **Special instructions**: Cross-Milestone Boundaries should almost always be
+  clear — the RFC defines milestone scope. Only flag as ambiguous if the RFC
+  itself is unclear about which milestone owns a piece of functionality. If the
+  milestone is well-defined, expect more assumptions and fewer questions. Never
+  skip clarification entirely.
 
 ---
 

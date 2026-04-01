@@ -122,31 +122,25 @@ Phase 0).
 
 ## Phase 3: Clarify
 
-Perform a structured ambiguity scan across these categories:
+Use the **smithy-clarify** sub-agent. Pass it:
 
-| Category | What to check |
-|----------|---------------|
-| **Slice Boundaries** | Are there multiple valid ways to split this work? Is the right granularity clear? |
-| **Implementation Order** | Are dependencies between slices obvious, or could reasonable people disagree? |
-| **Testing Strategy** | Is it clear how each slice should be tested? Are there integration test concerns? |
-| **Scope Edges** | Are there changes that could be in or out of scope? Adjacent refactors? |
-| **Technical Risk** | Are there unknowns, library limitations, or performance concerns? |
-| **Inter-Story Boundaries** | Does this story depend on or overlap with other stories in the spec? Boundaries between stories are resolved at the spec level — note them but do not ask about them. |
+- **Criteria**:
 
-For each category, assess: **Clear**, **Partial**, or **Missing**.
+  | Category | What to check |
+  |----------|---------------|
+  | **Slice Boundaries** | Are there multiple valid ways to split this work? Is the right granularity clear? |
+  | **Implementation Order** | Are dependencies between slices obvious, or could reasonable people disagree? |
+  | **Testing Strategy** | Is it clear how each slice should be tested? Are there integration test concerns? |
+  | **Scope Edges** | Are there changes that could be in or out of scope? Adjacent refactors? |
+  | **Technical Risk** | Are there unknowns, library limitations, or performance concerns? |
+  | **Inter-Story Boundaries** | Does this story depend on or overlap with other stories in the spec? Boundaries between stories are resolved at the spec level — note them but do not ask about them. |
 
-**Note**: Inter-Story Boundaries should almost always be **Clear** — the spec,
-data model, and contracts define story boundaries. Only flag as Partial/Missing
-if the spec itself is ambiguous about which story owns a piece of functionality.
-
-Then ask **up to 5 clarifying questions**, presented **one at a time**:
-
-- For each question, provide a **recommended answer** with reasoning.
-- The user can accept the recommendation or provide their own answer.
-- After each answer, acknowledge it and move to the next question.
-- If all categories are Clear, skip to Phase 4.
-
-**STOP after each question and wait for the user to respond.**
+- **Context**: this is a task plan; include the spec folder path and the three
+  spec artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`) from Phase 1.
+- **Special instructions**: Inter-Story Boundaries should almost always be
+  **Clear** — the spec, data model, and contracts define story boundaries. Only
+  flag as Partial/Missing if the spec itself is ambiguous about which story owns
+  a piece of functionality. If all categories are Clear, skip to Phase 4.
 
 ---
 

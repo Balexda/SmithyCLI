@@ -47,6 +47,17 @@ describe('deploy', () => {
     expect(fs.existsSync(path.join(skillsDir, 'smithy-fix', 'SKILL.md'))).toBe(true);
   });
 
+  it('does not deploy agent-only templates as Gemini skills', () => {
+    deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.gemini', 'skills');
+    const skills = fs.readdirSync(skillsDir);
+
+    // smithy-clarify is an agent template (has tools: in frontmatter)
+    // and should NOT be deployed as a Gemini skill
+    expect(skills).not.toContain('smithy-clarify');
+  });
+
   it('does not remove non-skill directories that share the prefix', () => {
     const skillsDir = path.join(tmpDir, '.gemini', 'skills');
     const userDir = path.join(skillsDir, 'smithy-custom');

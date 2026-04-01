@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { buildClaudeAllowList, buildClaudeDenyList, deploy, remove, writePermissions, resolveSettingsPath } from './claude.js';
-import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate } from '../templates.js';
+import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate, isAgentTemplate } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -85,6 +85,45 @@ describe('deploy', () => {
     expect(commandFiles.sort()).toEqual(expectedCommands);
   });
 
+  it('writes agent templates to agents/ with frontmatter intact', () => {
+    deploy(tmpDir, 'none');
+
+    const agentsDir = path.join(tmpDir, '.claude', 'agents');
+    const templates = getComposedTemplates();
+    const expectedAgents = [...templates.entries()]
+      .filter(([_, content]) => isAgentTemplate(content))
+      .map(([file]) => file)
+      .sort();
+
+    if (expectedAgents.length > 0) {
+      expect(fs.existsSync(agentsDir)).toBe(true);
+      const agentFiles = fs.readdirSync(agentsDir).sort();
+      expect(agentFiles).toEqual(expectedAgents);
+
+      // Agent files should keep frontmatter
+      for (const file of agentFiles) {
+        const content = fs.readFileSync(path.join(agentsDir, file), 'utf8');
+        expect(content).toMatch(/^---\s*\n/);
+        expect(content).toMatch(/tools:\s*.+/);
+      }
+    }
+  });
+
+  it('does not deploy non-agent templates to agents/', () => {
+    deploy(tmpDir, 'none');
+
+    const agentsDir = path.join(tmpDir, '.claude', 'agents');
+    if (fs.existsSync(agentsDir)) {
+      const agentFiles = fs.readdirSync(agentsDir);
+      const templates = getComposedTemplates();
+      for (const file of agentFiles) {
+        const content = templates.get(file);
+        expect(content).toBeDefined();
+        expect(isAgentTemplate(content!)).toBe(true);
+      }
+    }
+  });
+
   it('strips frontmatter from deployed files', () => {
     deploy(tmpDir, 'none');
 
@@ -152,16 +191,28 @@ describe('remove', () => {
     expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
   });
 
-  it('returns accurate count matching deployed prompt + command files', () => {
+  it('returns accurate count matching deployed prompt + command + agent files', () => {
     // Deploy first so there is something to remove
     deploy(tmpDir, 'none');
 
     const promptCount = fs.readdirSync(path.join(tmpDir, '.claude', 'prompts')).length;
     const commandsDir = path.join(tmpDir, '.claude', 'commands');
     const commandCount = fs.existsSync(commandsDir) ? fs.readdirSync(commandsDir).length : 0;
+    const agentsDir = path.join(tmpDir, '.claude', 'agents');
+    const agentCount = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir).length : 0;
 
     const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(promptCount + commandCount);
+    expect(removedCount).toBe(promptCount + commandCount + agentCount);
+  });
+
+  it('removes stale smithy artifacts from agents/ during remove', () => {
+    const agentsDir = path.join(tmpDir, '.claude', 'agents');
+    fs.mkdirSync(agentsDir, { recursive: true });
+    fs.writeFileSync(path.join(agentsDir, 'smithy.old-agent.md'), '# stale agent');
+
+    const removedCount = remove(tmpDir);
+    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(fs.existsSync(path.join(agentsDir, 'smithy.old-agent.md'))).toBe(false);
   });
 
   it('returns 0 on empty/nonexistent directory without throwing', () => {

@@ -4,6 +4,7 @@ import {
   composeAuditTemplate,
   getComposedTemplates,
   templateToExtension,
+  isAgentTemplate,
 } from './templates.js';
 
 describe('extractAuditChecklist', () => {
@@ -157,6 +158,27 @@ describe('templateToExtension', () => {
     expect(templateToExtension['smithy.mark.md']).toBe('.spec.md');
     expect(templateToExtension['smithy.cut.md']).toBe('.tasks.md');
     expect(templateToExtension['smithy.strike.md']).toBe('.strike.md');
+  });
+});
+
+describe('isAgentTemplate', () => {
+  it('returns true for templates with tools in frontmatter', () => {
+    const content = `---\nname: smithy-clarify\ndescription: "Sub-agent"\ntools: Read, Grep, Glob\nmodel: opus\n---\n# Body`;
+    expect(isAgentTemplate(content)).toBe(true);
+  });
+
+  it('returns false for command templates without tools', () => {
+    const content = `---\nname: smithy-strike\ndescription: "Strike"\ncommand: true\n---\n# Body`;
+    expect(isAgentTemplate(content)).toBe(false);
+  });
+
+  it('returns false for templates with no frontmatter', () => {
+    expect(isAgentTemplate('# Just a markdown file')).toBe(false);
+  });
+
+  it('returns false when tools appears only in body, not frontmatter', () => {
+    const content = `---\nname: smithy-test\n---\n# Body\ntools: Read, Grep`;
+    expect(isAgentTemplate(content)).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate } from '../templates.js';
+import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate, isAgentTemplate } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
 import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
 import type { PermissionLevel, DeployablePermissionLevel } from '../interactive.js';
@@ -13,10 +13,12 @@ export function deploy(targetDir: string, permissionLevel: PermissionLevel): voi
   if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
 
   const commandsDir = path.join(targetDir, '.claude', 'commands');
+  const agentsDir = path.join(targetDir, '.claude', 'agents');
 
   const templates = getComposedTemplates();
   const allFilenames = new Set<string>();
   const commandFilenames = new Set<string>();
+  const agentFilenames = new Set<string>();
 
   for (const [file, content] of templates) {
     allFilenames.add(file);
@@ -31,12 +33,20 @@ export function deploy(targetDir: string, permissionLevel: PermissionLevel): voi
       if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
       fs.writeFileSync(path.join(commandsDir, file), stripped);
     }
+
+    // Deploy agent templates to agents/ (keep frontmatter for Claude sub-agent parsing)
+    if (isAgentTemplate(content)) {
+      agentFilenames.add(file);
+      if (!fs.existsSync(agentsDir)) fs.mkdirSync(agentsDir, { recursive: true });
+      fs.writeFileSync(path.join(agentsDir, file), content);
+    }
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
   removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames, isMdFile);
   removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames, isMdFile);
+  removeStaleSmithyArtifacts(agentsDir, 'smithy.', agentFilenames, isMdFile);
 
   if (permissionLevel !== 'none') {
     writePermissions(targetDir, permissionLevel);
@@ -49,12 +59,14 @@ export function remove(targetDir: string): number {
   for (const file of getBaseTemplateFiles()) {
     if (removeIfExists(path.join(targetDir, '.claude', 'prompts', file))) removedCount++;
     if (removeIfExists(path.join(targetDir, '.claude', 'commands', file))) removedCount++;
+    if (removeIfExists(path.join(targetDir, '.claude', 'agents', file))) removedCount++;
   }
 
   // Remove stale .md artifacts from renamed/deleted templates
   const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
   removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'prompts'), 'smithy.', new Set(), isMdFile);
   removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'commands'), 'smithy.', new Set(), isMdFile);
+  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'agents'), 'smithy.', new Set(), isMdFile);
 
   return removedCount;
 }
