@@ -102,9 +102,8 @@ refinement questions.
 
 Use the **smithy-clarify** sub-agent. Pass it:
 
-- **Criteria** (assess each as Sound / Weak / Gap): Feature Coverage, Gaps,
-  Overlap, Dependency Clarity, RFC Alignment (same categories from the Phase 0a
-  audit scan table above).
+- **Criteria**: Feature Coverage, Gaps, Overlap, Dependency Clarity, RFC
+  Alignment (same categories from the Phase 0a audit scan table above).
 - **Context**: this is a feature map refinement; include the `.features.md` path,
   the resolved RFC milestone, and the audit summary from Phase 0a.
 - **Special instructions**: if all categories are **Sound**, ask at least one

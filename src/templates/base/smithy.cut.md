@@ -124,7 +124,7 @@ Phase 0).
 
 Use the **smithy-clarify** sub-agent. Pass it:
 
-- **Criteria** (assess each as Clear / Partial / Missing):
+- **Criteria**:
 
   | Category | What to check |
   |----------|---------------|

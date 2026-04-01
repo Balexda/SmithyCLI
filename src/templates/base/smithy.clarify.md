@@ -37,19 +37,16 @@ Read the relevant files in the codebase using the provided context (file paths,
 artifact type, feature description). For each category in the scan criteria,
 assess it as one of:
 
-- **Clear** / **Sound** — no ambiguity, well-defined
-- **Partial** / **Weak** — some information exists but gaps or unclear areas remain
-- **Missing** / **Gap** — no information or fundamentally undefined
-
-Use the assessment scale that matches the parent agent's convention (Clear/Partial/
-Missing for specs and tasks; Sound/Weak/Gap for audits and reviews).
+- **Clear** — no ambiguity, well-defined
+- **Partial** — some information exists but gaps or unclear areas remain
+- **Missing** — no information or fundamentally undefined
 
 ---
 
 ## Step 2: Prepare Candidates
 
 From your scan assessments, internally prepare **up to 8 candidate questions**
-targeting the most ambiguous categories (Partial/Weak and Missing/Gap first).
+targeting the most ambiguous categories (Partial and Missing first).
 
 For each candidate, produce all four elements:
 
