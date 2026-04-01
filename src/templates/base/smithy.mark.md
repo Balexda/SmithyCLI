@@ -314,46 +314,33 @@ ask again.
 **If spec artifacts already exist for this feature** (detected by branch name
 matching a `specs/` folder, or by the user pointing to an existing spec):
 
-### 0a. Audit Scan
+### 0a–0b. Audit & Refinement Questions
 
-Read the existing spec, data model, and contracts files. Perform a structured
-audit across these categories:
+Use the **smithy-refine** sub-agent. Pass it:
 
-| Category | What to check |
-|----------|---------------|
-| **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
-| **Priority Ordering** | Are user stories ordered by priority (all P1 first, then P2, then P3)? If priorities have changed since the last revision, do the story numbers still reflect the correct priority order? Flag any out-of-order stories. |
-| **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
-| **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
-| **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
-| **Data Model Integrity** | Are relationships, state transitions, and validation rules internally consistent? Are there entities referenced but not defined, or defined but never referenced? |
-| **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
-| **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
-| **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
+- **Audit categories**:
 
-For each category, assess: **Sound**, **Weak**, or **Gap**.
+  | Category | What to check |
+  |----------|---------------|
+  | **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
+  | **Priority Ordering** | Are user stories ordered by priority (all P1 first, then P2, then P3)? If priorities have changed since the last revision, do the story numbers still reflect the correct priority order? Flag any out-of-order stories. |
+  | **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
+  | **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
+  | **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
+  | **Data Model Integrity** | Are relationships, state transitions, and validation rules internally consistent? Are there entities referenced but not defined, or defined but never referenced? |
+  | **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
+  | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
+  | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
 
-### 0b. Refinement Questions
-
-Present the audit findings as a summary table, then internally generate **up to 5 refinement
-questions** with a **recommended resolution** for each. Do NOT output all questions at once —
-queue them internally and present them one at a time.
-
-Questions should target the most impactful Weak/Gap categories first. For each:
-
-- State the finding (what's wrong or missing).
-- Provide a recommended fix or addition with reasoning.
-- The user can accept the recommendation or provide their own answer.
-- **STOP and wait** for the user to respond.
-- After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
-
-Never reveal future queued questions in advance.
+- **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
+  contracts (`.contracts.md`) in the spec folder.
+- **Context**: this is a spec review for an existing feature specification.
 
 ### 0c. Apply Refinements
 
-After all questions are answered, update the existing spec, data-model, and/or
-contracts files on disk to incorporate the refinements. Present a summary of
-what changed — do not dump the full file contents into the terminal. **STOP
+After the sub-agent returns its summary, update the existing spec, data-model,
+and/or contracts files on disk to incorporate the refinements. Present a summary
+of what changed — do not dump the full file contents into the terminal. **STOP
 and ask** the user to review the updated files at their paths and let you know
 if further changes are needed.
 
