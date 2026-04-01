@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   extractAuditChecklist,
   composeAuditTemplate,
@@ -214,7 +214,11 @@ describe('getComposedTemplates', () => {
 });
 
 describe('smithy.titles.md', () => {
-  const content = readTemplate('smithy.titles.md');
+  let content: string;
+
+  beforeAll(() => {
+    content = readTemplate('smithy.titles.md');
+  });
 
   it('is not a command template', () => {
     expect(isCommandTemplate(content)).toBe(false);
