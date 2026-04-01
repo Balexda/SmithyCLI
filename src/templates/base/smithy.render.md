@@ -69,50 +69,31 @@ Before auditing, locate the source RFC and the specific milestone the map covers
 4. If neither the header nor the fallback resolves a valid RFC and milestone,
    stop and ask the user to provide the RFC path and milestone number.
 
-### Phase 0a: Audit Scan
+### Phase 0a–0b: Audit & Refinement Questions
 
-Read the existing `.features.md` file alongside the **resolved RFC milestone**. Assess
-each of the following categories as **Sound**, **Weak**, or **Gap**:
+Use the **smithy-refine** sub-agent. Pass it:
 
-- **Feature Coverage** — Are all aspects of the milestone represented by at least
-  one feature?
-- **Gaps** — Are there milestone goals or success criteria that no feature addresses?
-- **Overlap** — Are there features with unclear or overlapping boundaries?
-- **Dependency Clarity** — Are inter-feature dependencies within the milestone
-  evident, or are they hidden?
-- **RFC Alignment** — Does the feature map align with the RFC's stated goals and
-  success criteria for this milestone?
+- **Audit categories**:
 
-Present findings as a summary table:
+  | Category | What to check |
+  |----------|---------------|
+  | **Feature Coverage** | Are all aspects of the milestone represented by at least one feature? |
+  | **Gaps** | Are there milestone goals or success criteria that no feature addresses? |
+  | **Overlap** | Are there features with unclear or overlapping boundaries? |
+  | **Dependency Clarity** | Are inter-feature dependencies within the milestone evident, or are they hidden? |
+  | **RFC Alignment** | Does the feature map align with the RFC's stated goals and success criteria for this milestone? |
 
-```
-| Category           | Assessment | Notes                        |
-|--------------------|------------|------------------------------|
-| Feature Coverage   | Sound      |                              |
-| Gaps               | Weak       | No feature covers migration  |
-| Overlap            | Sound      |                              |
-| Dependency Clarity | Gap        | Features 2 and 4 share state |
-| RFC Alignment      | Sound      |                              |
-```
-
-**STOP and wait** for the user to review the audit findings before proceeding to
-refinement questions.
-
-### Phase 0b: Refinement Questions
-
-Use the **smithy-clarify** sub-agent. Pass it:
-
-- **Criteria**: Feature Coverage, Gaps, Overlap, Dependency Clarity, RFC
-  Alignment (same categories from the Phase 0a audit scan table above).
-- **Context**: this is a feature map refinement; include the `.features.md` path,
-  the resolved RFC milestone, and the audit summary from Phase 0a.
+- **Target files**: the `.features.md` file and the source `.rfc.md` file
+  (resolved in Phase 0 — Resolve Source Context above).
+- **Context**: this is a feature map review; include the `.features.md` path,
+  the source `.rfc.md` path, and the resolved RFC milestone number and title.
 - **Special instructions**: if all categories are **Sound**, ask at least one
   question about whether any feature should be split, merged, or re-scoped based
   on lessons learned since the map was created.
 
 ### Phase 0c: Apply Refinements
 
-After all refinement questions are answered:
+After the sub-agent returns its summary:
 
 1. Incorporate the user's answers into an **updated feature map**.
 2. Overwrite the existing `.features.md` with the updated version.

@@ -52,36 +52,27 @@ Triggered when:
 - Phase 1 detected a matching RFC folder during the `docs/rfcs/` scan and the
   user chose to review it (see Routing above).
 
-### Phase 0a: Audit Scan
+### Phase 0a–0b: Audit & Refinement Questions
 
-Read the existing RFC and evaluate each category:
+Use the **smithy-refine** sub-agent. Pass it:
 
-| Category | Check For | Rating |
-|----------|-----------|--------|
-| Problem Statement | Problem clarity, solution outline, compelling motivation | Sound / Weak / Gap |
-| Goals | Concrete, achievable, non-overlapping | Sound / Weak / Gap |
-| Milestones | Well-defined scope, clear boundaries, success criteria | Sound / Weak / Gap |
-| Feasibility | Technical risks, dependency concerns, resource assumptions | Sound / Weak / Gap |
-| Scope | Drift from stated goals, feature creep indicators | Sound / Weak / Gap |
-| Stakeholders | Missing perspectives, unconsidered personas | Sound / Weak / Gap |
+- **Audit categories**:
 
-### Phase 0b: Refinement Questions
+  | Category | What to check |
+  |----------|---------------|
+  | **Problem Statement** | Problem clarity, solution outline, compelling motivation |
+  | **Goals** | Concrete, achievable, non-overlapping |
+  | **Milestones** | Well-defined scope, clear boundaries, success criteria |
+  | **Feasibility** | Technical risks, dependency concerns, resource assumptions |
+  | **Scope** | Drift from stated goals, feature creep indicators |
+  | **Stakeholders** | Missing perspectives, unconsidered personas |
 
-Present the audit findings as a summary table, then internally generate up to 5 refinement
-questions targeting the most impactful Weak/Gap categories. Do NOT output all questions at
-once — queue them internally and present them one at a time.
-
-For each question:
-1. State the finding and why it matters.
-2. Provide a **recommended resolution**.
-3. **STOP and wait** for the user to respond.
-4. After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
-
-Never reveal future queued questions in advance.
+- **Target files**: the `.rfc.md` file.
+- **Context**: this is an RFC review for an existing Request for Comments document.
 
 ### Phase 0c: Apply Refinements
 
-After all questions are answered:
+After the sub-agent returns its summary:
 1. Update the existing RFC to incorporate the refinements.
 2. Present the changes for user approval before writing.
 3. If approved, write the updated RFC to the same file path.

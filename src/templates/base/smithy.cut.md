@@ -33,41 +33,28 @@ This may be:
 **If a `.tasks.md` file already exists for the target user story** (i.e.,
 `<NN>-<story-slug>.tasks.md` is found in the spec folder):
 
-### 0a. Audit Scan
+### 0a–0b. Audit & Refinement Questions
 
-Read the existing tasks file alongside the source spec, data model, and
-contracts. Perform a structured audit:
+Use the **smithy-refine** sub-agent. Pass it:
 
-| Category | What to check |
-|----------|---------------|
-| **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
-| **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
-| **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
-| **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
-| **Spec Alignment** | Do the slices fully cover the user story's acceptance scenarios? Has the spec changed since the tasks file was written? |
+- **Audit categories**:
 
-For each category, assess: **Sound**, **Weak**, or **Gap**.
+  | Category | What to check |
+  |----------|---------------|
+  | **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
+  | **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
+  | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
+  | **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
+  | **Spec Alignment** | Do the slices fully cover the user story's acceptance scenarios? Has the spec changed since the tasks file was written? |
 
-### 0b. Refinement Questions
-
-Present the audit findings as a summary table, then internally generate **up to 5 refinement
-questions** with a **recommended resolution** for each. Do NOT output all questions at once —
-queue them internally and present them one at a time.
-
-Target the most impactful Weak/Gap categories first. For each question:
-
-- State the finding (what's wrong or missing).
-- Provide a recommended fix with reasoning.
-- The user can accept the recommendation or provide their own answer.
-- **STOP and wait** for the user to respond.
-- After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
-
-Never reveal future queued questions in advance.
+- **Target files**: the `.tasks.md` file alongside the source spec (`.spec.md`),
+  data model (`.data-model.md`), and contracts (`.contracts.md`).
+- **Context**: this is a task plan review for an existing user story decomposition.
 
 ### 0c. Apply Refinements
 
-After all questions are answered, update the existing tasks file on disk to
-incorporate the refinements. Present a summary of what changed — do not dump
+After the sub-agent returns its summary, update the existing tasks file on disk
+to incorporate the refinements. Present a summary of what changed — do not dump
 the full file contents into the terminal. **STOP and ask** the user to review
 the updated file at its path and let you know if further changes are needed.
 
