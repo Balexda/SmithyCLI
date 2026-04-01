@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   extractAuditChecklist,
   composeAuditTemplate,
   getComposedTemplates,
   templateToExtension,
   isAgentTemplate,
+  isCommandTemplate,
+  readTemplate,
 } from './templates.js';
 
 describe('extractAuditChecklist', () => {
@@ -203,5 +205,42 @@ describe('getComposedTemplates', () => {
     const templates = getComposedTemplates();
     const audit = templates.get('smithy.audit.md')!;
     expect(audit).toMatch(/command:\s*true/);
+  });
+
+  it('includes smithy.titles.md as a prompt-only template', () => {
+    const templates = getComposedTemplates();
+    expect(templates.has('smithy.titles.md')).toBe(true);
+  });
+});
+
+describe('smithy.titles.md', () => {
+  let content: string;
+
+  beforeAll(() => {
+    content = readTemplate('smithy.titles.md');
+  });
+
+  it('is not a command template', () => {
+    expect(isCommandTemplate(content)).toBe(false);
+  });
+
+  it('is not an agent template', () => {
+    expect(isAgentTemplate(content)).toBe(false);
+  });
+
+  it('contains document title conventions', () => {
+    expect(content).toContain('Document Title Conventions');
+  });
+
+  it('contains sub-element title conventions', () => {
+    expect(content).toContain('Sub-Element Title Conventions');
+  });
+
+  it('contains ticket title conventions', () => {
+    expect(content).toContain('Ticket Title Conventions');
+  });
+
+  it('contains repo-level overrides section', () => {
+    expect(content).toContain('Repo-Level Overrides');
   });
 });

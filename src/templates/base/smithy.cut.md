@@ -87,8 +87,9 @@ Phase 0).
 3. Extract the target user story — its title, acceptance scenarios, priority,
    and any FRs that trace to it.
 4. Derive the **story slug** — a short kebab-case name from the user story
-   title (e.g., "User Story 4 — Cut: Slice a User Story into Tasks" →
-   `slice-story-into-tasks`).
+   title (e.g., "User Story 4: Slice a User Story into Tasks" →
+   `slice-story-into-tasks`). Older specs may use an em dash (`—`) instead
+   of a colon as the separator; accept both when parsing.
 5. Confirm the target to the user:
    - Spec folder path.
    - User story number and title.
@@ -147,6 +148,10 @@ Use the **smithy-clarify** sub-agent. Pass it:
 ---
 
 ## Phase 4: Slice
+
+**Title conventions**: Before writing, read the `smithy.titles` prompt for
+canonical title formats and check for repo-level overrides in the project's
+CLAUDE.md. Apply those conventions to all headings in this artifact.
 
 Draft the tasks file with this structure:
 

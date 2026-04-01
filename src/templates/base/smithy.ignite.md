@@ -126,6 +126,10 @@ Use the **smithy-clarify** sub-agent. Pass it:
 
 ## Phase 3: Draft RFC
 
+**Title conventions**: Before writing, read the `smithy.titles` prompt for
+canonical title formats and check for repo-level overrides in the project's
+CLAUDE.md. Apply those conventions to all headings in this artifact.
+
 Using the workshopped answers from Phase 2, draft a structured RFC with this format.
 
 **Important — Decisions vs Open Questions**: Items discussed during clarification
