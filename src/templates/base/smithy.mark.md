@@ -335,17 +335,19 @@ For each category, assess: **Sound**, **Weak**, or **Gap**.
 
 ### 0b. Refinement Questions
 
-Present the audit findings as a summary table, then ask **up to 5 refinement
-questions** — one at a time, with a **recommended resolution** for each.
+Present the audit findings as a summary table, then internally generate **up to 5 refinement
+questions** with a **recommended resolution** for each. Do NOT output all questions at once —
+queue them internally and present them one at a time.
 
 Questions should target the most impactful Weak/Gap categories first. For each:
 
 - State the finding (what's wrong or missing).
 - Provide a recommended fix or addition with reasoning.
 - The user can accept the recommendation or provide their own answer.
-- After each answer, acknowledge it and move to the next question.
+- **STOP and wait** for the user to respond.
+- After the user answers, immediately present the next queued question — do not re-analyze or regenerate remaining questions.
 
-**STOP after each question and wait for the user to respond.**
+Never reveal future queued questions in advance.
 
 ### 0c. Apply Refinements
 
@@ -380,7 +382,7 @@ through Phase 0).
 - **DO** number user stories sequentially — downstream commands depend on this.
 - **DO** order user stories by priority (P1 first, then P2, then P3) and renumber
   them when priorities change during refinement.
-- **DO** present clarifying questions one at a time with recommended answers.
+- **DO** internally generate all clarifying questions first, then present them one at a time with recommended answers.
 - **DO** create the git branch and spec folder automatically.
 - **DO** write minimal placeholder files for data-model and contracts when they
   don't apply, rather than omitting them.
