@@ -50,6 +50,10 @@ Sub-elements within artifacts use **numbered headings with colon separators**:
 - User stories include priority inline in parentheses after the title.
 - Slice headings are H2 (`##`); all others are H3 (`###`).
 
+**Backward compatibility**: When **parsing** existing artifacts, also accept an
+em dash (`—`) as the separator (e.g., `### User Story 1 — <Title>`). Older
+specs may use this format. Always **write** new artifacts with the colon format.
+
 ---
 
 ## Slug & Folder Conventions

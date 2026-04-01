@@ -88,7 +88,8 @@ Phase 0).
    and any FRs that trace to it.
 4. Derive the **story slug** — a short kebab-case name from the user story
    title (e.g., "User Story 4: Slice a User Story into Tasks" →
-   `slice-story-into-tasks`).
+   `slice-story-into-tasks`). Older specs may use an em dash (`—`) instead
+   of a colon as the separator; accept both when parsing.
 5. Confirm the target to the user:
    - Spec folder path.
    - User story number and title.
