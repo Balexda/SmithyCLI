@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Dotprompt } from 'dotprompt';
 import {
   stripFrontmatter,
   parseFrontmatterName,
@@ -48,43 +49,40 @@ describe('parseFrontmatterName', () => {
 
 describe('resolveSnippets', () => {
   it('resolves a Handlebars partial reference with its content', async () => {
-    const partials = new Map([['greeting', 'Hello, world!']]);
+    const renderer = new Dotprompt({ partials: { greeting: 'Hello, world!' } });
     const content = 'Before\n{{>greeting}}\nAfter';
-    const result = await resolveSnippets(content, partials);
+    const result = await resolveSnippets(content, renderer);
     expect(result).toContain('Before');
     expect(result).toContain('Hello, world!');
     expect(result).toContain('After');
   });
 
   it('resolves multiple partial references', async () => {
-    const partials = new Map([
-      ['alpha', 'AAA'],
-      ['beta', 'BBB'],
-    ]);
+    const renderer = new Dotprompt({ partials: { alpha: 'AAA', beta: 'BBB' } });
     const content = '{{>alpha}}\nmiddle\n{{>beta}}';
-    const result = await resolveSnippets(content, partials);
+    const result = await resolveSnippets(content, renderer);
     expect(result).toContain('AAA');
     expect(result).toContain('middle');
     expect(result).toContain('BBB');
   });
 
   it('throws on a missing partial', async () => {
-    const partials = new Map<string, string>();
+    const renderer = new Dotprompt();
     const content = '{{>missing}}';
-    await expect(resolveSnippets(content, partials)).rejects.toThrow();
+    await expect(resolveSnippets(content, renderer)).rejects.toThrow();
   });
 
   it('returns content unchanged when there are no partial references', async () => {
-    const partials = new Map([['unused', 'data']]);
+    const renderer = new Dotprompt({ partials: { unused: 'data' } });
     const content = 'No partials here.';
-    const result = await resolveSnippets(content, partials);
+    const result = await resolveSnippets(content, renderer);
     expect(result).toBe(content);
   });
 
   it('renders partial content as-is (trimming is done by buildPartialsMap)', async () => {
-    const partials = new Map([['trail', 'content']]);
+    const renderer = new Dotprompt({ partials: { trail: 'content' } });
     const content = '{{>trail}}';
-    const result = await resolveSnippets(content, partials);
+    const result = await resolveSnippets(content, renderer);
     expect(result).toBe('content');
   });
 });
@@ -197,7 +195,7 @@ describe('getComposedTemplates', () => {
     expect(clarify).toBeDefined();
     expect(clarify).toMatch(/^---\s*\n/);
     expect(clarify).toContain('name: smithy-clarify');
-    expect(clarify).toContain('  - Read');
+    expect(clarify).toMatch(/tools:\s*\n\s+-\s+Read/);
   });
 
   it('command templates without partials are returned as-is', async () => {
