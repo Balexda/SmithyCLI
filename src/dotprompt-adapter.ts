@@ -32,9 +32,9 @@ export function parseTemplate(content: string): ParsedTemplate {
 /**
  * Resolve Handlebars partials in a template string via Dotprompt's render().
  *
- * Strips frontmatter first (Smithy uses custom fields like `tools: Read, Grep, Glob`
- * that would confuse Dotprompt's metadata resolver), renders the body with partials,
- * then re-attaches the original frontmatter if present.
+ * Captures the original frontmatter via regex and reattaches it after rendering
+ * to preserve exact YAML formatting. Dotprompt's render() handles frontmatter
+ * parsing internally — we just need the original text back verbatim.
  *
  * Uses Dotprompt's rendering pipeline so future features (schemas, helpers,
  * variables) are available without further refactoring.
@@ -43,22 +43,17 @@ export async function resolvePartials(
   content: string,
   partials: Map<string, string>,
 ): Promise<string> {
-  // Separate frontmatter from body so Dotprompt doesn't try to process
-  // Smithy-specific frontmatter fields during render.
-  const frontmatterMatch = content.match(/^(---\s*\n[\s\S]*?\n---\s*\n)/);
-  const frontmatter = frontmatterMatch?.[1] ?? '';
-  const body = frontmatter ? content.slice(frontmatter.length) : content;
-
-  // If body has no partial references, skip rendering entirely
-  if (!body.includes('{{>')) {
+  // If there are no partial references, skip rendering entirely
+  if (!content.includes('{{>')) {
     return content;
   }
 
-  const instance = new Dotprompt();
-  for (const [name, source] of partials) {
-    instance.definePartial(name, source);
-  }
-  const result = await instance.render(body, {});
+  // Capture original frontmatter text for verbatim reattachment after render.
+  const frontmatterMatch = content.match(/^(---\s*\n[\s\S]*?\n---\s*\n)/);
+  const frontmatter = frontmatterMatch?.[1] ?? '';
+
+  const instance = new Dotprompt({ partials: Object.fromEntries(partials) });
+  const result = await instance.render(content, {});
   const rendered = result.messages
     .map(m => m.content.map(p => ('text' in p ? p.text : '')).join(''))
     .join('\n');

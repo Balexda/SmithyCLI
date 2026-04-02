@@ -197,7 +197,7 @@ describe('getComposedTemplates', () => {
     expect(clarify).toBeDefined();
     expect(clarify).toMatch(/^---\s*\n/);
     expect(clarify).toContain('name: smithy-clarify');
-    expect(clarify).toContain('tools:');
+    expect(clarify).toContain('  - Read');
   });
 
   it('command templates without partials are returned as-is', async () => {

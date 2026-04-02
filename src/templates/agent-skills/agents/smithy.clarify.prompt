@@ -1,7 +1,10 @@
 ---
 name: smithy-clarify
 description: "Shared clarification sub-agent. Scans for ambiguity across provided categories, then triages findings into assumptions and questions with confidence/impact scoring. Invoked by other smithy agents."
-tools: Read, Grep, Glob
+tools:
+  - Read
+  - Grep
+  - Glob
 model: opus
 ---
 # smithy-clarify
