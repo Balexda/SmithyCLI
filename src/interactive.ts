@@ -1,24 +1,39 @@
-import { select, checkbox, input, confirm } from '@inquirer/prompts';
+import { select, confirm } from '@inquirer/prompts';
 import picocolors from 'picocolors';
 
 export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
-export type DeployLocation = 'repo' | 'local' | 'user';
-export type PermissionLevel = 'repo' | 'local' | 'user' | 'none';
+export type DeployLocation = 'repo' | 'user';
+export type PermissionLevel = 'repo' | 'user' | 'none';
 export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;
 
 /** Deploy locations supported by each agent. */
 export const agentDeployLocations: Record<AgentChoice, DeployLocation[]> = {
-  claude: ['repo', 'local', 'user'],
+  claude: ['repo', 'user'],
   gemini: ['repo'],
   codex: ['repo'],
-  all: ['repo', 'local', 'user'],
+  all: ['repo', 'user'],
 };
 
-const deployLocationLabels: Record<DeployLocation, { name: string; description: string }> = {
-  repo: { name: 'Repo', description: 'Checked into git — shared across worktrees and team members' },
-  local: { name: 'Local', description: 'Per-machine — not checked in, applies only to this repo' },
-  user: { name: 'User (global)', description: 'Global per-user — not checked in, applies to all repos' },
-};
+/** Build a location label with an agent-specific description of where files go. */
+function getDeployLocationLabel(agent: AgentChoice, loc: DeployLocation): { name: string; description: string } {
+  if (loc === 'repo') {
+    const pathHint: Record<AgentChoice, string> = {
+      claude: '.claude/commands/, .claude/prompts/',
+      gemini: '.gemini/skills/',
+      codex: 'tools/codex/prompts/',
+      all: 'shared across team members',
+    };
+    return { name: 'Repo', description: `Checked into git — ${pathHint[agent]}` };
+  }
+  // loc === 'user'
+  const pathHint: Record<AgentChoice, string> = {
+    claude: '~/.claude/',
+    gemini: '~/',
+    codex: '~/',
+    all: '~/ (Claude only)',
+  };
+  return { name: 'User (global)', description: `Per-user global config in ${pathHint[agent]}` };
+}
 
 export async function promptAgent(): Promise<AgentChoice> {
   return await select<AgentChoice>({
@@ -43,57 +58,73 @@ export async function promptDeployLocation(agent: AgentChoice): Promise<DeployLo
 
   return await select<DeployLocation>({
     message: 'Where should Smithy be deployed?',
-    choices: locations.map(loc => ({
-      name: deployLocationLabels[loc].name,
-      value: loc,
-      description: deployLocationLabels[loc].description,
-    })),
+    choices: locations.map(loc => {
+      const label = getDeployLocationLabel(agent, loc);
+      return { name: label.name, value: loc, description: label.description };
+    }),
   });
 }
 
-export async function promptPermissionLocations(
-  agent: AgentChoice,
-  defaultLocation: DeployLocation,
-): Promise<DeployLocation[]> {
-  const locations = agentDeployLocations[agent];
-
-  return await checkbox<DeployLocation>({
-    message: 'Where should Smithy permissions be deployed? (leave empty to skip)',
-    choices: locations.map(loc => ({
-      name: deployLocationLabels[loc].name,
-      value: loc,
-      checked: loc === defaultLocation,
-    })),
+export async function promptPermissions(): Promise<boolean> {
+  return await confirm({
+    message: 'Deploy Smithy permissions?',
+    default: true,
   });
 }
 
-export async function promptIssueTemplateLocations(
-  agent: AgentChoice,
-  defaultLocation: DeployLocation,
-): Promise<DeployLocation[]> {
-  const locations = agentDeployLocations[agent];
-
-  return await checkbox<DeployLocation>({
-    message: 'Where should Smithy issue templates be deployed? (leave empty to skip)',
-    choices: locations.map(loc => ({
-      name: deployLocationLabels[loc].name,
-      value: loc,
-      checked: loc === defaultLocation,
-    })),
+export async function promptIssueTemplates(): Promise<boolean> {
+  return await confirm({
+    message: 'Deploy Smithy issue templates?',
+    default: true,
   });
 }
 
-export async function promptTargetDir(): Promise<string> {
-  const dir = await input({
-    message: 'Target directory?',
-    default: process.cwd(),
-  });
-  return dir;
-}
 
 export async function promptConfirmUninit(): Promise<boolean> {
   return await confirm({
     message: 'Are you sure you want to remove Smithy prompts and templates? (Permissions will not be touched)',
+    default: false,
+  });
+}
+
+export async function promptManifestChoice(
+  repoVersion: string,
+  userVersion: string,
+  action: string = 'upgrade',
+): Promise<DeployLocation | 'both'> {
+  return await select<DeployLocation | 'both'>({
+    message: `Found multiple manifests, which do you want to ${action}?`,
+    choices: [
+      { name: `Both`, value: 'both', description: `repo (v${repoVersion}) + user (v${userVersion})` },
+      { name: `Repo`, value: 'repo', description: `v${repoVersion} — .smithy/smithy-manifest.json` },
+      { name: `User`, value: 'user', description: `v${userVersion} — ~/.smithy/smithy-manifest.json` },
+    ],
+  });
+}
+
+export async function promptConfirmInit(): Promise<boolean> {
+  return await confirm({
+    message: 'No manifests found, would you like to initialize?',
+    default: true,
+  });
+}
+
+export async function promptConfirmOverwrite(version: string, location?: DeployLocation): Promise<boolean> {
+  const prefix = location ? `${location.charAt(0).toUpperCase() + location.slice(1)} manifest` : 'Manifest';
+  return await confirm({
+    message: `${prefix} is the same version (${version}), are you sure you want to overwrite?`,
+    default: false,
+  });
+}
+
+export async function promptConfirmDowngrade(
+  manifestVersion: string,
+  cliVersion: string,
+  location?: DeployLocation,
+): Promise<boolean> {
+  const prefix = location ? `${location.charAt(0).toUpperCase() + location.slice(1)} manifest` : 'Manifest';
+  return await confirm({
+    message: `${prefix} is higher version (${manifestVersion}) than CLI (${cliVersion}), are you sure you want to downgrade?`,
     default: false,
   });
 }

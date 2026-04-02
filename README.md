@@ -1,6 +1,6 @@
 # Smithy CLI
 
-An initialization tool for the **Smithy Agentic Development Workflow**. This package provides a CLI that easily sets up the `smithy` prompt templates for various AI assistant workflows, including Gemini CLI, Claude, and Codex.
+An initialization tool for the **Smithy Agentic Development Workflow**. This package provides a CLI that easily sets up the `smithy` prompt templates for various AI assistant workflows, including Claude and Gemini CLI.
 
 ## Installation
 
@@ -19,9 +19,8 @@ smithy init
 
 ## Supported AI Assistants
 
-- **Gemini CLI:** Installs workspace skills (`.gemini/skills/`) so you can type `/skills reload` and immediately use `/skill smithy-scope` and other workflow commands.
-- **Claude:** Installs prompts into `.claude/prompts/` to use within your Claude-based workflows.
-- **Codex:** Sets up prompts in `tools/codex/prompts/` for the original `spec-kit` and Codex workflows.
+- **Claude:** Installs commands, prompts, and sub-agents into `.claude/` for use within your Claude Code workflows.
+- **Gemini CLI:** Installs workspace skills (`.gemini/skills/`) so you can type `/skills reload` and immediately use Smithy workflow commands.
 
 ## Workflow Industrial Pipeline
 

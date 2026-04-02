@@ -1,22 +1,13 @@
 import fs from 'fs';
-import { basePromptsDir } from './utils.js';
+import path from 'path';
+import { commandsTemplateDir, promptsTemplateDir, agentsTemplateDir, snippetsTemplateDir } from './utils.js';
 
-const AUDIT_TEMPLATE_FILENAME = 'smithy.audit.md';
+export type TemplateCategory = 'commands' | 'prompts' | 'agents';
 
-export interface TemplateMeta {
-  name?: string;
-  command?: boolean;
-  content: string;
-  filename: string;
-}
-
-export function getBaseTemplateFiles(): string[] {
-  if (!fs.existsSync(basePromptsDir)) return [];
-  return fs.readdirSync(basePromptsDir).filter(f => f.endsWith('.md'));
-}
-
-export function readTemplate(filename: string): string {
-  return fs.readFileSync(`${basePromptsDir}/${filename}`, 'utf8');
+export interface ComposedTemplates {
+  commands: Map<string, string>;  // filename → composed content
+  prompts: Map<string, string>;
+  agents: Map<string, string>;
 }
 
 export function stripFrontmatter(content: string): string {
@@ -28,110 +19,76 @@ export function parseFrontmatterName(content: string): string | undefined {
   return match?.[1]?.trim();
 }
 
-export function isCommandTemplate(content: string): boolean {
-  const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/m);
-  if (!frontmatterMatch) return false;
-  return /command:\s*true/.test(frontmatterMatch[1]!);
-}
-
-export function isAgentTemplate(content: string): boolean {
-  const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/m);
-  if (!frontmatterMatch) return false;
-  return /tools:\s*.+/.test(frontmatterMatch[1]!);
-}
-
-const AUDIT_CHECKLIST_START = '<!-- audit-checklist-start -->';
-const AUDIT_CHECKLIST_END = '<!-- audit-checklist-end -->';
-const COMPOSED_CHECKLISTS_PLACEHOLDER = '<!-- composed-checklists -->';
-
 /**
- * Maps template filenames to the artifact extension their audit checklist covers.
+ * List .md files in a template subdirectory.
  */
-export const templateToExtension: Record<string, string> = {
-  'smithy.ignite.md': '.rfc.md',
-  'smithy.render.md': '.features.md',
-  'smithy.mark.md': '.spec.md',
-  'smithy.cut.md': '.tasks.md',
-  'smithy.strike.md': '.strike.md',
-};
-
-/**
- * Extracts the audit checklist content between marker comments.
- * Returns null if markers are not found.
- */
-export function extractAuditChecklist(content: string): string | null {
-  const startIdx = content.indexOf(AUDIT_CHECKLIST_START);
-  if (startIdx === -1) return null;
-  const afterStart = startIdx + AUDIT_CHECKLIST_START.length;
-
-  const endIdx = content.indexOf(AUDIT_CHECKLIST_END, afterStart);
-  if (endIdx === -1) return null;
-
-  return content.slice(afterStart, endIdx).trim();
+function listTemplateFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(f => f.endsWith('.md'));
 }
 
 /**
- * Collects audit checklists from all producing command templates and injects
- * them into the audit template at the composed-checklists placeholder.
- *
- * @param templates - Map of template filename → template content
- * @param auditTemplate - The audit template content containing the placeholder
- * @returns The audit template with composed checklists injected
+ * Read all .md files from a template subdirectory into a Map.
  */
-export function composeAuditTemplate(
-  templates: Map<string, string>,
-  auditTemplate: string,
-): string {
-  const sections: string[] = [];
+function readTemplateDir(dir: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const file of listTemplateFiles(dir)) {
+    map.set(file, fs.readFileSync(path.join(dir, file), 'utf8'));
+  }
+  return map;
+}
 
-  for (const [filename, extension] of Object.entries(templateToExtension)) {
-    const content = templates.get(filename);
-    if (!content) continue;
+/**
+ * Load all snippet files from the snippets directory.
+ */
+export function loadSnippets(): Map<string, string> {
+  return readTemplateDir(snippetsTemplateDir);
+}
 
-    const checklist = extractAuditChecklist(content);
-    if (!checklist) continue;
-
-    // Validate the checklist header references the expected artifact extension
-    // so the mapping can't silently drift out of sync with the templates.
-    const expectedHeader = `(${extension})`;
-    if (!checklist.includes(expectedHeader)) {
-      throw new Error(
-        `Audit checklist in ${filename} does not reference expected extension "${extension}". ` +
-        `Update templateToExtension or the checklist header to match.`,
-      );
+/**
+ * Replace <!-- snippet:filename.md --> placeholders with snippet content.
+ */
+export function resolveSnippets(content: string, snippets: Map<string, string>): string {
+  return content.replace(/<!-- snippet:(\S+) -->/g, (_match, name: string) => {
+    const snippet = snippets.get(name);
+    if (!snippet) {
+      throw new Error(`Snippet "${name}" not found in snippets/`);
     }
-
-    sections.push(checklist);
-  }
-
-  if (sections.length === 0) return auditTemplate;
-
-  if (!auditTemplate.includes(COMPOSED_CHECKLISTS_PLACEHOLDER)) {
-    throw new Error(
-      `Audit template is missing the "${COMPOSED_CHECKLISTS_PLACEHOLDER}" placeholder. ` +
-      `Cannot inject composed checklists.`,
-    );
-  }
-
-  const composed = sections.join('\n\n');
-  return auditTemplate.replace(COMPOSED_CHECKLISTS_PLACEHOLDER, composed);
+    return snippet.trimEnd();
+  });
 }
 
 /**
- * Reads all base templates and returns them as a Map, with the audit template
- * already composed (checklists injected from producing command templates).
+ * Returns filenames for each template category (without reading content).
+ * Useful for remove/cleanup operations.
  */
-export function getComposedTemplates(): Map<string, string> {
-  const files = getBaseTemplateFiles();
-  const templates = new Map<string, string>();
-  for (const file of files) {
-    templates.set(file, readTemplate(file));
-  }
+export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]> {
+  return {
+    commands: listTemplateFiles(commandsTemplateDir),
+    prompts: listTemplateFiles(promptsTemplateDir),
+    agents: listTemplateFiles(agentsTemplateDir),
+  };
+}
 
-  const auditRaw = templates.get(AUDIT_TEMPLATE_FILENAME);
-  if (auditRaw) {
-    templates.set(AUDIT_TEMPLATE_FILENAME, composeAuditTemplate(templates, auditRaw));
-  }
+/**
+ * Reads all templates from their categorized subdirectories, resolves snippets,
+ * and returns a ComposedTemplates object.
+ */
+export function getComposedTemplates(): ComposedTemplates {
+  const snippets = loadSnippets();
 
-  return templates;
+  const resolve = (dir: string): Map<string, string> => {
+    const raw = readTemplateDir(dir);
+    const composed = new Map<string, string>();
+    for (const [file, content] of raw) {
+      composed.set(file, resolveSnippets(content, snippets));
+    }
+    return composed;
+  };
+
+  return {
+    commands: resolve(commandsTemplateDir),
+    prompts: resolve(promptsTemplateDir),
+    agents: resolve(agentsTemplateDir),
+  };
 }

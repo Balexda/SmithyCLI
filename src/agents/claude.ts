@@ -2,72 +2,75 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate, isAgentTemplate } from '../templates.js';
+import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions } from '../permissions.js';
-import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
-import type { PermissionLevel, DeployablePermissionLevel } from '../interactive.js';
+import { removeIfExists } from '../utils.js';
+import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
-export function deploy(targetDir: string, permissionLevel: PermissionLevel): void {
-  const promptsDir = path.join(targetDir, '.claude', 'prompts');
-  console.log(picocolors.green(`\nInitializing Claude prompts in ${promptsDir}...`));
-  if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
-
-  const commandsDir = path.join(targetDir, '.claude', 'commands');
-  const agentsDir = path.join(targetDir, '.claude', 'agents');
-
+/**
+ * Deploy Claude templates. Returns the list of deployed file paths (relative to baseDir).
+ */
+export function deploy(targetDir: string, permissionLevel: PermissionLevel, location: DeployLocation = 'repo'): string[] {
+  const baseDir = location === 'user' ? os.homedir() : targetDir;
   const templates = getComposedTemplates();
-  const allFilenames = new Set<string>();
-  const commandFilenames = new Set<string>();
-  const agentFilenames = new Set<string>();
+  const deployedFiles: string[] = [];
 
-  for (const [file, content] of templates) {
-    allFilenames.add(file);
-    const stripped = stripFrontmatter(content);
+  // Deploy commands -> .claude/commands/
+  const commandsDir = path.join(baseDir, '.claude', 'commands');
+  if (templates.commands.size > 0) {
+    if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
+  }
+  for (const [file, content] of templates.commands) {
+    const dest = path.join(commandsDir, file);
+    fs.writeFileSync(dest, stripFrontmatter(content));
+    deployedFiles.push(path.relative(baseDir, dest));
+  }
+  console.log(picocolors.green(`\nDeployed Claude agent skills in ${path.join(baseDir, '.claude')}`));
 
-    // Deploy to prompts/
-    fs.writeFileSync(path.join(promptsDir, file), stripped);
-
-    // Deploy command-flagged templates to commands/
-    if (isCommandTemplate(content)) {
-      commandFilenames.add(file);
-      if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
-      fs.writeFileSync(path.join(commandsDir, file), stripped);
-    }
-
-    // Deploy agent templates to agents/ (keep frontmatter for Claude sub-agent parsing)
-    if (isAgentTemplate(content)) {
-      agentFilenames.add(file);
-      if (!fs.existsSync(agentsDir)) fs.mkdirSync(agentsDir, { recursive: true });
-      fs.writeFileSync(path.join(agentsDir, file), content);
-    }
+  // Deploy prompts -> .claude/prompts/
+  const promptsDir = path.join(baseDir, '.claude', 'prompts');
+  if (templates.prompts.size > 0) {
+    if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
+  }
+  for (const [file, content] of templates.prompts) {
+    const dest = path.join(promptsDir, file);
+    fs.writeFileSync(dest, stripFrontmatter(content));
+    deployedFiles.push(path.relative(baseDir, dest));
   }
 
-  // Remove stale .md artifacts from renamed/deleted templates
-  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removeStaleSmithyArtifacts(promptsDir, 'smithy.', allFilenames, isMdFile);
-  removeStaleSmithyArtifacts(commandsDir, 'smithy.', commandFilenames, isMdFile);
-  removeStaleSmithyArtifacts(agentsDir, 'smithy.', agentFilenames, isMdFile);
+  // Deploy agents -> .claude/agents/ (keep frontmatter)
+  const agentsDir = path.join(baseDir, '.claude', 'agents');
+  if (templates.agents.size > 0) {
+    if (!fs.existsSync(agentsDir)) fs.mkdirSync(agentsDir, { recursive: true });
+  }
+  for (const [file, content] of templates.agents) {
+    const dest = path.join(agentsDir, file);
+    fs.writeFileSync(dest, content);
+    deployedFiles.push(path.relative(baseDir, dest));
+  }
 
   if (permissionLevel !== 'none') {
     writePermissions(targetDir, permissionLevel);
   }
+
+  return deployedFiles;
 }
 
-export function remove(targetDir: string): number {
+/**
+ * Remove Claude artifacts by known template filenames (legacy cleanup, no manifest).
+ */
+export function removeLegacy(targetDir: string): number {
   let removedCount = 0;
-
-  for (const file of getBaseTemplateFiles()) {
-    if (removeIfExists(path.join(targetDir, '.claude', 'prompts', file))) removedCount++;
+  const categories = getTemplateFilesByCategory();
+  for (const file of categories.commands) {
     if (removeIfExists(path.join(targetDir, '.claude', 'commands', file))) removedCount++;
+  }
+  for (const file of categories.prompts) {
+    if (removeIfExists(path.join(targetDir, '.claude', 'prompts', file))) removedCount++;
+  }
+  for (const file of categories.agents) {
     if (removeIfExists(path.join(targetDir, '.claude', 'agents', file))) removedCount++;
   }
-
-  // Remove stale .md artifacts from renamed/deleted templates
-  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'prompts'), 'smithy.', new Set(), isMdFile);
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'commands'), 'smithy.', new Set(), isMdFile);
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, '.claude', 'agents'), 'smithy.', new Set(), isMdFile);
-
   return removedCount;
 }
 
@@ -89,26 +92,16 @@ export function buildClaudeDenyList(): string[] {
 
 /**
  * Resolve the settings file path based on the permission level.
- *   - 'repo'  → <targetDir>/.claude/settings.json        (checked into git)
- *   - 'local' → <targetDir>/.claude/settings.local.json  (not checked in, per-machine)
- *   - 'user'  → ~/.claude/settings.json                   (global, not checked in)
- *
- * Accepts only deployable levels ('repo' | 'local' | 'user'); 'none' is excluded.
  */
 export function resolveSettingsPath(targetDir: string, level: DeployablePermissionLevel): string {
   if (level === 'user') {
     return path.join(os.homedir(), '.claude', 'settings.json');
   }
-  if (level === 'local') {
-    return path.join(targetDir, '.claude', 'settings.local.json');
-  }
   return path.join(targetDir, '.claude', 'settings.json');
 }
 
 /**
- * Write permissions to the appropriate settings.json using Claude Code's schema:
- *   { "permissions": { "allow": ["Bash(...)", "WebSearch", ...] } }
- *
+ * Write permissions to the appropriate settings.json using Claude Code's schema.
  * Merges with existing settings.json if present.
  */
 export function writePermissions(targetDir: string, level: DeployablePermissionLevel): void {
@@ -129,7 +122,6 @@ export function writePermissions(targetDir: string, level: DeployablePermissionL
       const existingAllow = (existingPerms?.['allow'] ?? []) as string[];
       const existingDeny = (existingPerms?.['deny'] ?? []) as string[];
 
-      // Merge: union of existing and new entries
       const mergedAllow = [...new Set([...existingAllow, ...allowList])];
       const mergedDeny = [...new Set([...existingDeny, ...denyList])];
 
@@ -142,7 +134,6 @@ export function writePermissions(targetDir: string, level: DeployablePermissionL
         },
       };
     } catch {
-      // If parse fails, overwrite with defaults
       config = { permissions: { allow: allowList, deny: denyList } };
     }
   }

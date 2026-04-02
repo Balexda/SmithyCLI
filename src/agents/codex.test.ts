@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { deploy, remove } from './codex.js';
-import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate, parseFrontmatterName } from '../templates.js';
+import { deploy, removeLegacy } from './codex.js';
+import { getComposedTemplates, getTemplateFilesByCategory, parseFrontmatterName } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -18,21 +18,21 @@ describe('deploy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates prompts directory and deploys template files', () => {
+  it('creates prompts directory and deploys only prompt-category template files', () => {
     deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
     expect(fs.existsSync(promptsDir)).toBe(true);
 
     const files = fs.readdirSync(promptsDir);
-    const baseTemplates = getBaseTemplateFiles();
-    expect(files.length).toBe(baseTemplates.length);
+    const categories = getTemplateFilesByCategory();
+    expect(files.length).toBe(categories.prompts.length);
     for (const file of files) {
       expect(file.endsWith('.md')).toBe(true);
     }
   });
 
-  it('strips frontmatter from deployed files', () => {
+  it('strips frontmatter from deployed prompt files', () => {
     deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
@@ -63,19 +63,12 @@ describe('deploy', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
-  it('removes stale smithy artifacts on deploy', () => {
-    // Simulate a previously deployed template that has since been renamed
-    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    fs.mkdirSync(promptsDir, { recursive: true });
-    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# old template');
-
-    deploy(tmpDir, false);
-
-    // The stale file should be removed
-    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
-    // Current templates should still exist
-    const files = fs.readdirSync(promptsDir);
-    expect(files).toContain('smithy.fix.md');
+  it('returns deployed file paths', () => {
+    const files = deploy(tmpDir, false);
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      expect(path.isAbsolute(file)).toBe(false);
+    }
   });
 
   it('deploys command-flagged templates as skills to .agents/skills/', () => {
@@ -87,11 +80,11 @@ describe('deploy', () => {
     const skillDirs = fs.readdirSync(skillsDir);
     expect(skillDirs.length).toBeGreaterThan(0);
 
-    // Verify only command-flagged templates with names become skills
+    // Verify only command-category templates with names become skills
     const templates = getComposedTemplates();
-    const expectedSkills = [...templates.entries()]
-      .filter(([, content]) => isCommandTemplate(content) && parseFrontmatterName(content))
-      .map(([, content]) => parseFrontmatterName(content)!);
+    const expectedSkills = [...templates.commands.entries()]
+      .map(([, content]) => parseFrontmatterName(content)!)
+      .filter(Boolean);
 
     expect(skillDirs.sort()).toEqual(expectedSkills.sort());
 
@@ -123,7 +116,7 @@ describe('deploy', () => {
   });
 });
 
-describe('remove', () => {
+describe('removeLegacy', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -136,38 +129,30 @@ describe('remove', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes deployed prompt files and skills, and returns count', () => {
+  it('removes deployed prompt files and skill directories', () => {
     deploy(tmpDir, false);
 
+    const removedCount = removeLegacy(tmpDir);
+    expect(removedCount).toBeGreaterThan(0);
+
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    const skillsDir = path.join(tmpDir, '.agents', 'skills');
-    const promptsBefore = fs.readdirSync(promptsDir);
-    const skillsBefore = fs.existsSync(skillsDir) ? fs.readdirSync(skillsDir) : [];
-    expect(promptsBefore.length).toBeGreaterThan(0);
-
-    const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(promptsBefore.length + skillsBefore.length);
-
     const filesAfter = fs.readdirSync(promptsDir);
     expect(filesAfter.length).toBe(0);
-    if (fs.existsSync(skillsDir)) {
-      expect(fs.readdirSync(skillsDir).length).toBe(0);
-    }
   });
 
-  it('removes stale smithy artifacts during remove', () => {
-    // Plant a stale artifact that doesn't match any current template
-    const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
-    fs.mkdirSync(promptsDir, { recursive: true });
-    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# stale');
+  it('removes smithy-prefixed skill directories', () => {
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
+    const staleSkillDir = path.join(skillsDir, 'smithy-patch');
+    fs.mkdirSync(staleSkillDir, { recursive: true });
+    fs.writeFileSync(path.join(staleSkillDir, 'SKILL.md'), '# stale');
 
-    const removedCount = remove(tmpDir);
+    const removedCount = removeLegacy(tmpDir);
     expect(removedCount).toBeGreaterThanOrEqual(1);
-    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
+    expect(fs.existsSync(staleSkillDir)).toBe(false);
   });
 
   it('returns 0 when no files exist to remove', () => {
-    const removedCount = remove(tmpDir);
+    const removedCount = removeLegacy(tmpDir);
     expect(removedCount).toBe(0);
   });
 });

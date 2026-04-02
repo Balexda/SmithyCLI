@@ -1,7 +1,6 @@
 ---
 name: smithy-fix
 description: "Fix errors from CI failures, local test failures, or bugs. Diagnose, fix, verify, commit."
-command: true
 ---
 # smithy-fix
 

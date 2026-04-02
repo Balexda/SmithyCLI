@@ -4,21 +4,28 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 ## What Smithy Does
 
-`smithy init` deploys prompt files from `src/templates/base/` into agent-specific locations:
+`smithy init` deploys prompt files from `src/templates/agent-skills/` into agent-specific locations:
 
-| Agent | Prompts | Commands (slash) | Permissions |
-|-------|---------|-------------------|-------------|
-| Claude | `.claude/prompts/` | `.claude/commands/` (if `command: true` in frontmatter) | `.claude/settings.json` |
-| Gemini | `.gemini/skills/<name>/SKILL.md` | (skills are invocable by default) | `.gemini/config.json` |
-| Codex | `tools/codex/prompts/` | `.agents/skills/<name>/SKILL.md` (if `command: true` in frontmatter) | `.codex/config.toml` |
+| Agent | Prompts | Commands (slash) | Agents (sub-agents) | Permissions |
+|-------|---------|-------------------|---------------------|-------------|
+| Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/` | `.claude/settings.json` |
+| Gemini | `.gemini/skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | (not deployed) | `.gemini/settings.json` |
+
+> **Note:** Codex support exists in the codebase (`src/agents/codex.ts`) but is not currently exposed as a CLI option. It will be revisited once Codex's skill/prompt conventions are better understood.
 
 `smithy uninit` removes all deployed artifacts (but preserves config/permissions).
 
+`smithy update` re-deploys templates using the settings stored in the manifest, handling version upgrades/downgrades.
+
 ## Architecture
 
-- **Single source file**: `src/cli.ts` — the entire CLI. Uses Commander for arg parsing, Inquirer for interactive prompts.
-- **Templates**: `src/templates/base/*.md` — each has YAML frontmatter (`name`, `description`, optionally `command: true`). Frontmatter is stripped when deploying to Claude/Codex (kept for Gemini skills).
-- **Issue templates**: `src/templates/issue-templates/` — GitHub issue templates, copied as-is.
+- **CLI entry**: `src/cli.ts` — Commander setup and arg parsing.
+- **Commands**: `src/commands/init.ts`, `src/commands/uninit.ts`, `src/commands/update.ts` — action handlers.
+- **Agent deployers**: `src/agents/{claude,gemini}.ts` — per-agent deploy/remove logic. (`codex.ts` exists but is not exposed in the CLI yet.)
+- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.md` — categorized by deployment target. Each has YAML frontmatter (`name`, `description`). Frontmatter is stripped when deploying to Claude (kept for Gemini skills).
+- **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared content injected via `<!-- snippet:filename.md -->` placeholders.
+- **Issue templates**: `src/templates/issues/` — GitHub issue templates, copied as-is.
+- **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
 ## The Smithy Workflow Commands
@@ -35,11 +42,12 @@ The current focus is getting `smithy.strike` working end-to-end as a slash comma
 
 ## Key Concepts
 
-### Commands vs Prompts (Claude Code)
-- `.claude/prompts/` — reference files the AI can read, but NOT invocable as `/command`
-- `.claude/commands/` — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`)
-- Templates with `command: true` in frontmatter get deployed to BOTH locations
-- `$ARGUMENTS` is replaced by Claude Code with user's text after the slash command
+### Template Categories
+Templates are organized by their deployment target:
+- **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
+- **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
+- **`agents/`** — sub-agent definitions (deployed to `.claude/agents/` only, with frontmatter intact).
+- **`snippets/`** — shared content fragments injected into other templates via `<!-- snippet:filename.md -->`.
 
 ### Cross-Agent Compatibility
 The same template source serves all three agents. Gemini keeps frontmatter (for skill metadata). Claude/Codex strip it. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
@@ -52,6 +60,7 @@ npm run typecheck    # Type-check without emitting
 npm test             # Run all tests
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow
+node dist/cli.js update  # Test update flow
 ```
 
 **Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.
@@ -70,5 +79,5 @@ Agent and human test cases are documented in **[tests/MANUAL_TEST_CASES.md](test
 
 - The CLI uses interactive prompts (Inquirer), so interactive flows cannot be tested with piped stdin.
 - To test slash commands in Claude Code: run `smithy init` targeting a test repo, then start a **new** Claude Code session in that repo. Claude Code must be restarted to pick up new/changed commands.
-- The `--permissions` flag accepts a level: `repo` (`.claude/settings.json`, checked into git), `user` (`~/.claude/settings.json`, global), or `none` (skip).
+- The `--permissions` / `--no-permissions` flags control whether permissions are deployed at the selected location (`repo` or `user`).
 - The `templatesBaseDir` path in the built CLI resolves to `../src/templates` relative to `dist/`, so `src/templates/` must exist at runtime (it's included in `package.json` `files`).

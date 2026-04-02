@@ -3,18 +3,17 @@ import picocolors from 'picocolors';
 import {
   promptAgent,
   promptDeployLocation,
-  promptPermissionLocations,
-  promptIssueTemplateLocations,
-  promptTargetDir,
+  promptPermissions,
+  promptIssueTemplates,
 } from '../interactive.js';
 import {
   copyDirSync,
   issueTemplatesSrcDir,
   agentGitignoreEntries,
-  localDeployGitignoreEntries,
   addToGitignore,
   resolveIssueTemplatePath,
 } from '../utils.js';
+import { readManifest, removeStaleFiles, writeManifest } from '../manifest.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -28,10 +27,14 @@ export interface InitOptions {
   issueTemplates?: boolean;
   targetDir?: string;
   yes?: boolean;
+  /** When true, suppresses the welcome banner and uses "Upgrade" in the completion message. */
+  quiet?: boolean;
 }
 
 export async function initAction(opts: InitOptions = {}): Promise<void> {
-  console.log(picocolors.cyan('🔨 Welcome to Smithy CLI\n'));
+  if (!opts.quiet) {
+    console.log(picocolors.cyan('🔨 Welcome to Smithy CLI\n'));
+  }
 
   // 1. Agent selection
   const agent = opts.agent ?? (opts.yes ? 'all' : await promptAgent());
@@ -50,61 +53,77 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     return;
   }
 
-  // 3. Permissions — multi-select of deploy locations (interactive), or boolean (CLI)
-  let permissionLocations: DeployLocation[];
+  // 3. Permissions — y/n at the selected deploy location
+  let deployPermissions: boolean;
   if (opts.permissions !== undefined) {
-    permissionLocations = opts.permissions ? [deployLocation] : [];
+    deployPermissions = opts.permissions;
   } else if (opts.yes) {
-    permissionLocations = [deployLocation];
+    deployPermissions = true;
   } else {
-    permissionLocations = await promptPermissionLocations(agent, deployLocation);
+    deployPermissions = await promptPermissions();
   }
 
-  // 4. Issue templates — multi-select of deploy locations (interactive), or boolean (CLI)
-  let issueTemplateLocations: DeployLocation[];
+  // 4. Issue templates — y/n at the selected deploy location
+  let deployIssueTemplates: boolean;
   if (opts.issueTemplates !== undefined) {
-    issueTemplateLocations = opts.issueTemplates ? [deployLocation] : [];
+    deployIssueTemplates = opts.issueTemplates;
   } else if (opts.yes) {
-    issueTemplateLocations = [deployLocation];
+    deployIssueTemplates = true;
   } else {
-    issueTemplateLocations = await promptIssueTemplateLocations(agent, deployLocation);
+    deployIssueTemplates = await promptIssueTemplates();
   }
 
   // 5. Target directory
-  const targetDir = path.resolve(opts.targetDir ?? (opts.yes ? process.cwd() : await promptTargetDir()));
+  const targetDir = path.resolve(opts.targetDir ?? process.cwd());
 
-  // Deploy issue templates to each selected location
-  for (const loc of issueTemplateLocations) {
-    const dest = resolveIssueTemplatePath(targetDir, loc);
+  // --- Step 1: Check manifest (read old state for stale file cleanup) ---
+  const oldManifest = readManifest(targetDir, deployLocation);
+
+  // --- Step 2: Deploy ---
+
+  // Deploy issue templates at the selected location
+  if (deployIssueTemplates) {
+    const dest = resolveIssueTemplatePath(targetDir, deployLocation);
     console.log(picocolors.green(`\nInstalling Smithy issue templates in ${dest}...`));
     copyDirSync(issueTemplatesSrcDir, dest);
   }
 
-  // Deploy agents
-  const agentsToSetup = agent === 'all' ? ['gemini', 'claude', 'codex'] as const : [agent] as const;
+  // Deploy agents and collect deployed files per agent
+  const agentsToSetup = agent === 'all' ? ['gemini', 'claude'] as const : [agent] as const;
+  const deployedFiles: Record<string, string[]> = {};
 
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
-      gemini.deploy(targetDir, permissionLocations.includes('repo'));
+      deployedFiles['gemini'] = gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo');
     } else if (a === 'claude') {
-      // Deploy prompts/commands without permissions, then write permissions per selected location
-      claude.deploy(targetDir, 'none');
-      for (const location of permissionLocations) {
-        claude.writePermissions(targetDir, location);
+      deployedFiles['claude'] = claude.deploy(targetDir, 'none', deployLocation);
+      if (deployPermissions) {
+        claude.writePermissions(targetDir, deployLocation);
       }
     } else if (a === 'codex') {
-      codex.deploy(targetDir, permissionLocations.includes('repo'));
+      deployedFiles['codex'] = codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
     }
   }
 
+  // Remove stale files from previous deployment
+  const allCurrentFiles = Object.values(deployedFiles).flat();
+  const staleRemoved = removeStaleFiles(targetDir, oldManifest, allCurrentFiles);
+  if (staleRemoved > 0) {
+    console.log(picocolors.dim(`  Cleaned up ${staleRemoved} stale artifact${staleRemoved === 1 ? '' : 's'} from previous deployment`));
+  }
+
+  // --- Step 3: Write manifest ---
+  writeManifest({
+    targetDir,
+    location: deployLocation,
+    agents: [...agentsToSetup],
+    permissions: deployPermissions,
+    issueTemplates: deployIssueTemplates,
+    files: deployedFiles,
+  });
+
   // Update .gitignore
   const gitignoreEntries = agentsToSetup.flatMap(a => agentGitignoreEntries[a] ?? []);
-
-  // Add .smithy/local/ to gitignore if any local deployment was selected
-  const usesLocal = permissionLocations.includes('local') || issueTemplateLocations.includes('local');
-  if (usesLocal) {
-    gitignoreEntries.push(...localDeployGitignoreEntries);
-  }
 
   if (gitignoreEntries.length > 0) {
     const added = addToGitignore(targetDir, gitignoreEntries);
@@ -115,7 +134,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     }
   }
 
-  console.log(picocolors.cyan('\n✅ Initialization complete!'));
+  console.log(picocolors.cyan(opts.quiet ? '\n✅ Upgrade complete!' : '\n✅ Initialization complete!'));
 
   if (agentsToSetup.includes('gemini')) {
     console.log(picocolors.yellow('Note: If you are currently in an interactive Gemini CLI session, please run `/skills reload` to load the new workspace skills.'));
