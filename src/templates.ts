@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { Dotprompt } from 'dotprompt';
 import { commandsTemplateDir, promptsTemplateDir, agentsTemplateDir, snippetsTemplateDir } from './utils.js';
-import { parseTemplate, resolvePartials } from './dotprompt-adapter.js';
+
+const dp = new Dotprompt();
 
 export type TemplateCategory = 'commands' | 'prompts' | 'agents';
 
@@ -12,11 +14,11 @@ export interface ComposedTemplates {
 }
 
 export function stripFrontmatter(content: string): string {
-  return parseTemplate(content).body;
+  return dp.parse(content).template;
 }
 
 export function parseFrontmatterName(content: string): string | undefined {
-  return parseTemplate(content).name;
+  return dp.parse(content).name;
 }
 
 /**
@@ -72,12 +74,24 @@ function buildPartialsMap(snippets: Map<string, string>): Map<string, string> {
 }
 
 /**
- * Resolve Handlebars partial references ({{>partial-name}}) in template content
- * using Dotprompt's render pipeline.
- * Accepts a pre-built partials map to avoid rebuilding it per template.
+ * Resolve Handlebars partial references ({{>partial-name}}) in template content.
+ * Captures the original frontmatter via regex and reattaches it after rendering
+ * to preserve exact YAML formatting.
  */
-export async function resolveSnippets(content: string, partials: Map<string, string>): Promise<string> {
-  return resolvePartials(content, partials);
+export async function resolveSnippets(content: string, renderer: Dotprompt): Promise<string> {
+  if (!content.includes('{{>')) {
+    return content;
+  }
+
+  const frontmatterMatch = content.match(/^(---\s*\n[\s\S]*?\n---\s*\n)/);
+  const frontmatter = frontmatterMatch?.[1] ?? '';
+
+  const result = await renderer.render(content, {});
+  const rendered = result.messages
+    .map(m => m.content.map(p => ('text' in p ? p.text : '')).join(''))
+    .join('\n');
+
+  return frontmatter + rendered;
 }
 
 /**
@@ -99,15 +113,16 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
  */
 export async function getComposedTemplates(): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
-  const partials = buildPartialsMap(snippets);
+  const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
 
   const resolve = async (dir: string): Promise<Map<string, string>> => {
     const raw = readTemplateDir(dir);
-    const composed = new Map<string, string>();
-    for (const [file, content] of raw) {
-      composed.set(file, await resolveSnippets(content, partials));
-    }
-    return composed;
+    const entries = await Promise.all(
+      Array.from(raw, ([file, content]) =>
+        resolveSnippets(content, renderer).then(resolved => [file, resolved] as const),
+      ),
+    );
+    return new Map(entries);
   };
 
   return {
