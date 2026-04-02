@@ -22,8 +22,8 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 - **CLI entry**: `src/cli.ts` — Commander setup and arg parsing.
 - **Commands**: `src/commands/init.ts`, `src/commands/uninit.ts`, `src/commands/update.ts` — action handlers.
 - **Agent deployers**: `src/agents/{claude,gemini}.ts` — per-agent deploy/remove logic. (`codex.ts` exists but is not exposed in the CLI yet.)
-- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.md` — categorized by deployment target. Each has YAML frontmatter (`name`, `description`). Frontmatter is stripped when deploying to Claude (kept for Gemini skills).
-- **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared content injected via `<!-- snippet:filename.md -->` placeholders.
+- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses dotprompt's native `.prompt` extension with YAML frontmatter (`name`, `description`). Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`.
+- **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared content injected via `{{>partial-name}}` Handlebars partials.
 - **Issue templates**: `src/templates/issues/` — GitHub issue templates, copied as-is.
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.

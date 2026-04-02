@@ -20,19 +20,33 @@ export function parseFrontmatterName(content: string): string | undefined {
 }
 
 /**
- * List .md files in a template subdirectory.
+ * List .prompt files in a template subdirectory.
  */
 function listTemplateFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter(f => f.endsWith('.md'));
+  return fs.readdirSync(dir).filter(f => f.endsWith('.prompt'));
 }
 
 /**
- * Read all .md files from a template subdirectory into a Map.
+ * Read all .prompt files from a template subdirectory into a Map.
+ * Map keys are translated to .md (the deployed filename).
  */
 function readTemplateDir(dir: string): Map<string, string> {
   const map = new Map<string, string>();
   for (const file of listTemplateFiles(dir)) {
+    const deployName = file.replace(/\.prompt$/, '.md');
+    map.set(deployName, fs.readFileSync(path.join(dir, file), 'utf8'));
+  }
+  return map;
+}
+
+/**
+ * Read all .md files from a directory into a Map (used for snippets).
+ */
+function readMdDir(dir: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!fs.existsSync(dir)) return map;
+  for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
     map.set(file, fs.readFileSync(path.join(dir, file), 'utf8'));
   }
   return map;
@@ -42,7 +56,7 @@ function readTemplateDir(dir: string): Map<string, string> {
  * Load all snippet files from the snippets directory.
  */
 export function loadSnippets(): Map<string, string> {
-  return readTemplateDir(snippetsTemplateDir);
+  return readMdDir(snippetsTemplateDir);
 }
 
 /**
@@ -71,10 +85,11 @@ export async function resolveSnippets(content: string, partials: Map<string, str
  * Useful for remove/cleanup operations.
  */
 export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]> {
+  const toMd = (files: string[]) => files.map(f => f.replace(/\.prompt$/, '.md'));
   return {
-    commands: listTemplateFiles(commandsTemplateDir),
-    prompts: listTemplateFiles(promptsTemplateDir),
-    agents: listTemplateFiles(agentsTemplateDir),
+    commands: toMd(listTemplateFiles(commandsTemplateDir)),
+    prompts: toMd(listTemplateFiles(promptsTemplateDir)),
+    agents: toMd(listTemplateFiles(agentsTemplateDir)),
   };
 }
 
