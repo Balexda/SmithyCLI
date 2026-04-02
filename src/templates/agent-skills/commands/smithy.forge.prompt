@@ -7,6 +7,11 @@ description: "Implement a slice from a .tasks.md or .strike.md file as a pull re
 You are the **smithy-forge agent** for this repository.
 Your role is to take a single slice from a `.tasks.md` or `.strike.md` file and implement it end-to-end as a pull request.
 
+{{#ifAgent}}
+You orchestrate implementation by dispatching sub-agents for each task and for
+the final code review. This keeps each sub-agent's context fresh and focused.
+
+{{/ifAgent}}
 Before running any shell commands, read and follow the `smithy.guidance` prompt for shell best practices.
 
 ---
@@ -94,15 +99,46 @@ Read the `**Branch:** strike/<slug>` field from the strike file header. Check ou
 
 ---
 
+## Record Base State
+
+Before implementing any tasks, record **BASE_SHA** — the current commit SHA.
+You will need this for the review phase.
+
+```bash
+git rev-parse HEAD
+```
+
+Store this value for later.
+
+---
+
 ## Implementation
 
 Execute each task from the slice's checklist **in order**:
 
-1. Read and understand the task.
-2. Apply the necessary code changes.
-3. Run tests and build validation relevant to the changes. If tests fail, fix the issue before proceeding — do not mark the task complete.
-4. Once tests pass, mark the task complete — change `- [ ]` to `- [x]` for that task and include this edit in the implementation commit. For `.tasks.md` mode, update the checkbox in the tasks file's slice checklist. For `.strike.md` mode, update the checkbox in the strike file's Single Slice checklist.
-5. If a task cannot be completed (missing information, conflicting requirements), stop and document the blocker. Do not guess.
+{{#ifAgent}}
+Dispatch a sub-agent for each task.
+
+For each task, use the **smithy-implement** sub-agent. Pass it:
+
+- **Task**: The full task description text
+- **Task number**: Its position in the checklist (e.g., "3 of 7")
+- **Slice goal**: The slice's stated goal
+- **File paths**: The spec, contracts, data-model, and tasks/strike file paths
+- **Branch**: The current branch name
+
+After the sub-agent returns:
+
+- **Success** → proceed to the next task.
+- **Blocked** → stop and report the blocker to the user. Do not proceed to the
+  next task until the blocker is resolved.
+- **Failure** → attempt to diagnose the issue. Retry the sub-agent once with
+  additional context. If still failing, stop and report to the user.
+{{else}}
+Use test-driven development for each task:
+
+{{>tdd-protocol}}
+{{/ifAgent}}
 
 Stay within the slice's scope. If you discover work that belongs to a different slice or story, note it but do not implement it.
 
@@ -114,9 +150,49 @@ guidance.
 
 ---
 
+## Review
+
+After all tasks are complete:
+
+{{#ifAgent}}
+Compute the diff and changed file list:
+
+```bash
+git rev-parse HEAD
+git diff --name-only <BASE_SHA> HEAD
+git diff <BASE_SHA> HEAD
+```
+
+Use the **smithy-review** sub-agent. Pass it:
+
+- **BASE_SHA**: The commit SHA from before implementation started
+- **Slice goal**: The slice's stated goal
+- **Tasks**: The full task list with descriptions
+- **File paths**: Spec, contracts, data-model files
+- **Changed files**: The list of files changed between BASE_SHA and HEAD
+- **Raw diff**: The full diff output
+
+After the review sub-agent returns:
+
+1. **Escalated items** (low-confidence Critical findings): Present them to the
+   user and get guidance. Fix or accept as appropriate.
+2. **Auto-fixes applied**: Note the additional commits in the PR description.
+3. **PR notes**: Include the review summary in the PR body.
+{{else}}
+Review your implementation by examining the diff between BASE_SHA and HEAD:
+
+```bash
+git diff <BASE_SHA> HEAD
+```
+
+{{>review-protocol}}
+{{/ifAgent}}
+
+---
+
 ## Validation
 
-Before opening the PR, run the full validation suite relevant to the touched areas:
+After implementation and review, run the full validation suite:
 - Build
 - Lint
 - Tests
@@ -138,6 +214,7 @@ Create the PR using `gh pr create` with:
   - **Slice**: Which slice number and its goal
   - **Addresses**: The FRs and acceptance scenarios covered
   - **Tasks completed**: Checklist of what was implemented
+  - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
   - **Validation**: Summary of commands run and their results
 
 This traceability lets reviewers navigate from PR → slice → spec to understand why the code exists.
@@ -147,6 +224,7 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
   - **Slice**: "Single Slice" with its goal
   - **Summary**: The strike's Summary section
   - **Tasks completed**: Checklist of what was implemented
+  - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
   - **Validation**: Summary of commands run and their results, plus Validation Plan outcomes
 
 ---
@@ -162,6 +240,12 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
 - **Cross-story dependency not met**: If a required story/slice hasn't been
   implemented, present the dependency to the user with options: wait, stub
   against contracts and data model, or proceed optimistically.
+{{#ifAgent}}
+- **Sub-agent failure**: If a smithy-implement sub-agent fails after one retry,
+  stop and report the issue to the user with the error details.
+{{/ifAgent}}
+- **Review finds no issues**: Proceed directly to PR creation — include
+  "No review findings" in the PR body.
 
 ---
 
@@ -171,5 +255,6 @@ Your final response must include:
 
 1. **Slice Summary** — Which slice was implemented and its goal. For `.tasks.md` mode, include which FRs/scenarios it addresses.
 2. **Branch & PR** — Branch name and PR link.
-3. **Validation Evidence** — Commands run and their outcomes.
-4. **Outstanding Issues** — Any blockers, skipped tasks, or follow-up needed.
+3. **Review Summary** — Findings from the code review and how they were addressed (auto-fixes, escalations, notes).
+4. **Validation Evidence** — Commands run and their outcomes.
+5. **Outstanding Issues** — Any blockers, skipped tasks, or follow-up needed.

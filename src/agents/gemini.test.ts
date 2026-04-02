@@ -47,6 +47,8 @@ describe('deploy', () => {
     const skills = fs.readdirSync(skillsDir);
 
     expect(skills).not.toContain('smithy-clarify');
+    expect(skills).not.toContain('smithy-implement');
+    expect(skills).not.toContain('smithy-review');
   });
 
   it('does not remove non-skill directories that share the prefix', async () => {

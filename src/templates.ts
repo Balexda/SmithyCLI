@@ -30,14 +30,68 @@ function listTemplateFiles(dir: string): string[] {
 }
 
 /**
+ * List only base (non-variant) .prompt files.
+ * A file is a variant if removing its last dot-segment before .prompt yields
+ * another file name that exists in the same directory.
+ * E.g. smithy.forge.claude.prompt is a variant of smithy.forge.prompt.
+ */
+function listBaseTemplateFiles(dir: string): string[] {
+  const all = listTemplateFiles(dir);
+  const allSet = new Set(all);
+  return all.filter(f => parsePromptFilename(f, allSet).variantName === null);
+}
+
+/**
+ * Parse a .prompt filename into its base stem and optional variant name.
+ * E.g. 'smithy.forge.claude.prompt' → { baseStem: 'smithy.forge', variantName: 'claude' }
+ *      'smithy.forge.prompt'        → { baseStem: 'smithy.forge', variantName: null }
+ * A file is only a variant if the corresponding base file exists in allFiles.
+ */
+function parsePromptFilename(file: string, allFiles: Set<string>): { baseStem: string; variantName: string | null } {
+  const stem = file.replace(/\.prompt$/, '');
+  const lastDot = stem.lastIndexOf('.');
+  if (lastDot !== -1) {
+    const candidateBase = stem.slice(0, lastDot) + '.prompt';
+    if (allFiles.has(candidateBase)) {
+      return { baseStem: stem.slice(0, lastDot), variantName: stem.slice(lastDot + 1) };
+    }
+  }
+  return { baseStem: stem, variantName: null };
+}
+
+/**
  * Read all .prompt files from a template subdirectory into a Map.
  * Map keys are translated to .md (the deployed filename).
+ *
+ * When a variant is specified (e.g. 'claude'), variant files like
+ * smithy.forge.claude.prompt override the base smithy.forge.prompt.
+ * Non-matching variant files are excluded. The deploy name always derives
+ * from the base name (e.g. smithy.forge.md regardless of variant).
  */
-function readTemplateDir(dir: string): Map<string, string> {
+function readTemplateDir(dir: string, variant?: string): Map<string, string> {
+  const all = listTemplateFiles(dir);
+  const allSet = new Set(all);
   const map = new Map<string, string>();
-  for (const file of listTemplateFiles(dir)) {
-    const deployName = file.replace(/\.prompt$/, '.md');
-    map.set(deployName, fs.readFileSync(path.join(dir, file), 'utf8'));
+
+  // Build a lookup of variant overrides: baseStem → variant file content
+  const variantOverrides = new Map<string, string>();
+  if (variant) {
+    for (const file of all) {
+      const parsed = parsePromptFilename(file, allSet);
+      if (parsed.variantName === variant) {
+        variantOverrides.set(parsed.baseStem, fs.readFileSync(path.join(dir, file), 'utf8'));
+      }
+    }
+  }
+
+  // Read base files, applying variant overrides where available
+  for (const file of all) {
+    const parsed = parsePromptFilename(file, allSet);
+    if (parsed.variantName !== null) continue; // skip variant files
+    const deployName = parsed.baseStem + '.md';
+    const content = variantOverrides.get(parsed.baseStem)
+      ?? fs.readFileSync(path.join(dir, file), 'utf8');
+    map.set(deployName, content);
   }
   return map;
 }
@@ -79,14 +133,18 @@ function buildPartialsMap(snippets: Map<string, string>): Map<string, string> {
  * to preserve exact YAML formatting.
  */
 export async function resolveSnippets(content: string, renderer: Dotprompt): Promise<string> {
-  if (!content.includes('{{>')) {
+  if (!content.includes('{{')) {
     return content;
   }
 
+  // Strip frontmatter before rendering so Dotprompt doesn't try to process
+  // Smithy-specific fields (e.g. `tools: Read, Edit, ...` as a string, which
+  // Dotprompt expects as an array). Re-attach the original frontmatter after.
   const frontmatterMatch = content.match(/^(---\s*\n[\s\S]*?\n---\s*\n)/);
   const frontmatter = frontmatterMatch?.[1] ?? '';
+  const body = frontmatter ? content.slice(frontmatter.length) : content;
 
-  const result = await renderer.render(content, {});
+  const result = await renderer.render(body, {});
   const rendered = result.messages
     .map(m => m.content.map(p => ('text' in p ? p.text : '')).join(''))
     .join('\n');
@@ -96,27 +154,40 @@ export async function resolveSnippets(content: string, renderer: Dotprompt): Pro
 
 /**
  * Returns filenames for each template category (without reading content).
+ * Only includes base templates — variant files are excluded.
  * Useful for remove/cleanup operations.
  */
 export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]> {
   const toMd = (files: string[]) => files.map(f => f.replace(/\.prompt$/, '.md'));
   return {
-    commands: toMd(listTemplateFiles(commandsTemplateDir)),
-    prompts: toMd(listTemplateFiles(promptsTemplateDir)),
-    agents: toMd(listTemplateFiles(agentsTemplateDir)),
+    commands: toMd(listBaseTemplateFiles(commandsTemplateDir)),
+    prompts: toMd(listBaseTemplateFiles(promptsTemplateDir)),
+    agents: toMd(listBaseTemplateFiles(agentsTemplateDir)),
   };
 }
 
 /**
  * Reads all templates from their categorized subdirectories, resolves snippets
- * via Dotprompt's rendering pipeline, and returns a ComposedTemplates object.
+ * and Handlebars conditionals via Dotprompt's rendering pipeline.
+ *
+ * When a variant is specified (e.g. 'claude'), it registers an {{#ifAgent}}
+ * block helper that renders the main block; without a variant, the {{else}}
+ * branch renders instead. Variant-specific .prompt files also override
+ * their base files.
  */
-export async function getComposedTemplates(): Promise<ComposedTemplates> {
+export async function getComposedTemplates(variant?: string): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
   const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
 
+  // Register {{#ifAgent}} block helper. Dotprompt uses knownHelpersOnly so
+  // standard {{#if variable}} doesn't work — custom block helpers are required.
+  renderer.defineHelper('ifAgent', function (this: unknown, ...args: unknown[]) {
+    const options = args[args.length - 1] as { fn: (ctx: unknown) => string; inverse: (ctx: unknown) => string };
+    return variant ? options.fn(this) : options.inverse(this);
+  });
+
   const resolve = async (dir: string): Promise<Map<string, string>> => {
-    const raw = readTemplateDir(dir);
+    const raw = readTemplateDir(dir, variant);
     const entries = await Promise.all(
       Array.from(raw, ([file, content]) =>
         resolveSnippets(content, renderer).then(resolved => [file, resolved] as const),
