@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { Dotprompt } from 'dotprompt';
 import {
   stripFrontmatter,
@@ -7,6 +7,7 @@ import {
   resolveSnippets,
   getTemplateFilesByCategory,
   getComposedTemplates,
+  type ComposedTemplates,
 } from './templates.js';
 
 describe('stripFrontmatter', () => {
@@ -174,15 +175,19 @@ describe('getTemplateFilesByCategory', () => {
 });
 
 describe('getComposedTemplates', () => {
-  it('returns commands, prompts, and agents maps', async () => {
-    const composed = await getComposedTemplates();
+  let composed: ComposedTemplates;
+
+  beforeAll(async () => {
+    composed = await getComposedTemplates();
+  });
+
+  it('returns commands, prompts, and agents maps', () => {
     expect(composed.commands).toBeInstanceOf(Map);
     expect(composed.prompts).toBeInstanceOf(Map);
     expect(composed.agents).toBeInstanceOf(Map);
   });
 
-  it('categorizes templates correctly', async () => {
-    const composed = await getComposedTemplates();
+  it('categorizes templates correctly', () => {
     expect(composed.commands.has('smithy.strike.md')).toBe(true);
     expect(composed.commands.has('smithy.audit.md')).toBe(true);
     expect(composed.prompts.has('smithy.guidance.md')).toBe(true);
@@ -191,8 +196,7 @@ describe('getComposedTemplates', () => {
     expect(composed.agents.has('smithy.refine.md')).toBe(true);
   });
 
-  it('audit template has all 5 checklists resolved (no unresolved partials)', async () => {
-    const composed = await getComposedTemplates();
+  it('audit template has all 5 checklists resolved (no unresolved partials)', () => {
     const audit = composed.commands.get('smithy.audit.md')!;
     expect(audit).toBeDefined();
 
@@ -207,8 +211,7 @@ describe('getComposedTemplates', () => {
     expect(audit).toContain('Audit Checklist (.strike.md)');
   });
 
-  it('audit template preserves frontmatter after partial resolution', async () => {
-    const composed = await getComposedTemplates();
+  it('audit template preserves frontmatter after partial resolution', () => {
     const audit = composed.commands.get('smithy.audit.md')!;
     const expectedFrontmatter =
       '---\n' +
@@ -218,8 +221,7 @@ describe('getComposedTemplates', () => {
     expect(audit.startsWith(expectedFrontmatter)).toBe(true);
   });
 
-  it('agent templates retain frontmatter', async () => {
-    const composed = await getComposedTemplates();
+  it('agent templates retain frontmatter', () => {
     const clarify = composed.agents.get('smithy.clarify.md')!;
     expect(clarify).toBeDefined();
     expect(clarify).toMatch(/^---\s*\n/);
@@ -227,24 +229,20 @@ describe('getComposedTemplates', () => {
     expect(clarify).toMatch(/tools:\s*\n\s+-\s+Read/);
   });
 
-  it('command templates without partials are returned as-is', async () => {
-    const composed = await getComposedTemplates();
+  it('command templates without partials are returned as-is', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
     expect(strike.length).toBeGreaterThan(0);
-    // strike should not contain any unresolved partial references
     expect(strike).not.toContain('{{>');
   });
 
-  it('prompt templates are included without modification', async () => {
-    const composed = await getComposedTemplates();
+  it('prompt templates are included without modification', () => {
     const titles = composed.prompts.get('smithy.titles.md')!;
     expect(titles).toBeDefined();
     expect(titles).toContain('Document Title Conventions');
   });
 
-  it('guidance prompt resolves with guidance-shell snippet content', async () => {
-    const composed = await getComposedTemplates();
+  it('guidance prompt resolves with guidance-shell snippet content', () => {
     const guidance = composed.prompts.get('smithy.guidance.md')!;
     expect(guidance).toBeDefined();
     expect(guidance).toContain('Shell Best Practices');
@@ -252,8 +250,7 @@ describe('getComposedTemplates', () => {
     expect(guidance).not.toContain('{{>');
   });
 
-  it('implement agent retains frontmatter with correct tools', async () => {
-    const composed = await getComposedTemplates();
+  it('implement agent retains frontmatter with correct tools', () => {
     const implement = composed.agents.get('smithy.implement.md')!;
     expect(implement).toBeDefined();
     expect(implement).toMatch(/^---\s*\n/);
@@ -261,8 +258,7 @@ describe('getComposedTemplates', () => {
     expect(implement).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
   });
 
-  it('review agent retains frontmatter with correct tools', async () => {
-    const composed = await getComposedTemplates();
+  it('review agent retains frontmatter with correct tools', () => {
     const review = composed.agents.get('smithy.review.md')!;
     expect(review).toBeDefined();
     expect(review).toMatch(/^---\s*\n/);
@@ -270,8 +266,7 @@ describe('getComposedTemplates', () => {
     expect(review).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
   });
 
-  it('forge default renders inline TDD and review protocols', async () => {
-    const composed = await getComposedTemplates();
+  it('forge default renders inline TDD and review protocols', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('TDD Protocol');
@@ -281,8 +276,8 @@ describe('getComposedTemplates', () => {
   });
 
   it('forge with claude variant renders sub-agent dispatch', async () => {
-    const composed = await getComposedTemplates('claude');
-    const forge = composed.commands.get('smithy.forge.md')!;
+    const claudeComposed = await getComposedTemplates('claude');
+    const forge = claudeComposed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('smithy-implement');
     expect(forge).toContain('smithy-review');
@@ -291,10 +286,9 @@ describe('getComposedTemplates', () => {
   });
 
   it('variant does not change the number of template keys', async () => {
-    const defaultComposed = await getComposedTemplates();
     const claudeComposed = await getComposedTemplates('claude');
-    expect([...defaultComposed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
-    expect([...defaultComposed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
-    expect([...defaultComposed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
+    expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
+    expect([...composed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
+    expect([...composed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
   });
 });

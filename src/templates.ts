@@ -38,18 +38,25 @@ function listTemplateFiles(dir: string): string[] {
 function listBaseTemplateFiles(dir: string): string[] {
   const all = listTemplateFiles(dir);
   const allSet = new Set(all);
-  return all.filter(f => !isVariantFile(f, allSet));
+  return all.filter(f => parsePromptFilename(f, allSet).variantName === null);
 }
 
 /**
- * Check if a .prompt file is a variant of another file in the set.
+ * Parse a .prompt filename into its base stem and optional variant name.
+ * E.g. 'smithy.forge.claude.prompt' → { baseStem: 'smithy.forge', variantName: 'claude' }
+ *      'smithy.forge.prompt'        → { baseStem: 'smithy.forge', variantName: null }
+ * A file is only a variant if the corresponding base file exists in allFiles.
  */
-function isVariantFile(file: string, allFiles: Set<string>): boolean {
+function parsePromptFilename(file: string, allFiles: Set<string>): { baseStem: string; variantName: string | null } {
   const stem = file.replace(/\.prompt$/, '');
   const lastDot = stem.lastIndexOf('.');
-  if (lastDot === -1) return false;
-  const baseName = stem.slice(0, lastDot) + '.prompt';
-  return allFiles.has(baseName);
+  if (lastDot !== -1) {
+    const candidateBase = stem.slice(0, lastDot) + '.prompt';
+    if (allFiles.has(candidateBase)) {
+      return { baseStem: stem.slice(0, lastDot), variantName: stem.slice(lastDot + 1) };
+    }
+  }
+  return { baseStem: stem, variantName: null };
 }
 
 /**
@@ -70,23 +77,19 @@ function readTemplateDir(dir: string, variant?: string): Map<string, string> {
   const variantOverrides = new Map<string, string>();
   if (variant) {
     for (const file of all) {
-      if (!isVariantFile(file, allSet)) continue;
-      const stem = file.replace(/\.prompt$/, '');
-      const lastDot = stem.lastIndexOf('.');
-      const variantName = stem.slice(lastDot + 1);
-      if (variantName === variant) {
-        const baseStem = stem.slice(0, lastDot);
-        variantOverrides.set(baseStem, fs.readFileSync(path.join(dir, file), 'utf8'));
+      const parsed = parsePromptFilename(file, allSet);
+      if (parsed.variantName === variant) {
+        variantOverrides.set(parsed.baseStem, fs.readFileSync(path.join(dir, file), 'utf8'));
       }
     }
   }
 
   // Read base files, applying variant overrides where available
   for (const file of all) {
-    if (isVariantFile(file, allSet)) continue; // skip variant files
-    const stem = file.replace(/\.prompt$/, '');
-    const deployName = stem + '.md';
-    const content = variantOverrides.get(stem)
+    const parsed = parsePromptFilename(file, allSet);
+    if (parsed.variantName !== null) continue; // skip variant files
+    const deployName = parsed.baseStem + '.md';
+    const content = variantOverrides.get(parsed.baseStem)
       ?? fs.readFileSync(path.join(dir, file), 'utf8');
     map.set(deployName, content);
   }
