@@ -8,8 +8,8 @@ import { removeIfExists } from '../utils.js';
 /**
  * Deploy Codex templates. Returns the list of deployed file paths (relative to targetDir).
  */
-export function deploy(targetDir: string, initPermissions: boolean): string[] {
-  const templates = getComposedTemplates();
+export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
+  const templates = await getComposedTemplates();
   const deployedFiles: string[] = [];
 
   // Deploy prompts -> tools/codex/prompts/

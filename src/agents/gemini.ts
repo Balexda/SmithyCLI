@@ -8,12 +8,12 @@ import { removeIfExists } from '../utils.js';
 /**
  * Deploy Gemini templates. Returns the list of deployed file paths (relative to targetDir).
  */
-export function deploy(targetDir: string, initPermissions: boolean): string[] {
+export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
   const destDir = path.join(targetDir, '.gemini');
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
 
-  const templates = getComposedTemplates();
+  const templates = await getComposedTemplates();
   const deployedFiles: string[] = [];
 
   // Deploy commands and prompts as skills (skip agents — they are sub-agents, not invocable)

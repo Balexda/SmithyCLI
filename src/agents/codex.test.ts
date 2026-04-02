@@ -18,8 +18,8 @@ describe('deploy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates prompts directory and deploys only prompt-category template files', () => {
-    deploy(tmpDir, false);
+  it('creates prompts directory and deploys only prompt-category template files', async () => {
+    await deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
     expect(fs.existsSync(promptsDir)).toBe(true);
@@ -32,8 +32,8 @@ describe('deploy', () => {
     }
   });
 
-  it('strips frontmatter from deployed prompt files', () => {
-    deploy(tmpDir, false);
+  it('strips frontmatter from deployed prompt files', async () => {
+    await deploy(tmpDir, false);
 
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
     const files = fs.readdirSync(promptsDir);
@@ -45,8 +45,8 @@ describe('deploy', () => {
     }
   });
 
-  it('writes permissions when initPermissions is true', () => {
-    deploy(tmpDir, true);
+  it('writes permissions when initPermissions is true', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     expect(fs.existsSync(configPath)).toBe(true);
@@ -56,23 +56,23 @@ describe('deploy', () => {
     expect(content).toContain('policy = "auto"');
   });
 
-  it('does not write permissions when initPermissions is false', () => {
-    deploy(tmpDir, false);
+  it('does not write permissions when initPermissions is false', async () => {
+    await deploy(tmpDir, false);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
-  it('returns deployed file paths', () => {
-    const files = deploy(tmpDir, false);
+  it('returns deployed file paths', async () => {
+    const files = await deploy(tmpDir, false);
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       expect(path.isAbsolute(file)).toBe(false);
     }
   });
 
-  it('deploys command-flagged templates as skills to .agents/skills/', () => {
-    deploy(tmpDir, false);
+  it('deploys command-flagged templates as skills to .agents/skills/', async () => {
+    await deploy(tmpDir, false);
 
     const skillsDir = path.join(tmpDir, '.agents', 'skills');
     expect(fs.existsSync(skillsDir)).toBe(true);
@@ -81,7 +81,7 @@ describe('deploy', () => {
     expect(skillDirs.length).toBeGreaterThan(0);
 
     // Verify only command-category templates with names become skills
-    const templates = getComposedTemplates();
+    const templates = await getComposedTemplates();
     const expectedSkills = [...templates.commands.entries()]
       .map(([, content]) => parseFrontmatterName(content)!)
       .filter(Boolean);
@@ -97,15 +97,15 @@ describe('deploy', () => {
     }
   });
 
-  it('is idempotent — deploying twice does not duplicate content', () => {
-    deploy(tmpDir, false);
+  it('is idempotent — deploying twice does not duplicate content', async () => {
+    await deploy(tmpDir, false);
     const promptsDir = path.join(tmpDir, 'tools', 'codex', 'prompts');
     const firstFiles = fs.readdirSync(promptsDir);
     const firstContents = firstFiles.map(f =>
       fs.readFileSync(path.join(promptsDir, f), 'utf8')
     );
 
-    deploy(tmpDir, false);
+    await deploy(tmpDir, false);
     const secondFiles = fs.readdirSync(promptsDir);
     const secondContents = secondFiles.map(f =>
       fs.readFileSync(path.join(promptsDir, f), 'utf8')
@@ -129,8 +129,8 @@ describe('removeLegacy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes deployed prompt files and skill directories', () => {
-    deploy(tmpDir, false);
+  it('removes deployed prompt files and skill directories', async () => {
+    await deploy(tmpDir, false);
 
     const removedCount = removeLegacy(tmpDir);
     expect(removedCount).toBeGreaterThan(0);
@@ -170,15 +170,15 @@ describe('writePermissions (via deploy)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates .codex directory if it does not exist', () => {
-    deploy(tmpDir, true);
+  it('creates .codex directory if it does not exist', async () => {
+    await deploy(tmpDir, true);
 
     const codexDir = path.join(tmpDir, '.codex');
     expect(fs.existsSync(codexDir)).toBe(true);
   });
 
-  it('generates valid TOML with approvals rules', () => {
-    deploy(tmpDir, true);
+  it('generates valid TOML with approvals rules', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     const content = fs.readFileSync(configPath, 'utf8');
@@ -189,8 +189,8 @@ describe('writePermissions (via deploy)', () => {
     expect(content).toContain('command = "git"');
   });
 
-  it('includes filesystem commands in rules', () => {
-    deploy(tmpDir, true);
+  it('includes filesystem commands in rules', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     const content = fs.readFileSync(configPath, 'utf8');
@@ -201,8 +201,8 @@ describe('writePermissions (via deploy)', () => {
     expect(content).toContain('command = "mkdir"');
   });
 
-  it('uses args_startswith for wildcard entries', () => {
-    deploy(tmpDir, true);
+  it('uses args_startswith for wildcard entries', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     const content = fs.readFileSync(configPath, 'utf8');
@@ -211,8 +211,8 @@ describe('writePermissions (via deploy)', () => {
     expect(content).toContain('args_startswith');
   });
 
-  it('uses args for non-wildcard entries', () => {
-    deploy(tmpDir, true);
+  it('uses args for non-wildcard entries', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     const content = fs.readFileSync(configPath, 'utf8');
@@ -221,8 +221,8 @@ describe('writePermissions (via deploy)', () => {
     expect(content).toContain('args = []');
   });
 
-  it('uses empty args_startswith for commands with bare wildcard and flag variants', () => {
-    deploy(tmpDir, true);
+  it('uses empty args_startswith for commands with bare wildcard and flag variants', async () => {
+    await deploy(tmpDir, true);
 
     const configPath = path.join(tmpDir, '.codex', 'config.toml');
     const content = fs.readFileSync(configPath, 'utf8');
@@ -235,7 +235,7 @@ describe('writePermissions (via deploy)', () => {
     expect(mkdirRule![1]).toBe('args_startswith = []');
   });
 
-  it('does not overwrite existing config with approvals section', () => {
+  it('does not overwrite existing config with approvals section', async () => {
     const codexDir = path.join(tmpDir, '.codex');
     fs.mkdirSync(codexDir, { recursive: true });
     const configPath = path.join(codexDir, 'config.toml');
@@ -243,14 +243,14 @@ describe('writePermissions (via deploy)', () => {
     const existing = '[approvals]\npolicy = "suggest"\n';
     fs.writeFileSync(configPath, existing);
 
-    deploy(tmpDir, true);
+    await deploy(tmpDir, true);
 
     const content = fs.readFileSync(configPath, 'utf8');
     // Should not have appended a second [approvals] section
     expect(content).toBe(existing);
   });
 
-  it('appends to existing config without approvals section', () => {
+  it('appends to existing config without approvals section', async () => {
     const codexDir = path.join(tmpDir, '.codex');
     fs.mkdirSync(codexDir, { recursive: true });
     const configPath = path.join(codexDir, 'config.toml');
@@ -258,7 +258,7 @@ describe('writePermissions (via deploy)', () => {
     const existing = '[model]\nname = "gpt-4"\n';
     fs.writeFileSync(configPath, existing);
 
-    deploy(tmpDir, true);
+    await deploy(tmpDir, true);
 
     const content = fs.readFileSync(configPath, 'utf8');
     // Should preserve existing content

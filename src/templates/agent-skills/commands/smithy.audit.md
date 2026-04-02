@@ -83,15 +83,15 @@ When no file argument is provided and the current branch matches the forge branc
 
 Use the checklist matching the artifact's extension. Each checklist defines what "good" looks like for that artifact type.
 
-<!-- snippet:audit-checklist-rfc.md -->
+{{>audit-checklist-rfc}}
 
-<!-- snippet:audit-checklist-features.md -->
+{{>audit-checklist-features}}
 
-<!-- snippet:audit-checklist-spec.md -->
+{{>audit-checklist-spec}}
 
-<!-- snippet:audit-checklist-tasks.md -->
+{{>audit-checklist-tasks}}
 
-<!-- snippet:audit-checklist-strike.md -->
+{{>audit-checklist-strike}}
 
 ---
 

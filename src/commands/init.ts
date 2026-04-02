@@ -94,14 +94,14 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
-      deployedFiles['gemini'] = gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo');
+      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo');
     } else if (a === 'claude') {
-      deployedFiles['claude'] = claude.deploy(targetDir, 'none', deployLocation);
+      deployedFiles['claude'] = await claude.deploy(targetDir, 'none', deployLocation);
       if (deployPermissions) {
         claude.writePermissions(targetDir, deployLocation);
       }
     } else if (a === 'codex') {
-      deployedFiles['codex'] = codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
+      deployedFiles['codex'] = await codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
     }
   }
 
