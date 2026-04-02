@@ -12,7 +12,7 @@ import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from 
  */
 export async function deploy(targetDir: string, permissionLevel: PermissionLevel, location: DeployLocation = 'repo'): Promise<string[]> {
   const baseDir = location === 'user' ? os.homedir() : targetDir;
-  const templates = await getComposedTemplates();
+  const templates = await getComposedTemplates('claude');
   const deployedFiles: string[] = [];
 
   // Deploy commands -> .claude/commands/

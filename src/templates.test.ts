@@ -98,9 +98,9 @@ describe('resolveSnippets', () => {
 });
 
 describe('loadSnippets', () => {
-  it('loads all 5 audit checklist snippet files', () => {
+  it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(5);
+    expect(snippets.size).toBe(8);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -108,6 +108,9 @@ describe('loadSnippets', () => {
       'audit-checklist-spec.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
+      'guidance-shell.md',
+      'tdd-protocol.md',
+      'review-protocol.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -115,13 +118,16 @@ describe('loadSnippets', () => {
     }
   });
 
-  it('snippet content contains audit checklist headers', () => {
+  it('snippet content contains expected headers', () => {
     const snippets = loadSnippets();
     expect(snippets.get('audit-checklist-rfc.md')).toContain('Audit Checklist (.rfc.md)');
     expect(snippets.get('audit-checklist-features.md')).toContain('Audit Checklist (.features.md)');
     expect(snippets.get('audit-checklist-spec.md')).toContain('Audit Checklist (.spec.md)');
     expect(snippets.get('audit-checklist-tasks.md')).toContain('Audit Checklist (.tasks.md)');
     expect(snippets.get('audit-checklist-strike.md')).toContain('Audit Checklist (.strike.md)');
+    expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
+    expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
+    expect(snippets.get('review-protocol.md')).toContain('Code Review Protocol');
   });
 });
 
@@ -130,7 +136,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(2);
+    expect(byCategory.agents).toHaveLength(4);
   });
 
   it('commands includes expected template files', () => {
@@ -152,10 +158,12 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify and refine', () => {
+  it('agents includes clarify, refine, implement, and review', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
+    expect(agents).toContain('smithy.implement.md');
+    expect(agents).toContain('smithy.review.md');
   });
 
   it('does not include smithy.slice.md (deleted)', () => {
@@ -233,5 +241,60 @@ describe('getComposedTemplates', () => {
     const titles = composed.prompts.get('smithy.titles.md')!;
     expect(titles).toBeDefined();
     expect(titles).toContain('Document Title Conventions');
+  });
+
+  it('guidance prompt resolves with guidance-shell snippet content', async () => {
+    const composed = await getComposedTemplates();
+    const guidance = composed.prompts.get('smithy.guidance.md')!;
+    expect(guidance).toBeDefined();
+    expect(guidance).toContain('Shell Best Practices');
+    expect(guidance).toContain('Never embed subshells');
+    expect(guidance).not.toContain('{{>');
+  });
+
+  it('implement agent retains frontmatter with correct tools', async () => {
+    const composed = await getComposedTemplates();
+    const implement = composed.agents.get('smithy.implement.md')!;
+    expect(implement).toBeDefined();
+    expect(implement).toMatch(/^---\s*\n/);
+    expect(implement).toContain('name: smithy-implement');
+    expect(implement).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
+  });
+
+  it('review agent retains frontmatter with correct tools', async () => {
+    const composed = await getComposedTemplates();
+    const review = composed.agents.get('smithy.review.md')!;
+    expect(review).toBeDefined();
+    expect(review).toMatch(/^---\s*\n/);
+    expect(review).toContain('name: smithy-review');
+    expect(review).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
+  });
+
+  it('forge default renders inline TDD and review protocols', async () => {
+    const composed = await getComposedTemplates();
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+    expect(forge).toContain('TDD Protocol');
+    expect(forge).toContain('Code Review Protocol');
+    expect(forge).not.toContain('smithy-implement');
+    expect(forge).not.toContain('{{');
+  });
+
+  it('forge with claude variant renders sub-agent dispatch', async () => {
+    const composed = await getComposedTemplates('claude');
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+    expect(forge).toContain('smithy-implement');
+    expect(forge).toContain('smithy-review');
+    expect(forge).not.toContain('TDD Protocol');
+    expect(forge).not.toContain('{{');
+  });
+
+  it('variant does not change the number of template keys', async () => {
+    const defaultComposed = await getComposedTemplates();
+    const claudeComposed = await getComposedTemplates('claude');
+    expect([...defaultComposed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
+    expect([...defaultComposed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
+    expect([...defaultComposed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
   });
 });

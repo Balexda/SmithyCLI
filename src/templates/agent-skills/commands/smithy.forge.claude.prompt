@@ -7,11 +7,9 @@ description: "Implement a slice from a .tasks.md or .strike.md file as a pull re
 You are the **smithy-forge agent** for this repository.
 Your role is to take a single slice from a `.tasks.md` or `.strike.md` file and implement it end-to-end as a pull request.
 
-{{#ifAgent}}
 You orchestrate implementation by dispatching sub-agents for each task and for
 the final code review. This keeps each sub-agent's context fresh and focused.
 
-{{/ifAgent}}
 Before running any shell commands, read and follow the `smithy.guidance` prompt for shell best practices.
 
 ---
@@ -114,12 +112,12 @@ Store this value for later.
 
 ## Implementation
 
-Execute each task from the slice's checklist **in order**:
+Execute each task from the slice's checklist **in order** by dispatching a
+sub-agent for each task.
 
-{{#ifAgent}}
-Dispatch a sub-agent for each task.
+For each task:
 
-For each task, use the **smithy-implement** sub-agent. Pass it:
+Use the **smithy-implement** sub-agent. Pass it:
 
 - **Task**: The full task description text
 - **Task number**: Its position in the checklist (e.g., "3 of 7")
@@ -134,13 +132,9 @@ After the sub-agent returns:
   next task until the blocker is resolved.
 - **Failure** → attempt to diagnose the issue. Retry the sub-agent once with
   additional context. If still failing, stop and report to the user.
-{{else}}
-Use test-driven development for each task:
 
-{{>tdd-protocol}}
-{{/ifAgent}}
-
-Stay within the slice's scope. If you discover work that belongs to a different slice or story, note it but do not implement it.
+Stay within the slice's scope. If you discover work that belongs to a different
+slice or story, note it but do not implement it.
 
 If you encounter missing functionality that the Cross-Story Dependencies section
 identifies as coming from another story, do NOT implement it yourself. Instead,
@@ -152,9 +146,8 @@ guidance.
 
 ## Review
 
-After all tasks are complete:
+After all tasks are complete, record **HEAD_SHA** — the current commit SHA.
 
-{{#ifAgent}}
 Compute the diff and changed file list:
 
 ```bash
@@ -166,10 +159,11 @@ git diff <BASE_SHA> HEAD
 Use the **smithy-review** sub-agent. Pass it:
 
 - **BASE_SHA**: The commit SHA from before implementation started
+- **HEAD_SHA**: The current commit SHA
 - **Slice goal**: The slice's stated goal
 - **Tasks**: The full task list with descriptions
 - **File paths**: Spec, contracts, data-model files
-- **Changed files**: The list of files changed between BASE_SHA and HEAD
+- **Changed files**: The list of files changed between BASE_SHA and HEAD_SHA
 - **Raw diff**: The full diff output
 
 After the review sub-agent returns:
@@ -178,15 +172,6 @@ After the review sub-agent returns:
    user and get guidance. Fix or accept as appropriate.
 2. **Auto-fixes applied**: Note the additional commits in the PR description.
 3. **PR notes**: Include the review summary in the PR body.
-{{else}}
-Review your implementation by examining the diff between BASE_SHA and HEAD:
-
-```bash
-git diff <BASE_SHA> HEAD
-```
-
-{{>review-protocol}}
-{{/ifAgent}}
 
 ---
 
@@ -240,10 +225,8 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
 - **Cross-story dependency not met**: If a required story/slice hasn't been
   implemented, present the dependency to the user with options: wait, stub
   against contracts and data model, or proceed optimistically.
-{{#ifAgent}}
 - **Sub-agent failure**: If a smithy-implement sub-agent fails after one retry,
   stop and report the issue to the user with the error details.
-{{/ifAgent}}
 - **Review finds no issues**: Proceed directly to PR creation — include
   "No review findings" in the PR body.
 
