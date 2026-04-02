@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { commandsTemplateDir, promptsTemplateDir, agentsTemplateDir, snippetsTemplateDir } from './utils.js';
+import { parseTemplate, resolvePartials } from './dotprompt-adapter.js';
 
 export type TemplateCategory = 'commands' | 'prompts' | 'agents';
 
@@ -11,12 +12,11 @@ export interface ComposedTemplates {
 }
 
 export function stripFrontmatter(content: string): string {
-  return content.replace(/^---\s*[\s\S]*?\n---\s*\n/, '');
+  return parseTemplate(content).body;
 }
 
 export function parseFrontmatterName(content: string): string | undefined {
-  const match = content.match(/^---\s*\nname:\s*([^\n]+)/m);
-  return match?.[1]?.trim();
+  return parseTemplate(content).name;
 }
 
 /**
@@ -46,16 +46,18 @@ export function loadSnippets(): Map<string, string> {
 }
 
 /**
- * Replace <!-- snippet:filename.md --> placeholders with snippet content.
+ * Resolve Handlebars partial references ({{>partial-name}}) in template content
+ * using Dotprompt's render pipeline.
+ * Snippet filenames are mapped to partial names by stripping the .md extension.
  */
-export function resolveSnippets(content: string, snippets: Map<string, string>): string {
-  return content.replace(/<!-- snippet:(\S+) -->/g, (_match, name: string) => {
-    const snippet = snippets.get(name);
-    if (!snippet) {
-      throw new Error(`Snippet "${name}" not found in snippets/`);
-    }
-    return snippet.trimEnd();
-  });
+export async function resolveSnippets(content: string, snippets: Map<string, string>): Promise<string> {
+  // Map snippet filenames (e.g. "audit-checklist-rfc.md") to partial names ("audit-checklist-rfc")
+  const partials = new Map<string, string>();
+  for (const [filename, body] of snippets) {
+    const name = filename.replace(/\.md$/, '');
+    partials.set(name, body.trimEnd());
+  }
+  return resolvePartials(content, partials);
 }
 
 /**
@@ -71,24 +73,24 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
 }
 
 /**
- * Reads all templates from their categorized subdirectories, resolves snippets,
- * and returns a ComposedTemplates object.
+ * Reads all templates from their categorized subdirectories, resolves snippets
+ * via Dotprompt's rendering pipeline, and returns a ComposedTemplates object.
  */
-export function getComposedTemplates(): ComposedTemplates {
+export async function getComposedTemplates(): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
 
-  const resolve = (dir: string): Map<string, string> => {
+  const resolve = async (dir: string): Promise<Map<string, string>> => {
     const raw = readTemplateDir(dir);
     const composed = new Map<string, string>();
     for (const [file, content] of raw) {
-      composed.set(file, resolveSnippets(content, snippets));
+      composed.set(file, await resolveSnippets(content, snippets));
     }
     return composed;
   };
 
   return {
-    commands: resolve(commandsTemplateDir),
-    prompts: resolve(promptsTemplateDir),
-    agents: resolve(agentsTemplateDir),
+    commands: await resolve(commandsTemplateDir),
+    prompts: await resolve(promptsTemplateDir),
+    agents: await resolve(agentsTemplateDir),
   };
 }

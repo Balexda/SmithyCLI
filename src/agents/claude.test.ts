@@ -19,8 +19,8 @@ describe('deploy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates .claude/prompts/ from scratch on a fresh directory', () => {
-    deploy(tmpDir, 'none');
+  it('creates .claude/prompts/ from scratch on a fresh directory', async () => {
+    await deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     expect(fs.existsSync(promptsDir)).toBe(true);
@@ -28,19 +28,19 @@ describe('deploy', () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
-  it('deploys only prompt-category templates to prompts/', () => {
-    deploy(tmpDir, 'none');
+  it('deploys only prompt-category templates to prompts/', async () => {
+    await deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     const deployedFiles = fs.readdirSync(promptsDir).sort();
-    const templates = getComposedTemplates();
+    const templates = await getComposedTemplates();
     const expectedPrompts = [...templates.prompts.keys()].sort();
 
     expect(deployedFiles).toEqual(expectedPrompts);
   });
 
-  it('deploys commands only to commands/ and not to prompts/', () => {
-    deploy(tmpDir, 'none');
+  it('deploys commands only to commands/ and not to prompts/', async () => {
+    await deploy(tmpDir, 'none');
 
     const commandsDir = path.join(tmpDir, '.claude', 'commands');
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
@@ -48,7 +48,7 @@ describe('deploy', () => {
     expect(fs.existsSync(commandsDir)).toBe(true);
 
     const commandFiles = fs.readdirSync(commandsDir).sort();
-    const templates = getComposedTemplates();
+    const templates = await getComposedTemplates();
     const expectedCommands = [...templates.commands.keys()].sort();
 
     expect(commandFiles).toEqual(expectedCommands);
@@ -60,8 +60,8 @@ describe('deploy', () => {
     }
   });
 
-  it('deploys prompts only to prompts/ and not to commands/', () => {
-    deploy(tmpDir, 'none');
+  it('deploys prompts only to prompts/ and not to commands/', async () => {
+    await deploy(tmpDir, 'none');
 
     const commandsDir = path.join(tmpDir, '.claude', 'commands');
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
@@ -75,11 +75,11 @@ describe('deploy', () => {
     }
   });
 
-  it('writes agent templates to agents/ with frontmatter intact', () => {
-    deploy(tmpDir, 'none');
+  it('writes agent templates to agents/ with frontmatter intact', async () => {
+    await deploy(tmpDir, 'none');
 
     const agentsDir = path.join(tmpDir, '.claude', 'agents');
-    const templates = getComposedTemplates();
+    const templates = await getComposedTemplates();
     const expectedAgents = [...templates.agents.keys()].sort();
 
     if (expectedAgents.length > 0) {
@@ -95,21 +95,21 @@ describe('deploy', () => {
     }
   });
 
-  it('does not deploy non-agent templates to agents/', () => {
-    deploy(tmpDir, 'none');
+  it('does not deploy non-agent templates to agents/', async () => {
+    await deploy(tmpDir, 'none');
 
     const agentsDir = path.join(tmpDir, '.claude', 'agents');
     if (fs.existsSync(agentsDir)) {
       const agentFiles = fs.readdirSync(agentsDir);
-      const templates = getComposedTemplates();
+      const templates = await getComposedTemplates();
       for (const file of agentFiles) {
         expect(templates.agents.has(file)).toBe(true);
       }
     }
   });
 
-  it('strips frontmatter from deployed prompt files', () => {
-    deploy(tmpDir, 'none');
+  it('strips frontmatter from deployed prompt files', async () => {
+    await deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     const files = fs.readdirSync(promptsDir);
@@ -120,8 +120,8 @@ describe('deploy', () => {
     }
   });
 
-  it('strips frontmatter from deployed command files', () => {
-    deploy(tmpDir, 'none');
+  it('strips frontmatter from deployed command files', async () => {
+    await deploy(tmpDir, 'none');
 
     const commandsDir = path.join(tmpDir, '.claude', 'commands');
     const files = fs.readdirSync(commandsDir);
@@ -132,8 +132,8 @@ describe('deploy', () => {
     }
   });
 
-  it('returns deployed file paths', () => {
-    const files = deploy(tmpDir, 'none');
+  it('returns deployed file paths', async () => {
+    const files = await deploy(tmpDir, 'none');
     expect(files.length).toBeGreaterThan(0);
     // All paths should be relative
     for (const file of files) {
@@ -141,12 +141,12 @@ describe('deploy', () => {
     }
   });
 
-  it('deploys to homedir when location is "user"', () => {
+  it('deploys to homedir when location is "user"', async () => {
     const fakeHome = path.join(tmpDir, 'fakehome');
     fs.mkdirSync(fakeHome, { recursive: true });
     vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
 
-    deploy(tmpDir, 'none', 'user');
+    await deploy(tmpDir, 'none', 'user');
 
     // Files should exist under fakeHome/.claude/
     const promptsDir = path.join(fakeHome, '.claude', 'prompts');
@@ -157,12 +157,12 @@ describe('deploy', () => {
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(false);
   });
 
-  it('returns paths relative to homedir when location is "user"', () => {
+  it('returns paths relative to homedir when location is "user"', async () => {
     const fakeHome = path.join(tmpDir, 'fakehome');
     fs.mkdirSync(fakeHome, { recursive: true });
     vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
 
-    const files = deploy(tmpDir, 'none', 'user');
+    const files = await deploy(tmpDir, 'none', 'user');
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       expect(path.isAbsolute(file)).toBe(false);
@@ -171,8 +171,8 @@ describe('deploy', () => {
     }
   });
 
-  it('creates settings.json when permissionLevel is "repo"', () => {
-    deploy(tmpDir, 'repo');
+  it('creates settings.json when permissionLevel is "repo"', async () => {
+    await deploy(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
@@ -181,8 +181,8 @@ describe('deploy', () => {
     expect(config.permissions.allow).toContain('Bash(git status)');
   });
 
-  it('does not create settings.json when permissionLevel is "none"', () => {
-    deploy(tmpDir, 'none');
+  it('does not create settings.json when permissionLevel is "none"', async () => {
+    await deploy(tmpDir, 'none');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(false);
@@ -204,8 +204,8 @@ describe('removeLegacy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes deployed files by known template filenames', () => {
-    deploy(tmpDir, 'none');
+  it('removes deployed files by known template filenames', async () => {
+    await deploy(tmpDir, 'none');
 
     const removedCount = removeLegacy(tmpDir);
     expect(removedCount).toBeGreaterThan(0);
@@ -227,8 +227,8 @@ describe('removeLegacy', () => {
     expect(removeLegacy(emptyDir)).toBe(0);
   });
 
-  it('preserves non-smithy files in prompts/', () => {
-    deploy(tmpDir, 'none');
+  it('preserves non-smithy files in prompts/', async () => {
+    await deploy(tmpDir, 'none');
 
     const userFile = path.join(tmpDir, '.claude', 'prompts', 'my-custom-prompt.md');
     fs.writeFileSync(userFile, '# Custom');

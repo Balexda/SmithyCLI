@@ -10,9 +10,9 @@ import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from 
 /**
  * Deploy Claude templates. Returns the list of deployed file paths (relative to baseDir).
  */
-export function deploy(targetDir: string, permissionLevel: PermissionLevel, location: DeployLocation = 'repo'): string[] {
+export async function deploy(targetDir: string, permissionLevel: PermissionLevel, location: DeployLocation = 'repo'): Promise<string[]> {
   const baseDir = location === 'user' ? os.homedir() : targetDir;
-  const templates = getComposedTemplates();
+  const templates = await getComposedTemplates();
   const deployedFiles: string[] = [];
 
   // Deploy commands -> .claude/commands/
