@@ -46,17 +46,23 @@ export function loadSnippets(): Map<string, string> {
 }
 
 /**
- * Resolve Handlebars partial references ({{>partial-name}}) in template content
- * using Dotprompt's render pipeline.
- * Snippet filenames are mapped to partial names by stripping the .md extension.
+ * Build a partials map from snippet files, keyed by partial name (filename without .md).
  */
-export async function resolveSnippets(content: string, snippets: Map<string, string>): Promise<string> {
-  // Map snippet filenames (e.g. "audit-checklist-rfc.md") to partial names ("audit-checklist-rfc")
+function buildPartialsMap(snippets: Map<string, string>): Map<string, string> {
   const partials = new Map<string, string>();
   for (const [filename, body] of snippets) {
     const name = filename.replace(/\.md$/, '');
     partials.set(name, body.trimEnd());
   }
+  return partials;
+}
+
+/**
+ * Resolve Handlebars partial references ({{>partial-name}}) in template content
+ * using Dotprompt's render pipeline.
+ * Accepts a pre-built partials map to avoid rebuilding it per template.
+ */
+export async function resolveSnippets(content: string, partials: Map<string, string>): Promise<string> {
   return resolvePartials(content, partials);
 }
 
@@ -78,12 +84,13 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
  */
 export async function getComposedTemplates(): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
+  const partials = buildPartialsMap(snippets);
 
   const resolve = async (dir: string): Promise<Map<string, string>> => {
     const raw = readTemplateDir(dir);
     const composed = new Map<string, string>();
     for (const [file, content] of raw) {
-      composed.set(file, await resolveSnippets(content, snippets));
+      composed.set(file, await resolveSnippets(content, partials));
     }
     return composed;
   };

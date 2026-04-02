@@ -47,44 +47,44 @@ describe('parseFrontmatterName', () => {
 });
 
 describe('resolveSnippets', () => {
-  it('replaces a Handlebars partial with its content', async () => {
-    const snippets = new Map([['greeting.md', 'Hello, world!']]);
+  it('resolves a Handlebars partial reference with its content', async () => {
+    const partials = new Map([['greeting', 'Hello, world!']]);
     const content = 'Before\n{{>greeting}}\nAfter';
-    const result = await resolveSnippets(content, snippets);
+    const result = await resolveSnippets(content, partials);
     expect(result).toContain('Before');
     expect(result).toContain('Hello, world!');
     expect(result).toContain('After');
   });
 
-  it('replaces multiple partial references', async () => {
-    const snippets = new Map([
-      ['alpha.md', 'AAA'],
-      ['beta.md', 'BBB'],
+  it('resolves multiple partial references', async () => {
+    const partials = new Map([
+      ['alpha', 'AAA'],
+      ['beta', 'BBB'],
     ]);
     const content = '{{>alpha}}\nmiddle\n{{>beta}}';
-    const result = await resolveSnippets(content, snippets);
+    const result = await resolveSnippets(content, partials);
     expect(result).toContain('AAA');
     expect(result).toContain('middle');
     expect(result).toContain('BBB');
   });
 
   it('throws on a missing partial', async () => {
-    const snippets = new Map<string, string>();
+    const partials = new Map<string, string>();
     const content = '{{>missing}}';
-    await expect(resolveSnippets(content, snippets)).rejects.toThrow();
+    await expect(resolveSnippets(content, partials)).rejects.toThrow();
   });
 
-  it('returns content unchanged when there are no partials', async () => {
-    const snippets = new Map([['unused.md', 'data']]);
+  it('returns content unchanged when there are no partial references', async () => {
+    const partials = new Map([['unused', 'data']]);
     const content = 'No partials here.';
-    const result = await resolveSnippets(content, snippets);
+    const result = await resolveSnippets(content, partials);
     expect(result).toBe(content);
   });
 
-  it('trims trailing whitespace from snippet content', async () => {
-    const snippets = new Map([['trail.md', 'content\n\n']]);
+  it('renders partial content as-is (trimming is done by buildPartialsMap)', async () => {
+    const partials = new Map([['trail', 'content']]);
     const content = '{{>trail}}';
-    const result = await resolveSnippets(content, snippets);
+    const result = await resolveSnippets(content, partials);
     expect(result).toBe('content');
   });
 });
@@ -175,7 +175,7 @@ describe('getComposedTemplates', () => {
     expect(composed.agents.has('smithy.refine.md')).toBe(true);
   });
 
-  it('audit template has all 5 checklists resolved (no snippet placeholders)', async () => {
+  it('audit template has all 5 checklists resolved (no unresolved partials)', async () => {
     const composed = await getComposedTemplates();
     const audit = composed.commands.get('smithy.audit.md')!;
     expect(audit).toBeDefined();
@@ -200,7 +200,7 @@ describe('getComposedTemplates', () => {
     expect(clarify).toContain('tools:');
   });
 
-  it('command templates without snippets are returned as-is', async () => {
+  it('command templates without partials are returned as-is', async () => {
     const composed = await getComposedTemplates();
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
