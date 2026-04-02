@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { promptConfirmUninit, promptTargetDir } from '../interactive.js';
+import { promptConfirmUninit, promptManifestChoice } from '../interactive.js';
 import { removeIfExists, issueTemplatesSrcDir, resolveIssueTemplatePath } from '../utils.js';
+import { readManifest, removeManifestFiles } from '../manifest.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -16,8 +17,47 @@ export interface UninitOptions {
 export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   console.log(picocolors.cyan('🧹 Welcome to Smithy CLI (Uninit)\n'));
 
+  const targetDir = path.resolve(opts.targetDir ?? process.cwd());
+  const nonInteractive = opts.yes ?? false;
+
+  // 1. Discover manifests
+  const repoManifest = readManifest(targetDir, 'repo');
+  const userManifest = readManifest(targetDir, 'user');
+
+  // 2. Determine which location(s) to uninit
+  type UninitTarget = { location: DeployLocation; hasManifest: boolean };
+  const targets: UninitTarget[] = [];
+
+  if (repoManifest && userManifest) {
+    // Both exist — prompt for choice
+    const choice = nonInteractive
+      ? 'both'
+      : await promptManifestChoice(
+          repoManifest.smithyVersion,
+          userManifest.smithyVersion,
+          'remove',
+        );
+
+    if (choice === 'both' || choice === 'repo') {
+      targets.push({ location: 'repo', hasManifest: true });
+    }
+    if (choice === 'both' || choice === 'user') {
+      targets.push({ location: 'user', hasManifest: true });
+    }
+  } else if (repoManifest) {
+    console.log(picocolors.dim('Found repo manifest'));
+    targets.push({ location: 'repo', hasManifest: true });
+  } else if (userManifest) {
+    console.log(picocolors.dim('Found user manifest'));
+    targets.push({ location: 'user', hasManifest: true });
+  } else {
+    // No manifest at all — fall through to legacy cleanup
+    targets.push({ location: 'repo', hasManifest: false });
+  }
+
+  // 3. Confirm removal
   let confirmed: boolean;
-  if (opts.yes) {
+  if (nonInteractive) {
     console.log(picocolors.yellow('Auto-confirming removal (--yes flag provided)'));
     confirmed = true;
   } else {
@@ -29,24 +69,26 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
     return;
   }
 
-  const targetDir = path.resolve(opts.targetDir ?? (opts.yes ? process.cwd() : await promptTargetDir()));
-
   let removedCount = 0;
 
-  // Remove agent artifacts
-  removedCount += gemini.remove(targetDir);
-  removedCount += claude.remove(targetDir);
-  removedCount += codex.remove(targetDir);
+  // Step 1: Remove manifest-tracked files for each selected location
+  for (const { location, hasManifest } of targets) {
+    if (hasManifest) {
+      removedCount += removeManifestFiles(targetDir, location);
+    }
+  }
 
-  // Remove issue templates from repo-scoped deploy locations only.
-  // User-global (~/.smithy/) is intentionally skipped — it may be shared
-  // across repos and should not be removed by a per-repo uninit.
+  // Step 2: Legacy cleanup for installs without a manifest
+  removedCount += claude.removeLegacy(targetDir);
+  removedCount += gemini.removeLegacy(targetDir);
+  removedCount += codex.removeLegacy(targetDir);
+
+  // Step 3: Remove issue templates from targeted locations
   if (fs.existsSync(issueTemplatesSrcDir)) {
     const issueTemplates = fs.readdirSync(issueTemplatesSrcDir).filter(f => f.endsWith('.md') || f.endsWith('.yml'));
 
-    const repoScopedLocations: DeployLocation[] = ['repo', 'local'];
-    for (const loc of repoScopedLocations) {
-      const dir = resolveIssueTemplatePath(targetDir, loc);
+    for (const { location } of targets) {
+      const dir = resolveIssueTemplatePath(targetDir, location);
       for (const file of issueTemplates) {
         if (removeIfExists(path.join(dir, file))) removedCount++;
       }

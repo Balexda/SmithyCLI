@@ -1,76 +1,71 @@
 import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
-import { getComposedTemplates, getBaseTemplateFiles, stripFrontmatter, isCommandTemplate, parseFrontmatterName, readTemplate } from '../templates.js';
+import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter, parseFrontmatterName } from '../templates.js';
 import { permissions } from '../permissions.js';
-import { removeIfExists, removeStaleSmithyArtifacts } from '../utils.js';
+import { removeIfExists } from '../utils.js';
 
-export function deploy(targetDir: string, initPermissions: boolean): void {
-  const promptsDir = path.join(targetDir, 'tools', 'codex', 'prompts');
-  const skillsDir = path.join(targetDir, '.agents', 'skills');
-  console.log(picocolors.green(`\nInitializing Codex prompts in ${promptsDir}...`));
-  if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
-
+/**
+ * Deploy Codex templates. Returns the list of deployed file paths (relative to targetDir).
+ */
+export function deploy(targetDir: string, initPermissions: boolean): string[] {
   const templates = getComposedTemplates();
-  const promptFilenames = new Set<string>();
-  const skillNames = new Set<string>();
+  const deployedFiles: string[] = [];
 
-  for (const [file, content] of templates) {
-    promptFilenames.add(file);
-    const stripped = stripFrontmatter(content);
-
-    // Deploy to prompts/
-    fs.writeFileSync(path.join(promptsDir, file), stripped);
-
-    // Deploy command-flagged templates as Codex skills (.agents/skills/<name>/SKILL.md)
-    if (isCommandTemplate(content)) {
-      const name = parseFrontmatterName(content);
-      if (name) {
-        skillNames.add(name);
-        const skillPath = path.join(skillsDir, name);
-        if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
-        fs.writeFileSync(path.join(skillPath, 'SKILL.md'), content);
-      }
-    }
+  // Deploy prompts -> tools/codex/prompts/
+  const promptsDir = path.join(targetDir, 'tools', 'codex', 'prompts');
+  if (templates.prompts.size > 0) {
+    if (!fs.existsSync(promptsDir)) fs.mkdirSync(promptsDir, { recursive: true });
+  }
+  console.log(picocolors.green(`\nInitializing Codex prompts in ${promptsDir}...`));
+  for (const [file, content] of templates.prompts) {
+    const dest = path.join(promptsDir, file);
+    fs.writeFileSync(dest, stripFrontmatter(content));
+    deployedFiles.push(path.relative(targetDir, dest));
   }
 
-  // Remove stale .md artifacts from renamed/deleted templates
-  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removeStaleSmithyArtifacts(promptsDir, 'smithy.', promptFilenames, isMdFile);
-
-  // Remove stale skill directories from renamed/deleted templates
-  const isCodexSkill = (p: string) =>
-    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
-  removeStaleSmithyArtifacts(skillsDir, 'smithy-', skillNames, isCodexSkill);
+  // Deploy commands as Codex skills -> .agents/skills/<name>/SKILL.md
+  const skillsDir = path.join(targetDir, '.agents', 'skills');
+  for (const [, content] of templates.commands) {
+    const name = parseFrontmatterName(content);
+    if (name) {
+      const skillPath = path.join(skillsDir, name);
+      if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
+      const dest = path.join(skillPath, 'SKILL.md');
+      fs.writeFileSync(dest, content);
+      deployedFiles.push(path.relative(targetDir, dest));
+    }
+  }
 
   if (initPermissions) {
     writePermissions(targetDir);
   }
+
+  return deployedFiles;
 }
 
-export function remove(targetDir: string): number {
+/**
+ * Remove Codex artifacts by known filenames and scanning for smithy-prefixed skill dirs
+ * (legacy cleanup, no manifest).
+ */
+export function removeLegacy(targetDir: string): number {
   let removedCount = 0;
-  const skillsDir = path.join(targetDir, '.agents', 'skills');
-
-  for (const file of getBaseTemplateFiles()) {
+  const categories = getTemplateFilesByCategory();
+  for (const file of categories.prompts) {
     if (removeIfExists(path.join(targetDir, 'tools', 'codex', 'prompts', file))) removedCount++;
-
-    // Remove corresponding skill directory
-    const content = readTemplate(file);
-    const name = parseFrontmatterName(content);
-    if (name) {
-      if (removeIfExists(path.join(skillsDir, name))) removedCount++;
-    }
   }
 
-  // Remove stale .md artifacts from renamed/deleted templates
-  const isMdFile = (p: string) => p.endsWith('.md') && fs.statSync(p).isFile();
-  removedCount += removeStaleSmithyArtifacts(path.join(targetDir, 'tools', 'codex', 'prompts'), 'smithy.', new Set(), isMdFile);
-
-  // Remove stale skill directories
-  const isCodexSkill = (p: string) =>
-    fs.statSync(p).isDirectory() && fs.existsSync(path.join(p, 'SKILL.md'));
-  removedCount += removeStaleSmithyArtifacts(skillsDir, 'smithy-', new Set(), isCodexSkill);
+  const skillsDir = path.join(targetDir, '.agents', 'skills');
+  if (fs.existsSync(skillsDir)) {
+    for (const entry of fs.readdirSync(skillsDir)) {
+      if (entry.startsWith('smithy-')) {
+        const entryPath = path.join(skillsDir, entry);
+        if (fs.statSync(entryPath).isDirectory() && fs.existsSync(path.join(entryPath, 'SKILL.md'))) {
+          if (removeIfExists(entryPath)) removedCount++;
+        }
+      }
+    }
+  }
 
   return removedCount;
 }
@@ -85,11 +80,9 @@ function writePermissions(targetDir: string): void {
 
   for (const [cmd, value] of Object.entries(permissions)) {
     if (Array.isArray(value)) {
-      // Simple command like cp ["*"]
       if (value.length === 0) {
         tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs = []\n\n`;
       } else if (value.includes('*')) {
-        // Bare "*" = allow any arguments; flag variants are subsumed
         tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs_startswith = []\n\n`;
       } else {
         const hasWildcard = value.some(arg => arg.includes('*'));
@@ -101,7 +94,6 @@ function writePermissions(targetDir: string): void {
         }
       }
     } else {
-      // Nested subcommands
       for (const [sub, args] of Object.entries(value)) {
         const subParts = sub.split(' ');
         const fullArgs = [...subParts, ...args];

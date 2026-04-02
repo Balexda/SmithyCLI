@@ -1,7 +1,6 @@
 ---
 name: smithy-audit
 description: "Context-aware artifact auditor. Reviews any Smithy artifact by extension, or reviews code on a forge branch against its upstream spec context."
-command: true
 ---
 # smithy-audit
 
@@ -84,7 +83,15 @@ When no file argument is provided and the current branch matches the forge branc
 
 Use the checklist matching the artifact's extension. Each checklist defines what "good" looks like for that artifact type.
 
-<!-- composed-checklists -->
+<!-- snippet:audit-checklist-rfc.md -->
+
+<!-- snippet:audit-checklist-features.md -->
+
+<!-- snippet:audit-checklist-spec.md -->
+
+<!-- snippet:audit-checklist-tasks.md -->
+
+<!-- snippet:audit-checklist-strike.md -->
 
 ---
 

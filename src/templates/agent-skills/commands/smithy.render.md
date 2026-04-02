@@ -1,7 +1,6 @@
 ---
 name: smithy-render
 description: "Break an RFC milestone into a feature map through interactive clarification. Produces a structured list of discrete, user-facing features."
-command: true
 ---
 # smithy-render
 
@@ -238,15 +237,3 @@ again. Once approved, suggest the next step:
   parallel by other agents. Each agent owns exactly one milestone.
 - **DO** note cross-milestone dependencies in the feature map (as
   "Cross-Milestone Dependencies") without pulling that work into your features.
-
-<!-- audit-checklist-start -->
-## Audit Checklist (.features.md)
-
-| Category | What to check |
-|----------|---------------|
-| **Feature Coverage** | Are all aspects of the milestone represented by at least one feature? |
-| **Gaps** | Are there milestone goals or success criteria that no feature addresses? |
-| **Overlap** | Are there features with unclear or overlapping boundaries? |
-| **Dependency Clarity** | Are inter-feature dependencies within the milestone evident, or are they hidden? |
-| **RFC Alignment** | Does the feature map align with the RFC's stated goals and success criteria for this milestone? |
-<!-- audit-checklist-end -->

@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { buildClaudeAllowList, buildClaudeDenyList, deploy, remove, writePermissions, resolveSettingsPath } from './claude.js';
-import { getBaseTemplateFiles, getComposedTemplates, isCommandTemplate, isAgentTemplate } from '../templates.js';
+import { buildClaudeAllowList, buildClaudeDenyList, deploy, removeLegacy, writePermissions, resolveSettingsPath } from './claude.js';
+import { getComposedTemplates, getTemplateFilesByCategory } from '../templates.js';
+import { writeManifest, readManifest, removeStaleFiles } from '../manifest.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -18,71 +19,60 @@ describe('deploy', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes stale smithy artifacts from prompts on deploy', () => {
-    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
-    fs.mkdirSync(promptsDir, { recursive: true });
-    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# old template');
-
-    deploy(tmpDir, 'none');
-
-    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
-    expect(fs.existsSync(path.join(promptsDir, 'smithy.fix.md'))).toBe(true);
-  });
-
-  it('removes stale smithy artifacts from commands on deploy', () => {
-    const commandsDir = path.join(tmpDir, '.claude', 'commands');
-    fs.mkdirSync(commandsDir, { recursive: true });
-    fs.writeFileSync(path.join(commandsDir, 'smithy.patch.md'), '# old command');
-
-    deploy(tmpDir, 'none');
-
-    expect(fs.existsSync(path.join(commandsDir, 'smithy.patch.md'))).toBe(false);
-  });
-
   it('creates .claude/prompts/ from scratch on a fresh directory', () => {
     deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     expect(fs.existsSync(promptsDir)).toBe(true);
-    // Should have deployed template files
     const files = fs.readdirSync(promptsDir);
     expect(files.length).toBeGreaterThan(0);
   });
 
-  it('writes all base templates to prompts/', () => {
+  it('deploys only prompt-category templates to prompts/', () => {
     deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     const deployedFiles = fs.readdirSync(promptsDir).sort();
-    const baseFiles = getBaseTemplateFiles().sort();
+    const templates = getComposedTemplates();
+    const expectedPrompts = [...templates.prompts.keys()].sort();
 
-    expect(deployedFiles).toEqual(baseFiles);
+    expect(deployedFiles).toEqual(expectedPrompts);
   });
 
-  it('writes command-flagged templates to both prompts/ and commands/', () => {
+  it('deploys commands only to commands/ and not to prompts/', () => {
     deploy(tmpDir, 'none');
 
-    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
     const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
 
     expect(fs.existsSync(commandsDir)).toBe(true);
 
-    const commandFiles = fs.readdirSync(commandsDir);
-    expect(commandFiles.length).toBeGreaterThan(0);
-
-    // Every command file should also be in prompts
-    for (const file of commandFiles) {
-      expect(fs.existsSync(path.join(promptsDir, file))).toBe(true);
-    }
-
-    // Verify command files match templates with command: true
+    const commandFiles = fs.readdirSync(commandsDir).sort();
     const templates = getComposedTemplates();
-    const expectedCommands = [...templates.entries()]
-      .filter(([_, content]) => isCommandTemplate(content))
-      .map(([file]) => file)
-      .sort();
+    const expectedCommands = [...templates.commands.keys()].sort();
 
-    expect(commandFiles.sort()).toEqual(expectedCommands);
+    expect(commandFiles).toEqual(expectedCommands);
+
+    // Commands should NOT appear in prompts/
+    const promptFiles = fs.readdirSync(promptsDir);
+    for (const file of commandFiles) {
+      expect(promptFiles).not.toContain(file);
+    }
+  });
+
+  it('deploys prompts only to prompts/ and not to commands/', () => {
+    deploy(tmpDir, 'none');
+
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+
+    const promptFiles = fs.readdirSync(promptsDir);
+    const commandFiles = fs.readdirSync(commandsDir);
+
+    // Prompt files should NOT appear in commands/
+    for (const file of promptFiles) {
+      expect(commandFiles).not.toContain(file);
+    }
   });
 
   it('writes agent templates to agents/ with frontmatter intact', () => {
@@ -90,10 +80,7 @@ describe('deploy', () => {
 
     const agentsDir = path.join(tmpDir, '.claude', 'agents');
     const templates = getComposedTemplates();
-    const expectedAgents = [...templates.entries()]
-      .filter(([_, content]) => isAgentTemplate(content))
-      .map(([file]) => file)
-      .sort();
+    const expectedAgents = [...templates.agents.keys()].sort();
 
     if (expectedAgents.length > 0) {
       expect(fs.existsSync(agentsDir)).toBe(true);
@@ -104,7 +91,6 @@ describe('deploy', () => {
       for (const file of agentFiles) {
         const content = fs.readFileSync(path.join(agentsDir, file), 'utf8');
         expect(content).toMatch(/^---\s*\n/);
-        expect(content).toMatch(/tools:\s*.+/);
       }
     }
   });
@@ -117,14 +103,12 @@ describe('deploy', () => {
       const agentFiles = fs.readdirSync(agentsDir);
       const templates = getComposedTemplates();
       for (const file of agentFiles) {
-        const content = templates.get(file);
-        expect(content).toBeDefined();
-        expect(isAgentTemplate(content!)).toBe(true);
+        expect(templates.agents.has(file)).toBe(true);
       }
     }
   });
 
-  it('strips frontmatter from deployed files', () => {
+  it('strips frontmatter from deployed prompt files', () => {
     deploy(tmpDir, 'none');
 
     const promptsDir = path.join(tmpDir, '.claude', 'prompts');
@@ -132,8 +116,58 @@ describe('deploy', () => {
 
     for (const file of files) {
       const content = fs.readFileSync(path.join(promptsDir, file), 'utf8');
-      // Should not start with frontmatter delimiter
       expect(content).not.toMatch(/^---\s*\n/);
+    }
+  });
+
+  it('strips frontmatter from deployed command files', () => {
+    deploy(tmpDir, 'none');
+
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    const files = fs.readdirSync(commandsDir);
+
+    for (const file of files) {
+      const content = fs.readFileSync(path.join(commandsDir, file), 'utf8');
+      expect(content).not.toMatch(/^---\s*\n/);
+    }
+  });
+
+  it('returns deployed file paths', () => {
+    const files = deploy(tmpDir, 'none');
+    expect(files.length).toBeGreaterThan(0);
+    // All paths should be relative
+    for (const file of files) {
+      expect(path.isAbsolute(file)).toBe(false);
+    }
+  });
+
+  it('deploys to homedir when location is "user"', () => {
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    deploy(tmpDir, 'none', 'user');
+
+    // Files should exist under fakeHome/.claude/
+    const promptsDir = path.join(fakeHome, '.claude', 'prompts');
+    expect(fs.existsSync(promptsDir)).toBe(true);
+    expect(fs.readdirSync(promptsDir).length).toBeGreaterThan(0);
+
+    // Files should NOT exist under tmpDir/.claude/
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(false);
+  });
+
+  it('returns paths relative to homedir when location is "user"', () => {
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    const files = deploy(tmpDir, 'none', 'user');
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      expect(path.isAbsolute(file)).toBe(false);
+      // Each file should resolve to fakeHome, not tmpDir
+      expect(fs.existsSync(path.join(fakeHome, file))).toBe(true);
     }
   });
 
@@ -147,28 +181,17 @@ describe('deploy', () => {
     expect(config.permissions.allow).toContain('Bash(git status)');
   });
 
-  it('creates settings.local.json when permissionLevel is "local"', () => {
-    deploy(tmpDir, 'local');
-
-    const settingsPath = path.join(tmpDir, '.claude', 'settings.local.json');
-    expect(fs.existsSync(settingsPath)).toBe(true);
-
-    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    expect(config.permissions.allow).toContain('Bash(git status)');
-
-    // Should NOT create repo-level settings.json
-    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
-  });
-
   it('does not create settings.json when permissionLevel is "none"', () => {
     deploy(tmpDir, 'none');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(false);
   });
+
 });
 
-describe('remove', () => {
+
+describe('removeLegacy', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -181,65 +204,38 @@ describe('remove', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('removes stale smithy artifacts during remove', () => {
-    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
-    fs.mkdirSync(promptsDir, { recursive: true });
-    fs.writeFileSync(path.join(promptsDir, 'smithy.patch.md'), '# stale');
-
-    const removedCount = remove(tmpDir);
-    expect(removedCount).toBeGreaterThanOrEqual(1);
-    expect(fs.existsSync(path.join(promptsDir, 'smithy.patch.md'))).toBe(false);
-  });
-
-  it('returns accurate count matching deployed prompt + command + agent files', () => {
-    // Deploy first so there is something to remove
+  it('removes deployed files by known template filenames', () => {
     deploy(tmpDir, 'none');
 
-    const promptCount = fs.readdirSync(path.join(tmpDir, '.claude', 'prompts')).length;
-    const commandsDir = path.join(tmpDir, '.claude', 'commands');
-    const commandCount = fs.existsSync(commandsDir) ? fs.readdirSync(commandsDir).length : 0;
-    const agentsDir = path.join(tmpDir, '.claude', 'agents');
-    const agentCount = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir).length : 0;
+    const removedCount = removeLegacy(tmpDir);
+    expect(removedCount).toBeGreaterThan(0);
 
-    const removedCount = remove(tmpDir);
-    expect(removedCount).toBe(promptCount + commandCount + agentCount);
-  });
-
-  it('removes stale smithy artifacts from agents/ during remove', () => {
-    const agentsDir = path.join(tmpDir, '.claude', 'agents');
-    fs.mkdirSync(agentsDir, { recursive: true });
-    fs.writeFileSync(path.join(agentsDir, 'smithy.old-agent.md'), '# stale agent');
-
-    const removedCount = remove(tmpDir);
-    expect(removedCount).toBeGreaterThanOrEqual(1);
-    expect(fs.existsSync(path.join(agentsDir, 'smithy.old-agent.md'))).toBe(false);
+    const categories = getTemplateFilesByCategory();
+    for (const file of categories.commands) {
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'commands', file))).toBe(false);
+    }
+    for (const file of categories.prompts) {
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts', file))).toBe(false);
+    }
+    for (const file of categories.agents) {
+      expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents', file))).toBe(false);
+    }
   });
 
   it('returns 0 on empty/nonexistent directory without throwing', () => {
     const emptyDir = path.join(tmpDir, 'nonexistent');
-    expect(remove(emptyDir)).toBe(0);
+    expect(removeLegacy(emptyDir)).toBe(0);
   });
 
   it('preserves non-smithy files in prompts/', () => {
     deploy(tmpDir, 'none');
 
-    // Add a user-created file
     const userFile = path.join(tmpDir, '.claude', 'prompts', 'my-custom-prompt.md');
     fs.writeFileSync(userFile, '# Custom');
 
-    remove(tmpDir);
+    removeLegacy(tmpDir);
 
     expect(fs.existsSync(userFile)).toBe(true);
-  });
-
-  it('cleans stale artifacts from commands/ dir', () => {
-    const commandsDir = path.join(tmpDir, '.claude', 'commands');
-    fs.mkdirSync(commandsDir, { recursive: true });
-    fs.writeFileSync(path.join(commandsDir, 'smithy.obsolete.md'), '# stale command');
-
-    const removedCount = remove(tmpDir);
-    expect(removedCount).toBeGreaterThanOrEqual(1);
-    expect(fs.existsSync(path.join(commandsDir, 'smithy.obsolete.md'))).toBe(false);
   });
 });
 
@@ -399,11 +395,6 @@ describe('resolveSettingsPath', () => {
     expect(result).toBe(path.join('/my/project', '.claude', 'settings.json'));
   });
 
-  it('returns local-level path for "local" level', () => {
-    const result = resolveSettingsPath('/my/project', 'local');
-    expect(result).toBe(path.join('/my/project', '.claude', 'settings.local.json'));
-  });
-
   it('returns user-level path for "user" level', () => {
     const result = resolveSettingsPath('/my/project', 'user');
     expect(result).toBe(path.join(os.homedir(), '.claude', 'settings.json'));
@@ -510,20 +501,6 @@ describe('writePermissions', () => {
 
     const settingsPath = path.join(deepDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
-  });
-
-  it('writes to local-level path for "local" level', () => {
-    writePermissions(tmpDir, 'local');
-
-    const settingsPath = path.join(tmpDir, '.claude', 'settings.local.json');
-    expect(fs.existsSync(settingsPath)).toBe(true);
-
-    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    expect(config.permissions.allow).toContain('Bash(git status)');
-
-    // Should NOT have written to the repo-level path
-    const repoSettingsPath = path.join(tmpDir, '.claude', 'settings.json');
-    expect(fs.existsSync(repoSettingsPath)).toBe(false);
   });
 
   it('writes to user-level path for "user" level', () => {

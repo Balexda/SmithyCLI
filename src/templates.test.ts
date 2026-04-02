@@ -1,246 +1,212 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
-  extractAuditChecklist,
-  composeAuditTemplate,
+  stripFrontmatter,
+  parseFrontmatterName,
+  loadSnippets,
+  resolveSnippets,
+  getTemplateFilesByCategory,
   getComposedTemplates,
-  templateToExtension,
-  isAgentTemplate,
-  isCommandTemplate,
-  readTemplate,
 } from './templates.js';
 
-describe('extractAuditChecklist', () => {
-  it('extracts content between audit checklist markers', () => {
-    const content = `Some preamble text.
-
-<!-- audit-checklist-start -->
-## Audit Checklist (.rfc.md)
-
-| Category | What to check |
-|----------|---------------|
-| **Ambiguity** | Are goals clearly defined? |
-<!-- audit-checklist-end -->
-
-Some trailing text.`;
-
-    const result = extractAuditChecklist(content);
-    expect(result).toBe(
-      `## Audit Checklist (.rfc.md)\n\n| Category | What to check |\n|----------|---------------|\n| **Ambiguity** | Are goals clearly defined? |`,
-    );
+describe('stripFrontmatter', () => {
+  it('removes YAML frontmatter from content', () => {
+    const content = `---\nname: test\ndescription: "A test"\n---\n# Body`;
+    expect(stripFrontmatter(content)).toBe('# Body');
   });
 
-  it('returns null when no start marker exists', () => {
-    const content = 'Just some regular content without markers.';
-    expect(extractAuditChecklist(content)).toBeNull();
+  it('returns content unchanged when no frontmatter exists', () => {
+    const content = '# Just a markdown file';
+    expect(stripFrontmatter(content)).toBe(content);
   });
 
-  it('returns null when start marker exists but no end marker', () => {
-    const content = `Some text
-<!-- audit-checklist-start -->
-## Checklist
-No end marker here.`;
-    expect(extractAuditChecklist(content)).toBeNull();
-  });
-
-  it('returns null for empty content', () => {
-    expect(extractAuditChecklist('')).toBeNull();
-  });
-
-  it('handles markers with no content between them', () => {
-    const content = '<!-- audit-checklist-start -->\n<!-- audit-checklist-end -->';
-    expect(extractAuditChecklist(content)).toBe('');
+  it('returns empty string when content is only frontmatter', () => {
+    const content = '---\nname: test\n---\n';
+    expect(stripFrontmatter(content)).toBe('');
   });
 });
 
-describe('composeAuditTemplate', () => {
-  const makeChecklist = (ext: string, category: string) =>
-    `<!-- audit-checklist-start -->\n## Audit Checklist (${ext})\n\n| Category | What to check |\n|----------|---------------|\n| **${category}** | Check something |\n<!-- audit-checklist-end -->`;
-
-  it('injects composed checklists at the placeholder', () => {
-    const templates = new Map<string, string>();
-    templates.set('smithy.ignite.md', `Preamble\n\n${makeChecklist('.rfc.md', 'Ambiguity')}`);
-    templates.set('smithy.cut.md', `Preamble\n\n${makeChecklist('.tasks.md', 'Slice Scoping')}`);
-
-    const auditTemplate = `# Audit\n\n<!-- composed-checklists -->\n\n## Output`;
-    const result = composeAuditTemplate(templates, auditTemplate);
-
-    expect(result).toContain('## Audit Checklist (.rfc.md)');
-    expect(result).toContain('## Audit Checklist (.tasks.md)');
-    expect(result).toContain('## Output');
-    expect(result).not.toContain('<!-- composed-checklists -->');
+describe('parseFrontmatterName', () => {
+  it('extracts name from frontmatter', () => {
+    const content = `---\nname: smithy-strike\ndescription: "Strike"\n---\n# Body`;
+    expect(parseFrontmatterName(content)).toBe('smithy-strike');
   });
 
-  it('preserves audit template when no templates have checklists', () => {
-    const templates = new Map<string, string>();
-    templates.set('smithy.ignite.md', 'No checklist here');
-
-    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->';
-    const result = composeAuditTemplate(templates, auditTemplate);
-
-    expect(result).toBe(auditTemplate);
+  it('returns undefined when no frontmatter exists', () => {
+    expect(parseFrontmatterName('# Just markdown')).toBeUndefined();
   });
 
-  it('preserves audit template when templates map is empty', () => {
-    const templates = new Map<string, string>();
-    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->';
-    const result = composeAuditTemplate(templates, auditTemplate);
-
-    expect(result).toBe(auditTemplate);
+  it('returns undefined when frontmatter has no name field', () => {
+    const content = `---\ndescription: "No name"\n---\n# Body`;
+    expect(parseFrontmatterName(content)).toBeUndefined();
   });
 
-  it('throws when audit template is missing the placeholder', () => {
-    const templates = new Map<string, string>();
-    templates.set('smithy.ignite.md', makeChecklist('.rfc.md', 'Ambiguity'));
-
-    const auditTemplate = '# Audit\n\nNo placeholder here';
-    expect(() => composeAuditTemplate(templates, auditTemplate)).toThrow(
-      /missing the "<!-- composed-checklists -->" placeholder/,
-    );
-  });
-
-  it('throws when checklist header does not match expected extension', () => {
-    const templates = new Map<string, string>();
-    // ignite should map to .rfc.md but checklist says .wrong.md
-    templates.set('smithy.ignite.md', makeChecklist('.wrong.md', 'Ambiguity'));
-
-    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->';
-    expect(() => composeAuditTemplate(templates, auditTemplate)).toThrow(
-      /does not reference expected extension "\.rfc\.md"/,
-    );
-  });
-
-  it('only processes known producing command templates', () => {
-    const templates = new Map<string, string>();
-    templates.set('smithy.forge.md', `Preamble\n\n${makeChecklist('.unknown', 'Forge')}`);
-    templates.set('smithy.ignite.md', `Preamble\n\n${makeChecklist('.rfc.md', 'Ambiguity')}`);
-
-    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->';
-    const result = composeAuditTemplate(templates, auditTemplate);
-
-    expect(result).toContain('## Audit Checklist (.rfc.md)');
-    expect(result).not.toContain('Forge');
-  });
-
-  it('composes all five producing command checklists in order', () => {
-    const templates = new Map<string, string>();
-    templates.set('smithy.ignite.md', makeChecklist('.rfc.md', 'Ambiguity'));
-    templates.set('smithy.render.md', makeChecklist('.features.md', 'Coverage'));
-    templates.set('smithy.mark.md', makeChecklist('.spec.md', 'Traceability'));
-    templates.set('smithy.cut.md', makeChecklist('.tasks.md', 'Scoping'));
-    templates.set('smithy.strike.md', makeChecklist('.strike.md', 'Completeness'));
-
-    const auditTemplate = '# Audit\n\n<!-- composed-checklists -->\n\n## End';
-    const result = composeAuditTemplate(templates, auditTemplate);
-
-    // All five should be present
-    expect(result).toContain('.rfc.md');
-    expect(result).toContain('.features.md');
-    expect(result).toContain('.spec.md');
-    expect(result).toContain('.tasks.md');
-    expect(result).toContain('.strike.md');
-
-    // Order should match templateToExtension iteration order
-    const rfcIdx = result.indexOf('.rfc.md');
-    const featuresIdx = result.indexOf('.features.md');
-    const specIdx = result.indexOf('.spec.md');
-    const tasksIdx = result.indexOf('.tasks.md');
-    const strikeIdx = result.indexOf('.strike.md');
-    expect(rfcIdx).toBeLessThan(featuresIdx);
-    expect(featuresIdx).toBeLessThan(specIdx);
-    expect(specIdx).toBeLessThan(tasksIdx);
-    expect(tasksIdx).toBeLessThan(strikeIdx);
+  it('trims whitespace from the name value', () => {
+    const content = `---\nname:   spaced-name  \n---\n# Body`;
+    expect(parseFrontmatterName(content)).toBe('spaced-name');
   });
 });
 
-describe('templateToExtension', () => {
-  it('maps all five producing command templates', () => {
-    expect(Object.keys(templateToExtension)).toHaveLength(5);
-    expect(templateToExtension['smithy.ignite.md']).toBe('.rfc.md');
-    expect(templateToExtension['smithy.render.md']).toBe('.features.md');
-    expect(templateToExtension['smithy.mark.md']).toBe('.spec.md');
-    expect(templateToExtension['smithy.cut.md']).toBe('.tasks.md');
-    expect(templateToExtension['smithy.strike.md']).toBe('.strike.md');
+describe('resolveSnippets', () => {
+  it('replaces a snippet placeholder with its content', () => {
+    const snippets = new Map([['greeting.md', 'Hello, world!']]);
+    const content = 'Before\n<!-- snippet:greeting.md -->\nAfter';
+    expect(resolveSnippets(content, snippets)).toBe('Before\nHello, world!\nAfter');
+  });
+
+  it('replaces multiple snippet placeholders', () => {
+    const snippets = new Map([
+      ['alpha.md', 'AAA'],
+      ['beta.md', 'BBB'],
+    ]);
+    const content = '<!-- snippet:alpha.md -->\nmiddle\n<!-- snippet:beta.md -->';
+    expect(resolveSnippets(content, snippets)).toBe('AAA\nmiddle\nBBB');
+  });
+
+  it('throws on a missing snippet', () => {
+    const snippets = new Map<string, string>();
+    const content = '<!-- snippet:missing.md -->';
+    expect(() => resolveSnippets(content, snippets)).toThrow(
+      'Snippet "missing.md" not found in snippets/',
+    );
+  });
+
+  it('returns content unchanged when there are no placeholders', () => {
+    const snippets = new Map([['unused.md', 'data']]);
+    const content = 'No placeholders here.';
+    expect(resolveSnippets(content, snippets)).toBe(content);
+  });
+
+  it('trims trailing whitespace from snippet content', () => {
+    const snippets = new Map([['trail.md', 'content\n\n']]);
+    const content = '<!-- snippet:trail.md -->';
+    expect(resolveSnippets(content, snippets)).toBe('content');
   });
 });
 
-describe('isAgentTemplate', () => {
-  it('returns true for templates with tools in frontmatter', () => {
-    const content = `---\nname: smithy-clarify\ndescription: "Sub-agent"\ntools: Read, Grep, Glob\nmodel: opus\n---\n# Body`;
-    expect(isAgentTemplate(content)).toBe(true);
+describe('loadSnippets', () => {
+  it('loads all 5 audit checklist snippet files', () => {
+    const snippets = loadSnippets();
+    expect(snippets.size).toBe(5);
+
+    const expectedFiles = [
+      'audit-checklist-rfc.md',
+      'audit-checklist-features.md',
+      'audit-checklist-spec.md',
+      'audit-checklist-tasks.md',
+      'audit-checklist-strike.md',
+    ];
+    for (const file of expectedFiles) {
+      expect(snippets.has(file)).toBe(true);
+      expect(snippets.get(file)!.length).toBeGreaterThan(0);
+    }
   });
 
-  it('returns false for command templates without tools', () => {
-    const content = `---\nname: smithy-strike\ndescription: "Strike"\ncommand: true\n---\n# Body`;
-    expect(isAgentTemplate(content)).toBe(false);
+  it('snippet content contains audit checklist headers', () => {
+    const snippets = loadSnippets();
+    expect(snippets.get('audit-checklist-rfc.md')).toContain('Audit Checklist (.rfc.md)');
+    expect(snippets.get('audit-checklist-features.md')).toContain('Audit Checklist (.features.md)');
+    expect(snippets.get('audit-checklist-spec.md')).toContain('Audit Checklist (.spec.md)');
+    expect(snippets.get('audit-checklist-tasks.md')).toContain('Audit Checklist (.tasks.md)');
+    expect(snippets.get('audit-checklist-strike.md')).toContain('Audit Checklist (.strike.md)');
+  });
+});
+
+describe('getTemplateFilesByCategory', () => {
+  it('returns the correct number of files per category', () => {
+    const byCategory = getTemplateFilesByCategory();
+    expect(byCategory.commands).toHaveLength(9);
+    expect(byCategory.prompts).toHaveLength(2);
+    expect(byCategory.agents).toHaveLength(2);
   });
 
-  it('returns false for templates with no frontmatter', () => {
-    expect(isAgentTemplate('# Just a markdown file')).toBe(false);
+  it('commands includes expected template files', () => {
+    const { commands } = getTemplateFilesByCategory();
+    expect(commands).toContain('smithy.strike.md');
+    expect(commands).toContain('smithy.audit.md');
+    expect(commands).toContain('smithy.ignite.md');
+    expect(commands).toContain('smithy.forge.md');
+    expect(commands).toContain('smithy.mark.md');
+    expect(commands).toContain('smithy.cut.md');
+    expect(commands).toContain('smithy.render.md');
+    expect(commands).toContain('smithy.fix.md');
+    expect(commands).toContain('smithy.orders.md');
   });
 
-  it('returns false when tools appears only in body, not frontmatter', () => {
-    const content = `---\nname: smithy-test\n---\n# Body\ntools: Read, Grep`;
-    expect(isAgentTemplate(content)).toBe(false);
+  it('prompts includes guidance and titles', () => {
+    const { prompts } = getTemplateFilesByCategory();
+    expect(prompts).toContain('smithy.guidance.md');
+    expect(prompts).toContain('smithy.titles.md');
+  });
+
+  it('agents includes clarify and refine', () => {
+    const { agents } = getTemplateFilesByCategory();
+    expect(agents).toContain('smithy.clarify.md');
+    expect(agents).toContain('smithy.refine.md');
+  });
+
+  it('does not include smithy.slice.md (deleted)', () => {
+    const { commands, prompts, agents } = getTemplateFilesByCategory();
+    const allFiles = [...commands, ...prompts, ...agents];
+    expect(allFiles).not.toContain('smithy.slice.md');
   });
 });
 
 describe('getComposedTemplates', () => {
-  it('composes the audit template with all 5 extension-specific checklists', () => {
-    const templates = getComposedTemplates();
-    const audit = templates.get('smithy.audit.md');
+  it('returns commands, prompts, and agents maps', () => {
+    const composed = getComposedTemplates();
+    expect(composed.commands).toBeInstanceOf(Map);
+    expect(composed.prompts).toBeInstanceOf(Map);
+    expect(composed.agents).toBeInstanceOf(Map);
+  });
+
+  it('categorizes templates correctly', () => {
+    const composed = getComposedTemplates();
+    expect(composed.commands.has('smithy.strike.md')).toBe(true);
+    expect(composed.commands.has('smithy.audit.md')).toBe(true);
+    expect(composed.prompts.has('smithy.guidance.md')).toBe(true);
+    expect(composed.prompts.has('smithy.titles.md')).toBe(true);
+    expect(composed.agents.has('smithy.clarify.md')).toBe(true);
+    expect(composed.agents.has('smithy.refine.md')).toBe(true);
+  });
+
+  it('audit template has all 5 checklists resolved (no snippet placeholders)', () => {
+    const composed = getComposedTemplates();
+    const audit = composed.commands.get('smithy.audit.md')!;
     expect(audit).toBeDefined();
 
-    for (const ext of Object.values(templateToExtension)) {
-      expect(audit).toContain(`Audit Checklist (${ext})`);
-    }
+    // Snippet placeholders should be replaced
+    expect(audit).not.toContain('<!-- snippet:');
+
+    // All 5 checklist sections should be present
+    expect(audit).toContain('Audit Checklist (.rfc.md)');
+    expect(audit).toContain('Audit Checklist (.features.md)');
+    expect(audit).toContain('Audit Checklist (.spec.md)');
+    expect(audit).toContain('Audit Checklist (.tasks.md)');
+    expect(audit).toContain('Audit Checklist (.strike.md)');
   });
 
-  it('replaces the composed-checklists placeholder', () => {
-    const templates = getComposedTemplates();
-    const audit = templates.get('smithy.audit.md')!;
-    expect(audit).not.toContain('<!-- composed-checklists -->');
+  it('agent templates retain frontmatter', () => {
+    const composed = getComposedTemplates();
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    expect(clarify).toBeDefined();
+    expect(clarify).toMatch(/^---\s*\n/);
+    expect(clarify).toContain('name: smithy-clarify');
+    expect(clarify).toContain('tools:');
   });
 
-  it('preserves command: true in the audit template frontmatter', () => {
-    const templates = getComposedTemplates();
-    const audit = templates.get('smithy.audit.md')!;
-    expect(audit).toMatch(/command:\s*true/);
+  it('command templates without snippets are returned as-is', () => {
+    const composed = getComposedTemplates();
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike.length).toBeGreaterThan(0);
+    // strike should not contain any unresolved snippet placeholders
+    expect(strike).not.toContain('<!-- snippet:');
   });
 
-  it('includes smithy.titles.md as a prompt-only template', () => {
-    const templates = getComposedTemplates();
-    expect(templates.has('smithy.titles.md')).toBe(true);
-  });
-});
-
-describe('smithy.titles.md', () => {
-  let content: string;
-
-  beforeAll(() => {
-    content = readTemplate('smithy.titles.md');
-  });
-
-  it('is not a command template', () => {
-    expect(isCommandTemplate(content)).toBe(false);
-  });
-
-  it('is not an agent template', () => {
-    expect(isAgentTemplate(content)).toBe(false);
-  });
-
-  it('contains document title conventions', () => {
-    expect(content).toContain('Document Title Conventions');
-  });
-
-  it('contains sub-element title conventions', () => {
-    expect(content).toContain('Sub-Element Title Conventions');
-  });
-
-  it('contains ticket title conventions', () => {
-    expect(content).toContain('Ticket Title Conventions');
-  });
-
-  it('contains repo-level overrides section', () => {
-    expect(content).toContain('Repo-Level Overrides');
+  it('prompt templates are included without modification', () => {
+    const composed = getComposedTemplates();
+    const titles = composed.prompts.get('smithy.titles.md')!;
+    expect(titles).toBeDefined();
+    expect(titles).toContain('Document Title Conventions');
   });
 });
