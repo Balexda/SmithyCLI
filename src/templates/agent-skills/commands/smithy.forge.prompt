@@ -203,6 +203,34 @@ Include the command output summary in your final response so reviewers know what
 
 ---
 
+## Documentation Check
+
+{{#ifAgent}}
+Use the **smithy-maid** sub-agent. Pass it:
+
+- **Changed files**: the list of files modified between BASE_SHA and HEAD (including review auto-fix commits)
+- **Spec/strike paths**: the spec, contracts, data-model, or strike file paths from Intake
+- **Slice goal**: the slice's stated goal
+
+After the sub-agent returns:
+
+1. **Auto-fixable items**: Apply the suggested changes, commit as `maid: <description>`.
+2. **Flagged items**: Include in the PR body under a "Documentation Notes" section.
+3. **Clean**: If no findings, skip the Documentation Notes section in the PR.
+{{else}}
+Scan the files changed between BASE_SHA and HEAD for documentation staleness:
+
+1. Check inline doc comments (JSDoc, docstrings) in changed files — do they still match the new behavior?
+2. Check READMEs in the same directories as changed files — do they reference changed APIs or behaviors?
+3. Check referenced Smithy artifacts (spec, data-model, contracts) — does the implementation match?
+
+For each stale doc found:
+- If the fix is obvious (e.g., update a parameter name in JSDoc), apply it and commit as `maid: <description>`.
+- If the fix requires judgment (e.g., rewriting a README section), note it for the PR body under "Documentation Notes".
+{{/ifAgent}}
+
+---
+
 ## Pull Request
 
 Create the PR using `gh pr create` with:
@@ -215,6 +243,7 @@ Create the PR using `gh pr create` with:
   - **Addresses**: The FRs and acceptance scenarios covered
   - **Tasks completed**: Checklist of what was implemented
   - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
+  - **Documentation**: Maid findings — fixes applied and items flagged for review (omit section if clean)
   - **Validation**: Summary of commands run and their results
 
 This traceability lets reviewers navigate from PR → slice → spec to understand why the code exists.
@@ -225,6 +254,7 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
   - **Summary**: The strike's Summary section
   - **Tasks completed**: Checklist of what was implemented
   - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
+  - **Documentation**: Maid findings — fixes applied and items flagged for review (omit section if clean)
   - **Validation**: Summary of commands run and their results, plus Validation Plan outcomes
 
 ---

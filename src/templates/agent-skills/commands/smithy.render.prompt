@@ -128,6 +128,23 @@ Parse the input and prepare the target:
 
 ---
 
+## Phase 1.5: Consistency Scan
+
+Use the **smithy-scout** sub-agent. Pass it:
+
+- **Scope**: the codebase files you read during Phase 1 exploration (if any),
+  plus the RFC file itself
+- **Depth**: shallow
+- **Context**: feature map planning for milestone `<N>` of the RFC
+
+If scout reports **conflicts**, fold them into the clarification criteria for
+Phase 2 — the user should be aware of codebase inconsistencies before defining
+feature boundaries.
+
+If scout reports all **clean**, proceed directly to Phase 2.
+
+---
+
 ## Phase 2: Clarify
 
 Use the **smithy-clarify** sub-agent. Pass it:

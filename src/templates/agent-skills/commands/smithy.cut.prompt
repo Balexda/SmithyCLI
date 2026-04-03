@@ -109,6 +109,23 @@ Phase 0).
 
 ---
 
+## Phase 2.5: Consistency Scan
+
+Use the **smithy-scout** sub-agent. Pass it:
+
+- **Scope**: the code areas mapped to acceptance scenarios in Phase 2, plus the
+  spec artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`)
+- **Depth**: medium
+- **Context**: task slicing for User Story `<N>`
+
+If scout reports **conflicts**, fold them into the clarification criteria for
+Phase 3 — slices based on stale code understanding will produce wrong task
+boundaries.
+
+If scout reports all **clean**, proceed directly to Phase 3.
+
+---
+
 ## Phase 3: Clarify
 
 Use the **smithy-clarify** sub-agent. Pass it:
