@@ -49,8 +49,6 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 
-The current focus is getting `smithy.strike` working end-to-end as a slash command before tackling the heavier pipeline commands.
-
 ## Key Concepts
 
 ### Template Categories
