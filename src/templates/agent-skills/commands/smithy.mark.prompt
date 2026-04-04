@@ -52,11 +52,14 @@ Use the **smithy-scout** sub-agent. Pass it:
 - **Depth**: medium
 - **Context**: feature specification for this feature/RFC
 
-If scout reports **conflicts**, fold them into the clarification criteria for
-Phase 2 — specs built on contradictory code state will produce incorrect
-requirements.
+Handle the scout report as follows:
 
-If scout reports all **clean**, proceed directly to Phase 2.
+- **Conflicts**: Fold into the clarification criteria for Phase 2 — specs
+  built on contradictory code state will produce incorrect requirements.
+- **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
+  for clarification. Mention them if they become relevant to a clarification
+  question, but do not force separate discussion of each warning.
+- **Clean**: Proceed directly to Phase 2 with no additional context.
 
 ---
 

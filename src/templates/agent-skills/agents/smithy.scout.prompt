@@ -90,7 +90,7 @@ If the expansion exceeds the cap, prioritize:
 3. Direct dependents of scoped files (files that import scoped files)
 4. Transitive imports (deep only)
 
-Stop expanding once the cap is reached. Report the cap was hit.
+Stop expanding once the cap is reached. Include this in the report so the parent agent knows the scan was partial.
 
 ---
 
@@ -121,9 +121,7 @@ to the user — the parent handles that.
 
 ### Clean
 
-Files with no inconsistencies found:
-- <file path>
-- ...
+<N> files scanned with no inconsistencies.
 
 ### Warnings
 

@@ -102,7 +102,7 @@ function readTemplateDir(dir: string, variant?: string): Map<string, string> {
 function readMdDir(dir: string): Map<string, string> {
   const map = new Map<string, string>();
   if (!fs.existsSync(dir)) return map;
-  for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md'))) {
+  for (const file of fs.readdirSync(dir).filter(f => f.endsWith('.md') && f !== 'README.md')) {
     map.set(file, fs.readFileSync(path.join(dir, file), 'utf8'));
   }
   return map;
