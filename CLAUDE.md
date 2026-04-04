@@ -42,6 +42,8 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 
 ### Sub-Agents (not user-invocable)
 
+- **smithy-plan** — Design sub-agent: explores codebase, proposes approach, identifies risks and tradeoffs. Runs in parallel with focus lenses for competing perspectives (used by strike in agent mode)
+- **smithy-reconcile** — Reconciliation sub-agent: synthesizes outputs from multiple competing smithy-plan runs into a single coherent plan (used by strike in agent mode)
 - **smithy-clarify** — Ambiguity scanning and assumption/question triage (used by strike, ignite, mark, cut, render)
 - **smithy-refine** — Artifact review and refinement questions (used by mark, cut, ignite, render in Phase 0)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)

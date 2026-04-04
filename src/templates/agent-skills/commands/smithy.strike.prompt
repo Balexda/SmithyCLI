@@ -28,14 +28,42 @@ Create a working branch automatically. Do not ask the user — just do it.
 
 ## Phase 2: Explore & Propose
 
-Read the relevant files in the codebase to understand the current architecture and where this feature fits.
+Read the relevant files in the codebase to understand the current architecture and where this feature fits. Note the file paths you discover — you will need them for planning.
 
+{{#ifAgent}}
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+{{>competing-lenses}}
+
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: strike document
+- **Feature/problem description**: the user's feature description from the input
+- **Codebase file paths**: the relevant files you discovered during exploration
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the feature to be.
+2. **Approach** — The reconciled approach (file changes, rationale). Note any
+   items annotated with `[via <lens>]` — these are unique perspectives from
+   individual focus lenses.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+{{else}}
 Then present to the user:
 
 1. **Summary** — What you understand the feature to be.
 2. **Approach** — What files you'd change, what you'd add, and why.
 3. **Risks** — Anything that could go wrong or get complicated.
-4. **Clarifying Questions** — Use the **smithy-clarify** sub-agent. Pass it:
+{{/ifAgent}}
+
+After presenting the plan, use the **smithy-clarify** sub-agent. Pass it:
    - **Criteria**: Scope, Edge Cases, Preferences, Architecture Fit, Testing Strategy
    - **Context**: this is a strike document; include the feature description and
      the relevant file paths you discovered during exploration.
