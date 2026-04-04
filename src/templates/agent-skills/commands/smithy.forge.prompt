@@ -190,9 +190,40 @@ git diff <BASE_SHA> HEAD
 
 ---
 
+## Documentation Check
+
+{{#ifAgent}}
+Use the **smithy-maid** sub-agent. Pass it:
+
+- **Changed files**: the list of files modified between BASE_SHA and HEAD (including review auto-fix commits)
+- **Spec/strike paths**: the spec, contracts, data-model, or strike file paths from Intake
+- **Slice goal**: the slice's stated goal
+
+After the sub-agent returns:
+
+1. **Auto-fixable items**: Apply the suggested changes, commit as `maid: <description>`.
+2. **Flagged items**: Include in the PR body under a "Documentation Notes" section.
+3. **Clean**: If no findings, skip the Documentation Notes section in the PR.
+{{else}}
+Scan the files changed between BASE_SHA and HEAD for documentation staleness:
+
+1. Check inline doc comments (JSDoc, docstrings) in changed files — do they still match the new behavior?
+2. Check READMEs in the same directories as changed files — do they reference changed APIs or behaviors?
+3. Check referenced Smithy artifacts for drift:
+   - **`.tasks.md` mode**: Check the spec (`.spec.md`), data model (`.data-model.md`), and contracts (`.contracts.md`).
+   - **`.strike.md` mode**: Check the strike file (`.strike.md`) — this is the authoritative artifact for strike-based runs.
+
+For each stale doc found:
+- If the fix is obvious (e.g., update a parameter name in JSDoc), apply it and commit as `maid: <description>`.
+- If the fix requires judgment (e.g., rewriting a README section), note it for the PR body under "Documentation Notes".
+{{/ifAgent}}
+
+---
+
 ## Validation
 
-After implementation and review, run the full validation suite:
+After implementation, review, and documentation check, run the full validation
+suite against the **current HEAD** (which includes any maid auto-fix commits):
 - Build
 - Lint
 - Tests
@@ -215,7 +246,8 @@ Create the PR using `gh pr create` with:
   - **Addresses**: The FRs and acceptance scenarios covered
   - **Tasks completed**: Checklist of what was implemented
   - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
-  - **Validation**: Summary of commands run and their results
+  - **Documentation**: Maid findings — auto-fixes applied and items flagged for review (omit section if clean)
+  - **Validation**: Summary of commands run and their results (run after all code and doc fixes are committed)
 
 This traceability lets reviewers navigate from PR → slice → spec to understand why the code exists.
 
@@ -225,7 +257,8 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
   - **Summary**: The strike's Summary section
   - **Tasks completed**: Checklist of what was implemented
   - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
-  - **Validation**: Summary of commands run and their results, plus Validation Plan outcomes
+  - **Documentation**: Maid findings — auto-fixes applied and items flagged for review (omit section if clean)
+  - **Validation**: Summary of commands run and their results, plus Validation Plan outcomes (run after all code and doc fixes are committed)
 
 ---
 

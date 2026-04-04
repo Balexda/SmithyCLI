@@ -137,7 +137,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(4);
+    expect(byCategory.agents).toHaveLength(6);
   });
 
   it('commands includes expected template files', () => {

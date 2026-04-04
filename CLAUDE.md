@@ -22,8 +22,8 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 - **CLI entry**: `src/cli.ts` — Commander setup and arg parsing.
 - **Commands**: `src/commands/init.ts`, `src/commands/uninit.ts`, `src/commands/update.ts` — action handlers.
 - **Agent deployers**: `src/agents/{claude,gemini}.ts` — per-agent deploy/remove logic. (`codex.ts` exists but is not exposed in the CLI yet.)
-- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses dotprompt's native `.prompt` extension with YAML frontmatter (`name`, `description`). Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`.
-- **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared content injected via `{{>partial-name}}` Handlebars partials.
+- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
+- **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
 - **Issue templates**: `src/templates/issues/` — GitHub issue templates, copied as-is.
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
@@ -36,9 +36,18 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.)
 - **smithy.forge** — Implementation executor that works from task specs
 - **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description or RFC.
-- **smithy.refine**, **smithy.audit**, etc. — Other pipeline stages
+- **smithy.fix** — Minimal-diff bug fix from a GitHub issue
+- **smithy.audit** — Audit a Smithy artifact against its checklist
+- **smithy.orders** — Show available Smithy commands and their usage
 
-The current focus is getting `smithy.strike` working end-to-end as a slash command before tackling the heavier pipeline commands.
+### Sub-Agents (not user-invocable)
+
+- **smithy-clarify** — Ambiguity scanning and assumption/question triage (used by strike, ignite, mark, cut, render)
+- **smithy-refine** — Artifact review and refinement questions (used by mark, cut, ignite, render in Phase 0)
+- **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
+- **smithy-review** — Code review with auto-fix (used by forge)
+- **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
+- **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 
 ## Key Concepts
 
@@ -47,7 +56,7 @@ Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
 - **`agents/`** — sub-agent definitions (deployed to `.claude/agents/` only, with frontmatter intact).
-- **`snippets/`** — shared content fragments injected into other templates via `<!-- snippet:filename.md -->`.
+- **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility
 The same template source serves all three agents. Gemini keeps frontmatter (for skill metadata). Claude/Codex strip it. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
