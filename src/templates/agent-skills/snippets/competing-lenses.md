@@ -9,13 +9,19 @@ different focus lens:
 | **Separation of Concerns** | SRP violations, coupling, mixed responsibilities, cleaner module boundaries |
 | **Robustness** | Error handling gaps, edge cases, failure modes, defensive design |
 
-For each sub-agent, pass the same planning context, feature description, and
-codebase file paths. The only difference is the focus lens.
+For each sub-agent, pass the same planning context, feature description,
+codebase file paths, and scout report (if any). Additionally, pass:
 
-After all 3 return their structured plans, dispatch the **smithy-reconcile**
-sub-agent. Pass it:
+- **Focus lens**: the lens name from the table above (e.g., "Simplification",
+  "Separation of Concerns", or "Robustness")
 
-- All 3 plan outputs, labeled by their focus lens
+This is the only field that differs between the 3 runs.
+
+After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 3 plan outputs, each labeled with its lens name (e.g.,
+  "**[Simplification]** …", "**[Separation of Concerns]** …",
+  "**[Robustness]** …")
 - The same context file paths
 - The planning context and feature description
 
