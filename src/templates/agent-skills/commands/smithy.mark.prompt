@@ -59,7 +59,39 @@ Handle the scout report as follows:
 - **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
   for clarification. Mention them if they become relevant to a clarification
   question, but do not force separate discussion of each warning.
-- **Clean**: Proceed directly to Phase 2 with no additional context.
+- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+
+---
+
+## Phase 1.8: Approach Planning
+
+{{#ifAgent}}
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+{{>competing-lenses}}
+
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: spec artifact
+- **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
+- **Codebase file paths**: the relevant codebase files explored during Phase 1
+- **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the feature to be and the proposed specification structure.
+2. **Approach** — The reconciled approach for user stories, data model scope, and contract boundaries. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+{{else}}
+{{/ifAgent}}
 
 ---
 
@@ -81,7 +113,8 @@ Use the **smithy-clarify** sub-agent. Pass it:
   | **Terminology** | Are domain terms used consistently and unambiguously? |
 
 - **Context**: this is a feature specification; include the feature description
-  or RFC path and relevant codebase paths from Phase 1.
+  or RFC path and relevant codebase paths from Phase 1, and the reconciled plan
+  from Phase 1.8 if generated.
 - **Special instructions**: if all categories are Clear, skip to Phase 3.
 
 Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
