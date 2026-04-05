@@ -145,7 +145,7 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the user story title, acceptance scenarios, priority, and traced FRs from Phase 1
 - **Codebase file paths**: the code areas mapped to acceptance scenarios during Phase 2, plus the spec artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`)
 - **Scout report**: the scout report from Phase 2.5 (if it contained conflicts or warnings)
-- **Focus lens**: one of Simplification, Separation of Concerns, or Robustness (each run gets a different lens)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
 

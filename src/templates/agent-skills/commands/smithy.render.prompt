@@ -164,7 +164,7 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
 - **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
-- **Focus lens**: one of Simplification, Separation of Concerns, or Robustness (each run gets a different lens)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
 

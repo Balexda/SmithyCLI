@@ -43,7 +43,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: strike document
 - **Feature/problem description**: the user's feature description from the input
 - **Codebase file paths**: the relevant files you discovered during exploration
-- **Focus lens**: one of Simplification, Separation of Concerns, or Robustness (each run gets a different lens)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
 

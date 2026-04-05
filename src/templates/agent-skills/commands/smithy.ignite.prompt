@@ -112,7 +112,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: RFC artifact
 - **Feature/problem description**: the user's idea description or the PRD content read during intake
 - **Codebase file paths**: any existing RFC files found during the `docs/rfcs/` scan (for context on existing patterns)
-- **Focus lens**: one of Simplification, Separation of Concerns, or Robustness (each run gets a different lens)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
 

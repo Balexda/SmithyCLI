@@ -1,6 +1,6 @@
 ---
 name: smithy-plan
-description: "Design sub-agent. Explores codebase, proposes approach, identifies risks and tradeoffs. Runs in parallel with focus lenses for competing perspectives."
+description: "Design sub-agent. Explores codebase, proposes approach, identifies risks and tradeoffs. Runs in parallel for competing perspectives."
 tools:
   - Read
   - Grep
@@ -34,10 +34,11 @@ The parent agent passes you:
 4. **Scout report** (optional) — conflicts and warnings from a prior
    **smithy-scout** run. Conflicts represent codebase inconsistencies that
    must be accounted for in your plan.
-5. **Focus lens** (optional) — a directional emphasis for this planning run.
-   When provided, actively seek findings and alternatives through this lens
-   while still covering the full planning scope. See [Focus Lens
-   Behavior](#focus-lens-behavior) below.
+5. **Additional planning directives** (optional) — extra instructions from the
+   parent agent that guide your emphasis without changing your coverage. When
+   provided, follow these directives to bias your attention toward specific
+   concerns (e.g., simplicity, robustness, separation) while still producing
+   all output sections.
 
 ---
 
@@ -83,8 +84,8 @@ why this design over alternatives.
 Key design choices with tradeoffs explicitly stated. For each decision:
 - What was decided
 - What alternatives exist
-- Why this choice is preferred (or, under the active focus lens, why an
-  alternative might be preferred instead)
+- Why this choice is preferred (or, under any additional directives provided,
+  why an alternative might be preferred instead)
 
 #### Risks
 
@@ -102,31 +103,9 @@ Ordered implementation steps. Each task should be:
 
 #### Tradeoffs
 
-Alternatives considered and why they were rejected. When a focus lens is
-active, this section is especially important — surface alternatives that the
-lens favors even if they weren't your first instinct.
-
----
-
-## Focus Lens Behavior
-
-When a focus lens is provided, it changes **how you weight your analysis**, not
-what you cover. You still scan all relevant code and produce all output
-sections. The lens biases your attention:
-
-| Lens | Behavior |
-|------|----------|
-| **Simplification** | Flag unnecessary complexity, propose simpler alternatives, challenge abstractions that don't earn their keep. Prefer fewer files, fewer indirections, and inline solutions over extracted utilities. |
-| **Separation of Concerns** | Flag mixed responsibilities, identify coupling between unrelated concepts, propose cleaner module boundaries. Prefer clear interfaces, single-purpose files, and explicit dependency injection. |
-| **Robustness** | Identify error paths, edge cases, and failure modes. Flag missing validation at system boundaries, unhandled error conditions, and assumptions about external state. Prefer defensive design. |
-
-When no focus lens is provided, perform a balanced general analysis without
-directional emphasis.
-
-**Important:** The lens is a nudge, not a filter. A "simplification" lens
-should still flag critical robustness issues, and a "robustness" lens should
-still note unnecessary complexity. The lens determines which findings get
-extra attention and which alternatives get surfaced in the Tradeoffs section.
+Alternatives considered and why they were rejected. When additional planning
+directives are provided, this section is especially important — surface
+alternatives that the directives favor even if they weren't your first instinct.
 
 ---
 
@@ -137,7 +116,7 @@ Return a structured summary to the parent agent:
 ```
 ## Plan
 
-**Focus lens**: <lens name, or "none">
+**Directive**: <directive summary, or "none">
 **Artifact type**: <strike | RFC | spec | tasks | feature map>
 
 ### Approach
@@ -166,7 +145,7 @@ Return a structured summary to the parent agent:
 
 | Alternative | Pros | Cons | Lens relevance |
 |------------|------|------|----------------|
-| ... | ... | ... | <which lens favors this, if any> |
+| ... | ... | ... | <which directive favors this, if any> |
 ```
 
 ---
@@ -182,7 +161,7 @@ Return a structured summary to the parent agent:
   useful — name the test file and describe the test case.
 - **Stay scoped.** Plan only for the feature or artifact described in the
   input. Do not propose improvements to unrelated areas of the codebase.
-- **Honor the lens.** When a focus lens is active, your Tradeoffs section
-  must include at least one alternative that the lens specifically favors,
-  even if you ultimately recommend against it. This ensures competing plans
-  produce meaningfully different perspectives.
+- **Honor directives.** When additional planning directives are provided,
+  your Tradeoffs section must include at least one alternative that the
+  directive specifically favors, even if you ultimately recommend against it.
+  This ensures competing plans produce meaningfully different perspectives.

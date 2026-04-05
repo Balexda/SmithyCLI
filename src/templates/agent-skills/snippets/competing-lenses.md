@@ -1,21 +1,45 @@
 ### Competing Plan Lenses
 
-Dispatch 3 competing **smithy-plan** sub-agents in parallel, each with a
-different focus lens:
+Dispatch 3 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
 
-| Lens | Emphasis |
-|------|----------|
-| **Simplification** | Over-engineering, YAGNI violations, unnecessary complexity, simpler alternatives |
-| **Separation of Concerns** | SRP violations, coupling, mixed responsibilities, cleaner module boundaries |
-| **Robustness** | Error handling gaps, edge cases, failure modes, defensive design |
+Use the following lens directives (one per sub-agent):
 
-For each sub-agent, pass the same planning context, feature description,
-codebase file paths, and scout report (if any). Additionally, pass:
+#### Simplification
 
-- **Focus lens**: the lens name from the table above (e.g., "Simplification",
-  "Separation of Concerns", or "Robustness")
+> **Directive:** Actively seek unnecessary complexity, over-engineering, and
+> YAGNI violations. Propose simpler alternatives — fewer files, fewer
+> indirections, inline solutions over extracted utilities. Challenge
+> abstractions that don't earn their keep. In the Tradeoffs section, surface at
+> least one simpler alternative even if you ultimately recommend against it.
+> This directive biases your attention, not your coverage — still flag critical
+> robustness issues or separation concerns if you find them.
 
-This is the only field that differs between the 3 runs.
+#### Separation of Concerns
+
+> **Directive:** Actively seek mixed responsibilities, coupling between
+> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
+> clear interfaces, single-purpose files, explicit dependency injection. In the
+> Tradeoffs section, surface at least one alternative with better separation
+> even if you ultimately recommend against it. This directive biases your
+> attention, not your coverage — still flag simplification opportunities or
+> robustness issues if you find them.
+
+#### Robustness
+
+> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
+> and missing validation at system boundaries. Flag assumptions about external
+> state and unhandled error conditions. Prefer defensive design. In the
+> Tradeoffs section, surface at least one more defensive alternative even if
+> you ultimately recommend against it. This directive biases your attention,
+> not your coverage — still flag unnecessary complexity or separation concerns
+> if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
 
 After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
 
