@@ -33,13 +33,13 @@ Unit and integration tests covering init/uninit flows, template composition, per
 
 Tests that require a Claude Code runtime to verify prompts load, slash commands work, and permissions are enforced. These can be run by a Claude agent or by a developer in a Claude Code session.
 
-See **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** -- Agent Tests (A1-A4).
+See **[tests/Agent.tests.md](tests/Agent.tests.md)** (A1-A5).
 
 ### 3. Human Tests (Interactive terminal)
 
 Tests for the Inquirer-based interactive prompts that cannot be driven programmatically. These require a developer at a real terminal.
 
-See **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** -- Human Tests (H1-H4).
+See **[tests/Manual.tests.md](tests/Manual.tests.md)** (H1-H4).
 
 ## Pre-Release Checklist
 

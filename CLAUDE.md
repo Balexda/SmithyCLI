@@ -84,7 +84,7 @@ Smithy uses a three-tier testing strategy:
 2. **Agent** (Claude Code session): Manual A-series test cases (A1-A4) verifying prompt visibility, slash command invocability, permissions enforcement, and stale artifact cleanup.
 3. **Human** (interactive terminal): Manual H-series test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
 
-Agent and human test cases are documented in **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** with step-by-step instructions and checkboxes.
+Agent and human test cases are documented in **[tests/](tests/)** with step-by-step instructions and checkboxes. See [tests/README.md](tests/README.md) for an overview, [tests/Agent.tests.md](tests/Agent.tests.md) for agent-runnable tests (A-series), and [tests/Manual.tests.md](tests/Manual.tests.md) for interactive terminal tests (H-series).
 
 ### Notes
 
