@@ -124,6 +124,106 @@ Parse the input and prepare the target:
 
 ---
 
+## Phase 1.5: Consistency Scan
+
+Use the **smithy-scout** sub-agent. Pass it:
+
+- **Scope**: the codebase files you read during Phase 1 exploration (if any),
+  plus the RFC file itself
+- **Depth**: shallow
+- **Context**: feature map planning for milestone `<N>` of the RFC
+
+Handle the scout report as follows:
+
+- **Conflicts**: Fold into the clarification criteria for Phase 2 — the user
+  should be aware of codebase inconsistencies before defining feature boundaries.
+- **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
+  for clarification. Mention them if they become relevant to a clarification
+  question, but do not force separate discussion of each warning.
+- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+
+---
+
+## Phase 1.8: Approach Planning
+
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+### Competing Plan Lenses
+
+Dispatch 3 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
+
+Use the following lens directives (one per sub-agent):
+
+#### Simplification
+
+> **Directive:** Actively seek unnecessary complexity, over-engineering, and
+> YAGNI violations. Propose simpler alternatives — fewer files, fewer
+> indirections, inline solutions over extracted utilities. Challenge
+> abstractions that don't earn their keep. In the Tradeoffs section, surface at
+> least one simpler alternative even if you ultimately recommend against it.
+> This directive biases your attention, not your coverage — still flag critical
+> robustness issues or separation concerns if you find them.
+
+#### Separation of Concerns
+
+> **Directive:** Actively seek mixed responsibilities, coupling between
+> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
+> clear interfaces, single-purpose files, explicit dependency injection. In the
+> Tradeoffs section, surface at least one alternative with better separation
+> even if you ultimately recommend against it. This directive biases your
+> attention, not your coverage — still flag simplification opportunities or
+> robustness issues if you find them.
+
+#### Robustness
+
+> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
+> and missing validation at system boundaries. Flag assumptions about external
+> state and unhandled error conditions. Prefer defensive design. In the
+> Tradeoffs section, surface at least one more defensive alternative even if
+> you ultimately recommend against it. This directive biases your attention,
+> not your coverage — still flag unnecessary complexity or separation concerns
+> if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
+
+After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 3 plan outputs, each labeled with its lens name (e.g.,
+  "**[Simplification]** …", "**[Separation of Concerns]** …",
+  "**[Robustness]** …")
+- The same context file paths
+- The planning context and feature description
+
+Use the reconciled plan as the basis for presenting the approach to the user.
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: feature map artifact
+- **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
+- **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
+- **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the milestone to deliver and the proposed feature decomposition.
+2. **Approach** — The reconciled approach for feature boundaries and grouping. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+
+---
+
 ## Phase 2: Clarify
 
 Use the **smithy-clarify** sub-agent. Pass it:
@@ -138,7 +238,7 @@ Use the **smithy-clarify** sub-agent. Pass it:
     other milestones in the RFC? Boundaries between milestones are resolved at the
     RFC level — note them but do not ask about them.
 - **Context**: this is a feature map; include the RFC path and the target milestone
-  number and title from Phase 1.
+  number and title from Phase 1, and the reconciled plan from Phase 1.8 if generated.
 - **Special instructions**: Cross-Milestone Boundaries should almost always be
   clear — the RFC defines milestone scope. Only flag as ambiguous if the RFC
   itself is unclear about which milestone owns a piece of functionality. If the

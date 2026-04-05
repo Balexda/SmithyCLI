@@ -39,6 +39,106 @@ This may be:
 
 ---
 
+## Phase 1.5: Consistency Scan
+
+Use the **smithy-scout** sub-agent. Pass it:
+
+- **Scope**: the codebase files you explored during Phase 1, plus any files
+  referenced by the RFC or feature description
+- **Depth**: medium
+- **Context**: feature specification for this feature/RFC
+
+Handle the scout report as follows:
+
+- **Conflicts**: Fold into the clarification criteria for Phase 2 — specs
+  built on contradictory code state will produce incorrect requirements.
+- **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
+  for clarification. Mention them if they become relevant to a clarification
+  question, but do not force separate discussion of each warning.
+- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+
+---
+
+## Phase 1.8: Approach Planning
+
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+### Competing Plan Lenses
+
+Dispatch 3 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
+
+Use the following lens directives (one per sub-agent):
+
+#### Simplification
+
+> **Directive:** Actively seek unnecessary complexity, over-engineering, and
+> YAGNI violations. Propose simpler alternatives — fewer files, fewer
+> indirections, inline solutions over extracted utilities. Challenge
+> abstractions that don't earn their keep. In the Tradeoffs section, surface at
+> least one simpler alternative even if you ultimately recommend against it.
+> This directive biases your attention, not your coverage — still flag critical
+> robustness issues or separation concerns if you find them.
+
+#### Separation of Concerns
+
+> **Directive:** Actively seek mixed responsibilities, coupling between
+> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
+> clear interfaces, single-purpose files, explicit dependency injection. In the
+> Tradeoffs section, surface at least one alternative with better separation
+> even if you ultimately recommend against it. This directive biases your
+> attention, not your coverage — still flag simplification opportunities or
+> robustness issues if you find them.
+
+#### Robustness
+
+> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
+> and missing validation at system boundaries. Flag assumptions about external
+> state and unhandled error conditions. Prefer defensive design. In the
+> Tradeoffs section, surface at least one more defensive alternative even if
+> you ultimately recommend against it. This directive biases your attention,
+> not your coverage — still flag unnecessary complexity or separation concerns
+> if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
+
+After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 3 plan outputs, each labeled with its lens name (e.g.,
+  "**[Simplification]** …", "**[Separation of Concerns]** …",
+  "**[Robustness]** …")
+- The same context file paths
+- The planning context and feature description
+
+Use the reconciled plan as the basis for presenting the approach to the user.
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: spec artifact
+- **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
+- **Codebase file paths**: the relevant codebase files explored during Phase 1
+- **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the feature to be and the proposed specification structure.
+2. **Approach** — The reconciled approach for user stories, data model scope, and contract boundaries. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+
+---
+
 ## Phase 2: Clarify
 
 Use the **smithy-clarify** sub-agent. Pass it:
@@ -57,7 +157,8 @@ Use the **smithy-clarify** sub-agent. Pass it:
   | **Terminology** | Are domain terms used consistently and unambiguously? |
 
 - **Context**: this is a feature specification; include the feature description
-  or RFC path and relevant codebase paths from Phase 1.
+  or RFC path and relevant codebase paths from Phase 1, and the reconciled plan
+  from Phase 1.8 if generated.
 - **Special instructions**: if all categories are Clear, skip to Phase 3.
 
 Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
