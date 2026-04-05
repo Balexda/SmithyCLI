@@ -77,18 +77,18 @@ Format conflicts as:
 - **Recommendation**: <which option and why>
 ```
 
-### Step 4: Synthesize Task Breakdown
+### Step 4: Synthesize Approach
 
-Merge the task breakdowns from all competing plans:
+Merge the approaches from all competing plans:
 
-1. Identify tasks that appear across plans (same work, possibly different
-   granularity). Keep the most specific version.
-2. Add tasks that only one plan identified (they may have spotted work the
+1. Identify approach elements that appear across plans (same substance,
+   possibly different granularity). Keep the most specific version.
+2. Add elements that only one plan identified (they may have spotted work the
    others missed).
 3. Resolve ordering conflicts by dependency analysis — if plan A says "do X
    before Y" and plan B says "do Y before X," determine which has the actual
    dependency.
-4. Produce a single ordered task list.
+4. Produce a single coherent approach.
 
 ### Step 5: Carry Forward Scout Context
 
@@ -116,7 +116,7 @@ as smithy-plan's output:
 <synthesized approach — consensus items first, then unique finds with
 [via <lens>] annotations>
 
-### Architecture Decisions
+### Decisions
 
 | Decision | Source | Alternatives | Rationale |
 |----------|--------|-------------|-----------|
@@ -132,12 +132,6 @@ as described in Step 3>
 | Risk | Source | Likelihood | Mitigation |
 |------|--------|-----------|------------|
 | ... | consensus / [via <lens>] | ... | ... |
-
-### Task Breakdown
-
-1. <task description>
-2. <task description>
-3. ...
 
 ### Tradeoffs
 
