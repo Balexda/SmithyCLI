@@ -137,7 +137,7 @@ Handle the scout report as follows:
 Use competing **smithy-plan** sub-agents to generate the approach from multiple
 perspectives.
 
-{{>competing-lenses}}
+{{>competing-lenses-implementation}}
 
 Pass each smithy-plan sub-agent:
 

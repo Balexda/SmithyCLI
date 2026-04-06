@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(9);
+    expect(snippets.size).toBe(10);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -109,7 +109,8 @@ describe('loadSnippets', () => {
       'audit-checklist-spec.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
-      'competing-lenses.md',
+      'competing-lenses-implementation.md',
+      'competing-lenses-scoping.md',
       'guidance-shell.md',
       'tdd-protocol.md',
       'review-protocol.md',
@@ -130,7 +131,8 @@ describe('loadSnippets', () => {
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
     expect(snippets.get('review-protocol.md')).toContain('Code Review Protocol');
-    expect(snippets.get('competing-lenses.md')).toContain('Competing Plan Lenses');
+    expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
+    expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
   });
 });
 

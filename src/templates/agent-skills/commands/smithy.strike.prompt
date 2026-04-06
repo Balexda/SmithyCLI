@@ -36,7 +36,7 @@ Read the relevant files in the codebase to understand the current architecture a
 Use competing **smithy-plan** sub-agents to generate the approach from multiple
 perspectives.
 
-{{>competing-lenses}}
+{{>competing-lenses-implementation}}
 
 Pass each smithy-plan sub-agent:
 
