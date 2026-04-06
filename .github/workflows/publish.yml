@@ -9,12 +9,12 @@ on:
         default: 'master'
         type: string
       agent_tests_passed:
-        description: 'Agent tests (A1-A4) verified in a Claude Code session (see tests/MANUAL_TEST_CASES.md)'
+        description: 'Agent tests (A*) verified in a Claude Code session (see tests/Agent.tests.md)'
         required: true
         type: boolean
         default: false
       manual_tests_passed:
-        description: 'Human tests (H1-H4) verified in an interactive terminal (see tests/MANUAL_TEST_CASES.md)'
+        description: 'Human tests (H*) verified in an interactive terminal (see tests/Manual.tests.md)'
         required: true
         type: boolean
         default: false
@@ -38,11 +38,11 @@ jobs:
     - name: Verify manual test gates
       run: |
         if [[ "${{ inputs.agent_tests_passed }}" != "true" ]]; then
-          echo "::error::Agent tests (A1-A4) must be verified before publishing. See tests/MANUAL_TEST_CASES.md"
+          echo "::error::Agent tests (A*) must be verified before publishing. See tests/Agent.tests.md"
           exit 1
         fi
         if [[ "${{ inputs.manual_tests_passed }}" != "true" ]]; then
-          echo "::error::Human tests (H1-H4) must be verified before publishing. See tests/MANUAL_TEST_CASES.md"
+          echo "::error::Human tests (H*) must be verified before publishing. See tests/Manual.tests.md"
           exit 1
         fi
 
@@ -55,19 +55,16 @@ jobs:
       id-token: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         ref: ${{ inputs.branch }}
         ssh-key: ${{ secrets.DEPLOY_KEY }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: 22
+        node-version: 24
         cache: 'npm'
-
-    - name: Upgrade npm for trusted publishing
-      run: npm install -g npm@11
 
     - name: Install dependencies
       run: npm ci
