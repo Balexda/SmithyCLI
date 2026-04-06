@@ -1,7 +1,10 @@
 ---
 name: smithy-refine
 description: "Shared review sub-agent. Audits existing artifacts against provided categories, then presents refinement questions one at a time with recommended resolutions. Invoked by other smithy agents during Phase 0 review loops."
-tools: Read, Grep, Glob
+tools:
+  - Read
+  - Grep
+  - Glob
 model: opus
 ---
 # smithy-refine

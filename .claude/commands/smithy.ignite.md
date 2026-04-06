@@ -93,6 +93,85 @@ Parse the input to set up the RFC:
 
 ---
 
+## Phase 1.5: Approach Planning
+
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+### Competing Plan Lenses
+
+Dispatch 3 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
+
+Use the following lens directives (one per sub-agent):
+
+#### Simplification
+
+> **Directive:** Actively seek unnecessary complexity, over-engineering, and
+> YAGNI violations. Propose simpler alternatives — fewer files, fewer
+> indirections, inline solutions over extracted utilities. Challenge
+> abstractions that don't earn their keep. In the Tradeoffs section, surface at
+> least one simpler alternative even if you ultimately recommend against it.
+> This directive biases your attention, not your coverage — still flag critical
+> robustness issues or separation concerns if you find them.
+
+#### Separation of Concerns
+
+> **Directive:** Actively seek mixed responsibilities, coupling between
+> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
+> clear interfaces, single-purpose files, explicit dependency injection. In the
+> Tradeoffs section, surface at least one alternative with better separation
+> even if you ultimately recommend against it. This directive biases your
+> attention, not your coverage — still flag simplification opportunities or
+> robustness issues if you find them.
+
+#### Robustness
+
+> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
+> and missing validation at system boundaries. Flag assumptions about external
+> state and unhandled error conditions. Prefer defensive design. In the
+> Tradeoffs section, surface at least one more defensive alternative even if
+> you ultimately recommend against it. This directive biases your attention,
+> not your coverage — still flag unnecessary complexity or separation concerns
+> if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
+
+After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 3 plan outputs, each labeled with its lens name (e.g.,
+  "**[Simplification]** …", "**[Separation of Concerns]** …",
+  "**[Robustness]** …")
+- The same context file paths
+- The planning context and feature description
+
+Use the reconciled plan as the basis for presenting the approach to the user.
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: RFC artifact
+- **Feature/problem description**: the user's idea description or the PRD content read during intake
+- **Codebase file paths**: any existing RFC files found during the `docs/rfcs/` scan (for context on existing patterns)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the idea to be and the proposed RFC structure.
+2. **Approach** — The reconciled approach for milestone decomposition and scope. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+
+---
+
 ## Phase 2: Clarify
 
 Use the **smithy-clarify** sub-agent. Pass it:
@@ -103,7 +182,8 @@ Use the **smithy-clarify** sub-agent. Pass it:
   - **Constraints** — What must we avoid? What are hard limits?
   - **Risks** — What could go wrong? What are the unknowns?
   - **Scope** — What is explicitly out of scope?
-- **Context**: this is an RFC; include the idea description or PRD path from Phase 1.
+- **Context**: this is an RFC; include the idea description or PRD path from Phase 1,
+  and the reconciled plan from Phase 1.5 if generated.
 - **Special instructions**: if the idea is already well-specified (e.g., from a
   detailed PRD), expect more assumptions and fewer questions. Never skip
   clarification entirely.

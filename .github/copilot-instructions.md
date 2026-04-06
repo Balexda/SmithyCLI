@@ -22,7 +22,7 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
   2. `npm run build`
   3. `npm run typecheck`
   4. `npm test`
-- For changes affecting init/uninit flows, review the manual test cases in `tests/MANUAL_TEST_CASES.md`.
+- For changes affecting init/uninit flows, review the manual test cases in `tests/Agent.tests.md` and `tests/Manual.tests.md`.
 - Before adding new templates or workflow steps, ensure they align with the `Smithy` stages (`smithy.scope`, `smithy.segment`, etc.) documented in the `README.md`.
 - When documentation (`*.md`) or prompt (`src/templates/base/*.md`) files change, verify they render correctly and the YAML frontmatter (for Gemini) is valid.
 - If any command fails, fix the underlying issue and rerun the script. Do **not** proceed with the PR until all commands succeed.

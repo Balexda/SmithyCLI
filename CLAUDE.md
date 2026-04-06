@@ -42,6 +42,8 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 
 ### Sub-Agents (not user-invocable)
 
+- **smithy-plan** — Design sub-agent: explores codebase, proposes approach, identifies risks and tradeoffs. Runs in parallel with focus lenses for competing perspectives (used by strike in agent mode)
+- **smithy-reconcile** — Reconciliation sub-agent: synthesizes outputs from multiple competing smithy-plan runs into a single coherent plan (used by strike in agent mode)
 - **smithy-clarify** — Ambiguity scanning and assumption/question triage (used by strike, ignite, mark, cut, render)
 - **smithy-refine** — Artifact review and refinement questions (used by mark, cut, ignite, render in Phase 0)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
@@ -79,10 +81,10 @@ node dist/cli.js update  # Test update flow
 Smithy uses a three-tier testing strategy:
 
 1. **Automated** (`npm test`): A comprehensive suite covering init/uninit flows, template composition, permissions, and utilities. Runs in CI on every push and PR.
-2. **Agent** (Claude Code session): Manual A-series test cases (A1-A4) verifying prompt visibility, slash command invocability, permissions enforcement, and stale artifact cleanup.
+2. **Agent** (Claude Code session): Manual A-series test cases (A1-A5) verifying prompt visibility, slash command invocability, permissions enforcement, stale artifact cleanup, and sub-agent output structure.
 3. **Human** (interactive terminal): Manual H-series test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
 
-Agent and human test cases are documented in **[tests/MANUAL_TEST_CASES.md](tests/MANUAL_TEST_CASES.md)** with step-by-step instructions and checkboxes.
+Agent and human test cases are documented in **[tests/](tests/)** with step-by-step instructions and checkboxes. See [tests/README.md](tests/README.md) for an overview, [tests/Agent.tests.md](tests/Agent.tests.md) for agent-runnable tests (A-series), and [tests/Manual.tests.md](tests/Manual.tests.md) for interactive terminal tests (H-series).
 
 ### Notes
 

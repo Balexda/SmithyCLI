@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(8);
+    expect(snippets.size).toBe(10);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -109,6 +109,8 @@ describe('loadSnippets', () => {
       'audit-checklist-spec.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
+      'competing-lenses-implementation.md',
+      'competing-lenses-scoping.md',
       'guidance-shell.md',
       'tdd-protocol.md',
       'review-protocol.md',
@@ -129,6 +131,8 @@ describe('loadSnippets', () => {
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
     expect(snippets.get('review-protocol.md')).toContain('Code Review Protocol');
+    expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
+    expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
   });
 });
 
@@ -137,7 +141,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(6);
+    expect(byCategory.agents).toHaveLength(8);
   });
 
   it('commands includes expected template files', () => {
@@ -159,12 +163,14 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, and review', () => {
+  it('agents includes clarify, refine, implement, review, plan, and reconcile', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
     expect(agents).toContain('smithy.implement.md');
     expect(agents).toContain('smithy.review.md');
+    expect(agents).toContain('smithy.plan.md');
+    expect(agents).toContain('smithy.reconcile.md');
   });
 
   it('does not include smithy.slice.md (deleted)', () => {
@@ -283,6 +289,124 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy-review');
     expect(forge).not.toContain('TDD Protocol');
     expect(forge).not.toContain('{{');
+  });
+
+  it('plan agent retains frontmatter with read-only tools', () => {
+    const plan = composed.agents.get('smithy.plan.md')!;
+    expect(plan).toBeDefined();
+    expect(plan).toMatch(/^---\s*\n/);
+    expect(plan).toContain('name: smithy-plan');
+    expect(plan).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(plan).not.toContain('Edit');
+    expect(plan).not.toContain('Write');
+    expect(plan).not.toContain('Bash');
+  });
+
+  it('reconcile agent retains frontmatter with read-only tools', () => {
+    const reconcile = composed.agents.get('smithy.reconcile.md')!;
+    expect(reconcile).toBeDefined();
+    expect(reconcile).toMatch(/^---\s*\n/);
+    expect(reconcile).toContain('name: smithy-reconcile');
+    expect(reconcile).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(reconcile).not.toContain('Edit');
+    expect(reconcile).not.toContain('Write');
+    expect(reconcile).not.toContain('Bash');
+  });
+
+  it('strike with claude variant renders competing plan dispatch', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const strike = claudeComposed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).toContain('smithy-plan');
+    expect(strike).toContain('smithy-reconcile');
+    expect(strike).toContain('Competing Plan Lenses');
+    expect(strike).not.toContain('{{>');
+    expect(strike).not.toContain('{{');
+  });
+
+  it('strike default does not contain competing plan dispatch', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).not.toContain('smithy-plan');
+    expect(strike).not.toContain('smithy-reconcile');
+    expect(strike).not.toContain('Competing Plan Lenses');
+    expect(strike).toContain('What files you\'d change');
+  });
+
+  it('ignite with claude variant renders competing plan dispatch', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+    expect(ignite).toContain('smithy-plan');
+    expect(ignite).toContain('smithy-reconcile');
+    expect(ignite).toContain('Competing Plan Lenses');
+    expect(ignite).not.toContain('{{>');
+    expect(ignite).not.toContain('{{');
+  });
+
+  it('ignite default does not contain competing plan dispatch', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+    expect(ignite).not.toContain('smithy-plan');
+    expect(ignite).not.toContain('smithy-reconcile');
+    expect(ignite).not.toContain('Competing Plan Lenses');
+  });
+
+  it('render with claude variant renders competing plan dispatch', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const render = claudeComposed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    expect(render).toContain('smithy-plan');
+    expect(render).toContain('smithy-reconcile');
+    expect(render).toContain('Competing Plan Lenses');
+    expect(render).not.toContain('{{>');
+    expect(render).not.toContain('{{');
+  });
+
+  it('render default does not contain competing plan dispatch', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    expect(render).not.toContain('smithy-plan');
+    expect(render).not.toContain('smithy-reconcile');
+    expect(render).not.toContain('Competing Plan Lenses');
+  });
+
+  it('mark with claude variant renders competing plan dispatch', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const mark = claudeComposed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+    expect(mark).toContain('smithy-plan');
+    expect(mark).toContain('smithy-reconcile');
+    expect(mark).toContain('Competing Plan Lenses');
+    expect(mark).not.toContain('{{>');
+    expect(mark).not.toContain('{{');
+  });
+
+  it('mark default does not contain competing plan dispatch', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+    expect(mark).not.toContain('smithy-plan');
+    expect(mark).not.toContain('smithy-reconcile');
+    expect(mark).not.toContain('Competing Plan Lenses');
+  });
+
+  it('cut with claude variant renders competing plan dispatch', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const cut = claudeComposed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    expect(cut).toContain('smithy-plan');
+    expect(cut).toContain('smithy-reconcile');
+    expect(cut).toContain('Competing Plan Lenses');
+    expect(cut).not.toContain('{{>');
+    expect(cut).not.toContain('{{');
+  });
+
+  it('cut default does not contain competing plan dispatch', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    expect(cut).not.toContain('smithy-plan');
+    expect(cut).not.toContain('smithy-reconcile');
+    expect(cut).not.toContain('Competing Plan Lenses');
   });
 
   it('variant does not change the number of template keys', async () => {

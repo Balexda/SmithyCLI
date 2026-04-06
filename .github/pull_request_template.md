@@ -37,7 +37,7 @@
 - [ ] Claude Config: `.claude/settings.json` correctly formed.
 
 ### Manual Test Cases
-- [ ] Reviewed applicable cases in [`tests/MANUAL_TEST_CASES.md`](tests/MANUAL_TEST_CASES.md) (if init/uninit flows changed)
+- [ ] Reviewed applicable cases in [`tests/Agent.tests.md`](tests/Agent.tests.md) and [`tests/Manual.tests.md`](tests/Manual.tests.md) (if init/uninit flows changed)
 
 ## Issue
 <!-- Link the GitHub issue(s) this PR addresses using a closing keyword (Closes, Fixes, Resolves) so they auto-close on merge. One issue per line. If there is no related issue, delete this entire section rather than leaving an unfilled placeholder. -->

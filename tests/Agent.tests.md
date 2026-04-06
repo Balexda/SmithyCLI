@@ -1,16 +1,10 @@
-# Smithy Manual Test Cases
-
-Pre-release checklist for tests that cannot be fully automated. Run these before publishing a new version.
-
-Automated tests (`npm test`) cover unit and integration tests. The cases below cover agent-runtime and interactive-terminal scenarios that automated tests cannot reach.
-
----
-
-## Agent Tests (Claude Code session)
+# Agent Tests (Claude Code session)
 
 Run these in a Claude Code session with access to the SmithyCLI repo. These can also be delegated to a Claude agent.
 
-### A1: Init deploys visible prompts and commands
+---
+
+## A1: Init deploys visible prompts and commands
 
 **Purpose**: Verify `smithy init` creates all expected files for Claude.
 
@@ -31,7 +25,7 @@ head -3 /tmp/smithy-test/.claude/prompts/smithy.strike.md
 
 ---
 
-### A2: Slash commands are invocable
+## A2: Slash commands are invocable
 
 **Purpose**: Verify deployed commands are recognized by Claude Code as slash commands.
 
@@ -49,7 +43,7 @@ head -3 /tmp/smithy-test/.claude/prompts/smithy.strike.md
 
 ---
 
-### A3: Permissions in settings.json are enforced
+## A3: Permissions in settings.json are enforced
 
 **Purpose**: Validate the generated permissions file has correct structure and no security issues.
 
@@ -95,7 +89,7 @@ console.log('Conflicts:', conflicts.length === 0 ? 'NONE (PASS)' : conflicts);
 
 ---
 
-### A4: Stale artifact cleanup on re-init
+## A4: Stale artifact cleanup on re-init
 
 **Purpose**: Verify that renamed/deleted templates are cleaned up when init runs again.
 
@@ -121,76 +115,31 @@ ls /tmp/smithy-test/.claude/commands/smithy.oldname.md 2>/dev/null && echo "FAIL
 
 ---
 
-## Human Tests (Interactive terminal)
+## A5: Sub-agent output structure (smithy-plan)
 
-These require a real terminal with interactive input. They cannot be automated because the CLI uses Inquirer prompts that do not accept piped stdin.
-
-### H1: Interactive agent selection
-
-**Purpose**: Verify the agent selection prompt works and deploys only the chosen agent.
+**Purpose**: Verify that smithy-plan produces output matching its documented structure when given a non-code planning context (feature map), confirming the generic output format works across artifact types.
 
 **Steps**:
-1. Run `node dist/cli.js init` (no flags)
-2. Select **Claude** from the menu
-3. Accept defaults for remaining prompts
+1. Build and deploy the latest templates:
+   ```bash
+   npm run build
+   node dist/cli.js update -d /path/to/SmithyCLI
+   ```
+2. Invoke smithy-plan as a sub-agent (or via a general-purpose agent acting as smithy-plan) with this input:
+   - **Planning context**: feature map artifact
+   - **Feature description**: a multi-feature request (e.g., "Add multi-agent support to SmithyCLI")
+   - **Codebase file paths**: 3-5 relevant source files
+   - **Scout report**: none
+   - **Additional planning directives**: none
+3. Inspect the returned output.
 
 **Expected**:
-- [ ] Agent selection menu shows all 4 options (Gemini CLI, Claude, Codex, All)
-- [ ] Only `.claude/prompts/` and `.claude/commands/` are created
-- [ ] No `.gemini/` or `tools/codex/` directories exist
-
----
-
-### H2: Interactive permissions prompt (decline)
-
-**Purpose**: Verify declining permissions skips settings.json creation.
-
-**Steps**:
-1. Run `node dist/cli.js init`
-2. Select any agent
-3. When prompted for permissions, select **None**
-4. Accept defaults for remaining prompts
-
-**Expected**:
-- [ ] No `.claude/settings.json` (or equivalent agent config) is created
-- [ ] Prompts/commands are still deployed normally
-
----
-
-### H3: Interactive target directory with custom path
-
-**Purpose**: Verify the target directory prompt accepts a custom path.
-
-**Steps**:
-1. Run `node dist/cli.js init`
-2. Accept defaults until the target directory prompt
-3. Enter a custom path (e.g., `/tmp/custom-target`)
-
-**Expected**:
-- [ ] Artifacts are deployed to the custom path, not `cwd`
-- [ ] `.gitignore` is created in the custom path
-
----
-
-### H4: Interactive uninit confirmation (decline)
-
-**Purpose**: Verify declining the uninit confirmation aborts without changes.
-
-**Steps**:
-1. First, initialize: `node dist/cli.js init -y -d /tmp/smithy-test`
-2. Run `node dist/cli.js uninit -d /tmp/smithy-test`
-3. Answer **No** to the confirmation prompt
-
-**Expected**:
-- [ ] Output shows "Operation cancelled."
-- [ ] All previously deployed files remain untouched
-- [ ] `.claude/settings.json` is intact
-
----
-
-## Cleanup
-
-After running tests, clean up temp directories:
-```bash
-rm -rf /tmp/smithy-test /tmp/custom-target
-```
+- [ ] Output starts with `## Plan` header
+- [ ] Contains `**Directive**:` and `**Artifact type**:` metadata (artifact type reflects "feature map")
+- [ ] Has exactly 4 sections: `### Approach`, `### Decisions`, `### Risks`, `### Tradeoffs`
+- [ ] Does **not** contain `### Task Breakdown` or `### Architecture Decisions`
+- [ ] Approach describes feature groupings/boundaries (not code changes)
+- [ ] Decisions table has columns: `Decision | Alternatives | Rationale`
+- [ ] Risks table has columns: `Risk | Likelihood | Mitigation`
+- [ ] Tradeoffs table has columns: `Alternative | Pros | Cons | Directive relevance`
+- [ ] References concrete elements (file paths, function names, entities) rather than generic advice

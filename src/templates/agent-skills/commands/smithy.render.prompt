@@ -144,7 +144,40 @@ Handle the scout report as follows:
 - **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
   for clarification. Mention them if they become relevant to a clarification
   question, but do not force separate discussion of each warning.
-- **Clean**: Proceed directly to Phase 2 with no additional context.
+- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+
+---
+
+## Phase 1.8: Approach Planning
+
+{{#ifAgent}}
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+{{>competing-lenses-scoping}}
+
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: feature map artifact
+- **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
+- **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
+- **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the milestone to deliver and the proposed feature decomposition.
+2. **Approach** — The reconciled approach for feature boundaries and grouping. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
+{{else}}
+{{/ifAgent}}
 
 ---
 
@@ -162,7 +195,7 @@ Use the **smithy-clarify** sub-agent. Pass it:
     other milestones in the RFC? Boundaries between milestones are resolved at the
     RFC level — note them but do not ask about them.
 - **Context**: this is a feature map; include the RFC path and the target milestone
-  number and title from Phase 1.
+  number and title from Phase 1, and the reconciled plan from Phase 1.8 if generated.
 - **Special instructions**: Cross-Milestone Boundaries should almost always be
   clear — the RFC defines milestone scope. Only flag as ambiguous if the RFC
   itself is unclear about which milestone owns a piece of functionality. If the
