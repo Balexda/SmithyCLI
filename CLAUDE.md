@@ -35,7 +35,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy.strike** — The lightweight "just do it" command. Interactive planning + implementation in one session. This is the starting point we're actively developing. Has `command: true` so it deploys as a Claude Code slash command (`/smithy.strike`).
 - **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.)
 - **smithy.forge** — Implementation executor that works from task specs
-- **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description or RFC.
+- **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description, RFC, or `.features.md` feature map (auto-selects the first unspecced feature).
 - **smithy.fix** — Minimal-diff bug fix from a GitHub issue
 - **smithy.audit** — Audit a Smithy artifact against its checklist
 - **smithy.orders** — Show available Smithy commands and their usage
