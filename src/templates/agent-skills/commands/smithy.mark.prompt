@@ -37,9 +37,10 @@ Before starting, determine the mode:
    c. Determine which features already have specs by checking the
       `## Spec Progress` checklist at the bottom of the `.features.md`. A
       feature is "specc'd" when its entry is checked (`- [x]`). A feature is
-      unspecced when its entry is unchecked (`- [ ]`) or the checklist does
-      not exist yet. (Mark updates this checklist after creating a spec — see
-      Phase 6.)
+      unspecced when its entry is unchecked (`- [ ]`). If the checklist does
+      not exist yet, create it now with all features unchecked, write it to
+      the file, and treat every feature as unspecced. (Mark updates the
+      checklist after creating a spec — see Phase 6.)
    d. **With feature number**: If the number is out of range, list available
       features with their numbers and titles, then stop. If the feature is
       already specc'd (per step c), extract the spec folder path from its
