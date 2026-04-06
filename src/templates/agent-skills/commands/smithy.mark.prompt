@@ -1,6 +1,6 @@
 ---
 name: smithy-mark
-description: "Transform an idea or RFC into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
+description: "Transform an idea, RFC, or feature map into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
 ---
 # smithy.mark
 
@@ -18,22 +18,64 @@ The user's input: $ARGUMENTS
 This may be:
 - A **feature description** (e.g., "add webhook support for build events").
 - A **path to an RFC** (e.g., `docs/rfcs/2026-001-webhook-support/webhook-support.rfc.md`).
+- A **path to a `.features.md`** (feature map) with an optional feature number
+  (e.g., `docs/rfcs/2026-001-foo/01-core.features.md` or
+  `docs/rfcs/2026-001-foo/01-core.features.md 3`).
 - Empty — if so, ask the user what they want to specify.
+
+---
+
+## Routing
+
+Before starting, determine the mode:
+
+1. **If the input is a `.features.md` file path** (with or without a feature number):
+   a. Read the file and parse `### Feature N: <Title>` headings. If no such
+      headings are found, abort with: "This file does not appear to be a valid
+      feature map — expected `### Feature N: <Title>` headings."
+   b. Extract the `**Source RFC**` path from the file header.
+   c. For each feature, derive a kebab-case slug from its title (lowercase,
+      replace spaces and special characters with hyphens, collapse consecutive
+      hyphens). Scan `specs/` for existing folders whose slug portion matches.
+   d. **With feature number**: If the number is out of range, list available
+      features with their numbers and titles, then stop. If a spec already
+      exists for that feature, go to **Phase 0** (Review Loop) with that spec.
+      Otherwise, go to **Phase 1** targeting that feature.
+   e. **Without feature number**: Auto-select the first `### Feature N` that
+      does NOT have a matching spec folder in `specs/`. If **all** features
+      already have specs, present a table of features with their spec folder
+      paths and ask the user which to audit (Phase 0).
+2. **If the input is an RFC path** (`.rfc.md`): existing behavior — go to Phase 1.
+3. **If the input is a feature description** (plain text, no file extension):
+   existing behavior — go to Phase 1.
+4. **If the input is empty**: ask the user what they want to specify.
+
+When entering Phase 1 from a `.features.md`, carry forward:
+- The selected feature's **Title**, **Description**, **User-Facing Value**, and
+  **Scope Boundaries** as the starting context.
+- The **Source RFC** path from the `.features.md` header (if present; if missing,
+  look for a co-located `.rfc.md` in the same directory).
+- The **feature map path** and **feature number** for traceability.
 
 ---
 
 ## Phase 1: Intake
 
-1. Parse the input. If it's an RFC path, read and extract goals, constraints,
-   and open questions. If it's a feature description, treat it as the starting
-   context.
+1. Parse the input:
+   - **RFC path**: Read and extract goals, constraints, and open questions.
+   - **Feature description**: Treat as the starting context.
+   - **Feature map** (from Routing): Use the selected feature's Title,
+     Description, User-Facing Value, and Scope Boundaries as the starting
+     context. Also read the Source RFC (resolved during Routing) for additional
+     goals and constraints.
 2. Explore the codebase to understand current architecture, relevant modules,
    and existing patterns that inform the specification.
 3. Determine the spec folder name:
    - Scan `specs/` for existing folders matching `YYYY-MM-DD-NNN-*`.
    - Derive `<NNN>` as the next sequential number (zero-padded to 3 digits,
      starting at `001`).
-   - Derive `<slug>` as a short kebab-case name from the feature description.
+   - Derive `<slug>` as a short kebab-case name from the feature title (when
+     from a feature map) or the feature description.
    - Folder name: `<YYYY-MM-DD>-<NNN>-<slug>` (e.g., `2026-03-14-004-webhook-support`).
 4. Create a git branch with the same name as the folder:
    ```
@@ -138,6 +180,7 @@ Draft the `<slug>.spec.md` file with this structure:
 **Created**: YYYY-MM-DD
 **Status**: Draft
 **Input**: <source — user description or RFC path with summary>
+**Source Feature Map**: `<path-to-.features.md>` — Feature <N>: <Title> *(include only when input is a `.features.md`)*
 
 ## Clarifications
 
@@ -420,7 +463,8 @@ through Phase 0).
   is the job of a downstream command.
 - **Do NOT** skip the clarification phase. Even if the input seems clear, do a
   quick scan and confirm with the user.
-- **DO** accept both RFC paths and direct feature descriptions as input.
+- **DO** accept RFC paths, direct feature descriptions, and `.features.md` paths as input.
+- **DO** auto-select the first unspecced feature when given a `.features.md` without a feature number.
 - **DO** keep specs anchored to user value — every requirement should trace to
   a user story.
 - **DO** number user stories sequentially — downstream commands depend on this.
