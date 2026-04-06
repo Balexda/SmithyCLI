@@ -77,18 +77,18 @@ N/A
 
 ### Tasks
 
-- [ ] Task 1: Add `.features.md` input variants to the Input section
-- [ ] Task 2: Add Routing section between Input and Phase 1 with feature map parsing, spec-existence checking, auto-selection, table presentation, and validation
-- [ ] Task 3: Update Phase 1 (Intake) to handle feature map context (feature description extraction, Source RFC chaining, slug derivation from feature title)
-- [ ] Task 4: Add `Source Feature Map` traceability field to the spec template in Phase 3
-- [ ] Task 5: Update Rules section with `.features.md` acceptance rules
+- [x] Task 1: Add `.features.md` input variants to the Input section
+- [x] Task 2: Add Routing section between Input and Phase 1 with feature map parsing, spec-existence checking, auto-selection, table presentation, and validation
+- [x] Task 3: Update Phase 1 (Intake) to handle feature map context (feature description extraction, Source RFC chaining, slug derivation from feature title)
+- [x] Task 4: Add `Source Feature Map` traceability field to the spec template in Phase 3
+- [x] Task 5: Update Rules section with `.features.md` acceptance rules
 
 **PR Outcome**: `smithy.mark` accepts `.features.md` files as input and auto-selects a single feature for specification.
 
 ## Validation Plan
 
-- [ ] Build passes (`npm run build`)
-- [ ] Tests pass (`npm test`)
+- [x] Build passes (`npm run build`)
+- [x] Tests pass (`npm test`)
 - [ ] Deploy to test repo with `smithy init` and verify `/smithy.mark` with a `.features.md` path auto-selects a feature
 - [ ] Verify feature number targeting works (`/smithy.mark path 3`)
 - [ ] Verify "all specc'd" table presentation
