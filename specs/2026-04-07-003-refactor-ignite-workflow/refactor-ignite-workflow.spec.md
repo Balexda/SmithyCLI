@@ -13,6 +13,8 @@
 - Q: Should the 3g assemble step just concatenate or also harmonize? → A: Concatenate + harmonize. Assemble reads all `_wip/` files, concatenates into RFC structure, then does a coherence pass to smooth tone and fix cross-references before writing the final file.
 - Q: How should Phase 0 handle partial `_wip/` state from interrupted sessions? → A: Resume from last incomplete sub-phase. Detect which `_wip/` files exist, skip completed sub-phases, resume from the first missing one. User is told which phases completed and where resumption starts.
 - Q: Should Phase 0 audit categories be updated for new Personas and Out of Scope sections? → A: Yes, update both Phase 0 inline categories and the `audit-checklist-rfc.md` snippet to add Persona Coverage and Out of Scope Completeness.
+- Q: Should sub-phase instructions be extracted into snippets or delegated to sub-agents? → A: Delegate to sub-agents. Create a new shared `smithy-prose` sub-agent for narrative/persuasive sections (Summary, Motivation). Use `smithy-plan` for structured analytical sections (scope derivation, milestone decomposition). Drop ignite-specific snippets — they aren't shared content. The ignite orchestrator becomes primarily a dispatcher.
+- Q: Should smithy-prose be reusable across commands or ignite-only? → A: Shared across commands. Design as a general narrative-writing sub-agent that any command can dispatch for prose-heavy sections.
 
 ## Artifact Hierarchy
 
@@ -30,10 +32,10 @@ As a developer using `smithy.ignite`, I want the RFC to be built section by sect
 
 **Acceptance Scenarios**:
 
-1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** it drafts each RFC section as a separate sub-phase (3a through 3f), writing each to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
-2. **Given** sub-phase 3d (Proposal) is being drafted, **When** the agent begins writing, **Then** it reads `_wip/01-problem.md`, `_wip/02-personas.md`, and `_wip/03-goals.md` from disk before drafting, ensuring context flows forward.
-3. **Given** all sub-phases 3a-3f have completed, **When** sub-phase 3g (Assemble) runs, **Then** it reads all `_wip/` files, concatenates them into the RFC template structure, performs a coherence/harmonization pass, writes the final RFC to `<slug>.rfc.md`, and deletes the `_wip/` directory.
-4. **Given** a sub-phase is writing its section, **When** the section is written to disk, **Then** the next sub-phase can begin without requiring the prior section to remain in the context window.
+1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** it dispatches sub-agents for each RFC section group (smithy-prose for narrative sections, smithy-plan for structured sections), writing each output to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
+2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives file paths to `_wip/01-problem.md`, `_wip/02-personas.md`, and `_wip/03-goals.md` as context, ensuring prior sections inform the current one.
+3. **Given** all sub-phases 3a-3f have completed, **When** sub-phase 3g (Assemble) runs, **Then** the orchestrator reads all `_wip/` files, concatenates them into the RFC template structure, performs a coherence/harmonization pass, writes the final RFC to `<slug>.rfc.md`, and deletes the `_wip/` directory.
+4. **Given** a sub-agent writes its section to disk, **When** the sub-agent returns, **Then** the next sub-phase can begin in a fresh context without requiring the prior section to remain in the orchestrator's context window.
 
 ---
 
@@ -69,23 +71,41 @@ As a developer using `smithy.ignite`, I want the RFC to always include an explic
 
 ---
 
-### User Story 4: Sub-Phase Snippet Extraction (Priority: P1)
+### User Story 4: Shared Smithy-Prose Sub-Agent (Priority: P1)
 
-As a maintainer of the smithy template system, I want each sub-phase's instructions extracted into separate snippet files so that the ignite prompt remains maintainable and each sub-phase can be reviewed/tested independently.
+As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (Summary, Motivation/Problem Statement) to be drafted by a dedicated `smithy-prose` sub-agent so that these sections receive focused prose-writing attention distinct from structured analytical sections.
 
-**Why this priority**: The ignite prompt is already 249 lines. Adding 6 sub-phase specifications inline would make it unmanageable. Snippets are the established codebase pattern and this is a prerequisite for the piecewise pipeline to be maintainable.
+**Why this priority**: The problem statement is the foundation the entire RFC builds on. It's fundamentally different from structured sections (goals lists, milestone tables) — it requires compelling narrative framing. A dedicated sub-agent with prose-tuned instructions produces better results than generic inline drafting. This agent is shared across commands, justifying it as a proper sub-agent.
 
-**Independent Test**: Verify that the ignite prompt uses `{{>ignite-phase3a}}` style partial includes for each sub-phase, that the snippet files exist in `src/templates/agent-skills/snippets/`, and that Dotprompt resolves them correctly at deploy time.
+**Independent Test**: Dispatch smithy-prose with a problem description and context files. Verify it produces a well-structured Summary and Motivation/Problem Statement with compelling narrative framing, and writes the output to the designated `_wip/` file.
 
 **Acceptance Scenarios**:
 
-1. **Given** the refactored ignite prompt, **When** it references sub-phase 3a, **Then** it includes the instruction via a Handlebars partial (e.g., `{{>ignite-phase3a}}`).
-2. **Given** snippet files exist for each sub-phase, **When** they are placed in `src/templates/agent-skills/snippets/`, **Then** they follow the naming convention `ignite-phase3a.md`, `ignite-phase3b.md`, etc.
-3. **Given** the ignite prompt is deployed via `smithy init`, **When** Dotprompt resolves partials, **Then** all sub-phase snippets are inlined into the final deployed prompt.
+1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phase 3a, **Then** it drafts the Summary and Motivation/Problem Statement sections and writes them to `_wip/01-problem.md`.
+2. **Given** smithy-prose receives the idea description and clarification output as context, **When** it drafts the narrative sections, **Then** the output uses persuasive framing (impact of not solving, urgency, stakeholder value) rather than dry bullet-point style.
+3. **Given** smithy-prose is designed as a shared sub-agent, **When** other commands (render, mark) need narrative sections drafted, **Then** they can dispatch smithy-prose with their own context without modification.
+4. **Given** the ignite orchestrator dispatches smithy-prose, **When** the sub-agent completes, **Then** its output is a file on disk that subsequent sub-phases can read, enabling context-scarcity handling.
 
 ---
 
-### User Story 5: Session Resume from Partial State (Priority: P2)
+### User Story 5: Smithy-Plan for Structured RFC Sections (Priority: P1)
+
+As a developer using `smithy.ignite`, I want structured analytical RFC sections (Goals, Out of Scope, Proposal, Milestones) to be drafted by dispatching `smithy-plan` sub-agents so that each structured section gets focused analytical attention with codebase awareness.
+
+**Why this priority**: Structured sections like Goals, Proposal, and Milestones require analytical decomposition — the same kind of work smithy-plan already does well. Reusing smithy-plan for these sections leverages an existing, proven sub-agent rather than relying on the orchestrator to draft inline.
+
+**Independent Test**: During sub-phase 3c (Goals + Out of Scope), verify that smithy-plan is dispatched with the clarification output and prior `_wip/` files as context, and that it produces a structured Goals list and Out of Scope section written to `_wip/03-goals.md`.
+
+**Acceptance Scenarios**:
+
+1. **Given** sub-phase 3c (Goals + Out of Scope) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan receives the clarification output, `_wip/01-problem.md`, and `_wip/02-personas.md` as context and produces structured Goals and Out of Scope sections.
+2. **Given** sub-phase 3d (Proposal + Design Considerations) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan receives the reconciled approach from Phase 1.5 plus all prior `_wip/` files and produces the Proposal and Design Considerations sections.
+3. **Given** sub-phase 3f (Milestones) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan produces milestone decomposition with success criteria, informed by the accumulated `_wip/` context.
+4. **Given** smithy-plan is dispatched for a structured section, **When** it completes, **Then** its output is written to the designated `_wip/` file by the orchestrator.
+
+---
+
+### User Story 6: Session Resume from Partial State (Priority: P2)
 
 As a developer whose `smithy.ignite` session was interrupted mid-pipeline, I want to resume from where I left off so that I don't lose the work already completed in earlier sub-phases.
 
@@ -101,7 +121,7 @@ As a developer whose `smithy.ignite` session was interrupted mid-pipeline, I wan
 
 ---
 
-### User Story 6: Cross-Session Question Deduplication (Priority: P2)
+### User Story 7: Cross-Session Question Deduplication (Priority: P2)
 
 As a developer iterating on an RFC across multiple `smithy.ignite` sessions, I want previously asked clarification questions to not be re-asked so that repeat sessions are faster and less redundant.
 
@@ -117,7 +137,7 @@ As a developer iterating on an RFC across multiple `smithy.ignite` sessions, I w
 
 ---
 
-### User Story 7: Updated Phase 0 Audit Categories (Priority: P2)
+### User Story 8: Updated Phase 0 Audit Categories (Priority: P2)
 
 As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the audit to check for persona coverage and out-of-scope completeness so that the review catches the same gaps that the new template sections are designed to prevent.
 
@@ -133,7 +153,7 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 
 ---
 
-### User Story 8: Updated RFC Template Schema (Priority: P1)
+### User Story 9: Updated RFC Template Schema (Priority: P1)
 
 As a developer using `smithy.ignite`, I want the RFC template to include all sections that downstream commands expect so that the generated RFC is complete and parseable by `smithy.render` and `smithy.mark`.
 
@@ -167,7 +187,9 @@ As a developer using `smithy.ignite`, I want the RFC template to include all sec
 - **FR-004**: Sub-phase 3g (Assemble) MUST read all `_wip/` files, concatenate them into the RFC template structure, perform a coherence/harmonization pass, write the final RFC to `<slug>.rfc.md`, and delete the `_wip/` directory.
 - **FR-005**: The RFC template MUST include a mandatory `## Personas` section positioned between Goals and Proposal.
 - **FR-006**: The RFC template MUST include a mandatory `## Out of Scope` section positioned after Goals and before Personas.
-- **FR-007**: Sub-phase instructions MUST be extracted into snippet files in `src/templates/agent-skills/snippets/` and included via Handlebars partials.
+- **FR-007**: A new shared `smithy-prose` sub-agent MUST be created at `src/templates/agent-skills/agents/smithy.prose.prompt` for drafting narrative/persuasive RFC sections (Summary, Motivation/Problem Statement).
+- **FR-007a**: The ignite orchestrator MUST dispatch `smithy-plan` for structured analytical sections (Goals, Out of Scope, Proposal, Design Considerations, Milestones).
+- **FR-007b**: The ignite orchestrator MUST dispatch `smithy-prose` for narrative sections (Summary, Motivation/Problem Statement) and `smithy-plan` for structured sections, writing each sub-agent's output to the corresponding `_wip/` file.
 - **FR-008**: Phase 0 MUST detect partial `_wip/` directories and offer to resume from the first missing sub-phase.
 - **FR-009**: After each clarification phase completes, the system MUST write Q&A and assumptions to a `.clarify-log.md` file in the RFC folder.
 - **FR-010**: When a `.clarify-log.md` exists from a prior session, the system MUST pass its contents to smithy-clarify as additional context with instructions to avoid re-asking answered questions.
@@ -179,23 +201,23 @@ As a developer using `smithy.ignite`, I want the RFC template to include all sec
 
 - **`_wip/` directory**: Temporary subdirectory within an RFC folder that holds intermediate sub-phase outputs during piecewise drafting. Deleted after successful assembly.
 - **`.clarify-log.md`**: Persistent file in the RFC folder that records Q&A and assumptions from each clarification session for cross-session deduplication.
-- **Sub-phase snippet**: A Markdown file in `src/templates/agent-skills/snippets/` containing the instructions for one sub-phase of the piecewise pipeline (e.g., `ignite-phase3a.md`).
+- **`smithy-prose` sub-agent**: New shared sub-agent specialized for narrative/persuasive writing. Dispatched for Summary, Motivation/Problem Statement, and other prose-heavy sections across any smithy command.
 
 ## Assumptions
 
-- Sub-agent prompts (smithy-clarify, smithy-plan, smithy-reconcile, smithy-refine) do not need modification — they are generic enough to handle the new invocation patterns.
-- No TypeScript code changes are required — this is purely a prompt template and snippet change.
-- The existing Dotprompt/Handlebars partial resolution system handles nested snippet includes correctly.
+- Existing sub-agent prompts (smithy-clarify, smithy-plan, smithy-reconcile, smithy-refine) do not need modification — they are generic enough to handle the new invocation patterns. smithy-plan's interface (planning context, feature description, codebase file paths, additional directives) already supports being dispatched for individual RFC sections.
+- No TypeScript code changes are required — this is a prompt template change plus one new sub-agent definition (`smithy-prose`).
 - The competing plans phase (Phase 1.5) with three lenses and smithy-reconcile remains unchanged in structure, though it now benefits from richer context when sub-phases reference its output.
 - smithy-scout is NOT added to the ignite pipeline (ignite works from ideas/PRDs, not existing code).
+- smithy-prose is designed as a shared sub-agent from day one, but adoption by other commands (render, mark) is deferred to future work.
 
 ## Out of Scope
 
-- Changes to other smithy commands (mark, render, cut, forge, strike) — they consume RFCs but their templates are not modified by this feature.
-- New sub-agent definitions — no new agent files are created; all piecewise orchestration happens within the ignite template via snippets.
-- TypeScript code changes to `src/cli.ts`, `src/commands/`, or `src/agents/` — this is a prompt-only change.
-- Gemini/Codex deployment considerations — the ignite template deploys the same way; only the content changes.
+- Changes to other smithy commands (mark, render, cut, forge, strike) — they consume RFCs but their templates are not modified by this feature. Adoption of smithy-prose by other commands is future work.
+- TypeScript code changes to `src/cli.ts`, `src/commands/`, or `src/agents/` — this is a prompt-only change plus a new agent definition file.
+- Gemini/Codex deployment considerations — the ignite template deploys the same way; only the content changes. smithy-prose deploys as a standard sub-agent.
 - Per-section clarification passes — the reconciled approach uses a single upfront clarify pass, not per-section runs.
+- Ignite-specific snippets — sub-phase instructions are delegated to sub-agents (smithy-prose, smithy-plan), not extracted into ignite-specific snippets.
 
 ## Success Criteria *(mandatory)*
 
@@ -207,4 +229,5 @@ As a developer using `smithy.ignite`, I want the RFC template to include all sec
 - **SC-004**: Running `smithy.ignite` on the same idea twice in separate sessions does not re-ask questions that were answered and logged in `.clarify-log.md`.
 - **SC-005**: Interrupting an `smithy.ignite` session mid-pipeline and restarting successfully resumes from the last completed sub-phase without losing prior work.
 - **SC-006**: The `audit-checklist-rfc.md` snippet includes persona coverage and out-of-scope completeness checks, and `smithy.audit` flags RFCs missing these sections.
-- **SC-007**: The ignite prompt template uses snippet partials for sub-phase instructions, keeping the main template under 150 lines (excluding snippet content).
+- **SC-007**: The ignite prompt template dispatches smithy-prose for narrative sections and smithy-plan for structured sections, keeping the orchestrator focused on pipeline management rather than inline drafting.
+- **SC-008**: The `smithy-prose` sub-agent produces compelling narrative framing (impact, urgency, stakeholder value) that is qualitatively distinct from bullet-point-style output.

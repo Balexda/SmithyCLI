@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature introduces intermediate file artifacts used during piecewise RFC generation. These are transient (the `_wip/` directory) or persistent (the `.clarify-log.md`) files that support the pipeline's context-passing and deduplication mechanisms.
+This feature introduces intermediate file artifacts used during piecewise RFC generation, plus a new shared sub-agent definition. The artifacts include transient files (the `_wip/` directory), persistent files (the `.clarify-log.md`), and a new agent template (`smithy-prose`).
 
 ## Entities
 
@@ -35,6 +35,24 @@ Validation rules:
 - Each session entry must include a date heading.
 - Assumptions and questions should be formatted consistently (bullet points with Q/A notation).
 - The file is append-only — new sessions are added at the end, existing sessions are never modified.
+
+### 3) Smithy-Prose Agent Definition (`smithy.prose.prompt`)
+
+Purpose: New shared sub-agent template for drafting narrative/persuasive sections of planning artifacts. Used by ignite for Summary, Motivation, and Personas sections. Designed for reuse by other commands.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `filename` | String | Yes | `smithy.prose.prompt` |
+| `location` | Path | Yes | `src/templates/agent-skills/agents/` |
+| `frontmatter.name` | String | Yes | `smithy-prose` |
+| `frontmatter.tools` | Array | Yes | `[Read, Grep, Glob]` — read-only codebase access |
+| `frontmatter.model` | String | Yes | `opus` — narrative quality benefits from strongest model |
+| `body` | Markdown | Yes | Prompt instructions for narrative drafting |
+
+Validation rules:
+- Must follow the same frontmatter schema as other agent definitions (name, description, tools, model).
+- Must be non-interactive (returns output to parent agent only).
+- Must accept section assignment, idea description, clarification output, and optional prior `_wip/` file paths as input.
 
 ## Relationships
 
