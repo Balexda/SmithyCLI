@@ -5,7 +5,10 @@ import {
   promptDeployLocation,
   promptPermissions,
   promptIssueTemplates,
+  promptToolchains,
 } from '../interactive.js';
+import { detectLanguages } from '../language-detect.js';
+import type { LanguageToolchain } from '../permissions.js';
 import {
   copyDirSync,
   issueTemplatesSrcDir,
@@ -25,6 +28,7 @@ export interface InitOptions {
   location?: DeployLocation;
   permissions?: boolean;
   issueTemplates?: boolean;
+  languages?: LanguageToolchain[] | undefined;
   targetDir?: string;
   yes?: boolean;
   /** When true, suppresses the welcome banner and uses "Upgrade" in the completion message. */
@@ -63,7 +67,27 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     deployPermissions = await promptPermissions();
   }
 
-  // 4. Issue templates — y/n at the selected deploy location
+  // 4. Target directory (resolved early — needed for language detection)
+  const targetDir = path.resolve(opts.targetDir ?? process.cwd());
+
+  // 5. Language toolchains — which toolchain permissions to include
+  let languages: LanguageToolchain[] | undefined;
+  if (deployPermissions) {
+    if (opts.languages !== undefined) {
+      // Explicit selection (from CLI flag or manifest replay)
+      languages = opts.languages;
+    } else if (opts.yes) {
+      // Non-interactive: default to all toolchains (undefined) to preserve
+      // backward compat. Use --toolchains for explicit filtering in CI.
+      languages = undefined;
+    } else {
+      // Interactive: auto-detect and let user confirm/adjust
+      const detected = detectLanguages(targetDir);
+      languages = await promptToolchains(detected);
+    }
+  }
+
+  // 6. Issue templates — y/n at the selected deploy location
   let deployIssueTemplates: boolean;
   if (opts.issueTemplates !== undefined) {
     deployIssueTemplates = opts.issueTemplates;
@@ -72,9 +96,6 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   } else {
     deployIssueTemplates = await promptIssueTemplates();
   }
-
-  // 5. Target directory
-  const targetDir = path.resolve(opts.targetDir ?? process.cwd());
 
   // --- Step 1: Check manifest (read old state for stale file cleanup) ---
   const oldManifest = readManifest(targetDir, deployLocation);
@@ -94,11 +115,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
-      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo');
+      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo', languages);
     } else if (a === 'claude') {
       deployedFiles['claude'] = await claude.deploy(targetDir, 'none', deployLocation);
       if (deployPermissions) {
-        claude.writePermissions(targetDir, deployLocation);
+        claude.writePermissions(targetDir, deployLocation, languages);
       }
     } else if (a === 'codex') {
       deployedFiles['codex'] = await codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
@@ -119,6 +140,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     agents: [...agentsToSetup],
     permissions: deployPermissions,
     issueTemplates: deployIssueTemplates,
+    languages,
     files: deployedFiles,
   });
 

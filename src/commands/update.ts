@@ -10,6 +10,15 @@ import {
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
 import type { AgentChoice, DeployLocation } from '../interactive.js';
+import { toolchains, type LanguageToolchain } from '../permissions.js';
+
+/** Validate and filter manifest language values against known toolchain keys. */
+function validatedLanguages(raw: string[] | undefined): LanguageToolchain[] | undefined {
+  if (raw === undefined) return undefined;
+  const valid = new Set(Object.keys(toolchains));
+  const filtered = raw.filter(l => valid.has(l)) as LanguageToolchain[];
+  return filtered.length > 0 ? filtered : undefined;
+}
 
 export interface UpdateOptions {
   targetDir?: string;
@@ -77,6 +86,7 @@ async function redeployFromManifest(
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     issueTemplates: manifest.issueTemplates,
+    languages: validatedLanguages(manifest.languages),
     targetDir,
     yes: true,
     quiet: true,
