@@ -74,11 +74,14 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   let languages: LanguageToolchain[] | undefined;
   if (deployPermissions) {
     if (opts.languages !== undefined) {
+      // Explicit selection (from CLI flag or manifest replay)
       languages = opts.languages;
     } else if (opts.yes) {
-      const detected = detectLanguages(targetDir);
-      languages = detected.length > 0 ? detected : undefined; // undefined = all
+      // Non-interactive: default to all toolchains (undefined) to preserve
+      // backward compat. Use --toolchains for explicit filtering in CI.
+      languages = undefined;
     } else {
+      // Interactive: auto-detect and let user confirm/adjust
       const detected = detectLanguages(targetDir);
       languages = await promptToolchains(detected);
     }

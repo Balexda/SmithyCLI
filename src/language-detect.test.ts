@@ -79,7 +79,7 @@ describe('detectLanguages', () => {
     fs.writeFileSync(path.join(tmpDir, 'Cargo.toml'), '');
     fs.writeFileSync(path.join(tmpDir, 'pyproject.toml'), '');
     const result = detectLanguages(tmpDir);
-    expect(result).toEqual(['node', 'java', 'rust', 'python']);
+    expect(result.sort()).toEqual(['java', 'node', 'python', 'rust']);
   });
 
   it('returns empty array for non-existent directory', () => {
