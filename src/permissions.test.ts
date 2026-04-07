@@ -84,7 +84,10 @@ describe('flattenPermissions', () => {
 
   it('includes npx and nodenv permissions', () => {
     const result = flattenPermissions();
-    expect(result).toContain('npx *');
+    expect(result).toContain('npx tsc *');
+    expect(result).toContain('npx vitest run *');
+    expect(result).toContain('npx eslint *');
+    expect(result).toContain('npx prettier --write *');
     expect(result).toContain('nodenv version');
     expect(result).toContain('nodenv versions');
     expect(result).toContain('nodenv local *');
@@ -92,9 +95,15 @@ describe('flattenPermissions', () => {
     expect(result).toContain('nodenv rehash');
   });
 
+  it('does not allow wildcard npx', () => {
+    const result = flattenPermissions();
+    // npx should only allow specific subcommands, not arbitrary execution
+    expect(result).not.toContain('npx *');
+  });
+
   it('filters npx and nodenv with the node toolchain', () => {
     const nodeOnly = flattenPermissions(['node']);
-    expect(nodeOnly).toContain('npx *');
+    expect(nodeOnly).toContain('npx tsc *');
     expect(nodeOnly).toContain('nodenv version');
 
     const rustOnly = flattenPermissions(['rust']);
@@ -102,11 +111,9 @@ describe('flattenPermissions', () => {
     expect(rustOnly.some(e => e.startsWith('nodenv'))).toBe(false);
   });
 
-  it('denies npm publish and npx npm publish', () => {
+  it('denies npm publish', () => {
     expect(denyPermissions).toContain('npm publish');
     expect(denyPermissions).toContain('npm publish *');
-    expect(denyPermissions).toContain('npx npm publish');
-    expect(denyPermissions).toContain('npx npm publish *');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

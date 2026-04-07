@@ -119,8 +119,25 @@ export const permissions: Record<string, PermissionEntry> = {
     "pack": [],
     "version": ["*"],
   },
-  // npx — safe local execution; dangerous commands (e.g. npm publish) are not listed
-  npx: ["*"],
+  // npx — enumerated safe commands only (no wildcard — Gemini has no deny-list)
+  npx: {
+    "tsc": ["*"],
+    "tsc --noEmit": [],
+    "tsx": ["*"],
+    "vitest": ["*"],
+    "vitest run": ["*"],
+    "eslint": ["*"],
+    "prettier": ["*"],
+    "prettier --write": ["*"],
+    "prettier --check": ["*"],
+    "jest": ["*"],
+    "mocha": ["*"],
+    "ts-node": ["*"],
+    "rimraf": ["*"],
+    "mkdirp": ["*"],
+    "semver": ["*"],
+    "sort-package-json": [],
+  },
   // nodenv — version management (read-only queries + safe switching)
   nodenv: {
     "version": [],
@@ -255,9 +272,6 @@ export const denyPermissions: string[] = [
   // npm publish — requires explicit approval
   "npm publish",
   "npm publish *",
-  // npx dangerous patterns
-  "npx npm publish",
-  "npx npm publish *",
 ];
 
 /**
