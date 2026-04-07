@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, parseFrontmatterName } from '../templates.js';
-import { flattenPermissions } from '../permissions.js';
+import { flattenPermissions, type LanguageToolchain } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
 /**
  * Deploy Gemini templates. Returns the list of deployed file paths (relative to targetDir).
  */
-export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
+export async function deploy(targetDir: string, initPermissions: boolean, languages?: LanguageToolchain[]): Promise<string[]> {
   const destDir = path.join(targetDir, '.gemini');
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
@@ -31,7 +31,7 @@ export async function deploy(targetDir: string, initPermissions: boolean): Promi
   for (const [, content] of templates.prompts) deployAsSkill(content);
 
   if (initPermissions) {
-    writePermissions(destDir);
+    writePermissions(destDir, languages);
   }
 
   return deployedFiles;
@@ -60,13 +60,13 @@ export function removeLegacy(targetDir: string): number {
  * Build Gemini's allowed tool list from the shared permissions.
  * Wraps each flattened command in run_shell_command(...) format.
  */
-export function buildGeminiAllowList(): string[] {
-  return flattenPermissions().map(cmd => `run_shell_command(${cmd})`);
+export function buildGeminiAllowList(languages?: LanguageToolchain[]): string[] {
+  return flattenPermissions(languages).map(cmd => `run_shell_command(${cmd})`);
 }
 
-function writePermissions(destDir: string): void {
+function writePermissions(destDir: string, languages?: LanguageToolchain[]): void {
   const settingsPath = path.join(destDir, 'settings.json');
-  const allowList = buildGeminiAllowList();
+  const allowList = buildGeminiAllowList(languages);
 
   type GeminiSettings = { tools?: { allowed?: string[]; [k: string]: unknown }; [k: string]: unknown };
 

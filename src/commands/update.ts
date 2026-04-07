@@ -10,6 +10,7 @@ import {
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
 import type { AgentChoice, DeployLocation } from '../interactive.js';
+import type { LanguageToolchain } from '../permissions.js';
 
 export interface UpdateOptions {
   targetDir?: string;
@@ -77,6 +78,7 @@ async function redeployFromManifest(
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     issueTemplates: manifest.issueTemplates,
+    languages: manifest.languages as LanguageToolchain[] | undefined,
     targetDir,
     yes: true,
     quiet: true,

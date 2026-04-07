@@ -1,5 +1,14 @@
 export type PermissionEntry = string[] | Record<string, string[]>;
 
+export type LanguageToolchain = 'node' | 'java' | 'rust' | 'python';
+
+export const toolchains: Record<LanguageToolchain, { label: string; permissionKeys: string[]; markers: string[] }> = {
+  node:   { label: 'Node.js (npm)',        permissionKeys: ['npm'],                 markers: ['package.json'] },
+  java:   { label: 'Java/Kotlin (Gradle)', permissionKeys: ['gradle', './gradlew'],  markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew'] },
+  rust:   { label: 'Rust (Cargo)',         permissionKeys: ['cargo'],               markers: ['Cargo.toml'] },
+  python: { label: 'Python (pip)',         permissionKeys: ['python', 'pip', 'pytest'], markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] },
+};
+
 export const permissions: Record<string, PermissionEntry> = {
   // --- Git ---
   // Flag variants are listed explicitly because Gemini CLI's wildcard
@@ -148,6 +157,23 @@ export const permissions: Record<string, PermissionEntry> = {
     "version": [],
   },
 
+  // --- Python ---
+  python: {
+    "-m pytest": ["*"],
+    "-m pip install": ["*"],
+    "-m pip install -r": ["*"],
+    "-m venv": ["*"],
+    "-c": ["*"],
+  },
+  pip: {
+    "install": ["*"],
+    "install -r": ["*"],
+    "freeze": [],
+    "list": [],
+    "show": ["*"],
+  },
+  pytest: ["*"],
+
   // --- GitHub CLI ---
   // Entries with ["", "*"] generate both bare and wildcard permissions,
   // e.g. `gh pr list` AND `gh pr list *`.
@@ -223,15 +249,42 @@ export const claudeToolPermissions: string[] = [
 ];
 
 /**
+ * Collect all permission keys that belong to language toolchains.
+ */
+function toolchainPermissionKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const tc of Object.values(toolchains)) {
+    for (const k of tc.permissionKeys) keys.add(k);
+  }
+  return keys;
+}
+
+/**
  * Flatten the nested permissions structure into a list of command strings.
  * e.g., git.checkout ["*"] -> ["git checkout *"]
  *        cp ["*"] -> ["cp *"]
  *        npm."run build" [] -> ["npm run build"]
+ *
+ * When `languages` is provided, only the specified toolchain permissions are
+ * included alongside universal (non-toolchain) permissions. When omitted,
+ * all permissions are included (backward compatible).
  */
-export function flattenPermissions(): string[] {
+export function flattenPermissions(languages?: LanguageToolchain[]): string[] {
   const result: string[] = [];
 
+  // Build the set of toolchain keys to skip (if filtering)
+  let skipKeys: Set<string> | undefined;
+  if (languages !== undefined) {
+    const allToolchainKeys = toolchainPermissionKeys();
+    const selectedKeys = new Set<string>();
+    for (const lang of languages) {
+      for (const k of toolchains[lang].permissionKeys) selectedKeys.add(k);
+    }
+    skipKeys = new Set([...allToolchainKeys].filter(k => !selectedKeys.has(k)));
+  }
+
   for (const [cmd, value] of Object.entries(permissions)) {
+    if (skipKeys?.has(cmd)) continue;
     if (Array.isArray(value)) {
       if (value.length === 0) {
         result.push(cmd);

@@ -1,5 +1,6 @@
-import { select, confirm } from '@inquirer/prompts';
+import { select, confirm, checkbox } from '@inquirer/prompts';
 import picocolors from 'picocolors';
+import { toolchains, type LanguageToolchain } from './permissions.js';
 
 export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
 export type DeployLocation = 'repo' | 'user';
@@ -79,6 +80,26 @@ export async function promptIssueTemplates(): Promise<boolean> {
   });
 }
 
+
+export async function promptToolchains(detected: LanguageToolchain[]): Promise<LanguageToolchain[]> {
+  const detectedSet = new Set(detected);
+  const choices = (Object.entries(toolchains) as [LanguageToolchain, typeof toolchains[LanguageToolchain]][]).map(
+    ([key, tc]) => ({
+      name: tc.label,
+      value: key,
+      checked: detectedSet.has(key),
+    }),
+  );
+
+  if (detected.length > 0) {
+    console.log(picocolors.dim(`  Detected: ${detected.map(l => toolchains[l].label).join(', ')}`));
+  }
+
+  return await checkbox<LanguageToolchain>({
+    message: 'Which language toolchains should be included in permissions?',
+    choices,
+  });
+}
 
 export async function promptConfirmUninit(): Promise<boolean> {
   return await confirm({

@@ -17,6 +17,7 @@ export interface SmithyManifest {
   agents: string[];
   permissions: boolean;
   issueTemplates: boolean;
+  languages?: string[] | undefined;
   files: Record<string, string[]>;  // agent name → relative file paths
 }
 
@@ -90,6 +91,7 @@ export interface WriteManifestOptions {
   agents: string[];
   permissions: boolean;
   issueTemplates: boolean;
+  languages?: string[] | undefined;
   files: Record<string, string[]>;
 }
 
@@ -107,6 +109,7 @@ export function writeManifest(opts: WriteManifestOptions): void {
     agents: opts.agents,
     permissions: opts.permissions,
     issueTemplates: opts.issueTemplates,
+    ...(opts.languages !== undefined ? { languages: opts.languages } : {}),
     files: opts.files,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));

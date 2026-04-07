@@ -73,4 +73,65 @@ describe('flattenPermissions', () => {
       expect(entry.trim().length).toBeGreaterThan(0);
     }
   });
+
+  it('includes Python permissions', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('pip install *');
+    expect(result).toContain('pip freeze');
+    expect(result).toContain('pytest *');
+    expect(result).toContain('python -m pytest *');
+  });
+
+  it('filters to only node toolchain when languages=["node"]', () => {
+    const result = flattenPermissions(['node']);
+    expect(result).toContain('npm run build');
+    expect(result).toContain('npm run test');
+    // Universal permissions should still be present
+    expect(result).toContain('git status');
+    expect(result).toContain('ls *');
+    // Other toolchains should be excluded
+    expect(result.some(e => e.startsWith('cargo'))).toBe(false);
+    expect(result.some(e => e.startsWith('gradle'))).toBe(false);
+    expect(result.some(e => e.startsWith('./gradlew'))).toBe(false);
+    expect(result.some(e => e.startsWith('pip'))).toBe(false);
+    expect(result.some(e => e.startsWith('pytest'))).toBe(false);
+    expect(result.some(e => e.startsWith('python'))).toBe(false);
+  });
+
+  it('filters to only rust toolchain when languages=["rust"]', () => {
+    const result = flattenPermissions(['rust']);
+    expect(result).toContain('cargo build *');
+    expect(result).toContain('git status');
+    expect(result.some(e => e.startsWith('npm'))).toBe(false);
+    expect(result.some(e => e.startsWith('gradle'))).toBe(false);
+    expect(result.some(e => e.startsWith('pip'))).toBe(false);
+  });
+
+  it('filters to multiple toolchains', () => {
+    const result = flattenPermissions(['node', 'python']);
+    expect(result).toContain('npm run build');
+    expect(result).toContain('pip install *');
+    expect(result).toContain('pytest *');
+    expect(result).toContain('git status');
+    expect(result.some(e => e.startsWith('cargo'))).toBe(false);
+    expect(result.some(e => e.startsWith('gradle'))).toBe(false);
+  });
+
+  it('includes all permissions when languages is undefined', () => {
+    const all = flattenPermissions();
+    const withUndefined = flattenPermissions(undefined);
+    expect(withUndefined).toEqual(all);
+  });
+
+  it('excludes all toolchain permissions when languages is empty array', () => {
+    const result = flattenPermissions([]);
+    expect(result).toContain('git status');
+    expect(result).toContain('ls *');
+    expect(result.some(e => e.startsWith('npm'))).toBe(false);
+    expect(result.some(e => e.startsWith('cargo'))).toBe(false);
+    expect(result.some(e => e.startsWith('gradle'))).toBe(false);
+    expect(result.some(e => e.startsWith('pip'))).toBe(false);
+    expect(result.some(e => e.startsWith('pytest'))).toBe(false);
+    expect(result.some(e => e.startsWith('python'))).toBe(false);
+  });
 });
