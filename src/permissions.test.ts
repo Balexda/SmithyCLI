@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenPermissions } from './permissions.js';
+import { flattenPermissions, denyPermissions } from './permissions.js';
 
 describe('flattenPermissions', () => {
   it('returns an array of strings', () => {
@@ -80,6 +80,33 @@ describe('flattenPermissions', () => {
     expect(result).toContain('pip freeze');
     expect(result).toContain('pytest *');
     expect(result).toContain('python -m pytest *');
+  });
+
+  it('includes npx and nodenv permissions', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('npx *');
+    expect(result).toContain('nodenv version');
+    expect(result).toContain('nodenv versions');
+    expect(result).toContain('nodenv local *');
+    expect(result).toContain('nodenv install *');
+    expect(result).toContain('nodenv rehash');
+  });
+
+  it('filters npx and nodenv with the node toolchain', () => {
+    const nodeOnly = flattenPermissions(['node']);
+    expect(nodeOnly).toContain('npx *');
+    expect(nodeOnly).toContain('nodenv version');
+
+    const rustOnly = flattenPermissions(['rust']);
+    expect(rustOnly.some(e => e.startsWith('npx'))).toBe(false);
+    expect(rustOnly.some(e => e.startsWith('nodenv'))).toBe(false);
+  });
+
+  it('denies npm publish and npx npm publish', () => {
+    expect(denyPermissions).toContain('npm publish');
+    expect(denyPermissions).toContain('npm publish *');
+    expect(denyPermissions).toContain('npx npm publish');
+    expect(denyPermissions).toContain('npx npm publish *');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

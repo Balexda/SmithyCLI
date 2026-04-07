@@ -3,7 +3,7 @@ export type PermissionEntry = string[] | Record<string, string[]>;
 export type LanguageToolchain = 'node' | 'java' | 'rust' | 'python';
 
 export const toolchains: Record<LanguageToolchain, { label: string; permissionKeys: string[]; markers: string[] }> = {
-  node:   { label: 'Node.js (npm)',        permissionKeys: ['npm'],                 markers: ['package.json'] },
+  node:   { label: 'Node.js (npm)',        permissionKeys: ['npm', 'npx', 'nodenv'], markers: ['package.json'] },
   java:   { label: 'Java/Kotlin (Gradle)', permissionKeys: ['gradle', './gradlew'],  markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew'] },
   rust:   { label: 'Rust (Cargo)',         permissionKeys: ['cargo'],               markers: ['Cargo.toml'] },
   python: { label: 'Python (pip)',         permissionKeys: ['python', 'pip', 'pytest'], markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] },
@@ -118,6 +118,23 @@ export const permissions: Record<string, PermissionEntry> = {
     "audit": [],
     "pack": [],
     "version": ["*"],
+  },
+  // npx — safe local execution; dangerous commands (e.g. npm publish) are not listed
+  npx: ["*"],
+  // nodenv — version management (read-only queries + safe switching)
+  nodenv: {
+    "version": [],
+    "versions": [],
+    "local": ["*"],
+    "global": ["*"],
+    "shell": ["*"],
+    "which": ["*"],
+    "whence": ["*"],
+    "install": ["*"],
+    "rehash": [],
+    "root": [],
+    "shims": [],
+    "help": ["*"],
   },
 
   // --- Gradle (Java/Kotlin) ---
@@ -235,6 +252,12 @@ export const denyPermissions: string[] = [
   "git symbolic-ref --message *",
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
+  // npm publish — requires explicit approval
+  "npm publish",
+  "npm publish *",
+  // npx dangerous patterns
+  "npx npm publish",
+  "npx npm publish *",
 ];
 
 /**
