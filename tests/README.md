@@ -2,11 +2,11 @@
 
 Pre-release checklist for tests that cannot be fully automated. Run these before publishing a new version.
 
-Smithy's testing covers three parts (see [CONTRIBUTING.md](../CONTRIBUTING.md#testing) for full details):
-- **Part 1 (CLI behavior)** and **Part 2 (file validation)** are covered by `npm test` (automated).
-- **Part 2 (agent-session)** is covered by the A-series agent tests below.
-- **Part 1 (interactive)** is covered by the H-series human tests below.
-- **Part 3 (execution behavior)** is covered by the evals framework in `evals/` (in development).
+Smithy's testing covers three tiers (see [CONTRIBUTING.md](../CONTRIBUTING.md#testing) for full details):
+- **Tier 1 (CLI behavior)** and **Tier 2 (file validation)** are covered by `npm test` (automated).
+- **Tier 2 (agent-session)** is covered by the A-series agent tests below.
+- **Tier 1 (interactive)** is covered by the H-series human tests below.
+- **Tier 3 (execution behavior)** is covered by the evals framework in `evals/` (in development).
 
 ## Test Files
 
