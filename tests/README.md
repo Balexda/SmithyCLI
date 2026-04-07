@@ -1,8 +1,12 @@
-# Manual Test Cases
+# Manual & Eval Test Cases
 
 Pre-release checklist for tests that cannot be fully automated. Run these before publishing a new version.
 
-Automated tests (`npm test`) cover unit and integration tests. The cases here cover agent-runtime and interactive-terminal scenarios that automated tests cannot reach.
+Smithy's testing covers three parts (see [CONTRIBUTING.md](../CONTRIBUTING.md#testing) for full details):
+- **Part 1 (CLI behavior)** and **Part 2 (file validation)** are covered by `npm test` (automated).
+- **Part 2 (agent-session)** is covered by the A-series agent tests below.
+- **Part 1 (interactive)** is covered by the H-series human tests below.
+- **Part 3 (execution behavior)** is covered by the evals framework in `evals/` (in development).
 
 ## Test Files
 
@@ -10,6 +14,7 @@ Automated tests (`npm test`) cover unit and integration tests. The cases here co
 |------|--------|-------------|
 | [Agent.tests.md](Agent.tests.md) | Claude Code agent or developer in a Claude Code session | Verifies deployed prompts, slash commands, permissions, stale cleanup, and sub-agent output structure |
 | [Manual.tests.md](Manual.tests.md) | Developer at an interactive terminal | Verifies Inquirer-based prompts that cannot be driven programmatically |
+| `evals/` (planned) | Developer running `npm run eval` locally | Executes skills via `claude -p` headless mode against a reference fixture, validates output structure |
 
 ## Setup
 

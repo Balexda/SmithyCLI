@@ -78,13 +78,13 @@ node dist/cli.js update  # Test update flow
 
 ## Testing
 
-Smithy uses a three-tier testing strategy:
+Smithy has three conceptual parts, each tested differently:
 
-1. **Automated** (`npm test`): A comprehensive suite covering init/uninit flows, template composition, permissions, and utilities. Runs in CI on every push and PR.
-2. **Agent** (Claude Code session): Manual A-series test cases (A1-A5) verifying prompt visibility, slash command invocability, permissions enforcement, stale artifact cleanup, and sub-agent output structure.
-3. **Human** (interactive terminal): Manual H-series test cases (H1-H4) for Inquirer-based prompts that cannot be driven programmatically.
+1. **CLI behavior** (Part 1) — init/uninit/update flows, option parsing, file deployment, idempotency. Covered by `npm test` (automated, CI) and interactive terminal tests (H1-H4).
+2. **Agent-skill file validation** (Part 2) — template composition, partial resolution, frontmatter, agent variants, file categorization. Covered by `npm test` (automated, CI) and agent-session tests (A1-A5).
+3. **Agent-skill execution behavior** (Part 3) — skills produce correct output when invoked by an AI agent, sub-agents are dispatched, output structure matches expectations. Covered by evals framework (`npm run eval`, local on-demand, not CI). **Status: in development.**
 
-Agent and human test cases are documented in **[tests/](tests/)** with step-by-step instructions and checkboxes. See [tests/README.md](tests/README.md) for an overview, [tests/Agent.tests.md](tests/Agent.tests.md) for agent-runnable tests (A-series), and [tests/Manual.tests.md](tests/Manual.tests.md) for interactive terminal tests (H-series).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for test file details. Agent and human test cases are in **[tests/](tests/)**: [tests/Agent.tests.md](tests/Agent.tests.md) (A-series), [tests/Manual.tests.md](tests/Manual.tests.md) (H-series).
 
 ### Notes
 
