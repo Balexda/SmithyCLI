@@ -4,7 +4,7 @@ export type LanguageToolchain = 'node' | 'java' | 'rust' | 'python';
 
 export const toolchains: Record<LanguageToolchain, { label: string; permissionKeys: string[]; markers: string[] }> = {
   node:   { label: 'Node.js (npm)',        permissionKeys: ['npm', 'npx', 'nodenv'], markers: ['package.json'] },
-  java:   { label: 'Java/Kotlin (Gradle)', permissionKeys: ['gradle', './gradlew'],  markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew'] },
+  java:   { label: 'Java/Kotlin (Gradle)', permissionKeys: ['./gradlew'],  markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew'] },
   rust:   { label: 'Rust (Cargo)',         permissionKeys: ['cargo'],               markers: ['Cargo.toml'] },
   python: { label: 'Python (pip)',         permissionKeys: ['python', 'pip', 'pytest'], markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] },
 };
@@ -56,6 +56,7 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
     "blame": ["*"],
     "cherry-pick": ["*"],
+    "check-ignore": ["*"],
     "mv": ["*"],
     // Read-only lookups only — no wildcard to prevent the mutating
     // form `git symbolic-ref <name> <ref>` from repointing refs.
@@ -155,26 +156,10 @@ export const permissions: Record<string, PermissionEntry> = {
   },
 
   // --- Gradle (Java/Kotlin) ---
-  gradle: {
-    "build": [],
-    "test": [],
-    "check": [],
-    "assemble": [],
-    "clean": [],
-    "dependencies": [],
-    "tasks": [],
-    "properties": [],
-  },
-  "./gradlew": {
-    "build": [],
-    "test": [],
-    "check": [],
-    "assemble": [],
-    "clean": [],
-    "dependencies": [],
-    "tasks": [],
-    "properties": [],
-  },
+  // Only the wrapper (./gradlew) is auto-allowed. Bare `gradle` commands
+  // require manual approval — mutating commands should go through the wrapper.
+  // The wrapper is a project-controlled script, so we trust it with any task.
+  "./gradlew": ["*"],
 
   // --- Cargo (Rust) ---
   cargo: {

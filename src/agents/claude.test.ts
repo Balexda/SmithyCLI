@@ -282,10 +282,9 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(npm run build)');
     expect(list).toContain('Bash(npm run typecheck)');
     expect(list).toContain('Bash(npm test *)');
-    // gradle
-    expect(list).toContain('Bash(gradle build)');
-    expect(list).toContain('Bash(gradle test)');
-    expect(list).toContain('Bash(./gradlew build)');
+    // gradle (only wrapper is auto-allowed; bare gradle requires manual approval)
+    expect(list).not.toContain('Bash(gradle build *)');
+    expect(list).toContain('Bash(./gradlew *)');
     // cargo
     expect(list).toContain('Bash(cargo build *)');
     expect(list).toContain('Bash(cargo test *)');
