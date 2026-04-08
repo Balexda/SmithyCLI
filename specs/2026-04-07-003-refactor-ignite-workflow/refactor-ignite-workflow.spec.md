@@ -22,60 +22,27 @@ RFC → Milestone → Feature → User Story → Slice → Tasks
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1: Piecewise RFC Generation (Priority: P1)
+### User Story 1: Updated RFC Template Schema (Priority: P1)
 
-As a developer using `smithy.ignite`, I want the RFC to be built section by section with intermediate file writes so that each section gets dedicated attention and no section is silently skipped or underwritten.
+As a developer using `smithy.ignite`, I want the RFC template to include all sections that downstream commands expect so that the generated RFC is complete and parseable by `smithy.render` and `smithy.mark`.
 
-**Why this priority**: This is the core structural change that addresses the root cause of inconsistent section quality and large output variance. All other stories depend on this pipeline existing.
+**Why this priority**: The template schema defines what sections the RFC contains. All other stories depend on the template having slots for Personas and Out of Scope. Without these slots, no amount of piecewise drafting can produce them in the final RFC.
 
-**Independent Test**: Run `smithy.ignite` with a broad idea description. Verify that `_wip/` files are created sequentially (01-problem.md through 06-milestones.md) during drafting, and that the final assembled RFC contains all sections with substantive content.
-
-**Acceptance Scenarios**:
-
-1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** it dispatches sub-agents for each RFC section group (smithy-prose for narrative sections, smithy-plan for structured sections), writing each output to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
-2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives file paths to `_wip/01-problem.md`, `_wip/02-personas.md`, and `_wip/03-goals.md` as context, ensuring prior sections inform the current one.
-3. **Given** all sub-phases 3a-3f have completed, **When** sub-phase 3g (Assemble) runs, **Then** the orchestrator reads all `_wip/` files, concatenates them into the RFC template structure, performs a coherence/harmonization pass, writes the final RFC to `<slug>.rfc.md`, and deletes the `_wip/` directory.
-4. **Given** a sub-agent writes its section to disk, **When** the sub-agent returns, **Then** the next sub-phase can begin in a fresh context without requiring the prior section to remain in the orchestrator's context window.
-
----
-
-### User Story 2: Mandatory Personas Section (Priority: P1)
-
-As a developer using `smithy.ignite`, I want personas identified during clarification to always appear as a dedicated section in the final RFC so that downstream commands (mark, render) can reference them for user stories and feature scoping.
-
-**Why this priority**: Directly addresses Issue #49. Personas are consistently discussed during clarification but lost in the one-shot draft because the RFC template has no section for them.
-
-**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Personas` section with at least one persona described, and that this section appears between Goals and Proposal in the final document.
+**Independent Test**: Read the RFC template in the ignite prompt and verify it contains: Summary, Motivation/Problem Statement, Goals, Out of Scope, Personas, Proposal, Design Considerations, Decisions, Open Questions, Milestones.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Personas` section listing identified users/stakeholders with descriptions.
-2. **Given** the Personas section is drafted in sub-phase 3b, **When** sub-phase 3b completes, **Then** the personas are written to `_wip/02-personas.md` and are available for subsequent sub-phases to reference.
-3. **Given** the Phase 2 clarification identifies personas, **When** the sub-phases draft the RFC, **Then** the personas from clarification appear in the Personas section (not lost between clarification and drafting).
+1. **Given** the RFC template in the ignite prompt, **When** it is rendered, **Then** it includes `## Personas` between Out of Scope and Proposal.
+2. **Given** the RFC template in the ignite prompt, **When** it is rendered, **Then** it includes `## Out of Scope` after Goals (before Personas).
+3. **Given** the Phase 3g assemble step uses the template as its structure guide, **When** it assembles the final RFC, **Then** all template sections are present in the output.
 
 ---
 
-### User Story 3: Mandatory Out of Scope Section (Priority: P1)
-
-As a developer using `smithy.ignite`, I want the RFC to always include an explicit Out of Scope section so that scope boundaries are clearly documented and downstream commands know what is excluded.
-
-**Why this priority**: Directly addresses Issue #50. The clarification phase asks about scope but the RFC template has no section to receive the answer, so it is consistently omitted.
-
-**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Out of Scope` section, even if the content is "None identified at this time."
-
-**Acceptance Scenarios**:
-
-1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after the Goals section.
-2. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
-3. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
-
----
-
-### User Story 4: Shared Smithy-Prose Sub-Agent (Priority: P1)
+### User Story 2: Shared Smithy-Prose Sub-Agent (Priority: P1)
 
 As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (Summary, Motivation/Problem Statement) to be drafted by a dedicated `smithy-prose` sub-agent so that these sections receive focused prose-writing attention distinct from structured analytical sections.
 
-**Why this priority**: The problem statement is the foundation the entire RFC builds on. It's fundamentally different from structured sections (goals lists, milestone tables) — it requires compelling narrative framing. A dedicated sub-agent with prose-tuned instructions produces better results than generic inline drafting. This agent is shared across commands, justifying it as a proper sub-agent.
+**Why this priority**: The problem statement is the foundation the entire RFC builds on. It's fundamentally different from structured sections (goals lists, milestone tables) — it requires compelling narrative framing. A dedicated sub-agent with prose-tuned instructions produces better results than generic inline drafting. This agent must exist before the piecewise pipeline can dispatch it.
 
 **Independent Test**: Dispatch smithy-prose with a problem description and context files. Verify it produces a well-structured Summary and Motivation/Problem Statement with compelling narrative framing, and writes the output to the designated `_wip/` file.
 
@@ -88,11 +55,11 @@ As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (
 
 ---
 
-### User Story 5: Smithy-Plan for Structured RFC Sections (Priority: P1)
+### User Story 3: Smithy-Plan for Structured RFC Sections (Priority: P1)
 
 As a developer using `smithy.ignite`, I want structured analytical RFC sections (Goals, Out of Scope, Proposal, Milestones) to be drafted by dispatching `smithy-plan` sub-agents so that each structured section gets focused analytical attention with codebase awareness.
 
-**Why this priority**: Structured sections like Goals, Proposal, and Milestones require analytical decomposition — the same kind of work smithy-plan already does well. Reusing smithy-plan for these sections leverages an existing, proven sub-agent rather than relying on the orchestrator to draft inline.
+**Why this priority**: Structured sections like Goals, Proposal, and Milestones require analytical decomposition — the same kind of work smithy-plan already does well. Reusing smithy-plan for these sections leverages an existing, proven sub-agent rather than relying on the orchestrator to draft inline. This dispatch pattern must be defined before the pipeline can use it.
 
 **Independent Test**: During sub-phase 3c (Goals + Out of Scope), verify that smithy-plan is dispatched with the clarification output and prior `_wip/` files as context, and that it produces a structured Goals list and Out of Scope section written to `_wip/03-goals.md`.
 
@@ -105,7 +72,56 @@ As a developer using `smithy.ignite`, I want structured analytical RFC sections 
 
 ---
 
-### User Story 6: Session Resume from Partial State (Priority: P2)
+### User Story 4: Piecewise RFC Generation (Priority: P1)
+
+As a developer using `smithy.ignite`, I want the RFC to be built section by section with intermediate file writes so that each section gets dedicated attention and no section is silently skipped or underwritten.
+
+**Why this priority**: This is the core orchestration that wires together the template (Story 1), smithy-prose (Story 2), and smithy-plan (Story 3) into a working pipeline. It addresses the root cause of inconsistent section quality and large output variance.
+
+**Independent Test**: Run `smithy.ignite` with a broad idea description. Verify that `_wip/` files are created sequentially (01-problem.md through 06-milestones.md) during drafting, and that the final assembled RFC contains all sections with substantive content.
+
+**Acceptance Scenarios**:
+
+1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** it dispatches sub-agents for each RFC section group (smithy-prose for narrative sections, smithy-plan for structured sections), writing each output to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
+2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives file paths to `_wip/01-problem.md`, `_wip/02-personas.md`, and `_wip/03-goals.md` as context, ensuring prior sections inform the current one.
+3. **Given** all sub-phases 3a-3f have completed, **When** sub-phase 3g (Assemble) runs, **Then** the orchestrator reads all `_wip/` files, concatenates them into the RFC template structure, performs a coherence/harmonization pass, writes the final RFC to `<slug>.rfc.md`, and deletes the `_wip/` directory.
+4. **Given** a sub-agent writes its section to disk, **When** the sub-agent returns, **Then** the next sub-phase can begin in a fresh context without requiring the prior section to remain in the orchestrator's context window.
+
+---
+
+### User Story 5: Mandatory Personas Section (Priority: P1)
+
+As a developer using `smithy.ignite`, I want personas identified during clarification to always appear as a dedicated section in the final RFC so that downstream commands (mark, render) can reference them for user stories and feature scoping.
+
+**Why this priority**: Directly addresses Issue #49. Personas are consistently discussed during clarification but lost in the one-shot draft because the RFC template previously had no section for them. With the template updated (Story 1) and smithy-prose available (Story 2), this story ensures the pipeline actually produces the section.
+
+**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Personas` section with at least one persona described, and that this section appears between Out of Scope and Proposal in the final document.
+
+**Acceptance Scenarios**:
+
+1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Personas` section listing identified users/stakeholders with descriptions.
+2. **Given** the Personas section is drafted in sub-phase 3b, **When** sub-phase 3b completes, **Then** the personas are written to `_wip/02-personas.md` and are available for subsequent sub-phases to reference.
+3. **Given** the Phase 2 clarification identifies personas, **When** the sub-phases draft the RFC, **Then** the personas from clarification appear in the Personas section (not lost between clarification and drafting).
+
+---
+
+### User Story 6: Mandatory Out of Scope Section (Priority: P1)
+
+As a developer using `smithy.ignite`, I want the RFC to always include an explicit Out of Scope section so that scope boundaries are clearly documented and downstream commands know what is excluded.
+
+**Why this priority**: Directly addresses Issue #50. The clarification phase asks about scope but the RFC template previously had no section to receive the answer. With the template updated (Story 1) and smithy-plan dispatched for scope (Story 3), this story ensures the pipeline actually produces the section.
+
+**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Out of Scope` section, even if the content is "None identified at this time."
+
+**Acceptance Scenarios**:
+
+1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after the Goals section.
+2. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
+3. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
+
+---
+
+### User Story 7: Session Resume from Partial State (Priority: P2)
 
 As a developer whose `smithy.ignite` session was interrupted mid-pipeline, I want to resume from where I left off so that I don't lose the work already completed in earlier sub-phases.
 
@@ -121,7 +137,7 @@ As a developer whose `smithy.ignite` session was interrupted mid-pipeline, I wan
 
 ---
 
-### User Story 7: Cross-Session Question Deduplication (Priority: P2)
+### User Story 8: Cross-Session Question Deduplication (Priority: P2)
 
 As a developer iterating on an RFC across multiple `smithy.ignite` sessions, I want previously asked clarification questions to not be re-asked so that repeat sessions are faster and less redundant.
 
@@ -137,7 +153,7 @@ As a developer iterating on an RFC across multiple `smithy.ignite` sessions, I w
 
 ---
 
-### User Story 8: Updated Phase 0 Audit Categories (Priority: P2)
+### User Story 9: Updated Phase 0 Audit Categories (Priority: P2)
 
 As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the audit to check for persona coverage and out-of-scope completeness so that the review catches the same gaps that the new template sections are designed to prevent.
 
@@ -150,22 +166,6 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 1. **Given** the Phase 0 review loop runs on an existing RFC, **When** the audit categories are evaluated, **Then** "Persona Coverage" and "Out of Scope Completeness" are included alongside existing categories (Problem Statement, Goals, Milestones, Feasibility, Scope, Stakeholders).
 2. **Given** the `audit-checklist-rfc.md` snippet is used by `smithy.audit`, **When** it audits an RFC, **Then** it includes checks for persona coverage and out-of-scope completeness.
 3. **Given** an RFC has a Personas section but it contains only vague references, **When** the audit runs, **Then** it flags the section as Weak rather than Sound.
-
----
-
-### User Story 9: Updated RFC Template Schema (Priority: P1)
-
-As a developer using `smithy.ignite`, I want the RFC template to include all sections that downstream commands expect so that the generated RFC is complete and parseable by `smithy.render` and `smithy.mark`.
-
-**Why this priority**: The template schema defines what sections the RFC contains. Without updating it, the piecewise pipeline would still produce an RFC missing Personas and Out of Scope even if sub-phases draft them, because the assemble step uses the template as its structure guide.
-
-**Independent Test**: Read the RFC template in the ignite prompt and verify it contains: Summary, Motivation/Problem Statement, Goals, Out of Scope, Personas, Proposal, Design Considerations, Decisions, Open Questions, Milestones.
-
-**Acceptance Scenarios**:
-
-1. **Given** the RFC template in the ignite prompt, **When** it is rendered, **Then** it includes `## Personas` between Goals and Proposal.
-2. **Given** the RFC template in the ignite prompt, **When** it is rendered, **Then** it includes `## Out of Scope` after Goals (before Personas).
-3. **Given** the Phase 3g assemble step uses the template as its structure guide, **When** it assembles the final RFC, **Then** all template sections are present in the output.
 
 ---
 
