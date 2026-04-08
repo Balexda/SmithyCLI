@@ -32,13 +32,13 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `section_content` | Markdown | The drafted RFC section(s) in Markdown format |
+| `section_content` | Markdown | The drafted RFC section(s) in Markdown format. If context is insufficient but some useful draft content can be produced, the output MUST still be returned in this field and MUST end with a `## Gaps / Missing Context` section that lists the specific missing facts, assumptions, or questions the orchestrator should address. |
 
 #### Error Conditions
 
 | Condition | Response | Description |
 |-----------|----------|-------------|
-| Insufficient context | Return partial with flags | If the idea description is too vague to write a compelling narrative, return what's possible and flag the gaps for the orchestrator to address. |
+| Insufficient context | Return partial in `section_content` with `## Gaps / Missing Context` | If the idea description is too vague to write a fully compelling narrative, return the best partial draft possible and append a `## Gaps / Missing Context` section so the orchestrator can detect and address the gaps consistently. |
 | Empty output | Halt | If no meaningful content can be produced, return an error rather than placeholder text. |
 
 #### Agent Properties
