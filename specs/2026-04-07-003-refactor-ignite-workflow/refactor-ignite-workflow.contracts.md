@@ -46,7 +46,7 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 | Property | Value | Notes |
 |----------|-------|-------|
 | Tools | Read, Grep, Glob | Read-only codebase access for context gathering |
-| Model | Opus | Narrative quality benefits from the strongest model |
+| Model | opus | Narrative quality benefits from the strongest model |
 | Interactive | No | Returns output to parent agent only |
 
 ---
