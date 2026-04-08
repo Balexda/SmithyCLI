@@ -44,14 +44,14 @@ As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (
 
 **Why this priority**: The problem statement is the foundation the entire RFC builds on. It's fundamentally different from structured sections (goals lists, milestone tables) — it requires compelling narrative framing. A dedicated sub-agent with prose-tuned instructions produces better results than generic inline drafting. This agent must exist before the piecewise pipeline can dispatch it.
 
-**Independent Test**: Dispatch smithy-prose with a problem description and context files. Verify it produces a well-structured Summary and Motivation/Problem Statement with compelling narrative framing, and writes the output to the designated `_wip/` file.
+**Independent Test**: Dispatch smithy-prose with a problem description and context files. Verify it returns a well-structured Summary and Motivation/Problem Statement with compelling narrative framing that the orchestrator can then write to the designated `_wip/` file.
 
 **Acceptance Scenarios**:
 
-1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phase 3a, **Then** it drafts the Summary and Motivation/Problem Statement sections and writes them to `_wip/01-problem.md`.
+1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phase 3a, **Then** it returns the drafted Summary and Motivation/Problem Statement sections to the orchestrator, which writes them to `_wip/01-problem.md`.
 2. **Given** smithy-prose receives the idea description and clarification output as context, **When** it drafts the narrative sections, **Then** the output uses persuasive framing (impact of not solving, urgency, stakeholder value) rather than dry bullet-point style.
 3. **Given** smithy-prose is designed as a shared sub-agent, **When** other commands (render, mark) need narrative sections drafted, **Then** they can dispatch smithy-prose with their own context without modification.
-4. **Given** the ignite orchestrator dispatches smithy-prose, **When** the sub-agent completes, **Then** its output is a file on disk that subsequent sub-phases can read, enabling context-scarcity handling.
+4. **Given** the ignite orchestrator dispatches smithy-prose, **When** the sub-agent returns its content, **Then** the orchestrator writes it to the `_wip/` file on disk so that subsequent sub-phases can read it, enabling context-scarcity handling.
 
 ---
 
@@ -82,10 +82,10 @@ As a developer using `smithy.ignite`, I want the RFC to be built section by sect
 
 **Acceptance Scenarios**:
 
-1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** it dispatches sub-agents for each RFC section group (smithy-prose for narrative sections, smithy-plan for structured sections), writing each output to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
+1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** the orchestrator dispatches sub-agents for each RFC section group (smithy-prose for narrative sections, smithy-plan for structured sections), receives their returned content, and writes each to a numbered file in `docs/rfcs/<YYYY-NNN-slug>/_wip/`.
 2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives file paths to `_wip/01-problem.md`, `_wip/02-personas.md`, and `_wip/03-goals.md` as context, ensuring prior sections inform the current one.
 3. **Given** all sub-phases 3a-3f have completed, **When** sub-phase 3g (Assemble) runs, **Then** the orchestrator reads all `_wip/` files, concatenates them into the RFC template structure, performs a coherence/harmonization pass, writes the final RFC to `<slug>.rfc.md`, and deletes the `_wip/` directory.
-4. **Given** a sub-agent writes its section to disk, **When** the sub-agent returns, **Then** the next sub-phase can begin in a fresh context without requiring the prior section to remain in the orchestrator's context window.
+4. **Given** a sub-agent returns its drafted content to the orchestrator, **When** the orchestrator writes it to disk, **Then** the next sub-phase can begin in a fresh context without requiring the prior section to remain in the orchestrator's context window.
 
 ---
 
