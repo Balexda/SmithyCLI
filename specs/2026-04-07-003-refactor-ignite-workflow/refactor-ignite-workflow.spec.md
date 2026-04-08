@@ -189,7 +189,7 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 - **FR-006**: The RFC template MUST include a mandatory `## Out of Scope` section positioned after Goals and before Personas.
 - **FR-007**: A new shared `smithy-prose` sub-agent MUST be created at `src/templates/agent-skills/agents/smithy.prose.prompt` for drafting narrative/persuasive RFC sections (Summary, Motivation/Problem Statement).
 - **FR-007a**: The ignite orchestrator MUST dispatch `smithy-plan` for structured analytical sections (Goals, Out of Scope, Proposal, Design Considerations, Milestones).
-- **FR-007b**: The ignite orchestrator MUST dispatch `smithy-prose` for narrative sections (Summary, Motivation/Problem Statement) and `smithy-plan` for structured sections, writing each sub-agent's output to the corresponding `_wip/` file.
+- **FR-007b**: The ignite orchestrator MUST dispatch `smithy-prose` for narrative sections (Summary, Motivation/Problem Statement, Personas) and `smithy-plan` for structured sections, writing each sub-agent's returned content to the corresponding `_wip/` file.
 - **FR-008**: Phase 0 MUST detect partial `_wip/` directories and offer to resume from the first missing sub-phase.
 - **FR-009**: After each clarification phase completes, the system MUST write Q&A and assumptions to a `.clarify-log.md` file in the RFC folder.
 - **FR-010**: When a `.clarify-log.md` exists from a prior session, the system MUST pass its contents to smithy-clarify as additional context with instructions to avoid re-asking answered questions.
