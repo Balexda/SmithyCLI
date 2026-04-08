@@ -158,16 +158,8 @@ export const permissions: Record<string, PermissionEntry> = {
   // --- Gradle (Java/Kotlin) ---
   // Only the wrapper (./gradlew) is auto-allowed. Bare `gradle` commands
   // require manual approval — mutating commands should go through the wrapper.
-  "./gradlew": {
-    "build": ["*"],
-    "test": ["*"],
-    "check": ["*"],
-    "assemble": ["*"],
-    "clean": ["*"],
-    "dependencies": ["*"],
-    "tasks": ["*"],
-    "properties": ["*"],
-  },
+  // The wrapper is a project-controlled script, so we trust it with any task.
+  "./gradlew": ["*"],
 
   // --- Cargo (Rust) ---
   cargo: {
