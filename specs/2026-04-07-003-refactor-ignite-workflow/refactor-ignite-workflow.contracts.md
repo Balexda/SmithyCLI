@@ -4,7 +4,7 @@
 
 This feature restructures the ignite prompt into an orchestrator that dispatches sub-agents for each RFC section. It introduces a new shared `smithy-prose` sub-agent for narrative sections and reuses `smithy-plan` for structured analytical sections. The contracts between ignite and existing sub-agents (smithy-clarify, smithy-reconcile, smithy-refine) remain unchanged.
 
-The primary contract changes are: (1) the new smithy-prose sub-agent interface, (2) the sub-phase pipeline protocol and intermediate file conventions, and (3) expanded smithy-plan dispatch for per-section analytical drafting.
+The primary contract changes are: (1) the new smithy-prose sub-agent interface, (2) the sub-phase pipeline protocol with direct RFC file writes, and (3) expanded smithy-plan dispatch for per-section analytical drafting.
 
 ## Interfaces
 
@@ -16,7 +16,7 @@ The primary contract changes are: (1) the new smithy-prose sub-agent interface, 
 
 #### Signature
 
-The orchestrator dispatches smithy-prose with a section assignment and context. The sub-agent drafts the narrative section and returns it as text output. The orchestrator writes the output to the `_wip/` file.
+The orchestrator dispatches smithy-prose with a section assignment and context. The sub-agent drafts the narrative section and returns it as text output. The orchestrator appends the output to the RFC file.
 
 #### Inputs
 
@@ -25,7 +25,7 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 | `section_assignment` | Text | Yes | Which RFC section(s) to draft (e.g., "Summary and Motivation / Problem Statement") |
 | `idea_description` | Text | Yes | The user's original idea or PRD content from intake |
 | `clarify_output` | Text | Yes | The Q&A and assumptions from Phase 2 clarification |
-| `prior_wip_files` | File paths | No | Paths to prior `_wip/` files for context (empty for 3a, populated for 3b) |
+| `rfc_file_path` | Path | No | Path to the accumulating `<slug>.rfc.md` for context (empty for 3a, populated for 3b) |
 | `tone_directives` | Text | No | Specific prose guidance (e.g., "emphasize stakeholder impact", "frame as urgency") |
 
 #### Outputs
@@ -46,7 +46,7 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 | Property | Value | Notes |
 |----------|-------|-------|
 | Tools | Read, Grep, Glob | Read-only codebase access for context gathering |
-| Model | opus | Narrative quality benefits from the strongest model |
+| Model | Opus | Narrative quality benefits from the strongest model |
 | Interactive | No | Returns output to parent agent only |
 
 ---
@@ -60,10 +60,10 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 #### Signature
 
 Each sub-phase follows this protocol:
-1. Orchestrator gathers context: prior `_wip/` files, clarification output, reconciled plan
+1. Orchestrator gathers context: path to accumulating RFC file, clarification output, reconciled plan
 2. Orchestrator dispatches the appropriate sub-agent with section assignment and context
 3. Sub-agent returns drafted section content
-4. Orchestrator writes output to the designated `_wip/<NN>-<section>.md` file
+4. Orchestrator appends the returned content to `<slug>.rfc.md`
 5. Orchestrator proceeds to next sub-phase
 
 #### Sub-Agent Dispatch Map
@@ -81,8 +81,7 @@ Each sub-phase follows this protocol:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `rfc_folder` | Path | Yes | The RFC folder path (e.g., `docs/rfcs/2026-001-slug/`) |
-| `prior_wip_files` | File paths | Yes | Paths to all `_wip/` files with lower numeric prefixes |
+| `rfc_file_path` | Path | Yes | Path to the accumulating `<slug>.rfc.md` file |
 | `clarify_output` | Text | Yes | The Q&A and assumptions from Phase 2 clarification |
 | `reconciled_plan` | Text | Conditional | The reconciled approach from Phase 1.5 (required for 3d, 3e, 3f) |
 
@@ -90,62 +89,57 @@ Each sub-phase follows this protocol:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `wip_file` | File | The `_wip/<NN>-<section>.md` file written to disk by the orchestrator |
+| `section_content` | Markdown | The drafted section(s) returned by the sub-agent, appended to the RFC file by the orchestrator |
 
 #### Error Conditions
 
 | Condition | Response | Description |
 |-----------|----------|-------------|
-| Prior `_wip/` file missing | Halt pipeline | If a required prior file is missing, the sub-phase cannot proceed. Report the gap and halt. |
+| RFC file missing or unreadable | Halt pipeline | If the accumulating RFC file is missing when a sub-phase needs it for context, halt and report. |
 | Sub-agent returns empty/error | Halt pipeline | If the dispatched sub-agent fails to produce content, halt and report. |
-| Write failure | Halt pipeline | If the `_wip/` file cannot be written, report the error and halt. |
+| Write failure | Halt pipeline | If the RFC file cannot be appended to, report the error and halt. |
 
 ### Sub-Phase to Section Mapping
 
 **Purpose**: Defines which RFC sections each sub-phase is responsible for drafting.
-**Consumers**: Sub-agents (smithy-prose, smithy-plan), orchestrator, assemble step (3g)
+**Consumers**: Sub-agents (smithy-prose, smithy-plan), orchestrator, harmonize step (3g)
 **Providers**: The ignite template specification
 
 #### Mapping Table
 
-| Sub-Phase | WIP File | RFC Sections Produced |
-|-----------|----------|----------------------|
-| 3a | `01-problem.md` | Summary, Motivation / Problem Statement |
-| 3b | `02-personas.md` | Personas |
-| 3c | `03-goals.md` | Goals, Out of Scope |
-| 3d | `04-proposal.md` | Proposal, Design Considerations |
-| 3e | `05-decisions.md` | Decisions, Open Questions |
-| 3f | `06-milestones.md` | Milestones (with Success Criteria per milestone) |
+| Sub-Phase | RFC Sections Produced |
+|-----------|----------------------|
+| 3a | Summary, Motivation / Problem Statement |
+| 3b | Personas |
+| 3c | Goals, Out of Scope |
+| 3d | Proposal, Design Considerations |
+| 3e | Decisions, Open Questions |
+| 3f | Milestones (with Success Criteria per milestone) |
 
-### Assemble Step (3g) Contract
+### Harmonize Step (3g) Contract
 
-**Purpose**: Defines how the final RFC is composed from intermediate files.
+**Purpose**: Defines how the accumulated RFC is polished after all sections are written.
 **Consumers**: Phase 4 (Write & Review)
-**Providers**: Sub-phase 3g
+**Providers**: Sub-phase 3g (orchestrator inline)
 
 #### Inputs
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `wip_files` | File list | Yes | All 6 `_wip/` files (01 through 06) |
-| `rfc_template` | Template | Yes | The RFC Markdown template structure from the ignite prompt |
+| `rfc_file_path` | Path | Yes | Path to the complete `<slug>.rfc.md` with all sections |
 
 #### Outputs
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `rfc_file` | File | The final `<slug>.rfc.md` written to disk |
-| `wip_cleanup` | Side effect | The `_wip/` directory is deleted after successful write |
+| `rfc_file` | File | The harmonized `<slug>.rfc.md` rewritten in place |
 
 #### Process
 
-1. Read all 6 `_wip/` files in order
-2. Map each file's content to the corresponding RFC template section(s)
-3. Concatenate into the full RFC template structure
-4. Perform coherence/harmonization pass (smooth tone, fix cross-references)
-5. Add RFC metadata header (`Created`, `Status`)
-6. Write final RFC to `<slug>.rfc.md`
-7. Delete `_wip/` directory
+1. Read the complete `<slug>.rfc.md`
+2. Perform coherence pass (smooth tone across sections, fix cross-references)
+3. Verify all template sections are present and non-empty
+4. Rewrite the file in place
 
 ### Clarify Log Contract
 
@@ -175,8 +169,8 @@ When passed to smithy-clarify as additional context:
 
 ### Updated RFC Template Schema
 
-**Purpose**: The canonical RFC template structure that all sub-phases and the assemble step must conform to.
-**Consumers**: Sub-phases 3a-3f, assemble step 3g, Phase 0 audit, `smithy.audit`
+**Purpose**: The canonical RFC template structure that all sub-phases must conform to.
+**Consumers**: Sub-phases 3a-3f, harmonize step 3g, Phase 0 audit, `smithy.audit`
 **Providers**: The ignite template specification
 
 #### Template Structure
@@ -231,6 +225,6 @@ This feature's integration boundaries are entirely within the smithy template sy
 - **Ignite → smithy-prose (NEW)**: New sub-agent dispatched for narrative RFC sections. Deployed as `src/templates/agent-skills/agents/smithy.prose.prompt` and follows the same agent conventions as smithy-plan, smithy-clarify, etc.
 - **Ignite → smithy-plan (expanded)**: smithy-plan is now dispatched for individual structured sections (3c, 3d, 3f) in addition to its existing role in Phase 1.5 competing plans. Its interface is unchanged — only the planning context and directives differ per dispatch.
 - **Ignite → smithy-clarify, smithy-reconcile, smithy-refine**: Invocation interfaces unchanged. Only the content of context and criteria parameters changes.
-- **Ignite → File System**: New file I/O patterns (`_wip/` directory, `.clarify-log.md`) use standard file read/write operations already available to the agent.
+- **Ignite → File System**: Piecewise writes append to `<slug>.rfc.md` incrementally. `.clarify-log.md` uses standard append. All file I/O uses operations already available to the agent.
 - **Ignite → Downstream Commands**: The final RFC format adds two new sections (Personas, Out of Scope) that `smithy.render` and `smithy.mark` may reference but do not require. No breaking changes to downstream consumers.
 - **smithy-prose → Other Commands (future)**: smithy-prose is designed as a shared agent. Other commands can dispatch it for their narrative sections without modification to smithy-prose itself.

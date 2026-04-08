@@ -2,26 +2,11 @@
 
 ## Overview
 
-This feature introduces intermediate file artifacts used during piecewise RFC generation, plus a new shared sub-agent definition. The artifacts include transient files (the `_wip/` directory), persistent files (the `.clarify-log.md`), and a new agent template (`smithy-prose`).
+This feature introduces a new shared sub-agent definition (`smithy-prose`) and a persistent clarification log file (`.clarify-log.md`). The RFC file itself (`<slug>.rfc.md`) serves as the intermediate artifact during piecewise generation — each sub-phase appends its section(s) directly to the growing file.
 
 ## Entities
 
-### 1) WIP Sub-Phase Output (`_wip/<NN>-<section>.md`)
-
-Purpose: Holds the intermediate output of a single sub-phase during piecewise RFC drafting. Each file contains one or more RFC sections in Markdown format. Files are consumed by subsequent sub-phases for context and by the assemble step for final RFC composition.
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `filename` | String | Yes | Zero-padded prefix + kebab-case section name (e.g., `01-problem.md`, `02-personas.md`) |
-| `content` | Markdown | Yes | One or more RFC sections in Markdown format, using the RFC template's heading conventions |
-| `location` | Path | Yes | `docs/rfcs/<YYYY-NNN-slug>/_wip/` |
-
-Validation rules:
-- Filename prefix must be two-digit zero-padded (01-06).
-- Content must be non-empty Markdown.
-- Files must be numbered sequentially without gaps for the assemble step to succeed.
-
-### 2) Clarify Log (`.clarify-log.md`)
+### 1) Clarify Log (`.clarify-log.md`)
 
 Purpose: Persistent record of clarification Q&A and assumptions from each `smithy.ignite` session. Used by smithy-clarify in subsequent sessions to avoid re-asking resolved questions.
 
@@ -36,7 +21,7 @@ Validation rules:
 - Assumptions and questions should be formatted consistently (bullet points with Q/A notation).
 - The file is append-only — new sessions are added at the end, existing sessions are never modified.
 
-### 3) Smithy-Prose Agent Definition (`smithy.prose.prompt`)
+### 2) Smithy-Prose Agent Definition (`smithy.prose.prompt`)
 
 Purpose: New shared sub-agent template for drafting narrative/persuasive sections of planning artifacts. Used by ignite for Summary, Motivation, and Personas sections. Designed for reuse by other commands.
 
@@ -52,38 +37,38 @@ Purpose: New shared sub-agent template for drafting narrative/persuasive section
 Validation rules:
 - Must follow the same frontmatter schema as other agent definitions (name, description, tools, model).
 - Must be non-interactive (returns output to parent agent only).
-- Must accept section assignment, idea description, clarification output, and optional prior `_wip/` file paths as input.
+- Must accept section assignment, idea description, clarification output, and optional RFC file path as input.
 
 ## Relationships
 
-- WIP Sub-Phase Output 1:1 RFC — each `_wip/` directory belongs to exactly one RFC folder.
 - Clarify Log 1:1 RFC — each `.clarify-log.md` belongs to exactly one RFC folder.
-- WIP Sub-Phase Output is consumed-by Assemble Step — the 3g assemble step reads all `_wip/` files to produce the final RFC.
 - Clarify Log is consumed-by smithy-clarify — passed as additional context on subsequent sessions.
+- RFC File is written-by orchestrator — the orchestrator appends sub-agent output to `<slug>.rfc.md` after each sub-phase.
+- RFC File is read-by sub-agents — smithy-prose and smithy-plan receive the path to the accumulating RFC file as context for subsequent sub-phases.
 
 ## State Transitions
 
-### WIP Directory Lifecycle
+### RFC File Lifecycle (during piecewise generation)
 
-1. `nonexistent` → `in-progress`
-   - Trigger: Sub-phase 3a begins and writes `01-problem.md`
-   - Effects: `_wip/` directory is created inside the RFC folder
+1. `nonexistent` → `header-only`
+   - Trigger: Phase 3 begins; orchestrator creates `<slug>.rfc.md` with RFC title and metadata header
+   - Effects: File exists with `# RFC: <Title>` and `**Created**: ... | **Status**: Draft`
 
-2. `in-progress` → `in-progress` (files accumulate)
-   - Trigger: Each subsequent sub-phase (3b-3f) completes
-   - Effects: New numbered file added to `_wip/`
+2. `header-only` → `partial` (sections accumulate)
+   - Trigger: Each sub-phase (3a-3f) completes and orchestrator appends the returned content
+   - Effects: New section(s) appended to the file
 
-3. `in-progress` → `deleted`
-   - Trigger: Sub-phase 3g (Assemble) successfully writes the final RFC
-   - Effects: `_wip/` directory and all contents are deleted
+3. `partial` → `complete`
+   - Trigger: All sub-phases 3a-3f have appended their sections
+   - Effects: File contains all RFC template sections
 
-4. `in-progress` → `partial` (interrupted)
-   - Trigger: Session interruption or crash during any sub-phase
-   - Effects: `_wip/` directory remains with files from completed sub-phases only
+4. `complete` → `harmonized`
+   - Trigger: Sub-phase 3g (Harmonize) rewrites the file in place for coherence
+   - Effects: File is the final RFC, ready for Phase 4 (Write & Review)
 
-5. `partial` → `in-progress` (resumed)
-   - Trigger: Phase 0 detects partial state and user accepts resume
-   - Effects: Pipeline continues from first missing sub-phase file
+5. `partial` → `partial` (resumed after interruption)
+   - Trigger: Phase 0 detects partial RFC (by parsing headings), user accepts resume
+   - Effects: Pipeline continues from first missing section
 
 ### Clarify Log Lifecycle
 
@@ -97,6 +82,5 @@ Validation rules:
 
 ## Identity & Uniqueness
 
-- WIP files are uniquely identified by their numeric prefix within a `_wip/` directory. Only one file per prefix number can exist.
+- The RFC file is uniquely identified by its filename (`<slug>.rfc.md`) within the RFC folder. Only one RFC file per folder.
 - The clarify log is uniquely identified by its fixed filename (`.clarify-log.md`) within an RFC folder. Only one can exist per RFC.
-- The `_wip/` directory is uniquely identified by its parent RFC folder path. Only one `_wip/` directory can exist per RFC.
