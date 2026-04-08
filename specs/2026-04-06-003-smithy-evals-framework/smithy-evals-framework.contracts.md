@@ -83,7 +83,7 @@ validateStructure(output: string, expectations: StructuralExpectations): CheckRe
 
 **Purpose**: Checks whether expected sub-agents were invoked by looking for evidence patterns in the skill output.
 **Consumers**: Orchestrator (`run-evals.ts`)
-**Providers**: `evals/lib/structural.ts` (same module as structural validator)
+**Providers**: `evals/lib/structural.ts` (co-located with StructuralValidator — both operate on output strings with regex patterns, so they share a module despite being separate logical interfaces)
 
 #### Signature
 

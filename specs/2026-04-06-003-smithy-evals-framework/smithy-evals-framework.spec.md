@@ -24,7 +24,38 @@ RFC → Milestone → Feature → User Story → Slice → Tasks
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1: Execute a Skill Headlessly and Capture Output (Priority: P1)
+### User Story 1: Validate Headless Execution Assumptions (Priority: P1)
+
+As a Smithy developer, I want to confirm that `claude -p` headless mode loads deployed `.claude/` files and supports sub-agent dispatch so that I can proceed with building the evals framework on solid ground.
+
+**Why this priority**: The entire framework depends on three unvalidated assumptions about `claude -p` behavior. If any fail, the architecture needs rethinking before any other story is implemented.
+
+**Independent Test**: Run `claude -p "/smithy.strike 'add a health check endpoint'"` in a directory with deployed Smithy skills, observe whether the skill is triggered and sub-agents are dispatched.
+
+**Acceptance Scenarios**:
+
+1. **Given** a directory with Smithy skills deployed via `smithy init -a claude -y`, **When** `claude -p "/smithy.strike 'add a health check'"` is run, **Then** the output reflects the strike skill (not a generic Claude response).
+2. **Given** a deployed smithy-plan agent, **When** strike runs in headless mode, **Then** evidence of sub-agent dispatch appears in the output (e.g., competing lens labels, scout report).
+3. **Given** headless mode does NOT load `.claude/` files, **When** the spike reveals this, **Then** a fallback approach is documented (e.g., injecting prompt content directly via `claude -p "$(cat .claude/commands/smithy.strike.md) ..."`).
+
+---
+
+### User Story 2: Reference Fixture Exists and Is Deployable (Priority: P1)
+
+As a Smithy developer, I want a minimal reference codebase checked into the repo so that all eval runs test against the same known project state.
+
+**Why this priority**: Every eval case depends on a fixture to run against. Without it, nothing can execute.
+
+**Independent Test**: Run `smithy init -a claude -y` against the fixture directory, confirm skills are deployed successfully.
+
+**Acceptance Scenarios**:
+
+1. **Given** the fixture project in `evals/fixture/`, **When** `smithy init -a claude -y` runs against it, **Then** skills are deployed to `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/`.
+2. **Given** the fixture project, **When** a plan eval runs against it, **Then** the plan references specific files and structures from the fixture (not generic advice).
+
+---
+
+### User Story 3: Execute a Skill Headlessly and Capture Output (Priority: P1)
 
 As a Smithy developer, I want to execute a deployed agent-skill via `claude -p` in headless mode against a reference fixture so that I can capture the skill's output for automated validation.
 
@@ -41,7 +72,7 @@ As a Smithy developer, I want to execute a deployed agent-skill via `claude -p` 
 
 ---
 
-### User Story 2: Validate Output Structure (Priority: P1)
+### User Story 4: Validate Output Structure (Priority: P1)
 
 As a Smithy developer, I want to validate that a skill's output contains the expected headings, sections, and table structures so that I can detect structural regressions without manual review.
 
@@ -57,7 +88,7 @@ As a Smithy developer, I want to validate that a skill's output contains the exp
 
 ---
 
-### User Story 3: Verify Strike End-to-End Output (Priority: P1)
+### User Story 5: Verify Strike End-to-End Output (Priority: P1)
 
 As a Smithy developer, I want to run `/smithy.strike` against the reference fixture and validate that the output has the correct overall structure so that I can catch regressions in the flagship command.
 
@@ -69,11 +100,11 @@ As a Smithy developer, I want to run `/smithy.strike` against the reference fixt
 
 1. **Given** the reference fixture with Smithy skills deployed, **When** `/smithy.strike` is invoked with a feature description, **Then** the output contains the expected strike output sections.
 2. **Given** a strike eval case, **When** the output is captured, **Then** no YAML frontmatter (`---`) appears at the top of the output (frontmatter should be stripped for Claude).
-3. **Given** a successful strike run, **When** the structural validator checks the output, **Then** the slash command is confirmed to have triggered the skill (output is not a generic Claude response).
+3. **Given** a successful strike run, **When** the structural validator checks the output, **Then** the skill is confirmed triggered by the presence of strike-specific structural markers (e.g., `# Strike:` heading, `## Requirements`, `## Tasks` sections) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's").
 
 ---
 
-### User Story 4: Verify Sub-Agent Invocation (Priority: P1)
+### User Story 6: Verify Sub-Agent Invocation (Priority: P1)
 
 As a Smithy developer, I want to verify that strike dispatches all expected sub-agents (plan x3 lenses, reconcile, scout, clarify) so that I can detect when the agent dispatch chain breaks.
 
@@ -90,7 +121,7 @@ As a Smithy developer, I want to verify that strike dispatches all expected sub-
 
 ---
 
-### User Story 5: Define Eval Scenarios Declaratively (Priority: P2)
+### User Story 7: Define Eval Scenarios Declaratively (Priority: P2)
 
 As a Smithy developer, I want to define eval scenarios in YAML files so that I can add new eval cases without modifying runner code.
 
@@ -106,23 +137,22 @@ As a Smithy developer, I want to define eval scenarios in YAML files so that I c
 
 ---
 
-### User Story 6: Reference Fixture Project (Priority: P2)
+### User Story 8: Fixture Contains Deliberate Inconsistencies for Scout (Priority: P2)
 
-As a Smithy developer, I want a minimal reference codebase checked into the repo so that all eval runs test against the same known project state.
+As a Smithy developer, I want the reference fixture to contain deliberate inconsistencies so that scout evals can verify inconsistency detection, not just structural output format.
 
-**Why this priority**: The fixture is required for eval runs but its exact design can be iterated on. A minimal starting fixture unblocks everything.
+**Why this priority**: The fixture already exists (US2), but adding deliberate flaws enriches scout eval coverage. Can be added after the basic framework works.
 
-**Independent Test**: Run `smithy init -a claude -y` against the fixture directory, confirm skills are deployed successfully.
+**Independent Test**: Run a scout eval against the fixture, confirm the scout detects the planted inconsistency.
 
 **Acceptance Scenarios**:
 
-1. **Given** the fixture project in `evals/fixture/`, **When** `smithy init -a claude -y` runs against it, **Then** skills are deployed to `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/`.
-2. **Given** the fixture project, **When** a scout eval runs against it, **Then** the scout detects at least one deliberate inconsistency (e.g., stale doc comment, mismatched signature).
-3. **Given** the fixture project, **When** a plan eval runs against it, **Then** the plan references specific files and structures from the fixture (not generic advice).
+1. **Given** the fixture project with a deliberate stale doc comment, **When** a scout eval runs against it, **Then** the scout detects at least one inconsistency (e.g., stale doc comment, mismatched signature).
+2. **Given** the fixture project, **When** a new deliberate inconsistency is added, **Then** the scout eval detects it without changes to the eval runner.
 
 ---
 
-### User Story 7: Eval Summary Report (Priority: P2)
+### User Story 9: Eval Summary Report (Priority: P2)
 
 As a Smithy developer, I want a pass/fail summary printed to stdout after all eval cases run so that I can quickly see which cases passed and which failed.
 
@@ -138,23 +168,25 @@ As a Smithy developer, I want a pass/fail summary printed to stdout after all ev
 
 ---
 
-### User Story 8: Baseline Structural Expectations (Priority: P3)
+### User Story 10: Baseline Structural Expectations (Priority: P3)
 
-As a Smithy developer, I want to store known-good structural expectations alongside each scenario so that I can detect regressions when skill output structure changes unexpectedly.
+As a Smithy developer, I want to store known-good output snapshots as baselines so that I can compare new eval outputs against a previous known-good run to detect regressions beyond structural checks.
 
-**Why this priority**: Baselines add regression detection value but the framework is useful without them (manual review of pass/fail is sufficient initially).
+**Why this priority**: Baselines add regression detection value but the framework is useful without them (YAML structural expectations cover format; baselines cover content drift). Can be layered on after the structural framework works.
 
-**Independent Test**: Modify a skill template to remove a required section, re-run evals, confirm the structural check fails against the baseline expectation.
+**Clarification**: Baselines are distinct from the YAML structural expectations. YAML expectations define *format rules* (e.g., "must have `## Plan` heading"). Baselines are *snapshot files* of a previous known-good output, used to detect content drift (e.g., "the approach section used to mention file X but no longer does"). Baselines are optional; structural expectations are required per scenario.
+
+**Independent Test**: Store a baseline snapshot, modify a skill template to change output content, re-run evals, confirm the baseline comparison flags the drift.
 
 **Acceptance Scenarios**:
 
-1. **Given** a baseline file for a scenario with expected headings and section counts, **When** the eval runs and output matches the baseline, **Then** the case passes.
-2. **Given** a baseline file, **When** the eval output is missing a section that the baseline expects, **Then** the case fails with a clear diff showing what's missing.
+1. **Given** a baseline snapshot file for a scenario, **When** the eval runs and output content substantially matches the baseline, **Then** the case passes the baseline comparison.
+2. **Given** a baseline snapshot, **When** the eval output has structural changes not present in the baseline, **Then** the case flags a regression with a summary of what changed.
 3. **Given** a new eval case with no baseline, **When** the eval runs, **Then** the structural checks still run (baselines are optional, not required).
 
 ---
 
-### User Story 9: Cost and Time Transparency (Priority: P3)
+### User Story 11: Cost and Time Transparency (Priority: P3)
 
 As a Smithy developer, I want to see estimated run duration before starting an eval run so that I can make informed decisions about when to run evals.
 
@@ -178,6 +210,12 @@ As a Smithy developer, I want to see estimated run duration before starting an e
 - `claude` CLI version incompatible with `-p` flag or `.claude/` file loading behavior.
 - API rate limiting during multi-case sequential execution.
 
+### Eval Strategy Note: Standalone vs. Indirect Coverage
+
+Plan and scout are tested **both** ways:
+- **Indirectly** via strike (US5, US6) — verifying they are dispatched as sub-agents and their output appears in strike's output.
+- **Standalone** via their own YAML eval scenarios — invoking them directly as sub-agents with their own structural expectations (e.g., `## Plan` with 4 sections for plan, `## Scout Report` with severity tables for scout). This validates their output structure independently of strike's orchestration.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -193,7 +231,9 @@ As a Smithy developer, I want to see estimated run duration before starting an e
 - **FR-009**: The system MUST print a summary report to stdout with per-case pass/fail status and overall result.
 - **FR-010**: The system MUST run via a dedicated `npm run eval` script, completely decoupled from `npm test` and `pretest`.
 - **FR-011**: The system MUST verify that the source fixture directory was not modified after each eval case (checksum validation).
-- **FR-012**: The system MUST detect whether the slash command actually triggered the deployed skill (vs. a generic Claude response).
+- **FR-012**: The system MUST detect whether the slash command actually triggered the deployed skill by checking for skill-specific structural markers (e.g., `# Strike:` heading for strike, `## Plan` heading for plan) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's"). A scenario MAY define custom `required_patterns` and `forbidden_patterns` for this purpose.
+- **FR-013**: The system MUST clean up temp directories after each eval case completes, regardless of pass/fail/timeout/error status.
+- **FR-014**: Before building the full framework, a validation spike MUST confirm that `claude -p` headless mode (a) loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from the working directory, (b) supports sub-agent dispatch, and (c) captures skill output on stdout. If any assumption fails, a fallback approach MUST be documented.
 
 ### Key Entities
 
@@ -226,7 +266,7 @@ As a Smithy developer, I want to see estimated run duration before starting an e
 
 ### Measurable Outcomes
 
-- **SC-001**: The eval framework can execute at least 3 eval cases (strike, plan, scout) against the reference fixture and produce a pass/fail report.
+- **SC-001**: The eval framework can execute at least 3 eval cases (strike end-to-end, plan standalone, scout standalone) against the reference fixture and produce a pass/fail report.
 - **SC-002**: Structural validation detects when a required output section is missing (e.g., removing `### Risks` from a plan template causes the plan eval to fail).
 - **SC-003**: Sub-agent invocation is verified for all agents dispatched by strike (plan x3, reconcile, scout, clarify).
 - **SC-004**: The eval suite runs in under 10 minutes for all cases combined (assuming typical LLM response times).

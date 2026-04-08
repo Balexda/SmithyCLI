@@ -22,8 +22,7 @@ Purpose: Declares a single eval case — which skill to invoke, with what argume
 | `structural_expectations.required_tables` | object[] | No | Tables that must be present with expected column names |
 | `structural_expectations.forbidden_patterns` | string[] | No | Regex patterns that must NOT appear in the output (e.g., `["^---\\n"]` for frontmatter) |
 | `structural_expectations.required_patterns` | string[] | No | Regex patterns that MUST appear in the output |
-| `sub_agents` | string[] | No | Sub-agent names expected to be invoked (e.g., `["smithy-plan", "smithy-scout"]`) |
-| `sub_agent_evidence` | object[] | No | Patterns that indicate a sub-agent was invoked (e.g., `{agent: "smithy-scout", pattern: "Scout Report"}`) |
+| `sub_agent_evidence` | object[] | No | Agent name + evidence pattern pairs indicating a sub-agent was invoked (e.g., `{agent: "smithy-scout", pattern: "Scout Report"}`). Each entry specifies both the agent name (for reporting) and the regex pattern to search for in the output. |
 
 Validation rules:
 - `name` must be unique across all scenario files.
@@ -37,7 +36,7 @@ Purpose: Captures the outcome of running a single eval scenario, including the r
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `scenario_name` | string | Yes | References the EvalScenario `name` |
-| `status` | enum | Yes | `pass`, `fail`, `timeout`, `error` |
+| `status` | enum | Yes | `pass`, `fail`, `timeout`, `error`. Note: `pending` and `running` are orchestrator-internal states used during execution but not persisted in the final result. |
 | `output` | string | Yes | Raw stdout captured from `claude -p` |
 | `duration_ms` | number | Yes | Wall-clock time for the skill invocation |
 | `structural_checks` | CheckResult[] | Yes | Per-check pass/fail results |
