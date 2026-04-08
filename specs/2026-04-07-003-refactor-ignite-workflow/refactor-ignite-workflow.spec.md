@@ -185,7 +185,7 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 - **FR-002**: Each sub-phase (3a-3f) MUST write its output to a numbered file in a `_wip/` subdirectory within the RFC folder before the next sub-phase begins.
 - **FR-003**: Each sub-phase (3b-3f) MUST read all prior `_wip/` files from disk before drafting its section, ensuring context flows forward without relying on the context window.
 - **FR-004**: Sub-phase 3g (Assemble) MUST read all `_wip/` files, concatenate them into the RFC template structure, perform a coherence/harmonization pass, write the final RFC to `<slug>.rfc.md`, and delete the `_wip/` directory.
-- **FR-005**: The RFC template MUST include a mandatory `## Personas` section positioned between Goals and Proposal.
+- **FR-005**: The RFC template MUST include a mandatory `## Personas` section positioned after `## Out of Scope` and before `## Proposal`.
 - **FR-006**: The RFC template MUST include a mandatory `## Out of Scope` section positioned after Goals and before Personas.
 - **FR-007**: A new shared `smithy-prose` sub-agent MUST be created at `src/templates/agent-skills/agents/smithy.prose.prompt` for drafting narrative/persuasive RFC sections (Summary, Motivation/Problem Statement).
 - **FR-007a**: The ignite orchestrator MUST dispatch `smithy-plan` for structured analytical sections (Goals, Out of Scope, Proposal, Design Considerations, Milestones).
