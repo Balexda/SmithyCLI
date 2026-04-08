@@ -283,9 +283,9 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(npm run typecheck)');
     expect(list).toContain('Bash(npm test *)');
     // gradle
-    expect(list).toContain('Bash(gradle build)');
-    expect(list).toContain('Bash(gradle test)');
-    expect(list).toContain('Bash(./gradlew build)');
+    expect(list).toContain('Bash(gradle build *)');
+    expect(list).toContain('Bash(gradle test *)');
+    expect(list).toContain('Bash(./gradlew build *)');
     // cargo
     expect(list).toContain('Bash(cargo build *)');
     expect(list).toContain('Bash(cargo test *)');
