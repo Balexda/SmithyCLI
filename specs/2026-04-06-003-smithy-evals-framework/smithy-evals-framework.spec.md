@@ -100,7 +100,7 @@ As a Smithy developer, I want to run `/smithy.strike` against the reference fixt
 
 1. **Given** the reference fixture with Smithy skills deployed, **When** `/smithy.strike` is invoked with a feature description, **Then** the output contains the expected strike output sections.
 2. **Given** a strike eval case, **When** the output is captured, **Then** no YAML frontmatter (`---`) appears at the top of the output (frontmatter should be stripped for Claude).
-3. **Given** a successful strike run, **When** the structural validator checks the output, **Then** the skill is confirmed triggered by the presence of strike-specific structural markers (e.g., `# Strike:` heading, `## Requirements`, `## Tasks` sections) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's").
+3. **Given** a successful strike run, **When** the structural validator checks the output, **Then** the skill is confirmed triggered by the presence of strike-specific structural markers (e.g., `## Summary`, `## Approach`, `## Risks` sections and `**Phase N: <Label>**` bold workflow-stage markers (e.g., `**Phase 1: Branch**`)) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's"). Note: `# Strike:` heading does NOT appear in actual output — spike confirmed the actual top-level heading is `## Summary`.
 
 ---
 
@@ -114,7 +114,7 @@ As a Smithy developer, I want to verify that strike dispatches all expected sub-
 
 **Acceptance Scenarios**:
 
-1. **Given** a strike eval run against the fixture (with Claude variant deployed), **When** the output is analyzed, **Then** evidence of smithy-scout invocation is present (e.g., a scout report or consistency scan section).
+1. **Given** a strike eval run against the fixture (with Claude variant deployed), **When** the output is analyzed, **Then** evidence of smithy-scout invocation is present (e.g., a scout report or consistency scan section). **KNOWN GAP (spike finding)**: Strike does not currently dispatch smithy-scout — 0 scout matches in the spike run. This scenario must be reconciled before US6 implementation: either strike is updated to dispatch scout, or this acceptance criterion is removed from the strike eval and replaced with a standalone scout eval.
 2. **Given** a strike eval run, **When** the output is analyzed, **Then** evidence of smithy-plan invocation is present (e.g., competing plan references or lens labels like "Simplification", "Separation of Concerns", "Robustness").
 3. **Given** a strike eval run, **When** the output is analyzed, **Then** evidence of smithy-reconcile invocation is present (e.g., a reconciled plan or merged approach section).
 4. **Given** a strike eval run, **When** the output is analyzed, **Then** evidence of smithy-clarify invocation is present (e.g., clarification questions or assumption triage).
@@ -220,7 +220,7 @@ Plan and scout are tested **both** ways:
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST execute agent-skills via `claude -p` in headless mode and capture the full stdout output.
+- **FR-001**: The system MUST execute agent-skills via `claude --output-format stream-json -p` in headless mode, capture the full stdout as newline-delimited JSON, and extract readable text using the following precedence rule: if a `result` event is present and has non-empty text, use `result.text` as the canonical `extracted_text`; otherwise fall back to the concatenation of `assistant` event text blocks. Naïve concatenation of both sources MUST NOT be used — the spike confirmed the final result can appear twice in the stream (headless auto-reply), which would cause double-matching on structural and pattern checks. Plain text stdout (without `--output-format stream-json`) is insufficient because it hides tool-use and sub-agent dispatch events needed for FR-012.
 - **FR-002**: The system MUST copy the reference fixture to a unique temp directory before each eval case to prevent cross-case contamination.
 - **FR-003**: The system MUST validate that `claude` is available in PATH and API credentials are configured before running any eval cases.
 - **FR-004**: The system MUST enforce a per-case timeout (configurable, default 120 seconds) and kill the process on timeout.
@@ -231,9 +231,11 @@ Plan and scout are tested **both** ways:
 - **FR-009**: The system MUST print a summary report to stdout with per-case pass/fail status and overall result.
 - **FR-010**: The system MUST run via a dedicated `npm run eval` script, completely decoupled from `npm test` and `pretest`.
 - **FR-011**: The system MUST verify that the source fixture directory was not modified after each eval case (checksum validation).
-- **FR-012**: The system MUST detect whether the slash command actually triggered the deployed skill by checking for skill-specific structural markers (e.g., `# Strike:` heading for strike, `## Plan` heading for plan) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's"). A scenario MAY define custom `required_patterns` and `forbidden_patterns` for this purpose.
+- **FR-012**: The system MUST detect whether the slash command actually triggered the deployed skill by checking for skill-specific structural markers (e.g., `## Summary` / `**Phase N: <Label>**` such as `**Phase 1: Branch**` for strike, `## Plan` for plan) AND the absence of generic refusal patterns (e.g., "I'd be happy to help", "Sure, here's"). A scenario MAY define custom `required_patterns` and `forbidden_patterns` for this purpose. Note: `# Strike:` heading does not appear in actual strike output — use `## Summary` and `**Phase N: <Label>**` markers instead.
 - **FR-013**: The system MUST clean up temp directories after each eval case completes, regardless of pass/fail/timeout/error status.
-- **FR-014**: Before building the full framework, a validation spike MUST confirm that `claude -p` headless mode (a) loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from the working directory, (b) supports sub-agent dispatch, and (c) captures skill output on stdout. If any assumption fails, a fallback approach MUST be documented.
+- **FR-014**: Before building the full framework, a validation spike MUST confirm that `claude -p` headless mode (a) loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from the working directory, (b) supports sub-agent dispatch, and (c) captures skill output on stdout. If any assumption fails, a fallback approach MUST be documented. **Status: COMPLETE** — all three assumptions passed; see `evals/spike/FINDINGS.md`.
+- **FR-015**: The system MUST include a stream-json parser utility (`evals/lib/parse-stream.ts`, promoted from `evals/spike/parse-stream.mjs`) that exports: `parseStreamString(content)`, `extractText(events)`, `extractResult(events)`, `extractToolUses(events)`, `extractToolResults(events)`, `extractSubAgentDispatches(events)`, and `summarizeEvents(events)`. This utility is the single source of truth for interpreting `claude --output-format stream-json` output throughout the framework.
+- **FR-016**: Sub-agent verification MUST require the scenario's configured `pattern` to match at least one of: (a) the extracted text, or (b) an `AgentDispatch.description` or `AgentDispatch.resultText` from the stream. Agent-name detection alone (checking whether a dispatch mentions the agent name without the configured pattern matching) MUST NOT be treated as a pass criterion — it is supplementary metadata for reporting only. For smithy-clarify, whose output may be consumed internally by strike, the scenario `pattern` SHOULD be authored to match the dispatch message in assistant text (e.g., `"dispatching the.*smithy-clarify"`).
 
 ### Key Entities
 
@@ -247,7 +249,7 @@ Plan and scout are tested **both** ways:
 - The `claude` CLI supports `-p` (headless/pipe mode) for non-interactive skill execution.
 - Headless mode loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from the working directory (same as interactive mode).
 - Sub-agent dispatch works in headless mode (plan, scout, reconcile, clarify are invoked by the skill prompt, not by interactive user action).
-- The `ANTHROPIC_API_KEY` environment variable is sufficient for authentication in headless mode.
+- Both OAuth (via `claude login`) and `ANTHROPIC_API_KEY` are valid for authentication in headless mode — the spike ran successfully with OAuth only. The eval runner must support both.
 - Developers running evals have the `claude` CLI installed and authenticated locally.
 - A minimal 5-6 file fixture is sufficient for strike/plan/scout to produce structurally meaningful output.
 

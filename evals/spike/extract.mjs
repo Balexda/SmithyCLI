@@ -109,7 +109,9 @@ switch (command) {
     console.log("=== Assumption A: Skill Loading ===\n");
     const text = extractText(events);
     const result = extractResult(events);
-    const fullText = text + "\n" + (result?.text ?? "");
+    // Prefer result.text to avoid double-matching when the stream emits the
+    // final output twice (headless auto-reply duplicates the last assistant turn).
+    const fullText = result?.text || text;
     const checks = [
       {
         name: "Structural sections (## Summary/Approach/Risks/Tasks)",
@@ -140,24 +142,27 @@ switch (command) {
 
   case "check-b": {
     console.log("=== Assumption B: Sub-Agent Dispatch ===\n");
-    const text = extractText(events);
-    const result = extractResult(events);
-    const fullText = text + "\n" + (result?.text ?? "");
     const agents = extractSubAgentDispatches(events);
+
+    // Pass/fail is based on Agent tool-use presence, not text patterns.
+    // Text patterns alone can appear without an actual dispatch occurring.
+    const agentSearch = (pattern) =>
+      agents.some((a) =>
+        pattern.test(a.description + " " + a.prompt)
+      );
+
     const checks = [
       {
-        name: "smithy-plan (lens labels)",
-        pass: /Simplification|Separation of Concerns|Robustness/.test(
-          fullText
-        ),
+        name: "smithy-plan (Agent dispatch)",
+        pass: agentSearch(/smithy[-.]plan/i),
       },
       {
-        name: "smithy-reconcile (reconciliation markers)",
-        pass: /reconcil|merged|\[via/i.test(fullText),
+        name: "smithy-reconcile (Agent dispatch)",
+        pass: agentSearch(/smithy[-.]reconcile/i),
       },
       {
-        name: "smithy-clarify (clarification markers)",
-        pass: /clarif|assumption/i.test(fullText),
+        name: "smithy-clarify (Agent dispatch)",
+        pass: agentSearch(/smithy[-.]clarify/i),
       },
     ];
     let allPass = true;
@@ -166,8 +171,9 @@ switch (command) {
       console.log(`  ${status}: ${check.name}`);
       if (!check.pass) allPass = false;
     }
-    // Scout is expected absent
-    const scoutFound = /[Ss]cout|consistency/i.test(fullText);
+
+    // Scout is expected absent (strike does not dispatch scout)
+    const scoutFound = agentSearch(/smithy[-.]scout/i);
     console.log(
       `  ${scoutFound ? "NOTE" : "EXPECTED-ABSENT"}: smithy-scout (strike does not dispatch scout)`
     );
@@ -185,9 +191,11 @@ switch (command) {
     console.log("=== Assumption C: Stdout Capture ===\n");
     const text = extractText(events);
     const result = extractResult(events);
+    // Prefer result.text to avoid double-matching (see check-a comment).
+    const fullText = result?.text || text;
     const checks = [
-      { name: "Text content non-empty", pass: text.length > 0 },
-      { name: "Contains Markdown headings", pass: /^#/m.test(text) },
+      { name: "Text content non-empty", pass: fullText.length > 0 },
+      { name: "Contains Markdown headings", pass: /^#/m.test(fullText) },
       { name: "Result event present", pass: result !== null },
       {
         name: "Result is success",

@@ -1,0 +1,6 @@
+# Raw stream-json output from spike runs — contains session IDs, UUIDs,
+# machine-specific paths, and embedded plugin content. Not for commit.
+output-strike-raw.json
+output-strike.stderr.txt
+*.stderr.txt
+*-raw.json
