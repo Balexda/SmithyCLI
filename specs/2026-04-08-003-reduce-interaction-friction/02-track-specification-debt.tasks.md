@@ -113,8 +113,9 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
 ### Tasks
 
-- [ ] In `src/templates/agent-skills/agents/smithy.refine.prompt`, add a `Specification Debt` row to the audit categories table (wherever it is invoked from mark or cut Phase 0):
+- [ ] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add a row:
   `| **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |`
+- [ ] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add the same row.
 - [ ] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0c. Apply Refinements), add: "When the refine sub-agent identifies debt items that can now be resolved, update those items in the spec's `## Specification Debt` table: change status from `open` to `resolved` and populate the Resolution column with a note describing how and when the item was addressed (e.g., 'Resolved 2026-04-10 — user confirmed webhooks are HTTP-only')."
 - [ ] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0c. Apply Refinements), add the same debt resolution instruction.
 - [ ] In `src/templates/agent-skills/snippets/audit-checklist-spec.md`, add a row:
