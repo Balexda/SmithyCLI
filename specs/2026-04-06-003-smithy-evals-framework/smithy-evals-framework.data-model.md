@@ -22,12 +22,34 @@ Purpose: Declares a single eval case — which skill to invoke, with what argume
 | `structural_expectations.required_tables` | object[] | No | Tables that must be present with expected column names |
 | `structural_expectations.forbidden_patterns` | string[] | No | Regex patterns that must NOT appear in the output (e.g., `["^---\\n"]` for frontmatter) |
 | `structural_expectations.required_patterns` | string[] | No | Regex patterns that MUST appear in the output |
-| `sub_agent_evidence` | object[] | No | Agent name + evidence pattern pairs indicating a sub-agent was invoked (e.g., `{agent: "smithy-scout", pattern: "Scout Report"}`). Each entry specifies both the agent name (for reporting) and the regex pattern to search for in the output. |
+| `sub_agent_evidence` | object[] | No | Agent name + evidence pattern pairs indicating a sub-agent was invoked (e.g., `{agent: "smithy-plan", pattern: "Simplification\|Robustness"}`). Each entry specifies the agent name (for reporting) and a regex pattern matched against BOTH the extracted text AND the `AgentDispatch` description/result from stream events. For agents like smithy-clarify whose output may be consumed internally, the dispatch message in assistant text is the primary evidence source. |
 
 Validation rules:
 - `name` must be unique across all scenario files.
 - `skill` must be a valid Smithy skill name (command or agent).
 - `structural_expectations.required_headings` must contain at least one entry.
+
+### 1b) StreamEvent / AgentDispatch (in-memory, transient — not stored)
+
+Purpose: Intermediate representations produced by `StreamParser` (`evals/lib/parse-stream.ts`) while processing `claude --output-format stream-json` output. Not persisted; used to produce `extracted_text` and `sub_agent_checks`.
+
+**StreamEvent** — a single parsed line from the NDJSON output:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `type` | string | `system`, `user`, `assistant`, `result`, `rate_limit_event` |
+| `message` | object | Present on `assistant`/`user` events; contains `content[]` blocks |
+
+**AgentDispatch** — an `Agent` tool-use block with its result, extracted by `extractSubAgentDispatches`:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | Tool-use ID (correlates with tool_result in user events) |
+| `description` | string | Short description passed to the Agent tool |
+| `prompt` | string | Full prompt passed to the sub-agent |
+| `resultText` | string | Text content of the tool_result response |
+
+---
 
 ### 2) EvalResult (in-memory)
 
@@ -37,7 +59,7 @@ Purpose: Captures the outcome of running a single eval scenario, including the r
 |-------|------|----------|-------|
 | `scenario_name` | string | Yes | References the EvalScenario `name` |
 | `status` | enum | Yes | `pass`, `fail`, `timeout`, `error`. Note: `pending` and `running` are orchestrator-internal states used during execution but not persisted in the final result. |
-| `output` | string | Yes | Raw stdout captured from `claude -p` |
+| `extracted_text` | string | Yes | Assistant text extracted from stream-json events (concatenated `assistant` text blocks + `result` event text). This is the string structural checks run against. Raw NDJSON is not stored. |
 | `duration_ms` | number | Yes | Wall-clock time for the skill invocation |
 | `structural_checks` | CheckResult[] | Yes | Per-check pass/fail results |
 | `sub_agent_checks` | CheckResult[] | No | Per-agent invocation verification results |

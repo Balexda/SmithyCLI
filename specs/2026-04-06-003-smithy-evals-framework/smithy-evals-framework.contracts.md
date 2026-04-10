@@ -6,9 +6,46 @@ The evals framework has three internal integration boundaries: the runner (execu
 
 ## Interfaces
 
+### StreamParser
+
+**Purpose**: Parses `claude --output-format stream-json` output (newline-delimited JSON events) into structured data for text extraction and sub-agent analysis. Promoted from `evals/spike/parse-stream.mjs`.
+**Consumers**: Runner, SubAgentVerifier, Orchestrator
+**Providers**: `evals/lib/parse-stream.ts`
+
+#### Exports
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `parseStreamString` | `(content: string) => StreamEvent[]` | Parse raw NDJSON stdout into event objects |
+| `extractText` | `(events: StreamEvent[]) => string` | Concatenate all `assistant` text blocks in order |
+| `extractResult` | `(events: StreamEvent[]) => ResultSummary \| null` | Return final `result` event (text, subtype, duration_ms, num_turns) |
+| `extractToolUses` | `(events: StreamEvent[]) => ToolUse[]` | All tool invocations from assistant messages |
+| `extractToolResults` | `(events: StreamEvent[]) => ToolResult[]` | Tool results from user messages |
+| `extractSubAgentDispatches` | `(events: StreamEvent[]) => AgentDispatch[]` | Agent tool-use blocks with their result text |
+| `summarizeEvents` | `(events: StreamEvent[]) => EventSummary` | Aggregate counts, tool names, duration, text length |
+
+#### Stream Event Types (observed in spike)
+
+| Event type | Count (spike) | Description |
+|------------|---------------|-------------|
+| `system` | 62 | Hook events, session metadata |
+| `user` | 63 | Auto-generated headless-mode prompts |
+| `assistant` | 70 | Responses with `text` and `tool_use` content blocks |
+| `result` | 1 | Final result: `result` field, `subtype`, `duration_ms`, `num_turns` |
+| `rate_limit_event` | 1 | Rate limit notification |
+
+#### Error Conditions
+
+| Condition | Response | Description |
+|-----------|----------|-------------|
+| Malformed JSON line | Thrown error | `JSON.parse` failure on a non-empty line |
+| Empty content string | Empty array | Returns `[]` |
+
+---
+
 ### Runner
 
-**Purpose**: Executes a single eval scenario by invoking `claude -p` against a copy of the reference fixture and returning the captured output.
+**Purpose**: Executes a single eval scenario by invoking `claude --output-format stream-json -p` against a copy of the reference fixture and returning the parsed output.
 **Consumers**: Orchestrator (`run-evals.ts`)
 **Providers**: `evals/lib/runner.ts`
 
@@ -29,7 +66,8 @@ runScenario(scenario: EvalScenario, fixtureDir: string): Promise<RunOutput>
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `output` | string | Raw stdout from `claude -p` |
+| `extracted_text` | string | Assistant text extracted from stream-json events (used for structural validation) |
+| `stream_events` | StreamEvent[] | Parsed stream-json events (used for sub-agent verification via `extractSubAgentDispatches`) |
 | `duration_ms` | number | Wall-clock execution time |
 | `exit_code` | number | Process exit code |
 | `timed_out` | boolean | Whether the process was killed due to timeout |
@@ -81,22 +119,36 @@ validateStructure(output: string, expectations: StructuralExpectations): CheckRe
 
 ### SubAgentVerifier
 
-**Purpose**: Checks whether expected sub-agents were invoked by looking for evidence patterns in the skill output.
+**Purpose**: Checks whether expected sub-agents were invoked by looking for evidence in both the extracted text AND the stream-json agent dispatch events.
 **Consumers**: Orchestrator (`run-evals.ts`)
-**Providers**: `evals/lib/structural.ts` (co-located with StructuralValidator — both operate on output strings with regex patterns, so they share a module despite being separate logical interfaces)
+**Providers**: `evals/lib/structural.ts` (co-located with StructuralValidator — both operate on parsed output; they share a module despite being separate logical interfaces)
 
 #### Signature
 
 ```
-verifySubAgents(output: string, evidence: SubAgentEvidence[]): CheckResult[]
+verifySubAgents(
+  text: string,
+  dispatches: AgentDispatch[],
+  evidence: SubAgentEvidence[]
+): CheckResult[]
 ```
 
 #### Inputs
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `output` | string | Yes | The raw skill output to check |
+| `text` | string | Yes | Extracted assistant text to search with pattern |
+| `dispatches` | AgentDispatch[] | Yes | Sub-agent dispatch events from `extractSubAgentDispatches` |
 | `evidence` | SubAgentEvidence[] | Yes | Agent name + pattern pairs from the scenario |
+
+#### Evidence Matching Logic
+
+For each `SubAgentEvidence` entry, a check passes if ANY of the following is true:
+1. The `pattern` regex matches the extracted `text` (output content pattern)
+2. The `pattern` regex matches any `AgentDispatch.description` or `AgentDispatch.resultText` from the stream events
+3. The dispatch `description` or `resultText` contains the agent name (e.g., `"smithy-clarify"`)
+
+This dual-source approach is required because smithy-clarify evidence may only appear as a dispatch message in the assistant text (`"dispatching the **smithy-clarify** agent"`) with no output markers in the final result — as observed in the spike.
 
 #### Outputs
 
@@ -146,7 +198,7 @@ run-evals [--case <name>] [--timeout <seconds>] [--fixture <path>]
 | No scenario files found | Exit 1 with message | No YAML files in `evals/cases/` |
 | `--case` name not found | Exit 1 with message | Named case does not match any scenario |
 | `claude` CLI not available | Exit 1 with message | Fail-fast before running any cases |
-| API key not configured | Exit 1 with message | Fail-fast before running any cases |
+| Neither OAuth nor `ANTHROPIC_API_KEY` configured | Exit 1 with message | Fail-fast before running any cases. Both auth methods are valid; confirmed working via the spike. |
 | Fixture directory missing | Exit 1 with message | `evals/fixture/` does not exist |
 
 ## Events / Hooks
@@ -155,13 +207,14 @@ No events or hooks are published by the evals framework. It is a standalone CLI 
 
 ## Integration Boundaries
 
-### Claude CLI (`claude -p`)
+### Claude CLI (`claude --output-format stream-json -p`)
 
-The primary external dependency. The runner invokes `claude -p "<prompt>"` as a child process with the fixture's temp copy as the working directory. The contract with the CLI is:
+The primary external dependency. The runner invokes `claude --output-format stream-json -p "<prompt>"` as a child process with the fixture's temp copy as the working directory. The contract with the CLI is:
 
-- **Input**: prompt string via `-p` flag, working directory containing `.claude/` with deployed skills
-- **Output**: skill output on stdout, exit code 0 on success
-- **Assumption**: headless mode loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from cwd
+- **Input**: prompt string via `-p` flag with `--output-format stream-json`; working directory containing `.claude/` with deployed skills
+- **Output**: newline-delimited JSON events on stdout (stream-json format); exit code 0 on success. Text is extracted from `assistant` events and the `result` event via `StreamParser`.
+- **Auth**: Both OAuth (`claude login`) and `ANTHROPIC_API_KEY` work. Confirmed by spike (ran with OAuth only).
+- **Assumption validated**: headless mode loads `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` from cwd — confirmed by spike (FINDINGS.md Assumption A: PASS).
 
 ### Smithy CLI (`smithy init`)
 
