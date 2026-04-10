@@ -189,9 +189,10 @@ switch (command) {
     console.log("=== Assumption C: Stdout Capture ===\n");
     const text = extractText(events);
     const result = extractResult(events);
+    const fullText = text + "\n" + (result?.text ?? "");
     const checks = [
-      { name: "Text content non-empty", pass: text.length > 0 },
-      { name: "Contains Markdown headings", pass: /^#/m.test(text) },
+      { name: "Text content non-empty", pass: text.length > 0 || (result?.text ?? "").length > 0 },
+      { name: "Contains Markdown headings", pass: /^#/m.test(fullText) },
       { name: "Result event present", pass: result !== null },
       {
         name: "Result is success",

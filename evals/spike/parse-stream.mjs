@@ -29,10 +29,18 @@ export async function parseStreamFile(filePath) {
  * @returns {object[]} Array of parsed event objects
  */
 export function parseStreamString(content) {
-  return content
-    .split("\n")
-    .filter((line) => line.trim())
-    .map((line) => JSON.parse(line));
+  const lines = content.split("\n").filter((line) => line.trim());
+  return lines.map((line, index) => {
+    try {
+      return JSON.parse(line);
+    } catch (err) {
+      const lineNum = index + 1;
+      const preview = line.length > 120 ? line.slice(0, 120) + "…" : line;
+      throw new SyntaxError(
+        `stream-json parse error at line ${lineNum}: ${err.message}\n  ${preview}`
+      );
+    }
+  });
 }
 
 /**
