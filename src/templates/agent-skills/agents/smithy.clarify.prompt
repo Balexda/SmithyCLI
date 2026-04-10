@@ -65,7 +65,7 @@ For each candidate, produce all four elements:
 
 | Level | Meaning |
 |-------|---------|
-| **Critical** | Getting this wrong would invalidate the artifact or cause significant rework. Must be confirmed with the user. |
+| **Critical** | Getting this wrong would invalidate the artifact or cause significant rework. When confidence is High, proceed as a `[Critical Assumption]`. |
 | **High** | Materially affects scope, architecture, or user experience. Wrong answer leads to meaningful wasted effort. |
 | **Medium** | Affects quality or completeness but can be corrected later without major rework. |
 | **Low** | Minor preference or stylistic choice. Wrong answer has negligible downstream cost. |

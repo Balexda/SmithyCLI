@@ -29,7 +29,7 @@ all assumptions), 1.3 (Critical+Low → stays in Questions)
 All line references below are in
 `src/templates/agent-skills/agents/smithy.clarify.prompt`.
 
-- [ ] Update the Critical row in the Impact guidelines table (Step 2, line 68)
+- [x] Update the Critical row in the Impact guidelines table (Step 2, line 68)
   to remove "Must be confirmed with the user." Replace with: "Getting this wrong
   would invalidate the artifact or cause significant rework. When confidence is
   High, proceed as a `[Critical Assumption]`."
