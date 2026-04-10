@@ -33,29 +33,29 @@ All line references below are in
   to remove "Must be confirmed with the user." Replace with: "Getting this wrong
   would invalidate the artifact or cause significant rework. When confidence is
   High, proceed as a `[Critical Assumption]`."
-- [ ] Rewrite the Assumptions criteria in Step 3 (lines 88–93). Change from
+- [x] Rewrite the Assumptions criteria in Step 3 (lines 88–93). Change from
   `Impact is **not Critical**, AND Confidence is **High**` to
   `Confidence is **High**` (any Impact level). Add: "If Impact is **Critical**
   and Confidence is **High**, the item becomes an assumption with a
   `[Critical Assumption]` annotation."
-- [ ] Update the Questions criteria in Step 3 (lines 98–104). Change "All
+- [x] Update the Questions criteria in Step 3 (lines 98–104). Change "All
   Critical-impact items — regardless of confidence" to "Critical-impact items
   where Confidence is **not High**" (Critical+Medium and Critical+Low still
   become questions). Adjust the fill-up-to-5 rule accordingly.
-- [ ] Update the edge case rule in Step 3 (lines 109–111). Change "convert the
+- [x] Update the edge case rule in Step 3 (lines 109–111). Change "convert the
   single highest-impact assumption back into a question" to "convert the single
   lowest-impact non-Critical assumption back into a question." This prevents
   FR-001 from being undermined when the fallback triggers.
-- [ ] Update the assumption rendering format in Step 4 (lines 117–122). Add
+- [x] Update the assumption rendering format in Step 4 (lines 117–122). Add
   the `[Critical Assumption]` annotation to the example block:
   `> - _Assumption text_ [Critical Assumption] [Impact: Critical · Confidence: High]`
-- [ ] Update the return summary in the Rules section (lines 160–165) to note
+- [x] Update the return summary in the Rules section (lines 160–165) to note
   that the assumptions list includes `[Critical Assumption]` annotations for
   Critical-impact items promoted to assumptions.
-- [ ] Update the frontmatter description (line 3) from "triages findings into
+- [x] Update the frontmatter description (line 3) from "triages findings into
   assumptions and questions" to "triages findings into assumptions (including
   Critical Assumptions) and questions."
-- [ ] Add a Tier 2 test assertion in `src/templates.test.ts` (after line 236)
+- [x] Add a Tier 2 test assertion in `src/templates.test.ts` (after line 236)
   that validates the composed `smithy.clarify.md` template contains
   `[Critical Assumption]`. This catches accidental regression if the annotation
   text is removed during future edits.
