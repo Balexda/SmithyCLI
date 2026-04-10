@@ -143,7 +143,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(10);
+    expect(byCategory.agents).toHaveLength(11);
   });
 
   it('commands includes expected template files', () => {
@@ -175,6 +175,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(agents).toContain('smithy.reconcile.md');
     expect(agents).toContain('smithy.reconcile-slices.md');
     expect(agents).toContain('smithy.slice.md');
+    expect(agents).toContain('smithy.prose.md');
   });
 
   it('smithy.slice.md is categorized as an agent', () => {
@@ -316,6 +317,20 @@ describe('getComposedTemplates', () => {
     expect(reconcile).not.toContain('Edit');
     expect(reconcile).not.toContain('Write');
     expect(reconcile).not.toContain('Bash');
+  });
+
+  it('prose agent retains frontmatter with read-only tools', () => {
+    const prose = composed.agents.get('smithy.prose.md')!;
+    expect(prose).toBeDefined();
+    expect(prose).toMatch(/^---\s*\n/);
+    expect(prose).toContain('name: smithy-prose');
+    expect(prose).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(prose).toContain('Grep');
+    expect(prose).toContain('Glob');
+    expect(prose).not.toContain('Edit');
+    expect(prose).not.toContain('Write');
+    expect(prose).not.toContain('Bash');
+    expect(prose).not.toContain('{{>');
   });
 
   it('strike with claude variant renders competing plan dispatch', async () => {
