@@ -9,7 +9,7 @@
 
 ## Slice 1: Insert Out of Scope and Personas Sections into RFC Template
 
-**Goal**: Update the Phase 3 RFC template in `smithy.ignite.prompt` to include `## Out of Scope` and `## Personas` sections in the correct positions, and add a regression test to guard the schema contract.
+**Goal**: Update the Phase 3 RFC template in `src/templates/agent-skills/commands/smithy.ignite.prompt` to include `## Out of Scope` and `## Personas` sections in the correct positions, and add a regression test to guard the schema contract.
 
 **Justification**: The template is the authoritative schema that sub-phases (Stories 2–4) and the Phase 0 audit (Story 9) depend on. This slice is self-contained — it adds the required slots to the template and verifies them with a test. No other story can produce these sections in the RFC until the template has the heading positions defined.
 
