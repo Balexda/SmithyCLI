@@ -34,15 +34,7 @@
   ```
 - [ ] Verify the resulting section order in the template block is: Summary → Motivation / Problem Statement → Goals → **Out of Scope** → **Personas** → Proposal → Design Considerations → Decisions → Open Questions → Milestones
 - [ ] Read `src/templates.test.ts` to find the `getComposedTemplates` describe block and the existing default ignite test case (around line 347)
-- [ ] Add a new test case in the `getComposedTemplates` describe block:
-  ```typescript
-  it('ignite template includes Out of Scope and Personas sections', () => {
-    const ignite = composed.commands.get('smithy.ignite.md')!;
-    expect(ignite).toBeDefined();
-    expect(ignite).toContain('## Out of Scope');
-    expect(ignite).toContain('## Personas');
-  });
-  ```
+- [ ] Add a new test case in the `getComposedTemplates` describe block that verifies the **ordering** of sections in the composed default ignite template: `## Goals` appears before `## Out of Scope`, `## Out of Scope` appears before `## Personas`, and `## Personas` appears before `## Proposal` (use index comparisons on the rendered string, not just presence checks)
 - [ ] Run `npm test` and verify the new test passes and no existing tests regress
 
 **PR Outcome**: The ignite RFC template contains mandatory `## Out of Scope` and `## Personas` slots in the correct positions (Out of Scope after Goals, Personas after Out of Scope, both before Proposal). A regression test enforces this schema contract going forward.
