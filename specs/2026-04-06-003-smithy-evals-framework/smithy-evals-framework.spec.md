@@ -220,7 +220,7 @@ Plan and scout are tested **both** ways:
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST execute agent-skills via `claude --output-format stream-json -p` in headless mode, capture the full stdout as newline-delimited JSON, and extract readable text by parsing `assistant` events (`message.content[]` where `type == "text"`) and the `result` event. Plain text stdout (without `--output-format stream-json`) is insufficient because it hides tool-use and sub-agent dispatch events needed for FR-012.
+- **FR-001**: The system MUST execute agent-skills via `claude --output-format stream-json -p` in headless mode, capture the full stdout as newline-delimited JSON, and extract readable text using the following precedence rule: if a `result` event is present and has non-empty text, use `result.text` as the canonical `extracted_text`; otherwise fall back to the concatenation of `assistant` event text blocks. Naïve concatenation of both sources MUST NOT be used — the spike confirmed the final result can appear twice in the stream (headless auto-reply), which would cause double-matching on structural and pattern checks. Plain text stdout (without `--output-format stream-json`) is insufficient because it hides tool-use and sub-agent dispatch events needed for FR-012.
 - **FR-002**: The system MUST copy the reference fixture to a unique temp directory before each eval case to prevent cross-case contamination.
 - **FR-003**: The system MUST validate that `claude` is available in PATH and API credentials are configured before running any eval cases.
 - **FR-004**: The system MUST enforce a per-case timeout (configurable, default 120 seconds) and kill the process on timeout.

@@ -66,7 +66,7 @@ runScenario(scenario: EvalScenario, fixtureDir: string): Promise<RunOutput>
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `extracted_text` | string | Assistant text extracted from stream-json events (used for structural validation) |
+| `extracted_text` | string | Canonical text for structural validation, resolved with precedence: `result.text` when the `result` event is present and non-empty; otherwise the concatenation of `assistant` event text blocks. Never both combined — the stream can emit the final result twice, causing false double-matches. |
 | `stream_events` | StreamEvent[] | Parsed stream-json events (used for sub-agent verification via `extractSubAgentDispatches`) |
 | `duration_ms` | number | Wall-clock execution time |
 | `exit_code` | number | Process exit code |

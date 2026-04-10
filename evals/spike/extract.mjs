@@ -109,7 +109,9 @@ switch (command) {
     console.log("=== Assumption A: Skill Loading ===\n");
     const text = extractText(events);
     const result = extractResult(events);
-    const fullText = text + "\n" + (result?.text ?? "");
+    // Prefer result.text to avoid double-matching when the stream emits the
+    // final output twice (headless auto-reply duplicates the last assistant turn).
+    const fullText = result?.text || text;
     const checks = [
       {
         name: "Structural sections (## Summary/Approach/Risks/Tasks)",
@@ -189,9 +191,10 @@ switch (command) {
     console.log("=== Assumption C: Stdout Capture ===\n");
     const text = extractText(events);
     const result = extractResult(events);
-    const fullText = text + "\n" + (result?.text ?? "");
+    // Prefer result.text to avoid double-matching (see check-a comment).
+    const fullText = result?.text || text;
     const checks = [
-      { name: "Text content non-empty", pass: text.length > 0 || (result?.text ?? "").length > 0 },
+      { name: "Text content non-empty", pass: fullText.length > 0 },
       { name: "Contains Markdown headings", pass: /^#/m.test(fullText) },
       { name: "Result event present", pass: result !== null },
       {

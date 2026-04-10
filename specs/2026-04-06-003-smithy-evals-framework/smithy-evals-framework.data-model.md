@@ -59,7 +59,7 @@ Purpose: Captures the outcome of running a single eval scenario, including the r
 |-------|------|----------|-------|
 | `scenario_name` | string | Yes | References the EvalScenario `name` |
 | `status` | enum | Yes | `pass`, `fail`, `timeout`, `error`. Note: `pending` and `running` are orchestrator-internal states used during execution but not persisted in the final result. |
-| `extracted_text` | string | Yes | Assistant text extracted from stream-json events (concatenated `assistant` text blocks + `result` event text). This is the string structural checks run against. Raw NDJSON is not stored. |
+| `extracted_text` | string | Yes | Canonical text for structural checks, resolved with precedence: `result.text` if the `result` event is present and non-empty; otherwise concatenated `assistant` text blocks. Never both combined — the stream can emit the final result twice (headless auto-reply), which would cause false double-matches. Raw NDJSON is not stored. |
 | `duration_ms` | number | Yes | Wall-clock time for the skill invocation |
 | `structural_checks` | CheckResult[] | Yes | Per-check pass/fail results |
 | `sub_agent_checks` | CheckResult[] | No | Per-agent invocation verification results |
