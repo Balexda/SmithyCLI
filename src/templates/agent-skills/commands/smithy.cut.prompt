@@ -263,8 +263,10 @@ Guidelines for slicing:
 Guidelines for task authoring:
 
 Each task is dispatched to a **fresh sub-agent** (smithy-implement) with no
-memory of prior tasks. The sub-agent receives the task description, the slice
-goal, and paths to the spec artifacts — nothing else. Author tasks accordingly:
+memory of prior tasks. The sub-agent receives the task description, task number,
+slice goal, file paths (spec, data-model, contracts, and the tasks/strike file),
+and the branch name — but nothing learned by previous tasks persists. Author
+tasks accordingly:
 
 - **Describe the WHAT, not the HOW in detail.** A task should state the
   behavioral outcome or structural change to achieve. Do not prescribe exact

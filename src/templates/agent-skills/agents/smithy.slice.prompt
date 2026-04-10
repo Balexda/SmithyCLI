@@ -91,8 +91,9 @@ For each slice, produce an ordered list of implementation tasks.
 Before finalizing, review every task against these **mandatory scoping rules**.
 These rules exist because each task is dispatched to a **fresh sub-agent**
 (smithy-implement) that follows test-driven development. The sub-agent receives
-only the task description, slice goal, and paths to spec artifacts — nothing
-else persists between tasks.
+the task description, task number, slice goal, file paths (spec, data-model,
+contracts, and the tasks/strike file), and the branch name — but nothing
+learned by previous tasks persists between invocations.
 
 #### Tasks MUST:
 - **Describe a behavioral outcome or structural change** — what the code should
