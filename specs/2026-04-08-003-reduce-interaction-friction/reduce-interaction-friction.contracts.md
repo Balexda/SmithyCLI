@@ -95,6 +95,36 @@ invoke smithy-refine(audit_categories, target_files, context)
 
 ---
 
+### Shared Review Finding (common to both review agents)
+
+**Purpose**: Both `smithy-plan-review` and `smithy-implementation-review` return
+findings using the same structure. Neither agent modifies artifacts or code
+directly — the parent command (planning command or forge) applies fixes based on
+the returned findings.
+
+#### Finding Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `category` | enum | What kind of issue (see per-agent categories below) |
+| `severity` | enum | Critical, Important, Minor |
+| `confidence` | enum | High or Low — whether the finding can be auto-resolved by the parent |
+| `description` | string | What the issue is and where it appears |
+| `artifact_path` | string | Path to the file containing the issue |
+| `proposed_fix` | string | Suggested resolution (for High-confidence findings) |
+
+#### Triage Rules (applied by parent command)
+
+| Severity | Confidence | Parent Action |
+|----------|------------|---------------|
+| Critical | High | Apply proposed fix, note in PR |
+| Critical | Low | Record as specification debt, flag in PR for reviewer |
+| Important | High | Apply proposed fix |
+| Important | Low | Record as specification debt |
+| Minor | Any | Note in PR only |
+
+---
+
 ### smithy-plan-review (new)
 
 **Purpose**: Automated self-consistency review of planning artifacts. Checks for
@@ -103,12 +133,18 @@ completeness. Non-interactive, read-only.
 **Consumers**: strike, ignite, mark, render, cut (after artifact generation,
 before PR creation)
 **Providers**: smithy-plan-review sub-agent
+**Tools**: Read, Grep, Glob (read-only)
+
+#### Categories
+
+Internal contradiction, Logical gap, Assumption-output drift, Debt completeness,
+Brittle reference (line numbers instead of stable section/header references)
 
 #### Signature
 
 ```
 invoke smithy-plan-review(artifact_paths, artifact_type)
-  → PlanReviewResult
+  → ReviewResult
 ```
 
 #### Inputs
@@ -122,9 +158,7 @@ invoke smithy-plan-review(artifact_paths, artifact_type)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `findings` | PlanReviewFinding[] | Issues found, each with category, severity, confidence, and description |
-| `auto_fixable` | PlanReviewFinding[] | Subset of findings with High confidence that the parent command should apply |
-| `debt_items` | DebtItem[] | Low-confidence findings converted to debt items for the artifact's Specification Debt section |
+| `findings` | Finding[] | Issues found, using the shared finding structure above |
 | `summary` | string | Human-readable summary of findings |
 
 #### Error Conditions
@@ -133,7 +167,56 @@ invoke smithy-plan-review(artifact_paths, artifact_type)
 |-----------|----------|-------------|
 | Artifact files do not exist | Error with file paths | Cannot review non-existent artifacts |
 | Artifact type not recognized | Error | Unknown artifact type has no checklist |
-| Zero findings | Normal return | Artifact is internally consistent. Empty findings, auto_fixable, and debt_items |
+| Zero findings | Normal return | Artifact is internally consistent |
+
+---
+
+### smithy-implementation-review (renamed from smithy-review)
+
+**Purpose**: Code review of implementation diffs against spec, data model, and
+contracts. Non-interactive, read-only. Returns findings for forge to apply.
+Replaces the current `smithy-review` which auto-fixes directly.
+**Consumers**: forge (after implementation, before PR)
+**Providers**: smithy-implementation-review sub-agent
+**Tools**: Read, Grep, Glob (read-only — write tools removed)
+
+#### Categories
+
+Missing tests, Broken contracts, Security issues, Error handling gaps,
+Naming inconsistencies, Scope creep
+
+#### Signature
+
+```
+invoke smithy-implementation-review(base_sha, slice_goal, tasks, ref_paths, changed_files, raw_diff)
+  → ReviewResult
+```
+
+#### Inputs
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `base_sha` | string | Yes | Commit SHA from before implementation started |
+| `slice_goal` | string | Yes | High-level objective of the slice |
+| `tasks` | string[] | Yes | Task descriptions that were implemented |
+| `ref_paths` | object | Yes | Paths to spec, data-model, contracts files |
+| `changed_files` | string[] | Yes | Files modified between base_sha and HEAD |
+| `raw_diff` | string | Yes | Full `git diff base_sha HEAD` output |
+
+#### Outputs
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `findings` | Finding[] | Issues found, using the shared finding structure above |
+| `summary` | string | Human-readable summary of findings |
+
+#### Error Conditions
+
+| Condition | Response | Description |
+|-----------|----------|-------------|
+| base_sha not found | Error | Cannot compute diff without valid base |
+| Reference files do not exist | Warning, proceed | Review without spec context, flag as limitation |
+| Zero findings | Normal return | Implementation is clean |
 
 ---
 
@@ -183,9 +266,10 @@ in one-shot mode. Ensures all commands produce consistent, scannable output.
 - **Bail-out event**: When clarify returns `bail_out: true`, the parent command
   skips all remaining phases (specify, model, contract, review, PR) and outputs
   the bail-out summary directly. No artifacts are written to disk.
-- **Plan-review auto-fix**: When smithy-plan-review returns `auto_fixable`
-  findings, the parent command applies these fixes to the artifact files on disk
-  before PR creation. The fixes are included in the PR diff.
+- **Review findings apply**: When either review agent returns High-confidence
+  findings, the parent command (planning command or forge) applies the proposed
+  fixes to files on disk. The fixes are included in the PR diff. The review
+  agents themselves never modify files.
 
 ## Integration Boundaries
 

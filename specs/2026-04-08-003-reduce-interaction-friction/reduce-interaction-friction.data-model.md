@@ -67,23 +67,25 @@ eliminated as a triage category — clarify is non-interactive.
 All High-confidence items become assumptions. All non-High-confidence items
 become debt. There is no interactive question category.
 
-### 4) Plan Review Finding
+### 4) Review Finding (shared)
 
-Purpose: Represents an inconsistency or gap found by smithy-plan-review during
-automated self-consistency review of a planning artifact.
+Purpose: Represents an issue found by either review agent (`smithy-plan-review`
+or `smithy-implementation-review`). Both agents return findings using the same
+structure — neither modifies artifacts or code directly.
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `artifact_path` | string | Yes | Path to the artifact file containing the finding |
-| `category` | enum | Yes | Internal contradiction, Logical gap, Assumption-output drift, Debt completeness |
+| `artifact_path` | string | Yes | Path to the file containing the finding |
+| `category` | enum | Yes | Plan review: Internal contradiction, Logical gap, Assumption-output drift, Debt completeness, Brittle reference. Implementation review: Missing tests, Broken contracts, Security issues, Error handling gaps, Naming inconsistencies, Scope creep |
 | `severity` | enum | Yes | Critical, Important, Minor |
-| `description` | string | Yes | What the inconsistency is and where it appears |
-| `confidence` | enum | Yes | High or Low — whether the finding can be auto-resolved |
-| `resolution` | string | No | If auto-resolved: what was changed. If not: becomes a debt item |
+| `confidence` | enum | Yes | High or Low — whether the parent command can auto-apply the proposed fix |
+| `description` | string | Yes | What the issue is and where it appears |
+| `proposed_fix` | string | No | For High-confidence findings: suggested resolution for the parent to apply |
 
 Validation rules:
-- High-confidence findings are returned to the parent command for auto-fix.
+- High-confidence findings include a `proposed_fix` for the parent command to apply.
 - Low-confidence findings become debt items in the artifact's Specification Debt section.
+- The parent command (planning command or forge) applies fixes — review agents are read-only.
 
 ## Relationships
 
@@ -92,7 +94,7 @@ Validation rules:
   that became debt instead of an assumption).
 - Debt Item 1:N Debt Item — inherited debt items reference their parent item
   from the upstream artifact via the `origin` field.
-- Plan Review Finding → Debt Item — Low-confidence findings are converted to
+- Review Finding → Debt Item — Low-confidence findings are converted to
   debt items when they cannot be auto-resolved.
 
 ## State Transitions

@@ -150,31 +150,34 @@ terminal summary (assumptions → debt → PR link) with zero interactive stops.
 
 ---
 
-### User Story 4: Automated Plan Review (Priority: P2)
+### User Story 4: Unified Review Pattern (Priority: P2)
 
 As a developer receiving one-shot planning artifacts, I want an automated
-self-consistency review before PR creation, so that internal contradictions and
-logical gaps are caught without requiring human approval gates.
+self-consistency review before PR creation, and I want both review agents
+(plan and implementation) to follow the same read-only pattern, so that the
+review architecture is consistent and predictable.
 
 **Why this priority**: P2 because the first three stories deliver immediate
 friction reduction. This story adds quality assurance that makes one-shot safer
-but is not strictly required for the friction-reduction value.
+and aligns the review architecture, but is not strictly required for the
+friction-reduction value.
 
 **Independent Test**: Run smithy-plan-review on a spec artifact that contains
 an intentional inconsistency (e.g., an entity referenced in requirements but
 not defined in the data model). Verify that the inconsistency is caught and
-either auto-fixed or recorded as debt.
+returned as a finding for the parent command to act on.
 
 **Acceptance Scenarios**:
 
 1. **Given** mark has written a spec where an entity is referenced in FR but not
    defined in Key Entities, **When** smithy-plan-review runs, **Then** it
-   catches the inconsistency and either fixes it inline (High confidence) or
-   records it as specification debt (Low confidence).
+   returns the inconsistency as a finding. The parent command applies the fix
+   (High confidence) or records it as specification debt (Low confidence).
 
 2. **Given** smithy-plan-review runs on a strike document, **When** it finds a
    High-confidence issue (e.g., a requirement that contradicts an acceptance
-   scenario), **Then** it auto-fixes the artifact before PR creation.
+   scenario), **Then** it returns the finding with a proposed fix. The parent
+   command applies the fix to the artifact before PR creation.
 
 3. **Given** smithy-plan-review runs and finds Low-confidence issues, **When**
    triage completes, **Then** findings become debt items in the artifact's
@@ -189,6 +192,17 @@ either auto-fixed or recorded as debt.
    runs, **Then** it uses read-only tools only (Read, Grep, Glob) and does not
    modify the artifact directly — it returns findings that the parent command
    applies or records as debt.
+
+6. **Given** the existing `smithy-review` is renamed to
+   `smithy-implementation-review`, **When** forge invokes it, **Then** it
+   returns findings using the same read-only pattern as smithy-plan-review.
+   Forge applies fixes based on the returned findings rather than the review
+   agent modifying code directly.
+
+7. **Given** both review agents produce findings, **When** the parent command
+   processes them, **Then** the finding structure (category, severity,
+   confidence, description, proposed fix) is identical between
+   smithy-plan-review and smithy-implementation-review.
 
 ---
 
@@ -252,16 +266,24 @@ either auto-fixed or recorded as debt.
 - **FR-016**: One-shot terminal output MUST follow a consistent format defined
   by a shared snippet: phase summary → assumptions → specification debt
   summary → PR link.
-- **FR-017**: A `smithy-plan-review` sub-agent MUST be created with read-only
-  tools (Read, Grep, Glob) for automated self-consistency review of planning
-  artifacts.
-- **FR-018**: smithy-plan-review MUST check for: internal contradictions,
+- **FR-017**: Both review sub-agents (`smithy-plan-review` and
+  `smithy-implementation-review`) MUST follow the same pattern: read-only
+  tools (Read, Grep, Glob), return structured findings, parent command
+  applies fixes or records debt. Neither review agent modifies artifacts
+  or code directly.
+- **FR-018**: A `smithy-plan-review` sub-agent MUST be created for automated
+  self-consistency review of planning artifacts.
+- **FR-019**: smithy-plan-review MUST check for: internal contradictions,
   logical gaps (requirements without stories, stories without scenarios),
-  assumption-output drift, and debt completeness.
-- **FR-019**: smithy-plan-review findings MUST be triaged: High-confidence
+  assumption-output drift, debt completeness, and brittle references
+  (line numbers instead of stable section/header references).
+- **FR-020**: The existing `smithy-review` agent MUST be renamed to
+  `smithy-implementation-review` and refactored to return findings instead
+  of auto-fixing directly. Forge applies the fixes based on returned findings.
+- **FR-021**: Review findings from both agents MUST be triaged: High-confidence
   findings are returned for auto-fix by the parent command; Low-confidence
   findings become debt items.
-- **FR-020**: smithy-plan-review MUST be invoked by planning commands after
+- **FR-022**: smithy-plan-review MUST be invoked by planning commands after
   artifact generation but before PR creation.
 
 ### Key Entities
@@ -281,11 +303,12 @@ either auto-fixed or recorded as debt.
   (clarify, refine). There is no interactive mode or flag to opt into one.
 - PR creation for planning commands reuses forge's existing `gh pr create`
   pattern — each command's final phase becomes "Write & PR."
-- The existing `smithy-review` agent is not renamed to `smithy-code-review` in
-  this feature — that is a potential future alignment but out of scope here.
-- The clarify sub-agent's "never skip clarification" rule (line 153) remains
-  intact — the change is to triage rules and interaction removal, not to
-  whether clarify runs at all.
+- The existing `smithy-review` agent is renamed to `smithy-implementation-review`
+  and aligned to the same read-only pattern as `smithy-plan-review`: it returns
+  findings for forge to apply, rather than auto-fixing directly.
+- The clarify sub-agent's "never skip clarification" rule (see "Rules" section
+  in `smithy.clarify.prompt`) remains intact — the change is to triage rules
+  and interaction removal, not to whether clarify runs at all.
 - Debt item status transitions (open → resolved, inherited) are convention-based
   in this iteration, not enforced by tooling.
 
@@ -296,7 +319,7 @@ the session._
 
 ## Out of Scope
 
-- Renaming existing `smithy-review` to `smithy-code-review` (future alignment).
+- Further changes to forge's implementation workflow beyond the review agent rename.
 - Modifying forge or fix interaction patterns.
 - Tooling to enforce debt lifecycle transitions (open → resolved → promoted).
 - Promoting debt items to GitHub issues automatically.
