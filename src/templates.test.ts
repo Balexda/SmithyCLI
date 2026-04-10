@@ -352,6 +352,34 @@ describe('getComposedTemplates', () => {
     expect(ignite).not.toContain('Competing Plan Lenses');
   });
 
+  it('ignite RFC template contains Out of Scope and Personas sections in correct order', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+
+    // The RFC template code fence must contain these sections in order:
+    // Goals -> Out of Scope -> Personas -> Proposal
+    const goalsIdx = ignite.indexOf('## Goals');
+    const outOfScopeIdx = ignite.indexOf('## Out of Scope');
+    const personasIdx = ignite.indexOf('## Personas');
+    const proposalIdx = ignite.indexOf('## Proposal');
+
+    expect(goalsIdx).toBeGreaterThan(-1);
+    expect(outOfScopeIdx).toBeGreaterThan(-1);
+    expect(personasIdx).toBeGreaterThan(-1);
+    expect(proposalIdx).toBeGreaterThan(-1);
+
+    // Verify ordering
+    expect(outOfScopeIdx).toBeGreaterThan(goalsIdx);
+    expect(personasIdx).toBeGreaterThan(outOfScopeIdx);
+    expect(proposalIdx).toBeGreaterThan(personasIdx);
+
+    // Verify placeholder content exists
+    expect(ignite).toContain('<Explicitly excluded capability 1>');
+    expect(ignite).toContain('<Explicitly excluded capability 2>');
+    expect(ignite).toContain('<Persona 1');
+    expect(ignite).toContain('<Persona 2');
+  });
+
   it('render with claude variant renders competing plan dispatch', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     const render = claudeComposed.commands.get('smithy.render.md')!;
