@@ -17,7 +17,7 @@
 
 ### Tasks
 
-All changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`.
+Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`; the final task adds a test assertion in `src/templates.test.ts`.
 
 - [ ] Update the frontmatter `description` field (line 3) to remove the reference to "questions". Change from `"triages findings into assumptions (including Critical Assumptions) and questions with confidence/impact scoring"` to `"triages findings into assumptions (including Critical Assumptions) and specification debt with confidence/impact scoring"`.
 - [ ] In Step 3 (Triage), replace the `### Questions` section (lines 99–107) with `### Specification Debt`. The new triage rule is a binary split: Confidence is **High** → assumption (with `[Critical Assumption]` annotation for Critical-impact items, as established by Story 1); Confidence is **Medium or Low** → debt item. There is no Questions category — it is eliminated.
