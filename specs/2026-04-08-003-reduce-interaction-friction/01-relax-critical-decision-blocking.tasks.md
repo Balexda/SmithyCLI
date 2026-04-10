@@ -101,7 +101,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   ```
   This positions the Clarifications section for the one-shot world where
   assumptions (and later, debt summaries from Story 2) are the primary content.
-- [ ] Update the stale instruction in `src/templates/agent-skills/commands/smithy.mark.prompt` (line 498). Change
+- [x] Update the stale instruction in `src/templates/agent-skills/commands/smithy.mark.prompt` (line 498). Change
   "DO internally generate all clarifying questions first, then present them
   one at a time with recommended answers" to "DO invoke smithy-clarify for
   ambiguity scanning and triage." The parent command delegates clarification
