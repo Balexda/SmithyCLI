@@ -6,23 +6,25 @@ This feature modifies the interfaces between parent planning commands and their
 sub-agents (smithy-clarify, smithy-refine), introduces a new sub-agent
 (smithy-plan-review), and standardizes the terminal output format for one-shot
 execution. The primary integration boundaries are: (1) the clarify return
-contract (extended with debt items and mode-aware behavior), (2) the refine
-return contract (mode-aware), (3) the new plan-review interface, and (4) the
-shared one-shot output snippet consumed by all planning commands.
+contract (extended with debt items, interactive behavior removed), (2) the
+refine return contract (interactive behavior removed), (3) the new plan-review
+interface, and (4) the shared one-shot output snippet consumed by all planning
+commands.
 
 ## Interfaces
 
 ### smithy-clarify (updated)
 
-**Purpose**: Scan for ambiguity, triage candidates into assumptions/debt/questions,
-and return structured results. In one-shot mode, operates non-interactively.
+**Purpose**: Scan for ambiguity, triage candidates into assumptions and debt,
+and return structured results. Non-interactive — no user interaction during
+scan or triage.
 **Consumers**: strike, ignite, mark, render, cut (planning commands)
 **Providers**: smithy-clarify sub-agent
 
 #### Signature
 
 ```
-invoke smithy-clarify(criteria, context, special_instructions, mode?)
+invoke smithy-clarify(criteria, context, special_instructions?)
   → ClarifyResult
 ```
 
@@ -33,15 +35,13 @@ invoke smithy-clarify(criteria, context, special_instructions, mode?)
 | `criteria` | table | Yes | Categories to scan (unchanged from current) |
 | `context` | string | Yes | Feature description, file paths, plan context |
 | `special_instructions` | string | No | Caller-specific overrides (e.g., "if all categories are Clear, skip") |
-| `mode` | enum | No | `one-shot` or `interactive` (default: `interactive` for backward compatibility with forge/fix) |
 
 #### Outputs
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `assumptions` | Assumption[] | High-confidence items the agent will proceed with. Critical items annotated with `[Critical Assumption]` |
-| `debt_items` | DebtItem[] | Items the agent could not confidently resolve. In one-shot mode, includes items that would have been questions |
-| `questions` | Question[] | Items requiring user input. Empty in one-shot mode |
+| `debt_items` | DebtItem[] | Non-High-confidence items the agent could not confidently resolve |
 | `bail_out` | boolean | True if debt scope exceeds threshold (artifact would be hollowed out). Parent command should abort and output debt summary |
 | `bail_out_summary` | string | If `bail_out` is true: structured summary of debt explaining why the artifact cannot be produced and what information is needed |
 
@@ -49,25 +49,24 @@ invoke smithy-clarify(criteria, context, special_instructions, mode?)
 
 | Condition | Response | Description |
 |-----------|----------|-------------|
-| All candidates are Low confidence (one-shot) | `bail_out: true` | The feature description is too vague to produce a meaningful artifact. Returns debt summary prompting for expanded information |
+| All candidates are Low confidence | `bail_out: true` | The feature description is too vague to produce a meaningful artifact. Returns debt summary prompting for expanded information |
 | Debt would hollow out the artifact | `bail_out: true` | Key entities undefined, core stories unspecifiable. Scope-based assessment, not count-based |
-| Zero candidates identified | Normal return | Empty assumptions, debt, and questions. Pipeline proceeds — the feature is clear |
-| Invalid mode value | Fallback to `interactive` | Unrecognized mode treated as interactive for safety |
+| Zero candidates identified | Normal return | Empty assumptions and debt. Pipeline proceeds — the feature is clear |
 
 ---
 
 ### smithy-refine (updated)
 
-**Purpose**: Audit existing artifacts and generate refinement findings. In
-one-shot mode, applies refinements directly or records as debt without
-per-question interaction.
+**Purpose**: Audit existing artifacts and generate refinement findings. Applies
+refinements directly or records as debt — non-interactive, no per-question
+user interaction.
 **Consumers**: mark, cut, render, ignite (Phase 0 review loops)
 **Providers**: smithy-refine sub-agent
 
 #### Signature
 
 ```
-invoke smithy-refine(audit_categories, target_files, context, mode?)
+invoke smithy-refine(audit_categories, target_files, context)
   → RefineResult
 ```
 
@@ -78,14 +77,13 @@ invoke smithy-refine(audit_categories, target_files, context, mode?)
 | `audit_categories` | table | Yes | Categories to audit (unchanged from current) |
 | `target_files` | string[] | Yes | Paths to spec, data-model, contracts files |
 | `context` | string | Yes | Review context |
-| `mode` | enum | No | `one-shot` or `interactive` (default: `interactive`) |
 
 #### Outputs
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `refinements` | Refinement[] | Changes applied (one-shot) or proposed (interactive) |
-| `debt_items` | DebtItem[] | Findings refine could not confidently resolve (one-shot only) |
+| `refinements` | Refinement[] | Changes applied to the artifacts |
+| `debt_items` | DebtItem[] | Findings refine could not confidently resolve |
 | `summary` | string | Human-readable summary of what was found and changed |
 
 #### Error Conditions
@@ -93,7 +91,7 @@ invoke smithy-refine(audit_categories, target_files, context, mode?)
 | Condition | Response | Description |
 |-----------|----------|-------------|
 | Target files do not exist | Error with file paths | Cannot audit non-existent artifacts |
-| All findings are Low confidence (one-shot) | Returns findings as debt | Refine cannot auto-apply any changes; all become debt |
+| All findings are Low confidence | Returns findings as debt | Refine cannot auto-apply any changes; all become debt |
 
 ---
 
@@ -193,16 +191,16 @@ in one-shot mode. Ensures all commands produce consistent, scannable output.
 
 ### Planning commands → smithy-clarify
 
-All 5 planning commands invoke clarify with `mode: one-shot`. The clarify
-contract change is backward-compatible: forge and fix continue invoking clarify
-without the mode parameter (defaults to `interactive`). No changes to
-forge/fix invocation patterns.
+All 5 planning commands invoke clarify. Clarify is non-interactive — it runs
+scan/triage and returns assumptions and debt without user interaction. Forge
+and fix do not invoke clarify, so this change has no impact on them.
 
 ### Planning commands → smithy-refine
 
-Phase 0 review loops in mark, cut, render, and ignite invoke refine with
-`mode: one-shot`. Refine applies changes directly and returns a summary. The
-parent command writes updated files and proceeds to PR.
+Phase 0 review loops in mark, cut, render, and ignite invoke refine. Refine
+is non-interactive — it applies changes directly and returns a summary with
+any unresolvable findings as debt. The parent command writes updated files and
+proceeds to PR.
 
 ### Planning commands → smithy-plan-review
 
@@ -227,6 +225,6 @@ inherited debt.
 
 ### Forge/Fix boundary
 
-Forge and fix are explicitly excluded from one-shot scope. Their invocation of
-clarify uses the default `interactive` mode. Their existing STOP gates
-(error-handling, complex-fix approval) are unchanged.
+Forge and fix are explicitly excluded from scope. They do not invoke clarify
+or refine, so the sub-agent changes do not affect them. Their existing STOP
+gates (error-handling, complex-fix approval) are unchanged.

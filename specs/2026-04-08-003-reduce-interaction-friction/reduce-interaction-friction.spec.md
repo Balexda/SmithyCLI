@@ -14,7 +14,7 @@
 - Q: Should forge/fix be included in one-shot scope? → A: No. Forge and fix are excluded — their stops are error-handling gates for blocked tasks and test failures, not friction gates.
 - Q: What should the debt circuit breaker threshold be? → A: Scope-based, not count-based. Measure how much of the planning artifact would be hollowed out by debt. If key entities are undefined or core stories can't be specified, bail out with a debt summary and prompt for expanded information.
 - Q: What does the user see as terminal output in one-shot mode? → A: Summary of what was produced, then assumptions, then debt summary, then PR link. Create a snippet defining the output format. Full clarification log stays in the artifact on disk.
-- Q: How do clarify/refine know they are in one-shot mode? → A: Pass `mode: one-shot` in the context. Sub-agents run scan/triage as normal but return all items as resolved (assumptions or debt) without user interaction.
+- Q: Should clarify/refine support both interactive and one-shot modes? → A: No. Clarify and refine are only used by planning commands. Since all planning commands become one-shot, clarify and refine simply become non-interactive — no mode flag, no dual behavior.
 - Q: Does strike skip Phase 3 (Refine) in one-shot? → A: Yes. Phase 2 output is treated as implicitly approved; proceed directly to writing the strike document.
 - Q: How does debt flow across pipeline stages? → A: Downstream commands (e.g., cut consuming mark output) inherit debt as warnings in their own `## Specification Debt` section, flagged as "inherited from spec." Downstream commands also generate their own new debt items from new ambiguities.
 - Q: What should the new self-consistency review agent be named? → A: `smithy-plan-review` — parallels `smithy-review` (potentially renamed `smithy-code-review`). Both are review steps and the naming should make that immediately obvious.
@@ -44,17 +44,16 @@ the assumptions list, not as interactive questions.
 
 1. **Given** a feature with 3 clarify candidates (1 Critical+High, 1 High+High,
    1 Medium+Low), **When** clarify runs its triage, **Then** the Critical+High
-   item appears in the assumptions block with a `[Critical Assumption]`
+   item appears in the assumptions list with a `[Critical Assumption]`
    annotation, the High+High item appears as a regular assumption, and the
-   Medium+Low item becomes a question.
+   Medium+Low item becomes a debt item.
 
 2. **Given** all clarify candidates are High confidence including Critical items,
    **When** triage completes, **Then** all items become assumptions (with
-   Critical ones annotated), the edge-case rule fires ("convert highest-impact
-   assumption back to a question"), and the user receives exactly one question.
+   Critical ones annotated) and zero debt items are produced.
 
 3. **Given** a single Critical+Low-confidence candidate, **When** clarify runs,
-   **Then** it becomes a question (not an assumption) because confidence is Low.
+   **Then** it becomes a debt item (not an assumption) because confidence is Low.
 
 4. **Given** a Critical+High item is promoted to assumption, **When** the
    assumption turns out to be wrong during downstream review, **Then** the user
@@ -127,23 +126,23 @@ terminal summary (assumptions → debt → PR link) with zero interactive stops.
    created, and the terminal shows: summary of what was produced, assumptions
    list, debt summary, and PR link.
 
-2. **Given** a developer runs `smithy.strike` in one-shot mode, **When** the
-   pipeline reaches Phase 3 (Refine), **Then** Phase 3 is skipped entirely and
-   the agent proceeds directly to writing the strike document.
+2. **Given** a developer runs `smithy.strike`, **When** the pipeline reaches
+   Phase 3 (Refine), **Then** Phase 3 is skipped entirely and the agent
+   proceeds directly to writing the strike document.
 
-3. **Given** clarify runs in one-shot mode, **When** it encounters candidates,
-   **Then** it runs scan and triage as normal but returns all items as resolved
-   (assumptions or debt) without presenting them interactively. The mode is
-   communicated via `mode: one-shot` in the context.
+3. **Given** clarify runs, **When** it encounters candidates, **Then** it runs
+   scan and triage as normal but returns all items as resolved (assumptions or
+   debt) without presenting them interactively. Clarify is non-interactive by
+   default — there is no interactive mode.
 
-4. **Given** refine runs in one-shot mode during a Phase 0 review loop, **When**
-   it identifies findings, **Then** it applies refinements directly (or records
-   as debt if uncertain) and returns its summary without per-question interaction.
+4. **Given** refine runs during a Phase 0 review loop, **When** it identifies
+   findings, **Then** it applies refinements directly (or records as debt if
+   uncertain) and returns its summary without per-question interaction.
 
-5. **Given** one-shot mode is active for a planning command, **When** forge or
-   fix is invoked downstream, **Then** forge/fix retain their existing
-   interactive gates (error-handling stops, complex-fix approval). One-shot
-   scope is limited to planning commands only.
+5. **Given** forge or fix is invoked downstream, **When** it encounters
+   error-handling stops or complex-fix approval, **Then** those gates are
+   retained unchanged. One-shot changes are scoped to planning commands and
+   their sub-agents (clarify, refine) only.
 
 6. **Given** all commands produce one-shot output, **When** the terminal output
    is rendered, **Then** a shared output snippet defines the consistent format:
@@ -239,14 +238,14 @@ either auto-fixed or recorded as debt.
 - **FR-011**: Planning commands (strike, ignite, mark, render, cut) MUST
   execute in one-shot mode by default — no intermediate STOP gates between
   prompt and PR creation.
-- **FR-012**: smithy-clarify MUST accept a `mode: one-shot` context flag that
-  causes it to run scan/triage without user interaction, returning all items
-  as resolved assumptions or debt.
-- **FR-013**: smithy-refine MUST accept a `mode: one-shot` context flag that
-  causes it to apply refinements directly (or record as debt) without
-  per-question interaction.
-- **FR-014**: Strike MUST skip Phase 3 (Refine iteration loop) in one-shot
-  mode, treating Phase 2 output as implicitly approved.
+- **FR-012**: smithy-clarify MUST operate non-interactively — running
+  scan/triage and returning all items as resolved assumptions or debt with
+  no user interaction. There is no interactive mode.
+- **FR-013**: smithy-refine MUST operate non-interactively — applying
+  refinements directly (or recording as debt) with no per-question
+  interaction. There is no interactive mode.
+- **FR-014**: Strike MUST skip Phase 3 (Refine iteration loop), treating
+  Phase 2 output as implicitly approved.
 - **FR-015**: Forge and fix MUST retain their existing interactive gates
   (error-handling stops, complex-fix approval). One-shot scope is limited
   to planning commands.
@@ -272,21 +271,21 @@ either auto-fixed or recorded as debt.
 - **Assumption**: An existing concept, extended with a `[Critical Assumption]`
   annotation for promoted Critical+High-confidence items.
 - **Triage Matrix**: The updated decision table mapping Impact × Confidence to
-  disposition (assumption, question, or debt).
+  disposition (assumption or debt). Questions are eliminated as a category.
 - **One-Shot Output**: The standardized terminal output format for planning
-  commands running in one-shot mode.
+  commands.
 
 ## Assumptions
 
-- One-shot mode becomes the default for all planning commands; there is no
-  `--interactive` flag to opt back into the old behavior.
+- One-shot is the only mode for planning commands and their sub-agents
+  (clarify, refine). There is no interactive mode or flag to opt into one.
 - PR creation for planning commands reuses forge's existing `gh pr create`
   pattern — each command's final phase becomes "Write & PR."
 - The existing `smithy-review` agent is not renamed to `smithy-code-review` in
   this feature — that is a potential future alignment but out of scope here.
 - The clarify sub-agent's "never skip clarification" rule (line 153) remains
-  intact — the change is to triage rules and interaction mode, not to whether
-  clarify runs at all.
+  intact — the change is to triage rules and interaction removal, not to
+  whether clarify runs at all.
 - Debt item status transitions (open → resolved, inherited) are convention-based
   in this iteration, not enforced by tooling.
 
@@ -298,10 +297,9 @@ the session._
 ## Out of Scope
 
 - Renaming existing `smithy-review` to `smithy-code-review` (future alignment).
-- Adding one-shot mode to forge or fix commands.
+- Modifying forge or fix interaction patterns.
 - Tooling to enforce debt lifecycle transitions (open → resolved → promoted).
 - Promoting debt items to GitHub issues automatically.
-- Adding a `--interactive` flag for opt-in interactive mode.
 - Splitting smithy-clarify into multiple sub-agents (scan, triage, interact).
 
 ## Success Criteria
@@ -310,10 +308,10 @@ the session._
 
 - **SC-001**: All 5 planning commands (strike, ignite, mark, render, cut) execute
   from prompt to PR with zero intermediate STOP gates.
-- **SC-002**: smithy-clarify produces a three-category triage output (assumptions,
-  questions-as-debt, debt) when invoked in one-shot mode.
-- **SC-003**: Every planning artifact produced in one-shot mode contains a
-  `## Specification Debt` section (even if empty).
+- **SC-002**: smithy-clarify produces a two-category triage output (assumptions
+  and debt) with no interactive questions.
+- **SC-003**: Every planning artifact contains a `## Specification Debt` section
+  (even if empty).
 - **SC-004**: Critical+High-confidence items appear as `[Critical Assumption]` in
   artifact output, not as interactive questions.
 - **SC-005**: smithy-plan-review catches at least 80% of intentionally introduced

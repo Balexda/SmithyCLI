@@ -54,17 +54,18 @@ Validation rules:
 
 Purpose: The decision table that governs how smithy-clarify categorizes each
 ambiguity candidate based on its Impact and Confidence scores. This replaces
-the current matrix where Critical items are always questions.
+the current matrix where Critical items are always questions. Questions are
+eliminated as a triage category — clarify is non-interactive.
 
 | Impact \ Confidence | High | Medium | Low |
 |---------------------|------|--------|-----|
-| **Critical** | Assumption `[Critical Assumption]` | Question (interactive) / Debt (one-shot) | Question (interactive) / Debt (one-shot) |
-| **High** | Assumption | Question (interactive) / Debt (one-shot) | Question (interactive) / Debt (one-shot) |
-| **Medium** | Assumption | Question (interactive) / Debt (one-shot) | Question (interactive) / Debt (one-shot) |
-| **Low** | Assumption | Question (interactive) / Debt (one-shot) | Question (interactive) / Debt (one-shot) |
+| **Critical** | Assumption `[Critical Assumption]` | Debt | Debt |
+| **High** | Assumption | Debt | Debt |
+| **Medium** | Assumption | Debt | Debt |
+| **Low** | Assumption | Debt | Debt |
 
-In one-shot mode (`mode: one-shot`), the Question column is replaced by Debt —
-items that would have been questions are recorded as debt instead.
+All High-confidence items become assumptions. All non-High-confidence items
+become debt. There is no interactive question category.
 
 ### 4) Plan Review Finding
 
@@ -116,8 +117,7 @@ Validation rules:
 ### Triage lifecycle (per clarify invocation)
 
 1. Candidate identified → scored (Impact × Confidence)
-2. Scored → triaged via Triage Matrix → Assumption, Question, or Debt
-3. In one-shot mode: Question → Debt (automatic conversion)
+2. Scored → triaged via Triage Matrix → Assumption or Debt
 
 ## Identity & Uniqueness
 
