@@ -75,14 +75,14 @@ questions that one-shot removes.
 **Independent Test**: Run smithy-clarify with a feature description that
 produces candidates at varying confidence levels. Verify that Low-confidence
 items appear in the artifact's `## Specification Debt` section with structured
-metadata (description, source-category, impact, confidence, status).
+metadata (description, source_category, impact, confidence, status).
 
 **Acceptance Scenarios**:
 
 1. **Given** clarify identifies 5 candidates where 2 are High confidence and 3
    are Low confidence, **When** triage completes, **Then** 2 become assumptions
    and 3 become debt items with structured metadata (description,
-   source-category, impact, confidence, status: open).
+   source_category, impact, confidence, status: open).
 
 2. **Given** a spec artifact is produced with 3 debt items, **When** viewing the
    artifact, **Then** a `## Specification Debt` section appears after
@@ -234,7 +234,7 @@ returned as a finding for the parent command to act on.
 - **FR-003**: The system MUST introduce a "specification debt" triage category
   in smithy-clarify alongside assumptions and questions.
 - **FR-004**: Each debt item MUST carry structured metadata: description,
-  source-category, impact level, confidence level, and status (open/resolved).
+  source_category, impact level, confidence level, and status (open/resolved).
 - **FR-005**: All planning artifact templates (spec, strike, RFC, feature map,
   tasks) MUST include a `## Specification Debt` section for recording debt
   items.
