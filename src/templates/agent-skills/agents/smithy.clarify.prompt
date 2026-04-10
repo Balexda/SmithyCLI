@@ -1,6 +1,6 @@
 ---
 name: smithy-clarify
-description: "Shared clarification sub-agent. Scans for ambiguity across provided categories, then triages findings into assumptions (including Critical Assumptions) and questions with confidence/impact scoring. Invoked by other smithy agents."
+description: "Shared clarification sub-agent. Scans for ambiguity across provided categories, then triages findings into assumptions and questions with confidence/impact scoring. Invoked by other smithy agents."
 tools:
   - Read
   - Grep
