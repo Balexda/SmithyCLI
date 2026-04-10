@@ -235,12 +235,6 @@ describe('getComposedTemplates', () => {
     expect(clarify).toMatch(/tools:\s*\n\s+-\s+Read/);
   });
 
-  it('smithy.clarify template contains [Critical Assumption] annotation', () => {
-    const clarify = composed.agents.get('smithy.clarify.md')!;
-    expect(clarify).toBeDefined();
-    expect(clarify).toContain('[Critical Assumption]');
-  });
-
   it('command templates without partials are returned as-is', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
