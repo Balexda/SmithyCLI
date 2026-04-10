@@ -16,7 +16,8 @@ of mandatory questions.
 **Justification**: This slice delivers the core behavioral change — after
 merging, any planning command that invokes smithy-clarify will stop blocking on
 Critical+High items. The triage rule, annotation format, impact guideline, edge
-case safety, and verification are all in one file (`smithy.clarify.prompt`),
+case safety, and verification are all in one file
+(`src/templates/agent-skills/agents/smithy.clarify.prompt`),
 making this an atomic, testable unit.
 
 **Addresses**: FR-001, FR-002 (partial — annotation in clarify output);
@@ -24,6 +25,9 @@ Acceptance Scenarios 1.1 (Critical+High → assumption), 1.2 (all High →
 all assumptions), 1.3 (Critical+Low → stays in Questions)
 
 ### Tasks
+
+All line references below are in
+`src/templates/agent-skills/agents/smithy.clarify.prompt`.
 
 - [ ] Update the Critical row in the Impact guidelines table (Step 2, line 68)
   to remove "Must be confirmed with the user." Replace with: "Getting this wrong
@@ -83,7 +87,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
 
 ### Tasks
 
-- [ ] Replace the Clarifications section template in `smithy.mark.prompt`
+- [ ] Replace the Clarifications section template in `src/templates/agent-skills/commands/smithy.mark.prompt`
   (lines 192–197). The current `Q: <question> → A: <answer>` format assumes
   interactive Q&A which is being eliminated across the board. Replace with an
   assumptions-first format:
@@ -97,12 +101,12 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   ```
   This positions the Clarifications section for the one-shot world where
   assumptions (and later, debt summaries from Story 2) are the primary content.
-- [ ] Update the stale instruction in `smithy.mark.prompt` (line 498). Change
+- [ ] Update the stale instruction in `src/templates/agent-skills/commands/smithy.mark.prompt` (line 498). Change
   "DO internally generate all clarifying questions first, then present them
   one at a time with recommended answers" to "DO invoke smithy-clarify for
   ambiguity scanning and triage." The parent command delegates clarification
   entirely to the sub-agent; interactive question presentation is eliminated.
-- [ ] Update the identical stale instruction in `smithy.cut.prompt` (line 295).
+- [ ] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
   Apply the same change as above.
 - [ ] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
   existing test) that exercises Critical+High triage behavior:
