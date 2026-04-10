@@ -41,7 +41,7 @@
 
 ### Tasks
 
-- [ ] Create `evals/lib/runner.ts` and implement `runScenario(scenario: EvalScenario, fixtureDir: string): Promise<RunOutput>` per the Runner contract. The implementation must: copy the fixture to a unique temp directory (FR-002); compute a SHA-256 checksum of the source fixture before execution (FR-011); spawn `claude --output-format stream-json -p <prompt>` with `cwd` set to the temp copy; enforce the per-case timeout and record whether it was exceeded (FR-004); extract `extracted_text` via `extractCanonicalText`; re-verify the source fixture checksum after execution and error if it changed (FR-011); clean up the temp directory in a `finally` block so cleanup always runs regardless of outcome (FR-013).
+- [ ] Create `evals/lib/runner.ts` and implement `runScenario(scenario: EvalScenario, fixtureDir: string): Promise<RunOutput>` per the Runner contract. The implementation must: copy the fixture to a unique temp directory (FR-002); compute a SHA-256 checksum of the source fixture before execution (FR-011); spawn `claude --output-format stream-json -p "<invocation>"` where `<invocation>` is `scenario.skill` and `scenario.prompt` composed into the full slash-command string (e.g. skill `/smithy.strike` + prompt `add a health check endpoint` → `-p "/smithy.strike 'add a health check endpoint'"`) with `cwd` set to the temp copy; enforce the per-case timeout and record whether it was exceeded (FR-004); extract `extracted_text` via `extractCanonicalText`; re-verify the source fixture checksum after execution and error if it changed (FR-011); clean up the temp directory in a `finally` block so cleanup always runs regardless of outcome (FR-013).
 
 - [ ] Export `preflight(): void` from `runner.ts`. It must validate that the `claude` CLI is functional (not just present in PATH — run it to confirm) and throw with a clear, actionable message if not (FR-003). If `ANTHROPIC_API_KEY` is absent, emit a warning but do not throw — OAuth via `claude login` is a confirmed valid auth path per the spike.
 
@@ -67,7 +67,7 @@
 
 - [ ] Create `vitest.config.ts` restricting vitest discovery to `src/**/*.test.ts` only. This prevents any future `evals/` test file from running under `npm test`. Verify `npm test` still passes and evals tests are excluded.
 
-- [ ] Create `evals/run-evals.ts` as the minimal orchestrator entry point: accept `--fixture` and `--timeout` CLI flags; call `preflight()` and exit 1 with the error message on failure; validate the fixture directory exists; run a single hardcoded smoke-test scenario via `runScenario` and print a brief result summary. This entry point is intentionally minimal — US7 replaces the hardcoded scenario with YAML loading.
+- [ ] Create `evals/run-evals.ts` as the minimal orchestrator entry point: accept `--fixture` and `--timeout` CLI flags; call `preflight()` and exit 1 with the error message on failure; validate the fixture directory exists; run a single hardcoded smoke-test scenario via `runScenario` (with `skill` and `prompt` as separate fields, composed by the runner into the full `-p` invocation) and print a brief result summary. This entry point is intentionally minimal — US7 replaces the hardcoded scenario with YAML loading.
 
 - [ ] Verify end-to-end: `npm run typecheck` covers `evals/run-evals.ts`; running `npm run eval` without `claude` in PATH exits 1 with an actionable error; running `npm test` does not invoke any live `claude -p` calls.
 
