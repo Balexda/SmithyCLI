@@ -65,37 +65,43 @@ items.
 
 ## Slice 2: Annotation Visibility in Parent Command Artifacts
 
-**Goal**: Ensure the `[Critical Assumption]` annotation renders correctly in
-mark's artifact Clarifications section, clean up stale clarify-related
-instructions in parent commands, and add an agent test case for end-to-end
-verification.
+**Goal**: Transition mark's Clarifications section template toward its one-shot
+format — assumptions as primary content with `[Critical Assumption]` annotations
+visible — and clean up stale interactive-mode instructions in parent commands.
 
-**Justification**: This slice completes FR-002's requirement that the annotation
-be "visible in the artifact's Clarifications section." While Slice 1 adds the
-annotation to clarify's output, mark's Clarifications section template only
-shows the Q&A format. This slice makes the template explicit about assumptions.
-It also cleans up stale instructions that will become actively wrong when
-Story 3 lands.
+**Justification**: The entire pipeline is going one-shot (Story 3). In that
+world there are no interactive Q&A pairs — the Clarifications section contains
+only assumptions and debt (with debt potentially triggering bail-out). Story 1
+starts this transition: the `Q: → A:` format in mark's Clarifications template
+(lines 192–197) is a dead end. This slice replaces it with assumption-first
+rendering, completing FR-002's requirement that `[Critical Assumption]` be
+visible in the artifact. It also removes stale instructions that reference
+interactive clarification behavior.
 
 **Addresses**: FR-002 (completeness — annotation in artifact Clarifications
 section); Acceptance Scenario 1.4 (user can challenge via Clarifications section)
 
 ### Tasks
 
-- [ ] Update the Clarifications section template in `smithy.mark.prompt`
-  (lines 192–197). Add an assumptions subsection example after the Q&A list:
+- [ ] Replace the Clarifications section template in `smithy.mark.prompt`
+  (lines 192–197). The current `Q: <question> → A: <answer>` format assumes
+  interactive Q&A which is being eliminated across the board. Replace with an
+  assumptions-first format:
   ```
-  ### Assumptions (from clarification)
+  ## Clarifications
+
+  ### Session YYYY-MM-DD
+
   - _Assumption text_ `[Critical Assumption]`
   - _Assumption text_
   ```
-  This makes the template explicit about rendering assumptions (with annotations)
-  alongside Q&A in the Clarifications section.
+  This positions the Clarifications section for the one-shot world where
+  assumptions (and later, debt summaries from Story 2) are the primary content.
 - [ ] Update the stale instruction in `smithy.mark.prompt` (line 498). Change
   "DO internally generate all clarifying questions first, then present them
   one at a time with recommended answers" to "DO invoke smithy-clarify for
   ambiguity scanning and triage." The parent command delegates clarification
-  entirely to the sub-agent.
+  entirely to the sub-agent; interactive question presentation is eliminated.
 - [ ] Update the identical stale instruction in `smithy.cut.prompt` (line 295).
   Apply the same change as above.
 - [ ] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
@@ -103,13 +109,13 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   - **Steps**: Invoke clarify with a feature description that produces a
     Critical+High candidate (e.g., "Add payment processing" which has Critical
     impact on data handling).
-  - **Expected**: The Critical+High item appears in the assumptions block with
-    `[Critical Assumption]` annotation, not in the questions list.
+  - **Expected**: The Critical+High item appears in the assumptions list with
+    `[Critical Assumption]` annotation, not as an interactive question.
 
-**PR Outcome**: Mark's artifact template explicitly renders assumptions
-(including `[Critical Assumption]` annotations) in the Clarifications section.
-Stale instructions in mark and cut are corrected. An agent test case validates
-end-to-end triage behavior.
+**PR Outcome**: Mark's Clarifications template uses assumption-first format
+(anticipating one-shot), `[Critical Assumption]` annotations are visible in
+artifacts. Stale interactive instructions in mark and cut are removed. Agent
+test case validates end-to-end triage behavior.
 
 ---
 
@@ -127,4 +133,4 @@ Recommended implementation sequence:
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
 | User Story 2: Track Specification Debt | depended upon by | Story 1's acceptance scenarios 1.1 and 1.3 reference "debt items" as the disposition for non-High-confidence candidates. In Story 1, these items remain in the existing Questions category. When Story 2 lands, Questions becomes Debt — Story 1's triage changes are forward-compatible with this replacement. |
-| User Story 3: One-Shot Planning Workflows | depended upon by | Story 3 removes the Questions category entirely (FR-012) and makes clarify non-interactive. Story 1 preserves Questions and interactivity. Story 3 will also remove the edge case rule (lines 109-111) that Story 1 modifies defensively. |
+| User Story 3: One-Shot Planning Workflows | depended upon by | Story 3 removes the Questions category entirely (FR-012) and makes clarify non-interactive. Story 1 preserves Questions in the triage but begins the transition in artifact templates: Slice 2 replaces mark's Q&A-based Clarifications format with assumption-first rendering, anticipating the one-shot world where Q&A pairs do not exist. Story 3 will also remove the edge case rule (lines 109-111) that Story 1 modifies defensively. |
