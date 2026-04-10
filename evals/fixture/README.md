@@ -7,7 +7,7 @@ This is a minimal Express TypeScript API project used as the **reference fixture
 - `src/index.ts` — Express app entry point. Mounts the users router at `/api/users` and starts the server on a configurable `PORT`.
 - `src/types.ts` — TypeScript interfaces (`User`, `CreateUserRequest`) used by route handlers.
 - `src/routes/users.ts` — Express Router with three user CRUD handlers: list, get by id, and create.
-- `package.json` — Node project manifest with Express as a dependency.
+- `package.json` — Node project manifest with Express as a runtime dependency, and TypeScript, `@types/express`, and `@types/node` as dev dependencies.
 - `tsconfig.json` — TypeScript config targeting ES2022 with CommonJS module resolution.
 
 ## Intentional Gap
