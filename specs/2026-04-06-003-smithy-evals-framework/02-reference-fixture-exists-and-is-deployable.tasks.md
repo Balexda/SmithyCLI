@@ -17,159 +17,21 @@
 
 ### Tasks
 
-- [ ] **Create `evals/fixture/.gitignore`** — this is the first file to create, before any other fixture files, so that subsequent git operations do not accidentally stage generated artifacts. Contents:
-  ```
-  node_modules/
-  .claude/
-  .smithy/
-  dist/
-  ```
+- [ ] **Create `evals/fixture/.gitignore`** — list `node_modules/`, `.claude/`, `.smithy/`, `dist/` as ignored entries. Create this first so subsequent git operations do not accidentally stage generated artifacts.
 
-- [ ] **Create `evals/fixture/package.json`** — minimal Node project metadata. Do NOT run `npm install` — `node_modules/` is gitignored and the fixture exists for AI reading, not execution:
-  ```json
-  {
-    "name": "smithy-eval-fixture",
-    "version": "0.1.0",
-    "private": true,
-    "description": "Minimal Express API — eval fixture for Smithy agent-skills",
-    "scripts": {
-      "build": "tsc",
-      "start": "node dist/index.js"
-    },
-    "dependencies": {
-      "express": "^4.18.0"
-    },
-    "devDependencies": {
-      "@types/express": "^4.17.0",
-      "@types/node": "^20.0.0",
-      "typescript": "^5.0.0"
-    }
-  }
-  ```
+- [ ] **Create `evals/fixture/package.json`** — minimal Node project manifest: `private: true`, `name: smithy-eval-fixture`, `description` identifying it as an eval fixture, `build` and `start` scripts, `express` as a dependency, TypeScript and `@types` as dev dependencies. Do NOT run `npm install` — the fixture is read by AI agents, not executed.
 
-- [ ] **Create `evals/fixture/tsconfig.json`** — standalone TypeScript config, independent of the Smithy repo's `nodenext` tsconfig. Uses `commonjs` since this is a self-contained Express project, not part of the Smithy ESM build:
-  ```json
-  {
-    "compilerOptions": {
-      "target": "es2022",
-      "module": "commonjs",
-      "strict": true,
-      "esModuleInterop": true,
-      "outDir": "dist",
-      "rootDir": "src"
-    },
-    "include": ["src"]
-  }
-  ```
+- [ ] **Create `evals/fixture/tsconfig.json`** — minimal standalone TypeScript config using `commonjs` module resolution (this is an independent Express project, not part of the Smithy ESM build), targeting ES2022, with `strict` enabled, `src/` as the root, `dist/` as the output.
 
-- [ ] **Create `evals/fixture/README.md`** — brief description that AI agents will read when planning:
-  ```markdown
-  # Smithy Eval Fixture
+- [ ] **Create `evals/fixture/README.md`** — brief description for AI agents to read when planning. Cover: what the project is (eval fixture, not a real app), what the files do, the intentional health-check gap, and how to manually deploy Smithy skills against a copy for local testing. Include a note that additions should only be made when a specific eval scenario requires them.
 
-  A minimal Express TypeScript API used as the evaluation target for Smithy agent-skills evals.
+- [ ] **Create `evals/fixture/src/types.ts`** — `User` and `CreateUserRequest` TypeScript interfaces exported for use by route handlers.
 
-  ## Purpose
+- [ ] **Create `evals/fixture/src/routes/users.ts`** — Express Router with three user CRUD handlers using an in-memory array: `GET /` (list), `GET /:id` (get by id, 404 if not found), `POST /` (create). Imports types from `../types`.
 
-  This project is the CWD for `claude -p` invocations during eval runs. Agents plan against
-  its source files — the project is not compiled or executed during evals.
+- [ ] **Create `evals/fixture/src/index.ts`** — Express app entry point that mounts the users router at `/api/users` and starts the server on a configurable `PORT`. Intentionally has **no health check endpoint** — that gap is the primary eval prompt target.
 
-  ## Structure
-
-  - `src/index.ts` — Express app entry point (no health check endpoint — intentional gap)
-  - `src/routes/users.ts` — User CRUD routes (GET /users, POST /users, GET /users/:id)
-  - `src/types.ts` — Shared TypeScript interfaces (User, CreateUserRequest)
-
-  ## Skills deployment
-
-  Smithy skills are deployed into a **temp copy** of this directory at eval time — not
-  committed here. To deploy manually for local testing, from the repo root run:
-
-      node dist/cli.js init -a claude -y
-
-  with your shell's working directory set to a copy of this fixture.
-
-  ## Adding to this fixture
-
-  Only add files that serve a specific eval scenario. Every addition increases maintenance
-  burden and may affect existing evals that reference current file structure.
-  ```
-
-- [ ] **Create `evals/fixture/src/types.ts`** — shared TypeScript interfaces referenced by routes and planned by eval agents:
-  ```typescript
-  export interface User {
-    id: number;
-    name: string;
-    email: string;
-  }
-
-  export interface CreateUserRequest {
-    name: string;
-    email: string;
-  }
-  ```
-
-- [ ] **Create `evals/fixture/src/routes/users.ts`** — Express Router with user CRUD operations using an in-memory array. Import paths use no extension (commonjs module resolution):
-  ```typescript
-  import { Router, type Request, type Response } from 'express';
-  import type { User, CreateUserRequest } from '../types';
-
-  export const usersRouter = Router();
-
-  const users: User[] = [
-    { id: 1, name: 'Alice', email: 'alice@example.com' },
-    { id: 2, name: 'Bob', email: 'bob@example.com' },
-  ];
-
-  let nextId = 3;
-
-  usersRouter.get('/', (_req: Request, res: Response) => {
-    res.json(users);
-  });
-
-  usersRouter.get('/:id', (req: Request, res: Response) => {
-    const user = users.find((u) => u.id === Number(req.params['id']));
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    res.json(user);
-  });
-
-  usersRouter.post('/', (req: Request, res: Response) => {
-    const body = req.body as CreateUserRequest;
-    const user: User = { id: nextId++, name: body.name, email: body.email };
-    users.push(user);
-    res.status(201).json(user);
-  });
-  ```
-
-- [ ] **Create `evals/fixture/src/index.ts`** — Express app entry point. Intentionally has **no health check endpoint** — that gap is the primary eval prompt target ("add a health check endpoint"):
-  ```typescript
-  import express from 'express';
-  import { usersRouter } from './routes/users';
-
-  const app = express();
-  const PORT = Number(process.env['PORT'] ?? 3000);
-
-  app.use(express.json());
-  app.use('/api/users', usersRouter);
-
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-  ```
-
-- [ ] **Verify fixture structure** — confirm the directory contains exactly the expected files with no generated artifacts:
-  ```
-  evals/fixture/.gitignore
-  evals/fixture/package.json
-  evals/fixture/tsconfig.json
-  evals/fixture/README.md
-  evals/fixture/src/types.ts
-  evals/fixture/src/routes/users.ts
-  evals/fixture/src/index.ts
-  ```
-  No `.claude/`, `.smithy/`, `node_modules/`, or `dist/` should be present.
+- [ ] **Verify fixture structure** — confirm the directory contains exactly the source and config files listed above with no generated artifacts (no `.claude/`, `.smithy/`, `node_modules/`, or `dist/`).
 
 **PR Outcome**: A committed Express TypeScript project in `evals/fixture/` providing a stable, controlled evaluation target. Eval agents can reference `src/routes/users.ts`, `src/types.ts`, and `src/index.ts` by path when producing plans. The intentionally absent health check endpoint drives the primary strike/plan eval prompt.
 
@@ -183,137 +45,25 @@
 
 **Note on FR-010**: FR-010 requires evals to be decoupled from `npm test`. This test is **not an eval case** — it makes no `claude -p` invocations and has no API key dependency. It is a unit test validating CLI deployment behavior, the same tier as `src/cli.test.ts`. FR-010 governs the eval runner (`run-evals.ts`); it does not prohibit fixture unit tests from running in `npm test`.
 
-**Note on Acceptance Scenario 2.2**: The acceptance criterion "when a plan eval runs against it, then the plan references specific files and structures from the fixture" cannot be verified within US2 scope — it requires the eval runner (US3), structural validator (US4), and YAML scenario definitions (US7). This scenario is deferred and will be validated as part of US5 (Verify Strike End-to-End Output) integration verification.
+**Note on Acceptance Scenario 2.2**: The acceptance criterion "when a plan eval runs against it, then the plan references specific files and structures from the fixture" cannot be verified within US2 scope — it requires the eval runner (US3), structural validator (US4), and YAML scenario definitions (US7). This scenario is deferred and will be validated as part of US5 integration verification.
 
 **Addresses**: FR-002 (copy-to-temp pattern), FR-011 (source fixture not modified); Acceptance Scenario 2.1
 
 ### Tasks
 
-- [ ] **Read `src/cli.test.ts` lines 36–73** before writing any code. The fixture test must follow the same established patterns: import style (`node:child_process`, `node:fs`, `node:os`, `node:path`), `path.resolve('dist/cli.js')` for CLI path, `fs.mkdtempSync` + `fs.rmSync` + `afterEach` cleanup, and `{ cwd: tmpDir }` option on `execFileSync` (not the `-d` flag). This consistency matters — reviewers will compare the two files.
+- [ ] **Read `src/cli.test.ts` lines 36–73** before writing any code. The fixture test must follow the same established patterns: `path.resolve('dist/cli.js')` for the CLI path, `fs.mkdtempSync` + `fs.rmSync({ recursive, force })` + `afterEach` cleanup, and `{ cwd: tmpDir }` on `execFileSync` (not the `-d` flag). Consistency with the existing test style matters.
 
-- [ ] **Create `evals/fixture.test.ts`** following the `src/cli.test.ts` conventions:
+- [ ] **Create `evals/fixture.test.ts`** with a `describe('evals/fixture deployment')` block containing two test cases:
+  1. **Deployment test** — copies the fixture to a temp dir, runs `smithy init -a claude -y` with `cwd: tmpDir`, then asserts that `.claude/commands/`, `.claude/prompts/`, and `.claude/agents/` exist in the temp dir, each containing at least one `.md` file. Also asserts that `smithy.strike.md` is in commands and `smithy.plan.md` is in agents (the key skills for strike evals).
+  2. **Immutability test (FR-011)** — computes a SHA-256 hash of the source `evals/fixture/` directory before running `smithy init` against a temp copy, then re-hashes after, and asserts the two hashes are equal. The hash function must sort files by relative path for determinism, read files as binary (no encoding) for cross-platform consistency, and exclude `node_modules/`, `.claude/`, `.smithy/`, and `dist/` directories.
 
-  ```typescript
-  import { describe, it, expect, afterEach } from 'vitest';
-  import { execFileSync } from 'node:child_process';
-  import fs from 'node:fs';
-  import os from 'node:os';
-  import path from 'node:path';
-  import { createHash } from 'node:crypto';
+  The `hashDirectory` helper is inline in this file for now. It will be extracted to `evals/lib/fixture.ts` in US3 when the eval runner needs it for FR-011 at runtime. Do not create `evals/lib/` prematurely.
 
-  const CLI = path.resolve('dist/cli.js');
-  const FIXTURE_DIR = path.resolve('evals/fixture');
+  Use `fs.cpSync(src, dest, { recursive: true })` (Node ≥16.7) to copy the fixture to temp. `path.resolve('evals/fixture')` resolves correctly from the repo root where vitest runs.
 
-  /**
-   * Compute a deterministic SHA-256 hash of all files under `dir`.
-   *
-   * Files are sorted by relative path for cross-platform consistency.
-   * Binary reads (no encoding arg) prevent line-ending normalization.
-   * Excludes generated/deployed subdirectories that init may create.
-   *
-   * NOTE: This helper will be extracted to `evals/lib/fixture.ts` in US3
-   * when the eval runner needs it for FR-011 runtime compliance.
-   */
-  function hashDirectory(dir: string): string {
-    const EXCLUDED = new Set(['.claude', '.smithy', 'node_modules', 'dist']);
-    const hash = createHash('sha256');
+- [ ] **Run `npm test`** and confirm both new test cases pass alongside all existing tests. The `pretest` hook builds `dist/cli.js` automatically. Expected outcome: 2 new passing tests in `evals/fixture.test.ts`, no regressions.
 
-    function collect(current: string, relative: string): void {
-      const entries = fs.readdirSync(current, { withFileTypes: true })
-        .sort((a, b) => a.name.localeCompare(b.name));
-      for (const entry of entries) {
-        if (EXCLUDED.has(entry.name)) continue;
-        const fullPath = path.join(current, entry.name);
-        const relPath = path.join(relative, entry.name);
-        if (entry.isDirectory()) {
-          collect(fullPath, relPath);
-        } else if (entry.isFile()) {
-          hash.update(relPath);                   // path contributes to hash
-          hash.update(fs.readFileSync(fullPath)); // binary read — no encoding
-        }
-      }
-    }
-
-    collect(dir, '');
-    return hash.digest('hex');
-  }
-
-  describe('evals/fixture deployment', () => {
-    let tmpDir: string;
-
-    afterEach(() => {
-      if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
-    });
-
-    it('smithy init deploys commands, prompts, and agents into a fixture copy', () => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-fixture-test-'));
-      fs.cpSync(FIXTURE_DIR, tmpDir, { recursive: true });
-
-      execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
-        encoding: 'utf-8',
-        cwd: tmpDir,
-      });
-
-      const commandsDir = path.join(tmpDir, '.claude', 'commands');
-      const promptsDir = path.join(tmpDir, '.claude', 'prompts');
-      const agentsDir = path.join(tmpDir, '.claude', 'agents');
-
-      expect(fs.existsSync(commandsDir), '.claude/commands/ must exist after init').toBe(true);
-      expect(fs.existsSync(promptsDir), '.claude/prompts/ must exist after init').toBe(true);
-      expect(fs.existsSync(agentsDir), '.claude/agents/ must exist after init').toBe(true);
-
-      const commandFiles = fs.readdirSync(commandsDir).filter((f) => f.endsWith('.md'));
-      const promptFiles = fs.readdirSync(promptsDir).filter((f) => f.endsWith('.md'));
-      const agentFiles = fs.readdirSync(agentsDir).filter((f) => f.endsWith('.md'));
-
-      expect(commandFiles.length, 'commands/ must contain .md skill files').toBeGreaterThan(0);
-      expect(promptFiles.length, 'prompts/ must contain .md skill files').toBeGreaterThan(0);
-      expect(agentFiles.length, 'agents/ must contain .md skill files').toBeGreaterThan(0);
-
-      // Key skills needed by strike evals must be present
-      expect(commandFiles, 'smithy.strike.md must be deployed').toContain('smithy.strike.md');
-      expect(agentFiles, 'smithy.plan.md must be deployed').toContain('smithy.plan.md');
-    });
-
-    it('source fixture directory is not modified after deployment into a temp copy (FR-011)', () => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-fixture-test-'));
-      fs.cpSync(FIXTURE_DIR, tmpDir, { recursive: true });
-
-      const checksumBefore = hashDirectory(FIXTURE_DIR);
-
-      execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
-        encoding: 'utf-8',
-        cwd: tmpDir,
-      });
-
-      const checksumAfter = hashDirectory(FIXTURE_DIR);
-
-      expect(
-        checksumAfter,
-        'source fixture must not be modified when init runs in a temp copy'
-      ).toBe(checksumBefore);
-    });
-  });
-  ```
-
-  **Implementation notes**:
-  - `fs.cpSync` requires Node.js ≥16.7. On the Linux dev environment this is safe. If unavailable, use a manual recursive copy.
-  - `path.resolve('evals/fixture')` resolves from CWD. Vitest runs from the repo root via `npm test`, so this resolves correctly — same pattern as `path.resolve('dist/cli.js')` in `src/cli.test.ts`.
-  - The `hashDirectory` helper is intentionally inline here. It will be extracted to `evals/lib/fixture.ts` in US3 when the eval runner needs it for FR-011 runtime checks. Do not create `evals/lib/` prematurely.
-
-- [ ] **Run `npm test`** and confirm both new test cases pass alongside all existing tests. The `pretest` script builds `dist/cli.js` automatically before vitest runs. Expected outcome: 2 new passing tests in `evals/fixture.test.ts`, all existing tests unchanged.
-
-- [ ] **If vitest does not discover `evals/fixture.test.ts`**: verify by checking the test output for the `evals/` path. The default vitest glob `**/*.test.ts` should discover it since `evals/` is under the project root. If it is missing, create `vitest.config.ts` at the repo root:
-  ```typescript
-  import { defineConfig } from 'vitest/config';
-
-  export default defineConfig({
-    test: {
-      include: ['src/**/*.test.ts', 'evals/**/*.test.ts'],
-    },
-  });
-  ```
-  Then re-run `npm test`.
+- [ ] **If vitest does not discover `evals/fixture.test.ts`**: the default vitest glob `**/*.test.ts` should pick it up automatically since `evals/` is under the project root. If it is missing from the test run, add a `vitest.config.ts` at the repo root with an `include` array covering both `src/**/*.test.ts` and `evals/**/*.test.ts`, then re-run `npm test`.
 
 **PR Outcome**: An automated deployment verification test that proves Acceptance Scenario 2.1 on every `npm test` run. The inline `hashDirectory` helper establishes the SHA-256 checksum approach that US3 will extract into `evals/lib/fixture.ts` for FR-011 compliance in the eval runner. Any template change that breaks fixture deployment will fail this test immediately.
 
