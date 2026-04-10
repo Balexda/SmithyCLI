@@ -143,3 +143,27 @@ ls /tmp/smithy-test/.claude/commands/smithy.oldname.md 2>/dev/null && echo "FAIL
 - [ ] Risks table has columns: `Risk | Likelihood | Mitigation`
 - [ ] Tradeoffs table has columns: `Alternative | Pros | Cons | Directive relevance`
 - [ ] References concrete elements (file paths, function names, entities) rather than generic advice
+
+---
+
+## A6: smithy-clarify promotes Critical+High items to assumptions
+
+**Purpose**: Verify that smithy-clarify treats Critical+High-confidence candidates as `[Critical Assumption]` assumptions rather than interactive questions.
+
+**Steps**:
+1. Build and deploy the latest templates:
+   ```bash
+   npm run build
+   node dist/cli.js update -d /path/to/SmithyCLI
+   ```
+2. Invoke smithy-clarify as a sub-agent (or via a general-purpose agent acting as smithy-clarify) with this input:
+   - **Criteria**: standard clarify categories (Functional Scope, Domain & Data Model, etc.)
+   - **Context**: "Add payment processing to the checkout flow. Payment data must be stored securely and comply with PCI-DSS. Support Stripe and PayPal as providers."
+   - **Special instructions**: none
+3. Inspect the returned output.
+
+**Expected**:
+- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not in the questions list
+- [ ] That assumption carries a `[Critical Assumption]` annotation in the format `[Impact: Critical · Confidence: High]`
+- [ ] No Critical+High item appears as an interactive question
+- [ ] Non-High-confidence items (if any) remain in the questions section

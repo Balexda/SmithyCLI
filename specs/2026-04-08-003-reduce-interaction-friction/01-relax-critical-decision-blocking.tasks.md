@@ -87,7 +87,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
 
 ### Tasks
 
-- [ ] Replace the Clarifications section template in `src/templates/agent-skills/commands/smithy.mark.prompt`
+- [x] Replace the Clarifications section template in `src/templates/agent-skills/commands/smithy.mark.prompt`
   (lines 192–197). The current `Q: <question> → A: <answer>` format assumes
   interactive Q&A which is being eliminated across the board. Replace with an
   assumptions-first format:
@@ -101,14 +101,14 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   ```
   This positions the Clarifications section for the one-shot world where
   assumptions (and later, debt summaries from Story 2) are the primary content.
-- [ ] Update the stale instruction in `src/templates/agent-skills/commands/smithy.mark.prompt` (line 498). Change
+- [x] Update the stale instruction in `src/templates/agent-skills/commands/smithy.mark.prompt` (line 498). Change
   "DO internally generate all clarifying questions first, then present them
   one at a time with recommended answers" to "DO invoke smithy-clarify for
   ambiguity scanning and triage." The parent command delegates clarification
   entirely to the sub-agent; interactive question presentation is eliminated.
-- [ ] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
+- [x] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
   Apply the same change as above.
-- [ ] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
+- [x] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
   existing test) that exercises Critical+High triage behavior:
   - **Steps**: Invoke clarify with a feature description that produces a
     Critical+High candidate (e.g., "Add payment processing" which has Critical
