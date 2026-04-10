@@ -1,0 +1,106 @@
+**Phase 1: Branch**
+
+Creating the working branch now.
+Branch `strike/health-check-endpoint` created. Moving to exploration.
+
+**Phase 2: Explore & Propose**
+
+Let me understand the current architecture first.
+Let me read a few more key files to build context for the planning agents.
+Good, I have a solid understanding of the codebase. Now dispatching 3 competing **smithy-plan** sub-agents with different lenses.
+All three plans are in. Now dispatching the **smithy-reconcile** agent to synthesize them.
+Now dispatching the **smithy-clarify** agent for ambiguity scanning.
+Here's the reconciled plan for your review.
+
+---
+
+## Summary
+
+Add a `smithy doctor` CLI command (alias `health`) that verifies the integrity of a smithy installation. It reads the manifest and checks that everything is in order — no file modifications, purely diagnostic.
+
+## Approach
+
+**New file: `src/commands/doctor.ts`** — single self-contained command handler following the existing pattern of `init.ts`, `uninit.ts`, `update.ts`.
+
+The command performs these checks:
+
+1. **Manifest exists** — checks both `repo` and `user` locations. Distinguishes "missing" from "corrupt" by pre-checking `fs.existsSync` on the manifest path before calling `readManifest()` (which silently swallows parse errors). `[via Robustness]`
+2. **Deployed files present** — iterates `allManifestFiles(manifest)`, verifies each exists on disk.
+3. **Version current** — compares `manifest.smithyVersion` against the running CLI's `smithyVersion`.
+4. **Permissions file exists** — if `manifest.permissions === true`, verifies the permissions file is present. `[via Robustness]`
+
+**Output**: Colored terminal summary via `picocolors` (green=OK, red=error, yellow=warn). Exit code 1 if any errors, 0 otherwise.
+
+**CLI registration in `src/cli.ts`**:
+```
+program.command('doctor').alias('health')
+  .option('-d, --target-dir <path>', 'Target directory')
+  .action(doctorAction)
+```
+
+**Tests in `src/commands/doctor.test.ts`** — unit tests with temp directories covering: no manifest, healthy install, missing files, version mismatch, corrupt manifest.
+
+## Risks
+
+| Risk | Mitigation |
+|------|------------|
+| `readManifest` can't distinguish missing from corrupt | Pre-check with `fs.existsSync` before calling `readManifest` |
+| `compareSemver` is private in `update.ts` | Duplicate a simple version comparison inline (2 call sites doesn't warrant extraction yet) |
+| Version comparison doesn't handle pre-release tags | Acceptable — `smithyVersion` uses plain semver |
+
+## Conflicts (from competing plans — need your input)
+
+All conflicts have recommendations, but here they are if you want to weigh in:
+
+1. **Command name**: `doctor` (primary) with `health` as alias — follows `npm doctor` / `brew doctor` convention. Or flip them?
+2. **File structure**: Single file `src/commands/doctor.ts` (recommended, matches codebase pattern) vs. separate `src/health-checks.ts` module for pure check functions.
+3. **Deferred features**: `--json` output, `--fix` flag, content hashing, and drift detection all deferred to future iterations.
+
+Ready to forge, or want to refine the plan?
+Here's the reconciled plan for your review.
+
+---
+
+## Summary
+
+Add a `smithy doctor` CLI command (alias `health`) that verifies the integrity of a smithy installation. It reads the manifest and checks that everything is in order — no file modifications, purely diagnostic.
+
+## Approach
+
+**New file: `src/commands/doctor.ts`** — single self-contained command handler following the existing pattern of `init.ts`, `uninit.ts`, `update.ts`.
+
+The command performs these checks:
+
+1. **Manifest exists** — checks both `repo` and `user` locations. Distinguishes "missing" from "corrupt" by pre-checking `fs.existsSync` on the manifest path before calling `readManifest()` (which silently swallows parse errors). `[via Robustness]`
+2. **Deployed files present** — iterates `allManifestFiles(manifest)`, verifies each exists on disk.
+3. **Version current** — compares `manifest.smithyVersion` against the running CLI's `smithyVersion`.
+4. **Permissions file exists** — if `manifest.permissions === true`, verifies the permissions file is present. `[via Robustness]`
+
+**Output**: Colored terminal summary via `picocolors` (green=OK, red=error, yellow=warn). Exit code 1 if any errors, 0 otherwise.
+
+**CLI registration in `src/cli.ts`**:
+```
+program.command('doctor').alias('health')
+  .option('-d, --target-dir <path>', 'Target directory')
+  .action(doctorAction)
+```
+
+**Tests in `src/commands/doctor.test.ts`** — unit tests with temp directories covering: no manifest, healthy install, missing files, version mismatch, corrupt manifest.
+
+## Risks
+
+| Risk | Mitigation |
+|------|------------|
+| `readManifest` can't distinguish missing from corrupt | Pre-check with `fs.existsSync` before calling `readManifest` |
+| `compareSemver` is private in `update.ts` | Duplicate a simple version comparison inline (2 call sites doesn't warrant extraction yet) |
+| Version comparison doesn't handle pre-release tags | Acceptable — `smithyVersion` uses plain semver |
+
+## Conflicts (from competing plans — need your input)
+
+All conflicts have recommendations, but here they are if you want to weigh in:
+
+1. **Command name**: `doctor` (primary) with `health` as alias — follows `npm doctor` / `brew doctor` convention. Or flip them?
+2. **File structure**: Single file `src/commands/doctor.ts` (recommended, matches codebase pattern) vs. separate `src/health-checks.ts` module for pure check functions.
+3. **Deferred features**: `--json` output, `--fix` flag, content hashing, and drift detection all deferred to future iterations.
+
+Ready to forge, or want to refine the plan?

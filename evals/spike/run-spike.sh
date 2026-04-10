@@ -86,11 +86,10 @@ fi
 pass "'claude' CLI found in PATH"
 
 if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
-  echo "ERROR: ANTHROPIC_API_KEY environment variable is not set."
-  echo "Export your API key: export ANTHROPIC_API_KEY=sk-ant-..."
-  exit 1
+  warn "ANTHROPIC_API_KEY not set — assuming OAuth authentication (claude login)"
+else
+  pass "ANTHROPIC_API_KEY is set"
 fi
-pass "ANTHROPIC_API_KEY is set"
 
 # =============================================================================
 # Step 2: Build CLI
