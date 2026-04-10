@@ -193,8 +193,8 @@ Draft the `<slug>.spec.md` file with this structure:
 
 ### Session YYYY-MM-DD
 
-- Q: <question> → A: <answer>
-- ...
+- _Assumption text_ `[Critical Assumption]`
+- _Assumption text_
 
 ## Artifact Hierarchy
 

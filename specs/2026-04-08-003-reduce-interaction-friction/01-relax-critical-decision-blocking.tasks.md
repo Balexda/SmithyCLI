@@ -87,7 +87,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
 
 ### Tasks
 
-- [ ] Replace the Clarifications section template in `src/templates/agent-skills/commands/smithy.mark.prompt`
+- [x] Replace the Clarifications section template in `src/templates/agent-skills/commands/smithy.mark.prompt`
   (lines 192–197). The current `Q: <question> → A: <answer>` format assumes
   interactive Q&A which is being eliminated across the board. Replace with an
   assumptions-first format:
