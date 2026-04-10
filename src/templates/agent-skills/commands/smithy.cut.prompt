@@ -292,7 +292,7 @@ ask again.
 - **DO** keep slices PR-sized. If a slice feels too large, split it further.
 - **DO** use zero-padded two-digit numbering for the filename (`01-`, `02-`,
   ..., `99-`) for consistent sort order.
-- **DO** internally generate all clarifying questions first, then present them one at a time with recommended answers.
+- **DO** invoke smithy-clarify for ambiguity scanning and triage.
 - **DO** read all three spec artifacts (spec, data model, contracts) before
   slicing — the data model and contracts inform implementation boundaries.
 - **DO** explore the codebase to ground slices in reality — don't slice in

@@ -106,7 +106,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   one at a time with recommended answers" to "DO invoke smithy-clarify for
   ambiguity scanning and triage." The parent command delegates clarification
   entirely to the sub-agent; interactive question presentation is eliminated.
-- [ ] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
+- [x] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
   Apply the same change as above.
 - [ ] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
   existing test) that exercises Critical+High triage behavior:
