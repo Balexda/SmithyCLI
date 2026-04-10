@@ -206,15 +206,17 @@ info "Step 7: Checking Assumption A — Skill Loading"
 ASSUMPTION_A=true
 
 # Check for strike-specific structural markers
-if grep -q "# Strike:" "$OUTPUT_FILE"; then
-  pass "Found '# Strike:' heading"
+# Note: spike found that actual output uses **Phase N:** markers and ## Summary,
+# not # Strike: heading as originally assumed in the spec.
+if grep -qE "\*\*Phase [0-9]" "$OUTPUT_FILE"; then
+  pass "Found '**Phase N:**' workflow stage markers"
 else
-  fail "Missing '# Strike:' heading"
+  fail "Missing '**Phase N:**' workflow stage markers"
   ASSUMPTION_A=false
 fi
 
-if grep -qE "## (Requirements|Summary|Tasks)" "$OUTPUT_FILE"; then
-  pass "Found structural section (Requirements/Summary/Tasks)"
+if grep -qE "## (Summary|Approach|Risks|Tasks|Requirements)" "$OUTPUT_FILE"; then
+  pass "Found structural section (Summary/Approach/Risks/Tasks/Requirements)"
 else
   fail "Missing structural sections (Requirements/Summary/Tasks)"
   ASSUMPTION_A=false

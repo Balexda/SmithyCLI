@@ -104,7 +104,8 @@ relying solely on output text patterns.
 
 No fallback testing was needed — all three assumptions passed.
 
-The raw prompt injection fallback (`claude -p "$(cat .claude/commands/smithy.strike.md) ..."`")
+The raw prompt injection fallback (`claude -p "$(cat .claude/commands/smithy.strike.md) ..."`)
+
 remains available if a future Claude CLI version changes `.claude/` file loading
 behavior, but is not required for the current architecture.
 
