@@ -108,7 +108,7 @@ section); Acceptance Scenario 1.4 (user can challenge via Clarifications section
   entirely to the sub-agent; interactive question presentation is eliminated.
 - [x] Update the identical stale instruction in `src/templates/agent-skills/commands/smithy.cut.prompt` (line 295).
   Apply the same change as above.
-- [ ] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
+- [x] Add an A-series agent test case in `tests/Agent.tests.md` (after the last
   existing test) that exercises Critical+High triage behavior:
   - **Steps**: Invoke clarify with a feature description that produces a
     Critical+High candidate (e.g., "Add payment processing" which has Critical
