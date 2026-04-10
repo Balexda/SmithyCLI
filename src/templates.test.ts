@@ -143,7 +143,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(9);
+    expect(byCategory.agents).toHaveLength(10);
   });
 
   it('commands includes expected template files', () => {
@@ -165,7 +165,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, review, plan, reconcile, and slice', () => {
+  it('agents includes clarify, refine, implement, review, plan, reconcile, reconcile-slices, and slice', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
@@ -173,6 +173,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(agents).toContain('smithy.review.md');
     expect(agents).toContain('smithy.plan.md');
     expect(agents).toContain('smithy.reconcile.md');
+    expect(agents).toContain('smithy.reconcile-slices.md');
     expect(agents).toContain('smithy.slice.md');
   });
 
@@ -427,7 +428,7 @@ describe('getComposedTemplates', () => {
     const cut = claudeComposed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
     expect(cut).toContain('smithy-slice');
-    expect(cut).toContain('smithy-reconcile');
+    expect(cut).toContain('smithy-reconcile-slices');
     expect(cut).toContain('Competing Slice Lenses');
     expect(cut).not.toContain('{{>');
     expect(cut).not.toContain('{{');
@@ -437,7 +438,7 @@ describe('getComposedTemplates', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
     expect(cut).not.toContain('smithy-slice');
-    expect(cut).not.toContain('smithy-reconcile');
+    expect(cut).not.toContain('smithy-reconcile-slices');
     expect(cut).not.toContain('Competing Slice Lenses');
   });
 

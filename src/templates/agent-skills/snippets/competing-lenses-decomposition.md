@@ -34,7 +34,7 @@ Use the following lens directives (one per sub-agent):
 Pass the quoted directive text above as the **Additional planning directives**
 field for the corresponding smithy-slice run.
 
-After both return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+After both return, dispatch the **smithy-reconcile-slices** sub-agent. Pass it:
 
 - Both slice decomposition outputs, each labeled with its lens name (e.g.,
   "**[Minimal Path]** …", "**[Structural Integrity]** …")
