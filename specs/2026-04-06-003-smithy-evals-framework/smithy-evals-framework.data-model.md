@@ -22,7 +22,7 @@ Purpose: Declares a single eval case — which skill to invoke, with what argume
 | `structural_expectations.required_tables` | object[] | No | Tables that must be present with expected column names |
 | `structural_expectations.forbidden_patterns` | string[] | No | Regex patterns that must NOT appear in the output (e.g., `["^---\\n"]` for frontmatter) |
 | `structural_expectations.required_patterns` | string[] | No | Regex patterns that MUST appear in the output |
-| `sub_agent_evidence` | object[] | No | Agent name + evidence pattern pairs indicating a sub-agent was invoked (e.g., `{agent: "smithy-plan", pattern: "Simplification\|Robustness"}`). Each entry specifies the agent name (for reporting) and a regex pattern matched against BOTH the extracted text AND the `AgentDispatch` description/result from stream events. For agents like smithy-clarify whose output may be consumed internally, the dispatch message in assistant text is the primary evidence source. |
+| `sub_agent_evidence` | object[] | No | Agent name + evidence pattern pairs indicating a sub-agent was invoked (e.g., `{agent: "smithy-plan", pattern: "Simplification|Robustness"}`). Each entry specifies the agent name (for reporting) and a regex pattern matched against BOTH the extracted text AND the `AgentDispatch` description/result from stream events. For agents like smithy-clarify whose output may be consumed internally, the dispatch message in assistant text is the primary evidence source. |
 
 Validation rules:
 - `name` must be unique across all scenario files.
