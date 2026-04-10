@@ -143,12 +143,13 @@ verifySubAgents(
 
 #### Evidence Matching Logic
 
-For each `SubAgentEvidence` entry, a check passes if ANY of the following is true:
-1. The `pattern` regex matches the extracted `text` (output content pattern)
-2. The `pattern` regex matches any `AgentDispatch.description` or `AgentDispatch.resultText` from the stream events
-3. The dispatch `description` or `resultText` contains the agent name (e.g., `"smithy-clarify"`)
+For each `SubAgentEvidence` entry, a check **passes** if the configured `pattern` regex matches at least one of:
+1. The extracted `text` (output content pattern)
+2. Any `AgentDispatch.description` or `AgentDispatch.resultText` from stream events
 
-This dual-source approach is required because smithy-clarify evidence may only appear as a dispatch message in the assistant text (`"dispatching the **smithy-clarify** agent"`) with no output markers in the final result — as observed in the spike.
+The configured `pattern` MUST match. Agent-name detection (checking whether a dispatch `description` or `resultText` contains the agent name string independently of `pattern`) is supplementary metadata surfaced in the report for debugging, not a pass criterion. Treating name presence alone as a pass would allow a check to pass whenever the agent name is referenced incidentally in any dispatch or result, regardless of whether the scenario's intended evidence is present.
+
+For smithy-clarify, whose output may be consumed internally by strike, the scenario `pattern` should be authored to match the dispatch message visible in assistant text (e.g., `"dispatching the.*smithy-clarify"`) rather than relying on name-only detection.
 
 #### Outputs
 
