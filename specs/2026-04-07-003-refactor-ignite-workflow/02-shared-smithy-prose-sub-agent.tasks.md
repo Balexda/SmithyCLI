@@ -36,6 +36,8 @@
     expect(prose).toMatch(/^---\s*\n/);
     expect(prose).toContain('name: smithy-prose');
     expect(prose).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(prose).toContain('Grep');
+    expect(prose).toContain('Glob');
     expect(prose).not.toContain('Edit');
     expect(prose).not.toContain('Write');
     expect(prose).not.toContain('Bash');
