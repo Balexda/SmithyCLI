@@ -61,7 +61,7 @@ export function extractText(events) {
  * @returns {{ text: string, subtype: string, duration_ms: number, num_turns: number } | null}
  */
 export function extractResult(events) {
-  const resultEvent = events.find((e) => e.type === "result");
+  const resultEvent = events.findLast((e) => e.type === "result");
   if (!resultEvent) return null;
   return {
     text: resultEvent.result ?? "",
