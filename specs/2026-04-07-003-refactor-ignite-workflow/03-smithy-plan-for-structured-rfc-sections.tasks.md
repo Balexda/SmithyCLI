@@ -18,7 +18,7 @@
 ### Tasks
 
 - [ ] Read `src/templates/agent-skills/commands/smithy.ignite.prompt` lines ~150–265 to understand the current monolithic Phase 3 structure (the "Title conventions" block, the "Decisions vs Open Questions" note, and the fenced RFC template block).
-- [ ] Read `src/templates/agent-skills/agents/smithy.plan.prompt` to confirm the four input parameters (planning context, feature/problem description, codebase file paths, additional planning directives) and understand that the output format can be overridden by the planning context parameter.
+- [ ] Read `src/templates/agent-skills/agents/smithy.plan.prompt` to confirm the five input parameters (planning context, feature/problem description, codebase file paths, scout report (optional), additional planning directives) and understand that the output format can be overridden by the planning context parameter. Note that the scout report is not applicable for sub-phase 3c (ignite works from ideas, not existing code — per the spec's Assumptions), so that parameter is omitted in the dispatch.
 - [ ] Within the `{{#ifAgent}}` block in Phase 3 (insert after any existing Phase 3 preamble, before Phase 4), add a `### Sub-phase 3c: Goals + Out of Scope` section with the following orchestrator instructions:
   - **Precondition**: Read `<slug>.rfc.md` and verify it contains a `## Personas` heading (written by sub-phase 3b). If absent, halt and report that sub-phase 3b has not completed.
   - **Dispatch smithy-plan** with these parameters:
