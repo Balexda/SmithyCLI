@@ -9,7 +9,7 @@
 
 ## Slice 1: Reference Fixture Source Files
 
-**Goal**: Create a minimal 6-file TypeScript Express-style API project in `evals/fixture/` that gives eval agents a concrete, stable codebase to plan against — with specific file paths, route patterns, and data types that plans can reference rather than producing generic advice.
+**Goal**: Create a minimal TypeScript Express-style API project in `evals/fixture/` that gives eval agents a concrete, stable codebase to plan against — with specific file paths, route patterns, and data types that plans can reference rather than producing generic advice.
 
 **Justification**: Every eval case requires a real project directory as its CWD for `claude -p` invocations. The fixture must exist before the deployment verification test (Slice 2) or the eval runner (US3) can be built. Skills are NOT committed into the fixture — they are deployed into a temp copy at eval time, so the fixture stays clean and always uses the latest templates.
 
@@ -171,7 +171,7 @@
   ```
   No `.claude/`, `.smithy/`, `node_modules/`, or `dist/` should be present.
 
-**PR Outcome**: A committed 7-file Express TypeScript project in `evals/fixture/` (6 source/config files + `.gitignore`) providing a stable, controlled evaluation target. Eval agents can reference `src/routes/users.ts`, `src/types.ts`, and `src/index.ts` by path when producing plans. The intentionally absent health check endpoint drives the primary strike/plan eval prompt.
+**PR Outcome**: A committed Express TypeScript project in `evals/fixture/` providing a stable, controlled evaluation target. Eval agents can reference `src/routes/users.ts`, `src/types.ts`, and `src/index.ts` by path when producing plans. The intentionally absent health check endpoint drives the primary strike/plan eval prompt.
 
 ---
 
