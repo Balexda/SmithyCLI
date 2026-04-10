@@ -22,7 +22,7 @@ have been asked so users can address gaps post-hoc.
 | `description` | string | Yes | Human-readable description of the unresolved ambiguity |
 | `source_category` | enum | Yes | The clarify scan category that produced this item (Functional Scope, Domain & Data Model, Interaction & UX, Non-Functional Quality, Integration, Edge Cases, Constraints, Terminology) |
 | `impact` | enum | Yes | Critical, High, Medium, or Low — how much this gap affects the artifact's validity |
-| `confidence` | enum | Yes | High, Medium, or Low — how confident the agent is about the recommended resolution (Low confidence = became debt instead of assumption) |
+| `confidence` | enum | Yes | Medium or Low — how confident the agent was about a resolution. Any non-High confidence item becomes debt (High confidence items become assumptions instead) |
 | `status` | enum | Yes | `open` (unresolved), `resolved` (addressed by user or later pass), `inherited` (carried from upstream artifact) |
 | `origin` | string | No | For inherited items: identifies the source artifact and original debt description |
 | `resolution` | string | No | When resolved: describes how and when the item was addressed |
