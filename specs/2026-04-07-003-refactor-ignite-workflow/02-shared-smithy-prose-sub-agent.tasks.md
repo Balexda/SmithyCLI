@@ -60,8 +60,8 @@
 
 ### Tasks
 
-- [ ] Update `CLAUDE.md` — in the "Sub-Agents (not user-invocable)" section (after the `smithy-maid` line, currently line 52), add: `- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; designed for reuse by other commands)`.
-- [ ] Update `src/templates/agent-skills/README.md` — in the Sub-Agent Roles table, add a new row after `smithy-maid`: `| smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b) |`.
+- [x] Update `CLAUDE.md` — in the "Sub-Agents (not user-invocable)" section (after the `smithy-maid` line, currently line 52), add: `- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; designed for reuse by other commands)`.
+- [x] Update `src/templates/agent-skills/README.md` — in the Sub-Agent Roles table, add a new row after `smithy-maid`: `| smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b) |`.
 
 **PR Outcome**: CLAUDE.md and the agents README accurately list smithy-prose alongside the other sub-agents. Developers reading either file can discover the agent, understand its role, and know which commands invoke it — making it straightforward to dispatch from other future commands without modifying the agent itself.
 

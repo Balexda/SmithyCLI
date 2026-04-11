@@ -50,6 +50,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-review** — Code review with auto-fix (used by forge)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
+- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; designed for reuse by other commands)
 
 ## Key Concepts
 
