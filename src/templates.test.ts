@@ -247,6 +247,35 @@ describe('getComposedTemplates', () => {
     expect(clarify).toContain('debt_items');
   });
 
+  it('mark template contains ## Specification Debt between ## Assumptions and ## Out of Scope', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+
+    const assumptionsIdx = mark.indexOf('## Assumptions');
+    const debtIdx = mark.indexOf('## Specification Debt');
+    const outOfScopeIdx = mark.indexOf('## Out of Scope');
+
+    expect(assumptionsIdx).toBeGreaterThan(-1);
+    expect(debtIdx).toBeGreaterThan(-1);
+    expect(outOfScopeIdx).toBeGreaterThan(-1);
+
+    expect(debtIdx).toBeGreaterThan(assumptionsIdx);
+    expect(debtIdx).toBeLessThan(outOfScopeIdx);
+  });
+
+  it('cut template contains ## Specification Debt before ## Dependency Order', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+
+    const debtIdx = cut.indexOf('## Specification Debt');
+    const dependencyIdx = cut.indexOf('## Dependency Order');
+
+    expect(debtIdx).toBeGreaterThan(-1);
+    expect(dependencyIdx).toBeGreaterThan(-1);
+
+    expect(debtIdx).toBeLessThan(dependencyIdx);
+  });
+
   it('command templates without partials are returned as-is', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
