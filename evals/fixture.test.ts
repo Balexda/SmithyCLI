@@ -29,6 +29,7 @@ function hashDirectory(dirPath: string): string {
 
   for (const rel of entries) {
     hash.update(rel);
+    hash.update('\0');
     hash.update(fs.readFileSync(path.join(dirPath, rel)));
   }
 
