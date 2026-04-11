@@ -194,12 +194,12 @@ Append the returned content to the RFC file.
 {{else}}
 Using the workshopped answers from Phase 2, draft a structured RFC with this format.
 
+{{/ifAgent}}
+
 **Important — Decisions vs Open Questions**: Items discussed during clarification
 that have been resolved belong in **Decisions** (document what was decided and why).
 Only genuinely unresolved unknowns that need further investigation or stakeholder
 input belong in **Open Questions**. Do not list resolved items as open questions.
-
-{{/ifAgent}}
 
 ```markdown
 # RFC: <Title>
