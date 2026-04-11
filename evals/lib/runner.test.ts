@@ -190,6 +190,12 @@ describe('runScenario', () => {
     expect(tempExists).toBe(false);
   });
 
+  it('throws when the fixture directory does not exist', async () => {
+    await expect(
+      runScenario(makeScenario(), '/tmp/nonexistent-fixture-dir-12345'),
+    ).rejects.toThrow('Fixture directory does not exist');
+  });
+
   it('cleans up the temp directory even on error', async () => {
     let capturedCwd: string | undefined;
     vi.mocked(spawn).mockImplementation((_cmd, _args, opts) => {
