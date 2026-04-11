@@ -33,22 +33,50 @@ Run these steps sequentially (no subshells):
    ```
    If the result is an empty array, skip to **Path B**.
 
-3. Get owner/repo:
+3. Get owner/repo (split into owner and name for the GraphQL query):
    ```
-   gh repo view --json owner,name --jq '.owner.login + "/" + .name'
+   gh repo view --json owner,name --jq '.owner.login'
+   gh repo view --json owner,name --jq '.name'
    ```
 
-4. Fetch unresolved review threads (resolved threads are automatically filtered out):
+4. Fetch unresolved review threads via GraphQL (resolved threads are filtered out,
+   full reply chains are included):
    ```
-   bash .claude/skills/smithy.pr-review/get-comments.sh <owner/repo> <PR-number>
+   gh api graphql \
+     -F owner="<owner>" -F name="<repo>" -F pr=<PR-number> \
+     -f query='
+   query($owner: String!, $name: String!, $pr: Int!) {
+     repository(owner: $owner, name: $name) {
+       pullRequest(number: $pr) {
+         reviewThreads(first: 100) {
+           nodes {
+             isResolved
+             comments(first: 50) {
+               nodes {
+                 databaseId
+                 body
+                 path
+                 diffHunk
+                 author { login }
+                 createdAt
+               }
+             }
+           }
+         }
+       }
+     }
+   }' --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)]'
    ```
    If the result is an empty array `[]`, skip to **Path B**.
 
-5. Build a **problem list**: each unresolved thread is one problem item. Each thread
-   contains a `comments[]` array (full reply chain, oldest first). Read the **entire
-   thread** before deciding — the last comment often has the most relevant context.
-   Use the first comment's `databaseId` as the thread's reply target. Continue to
-   the **Fix Loop**.
+5. Build a **problem list** from the first **10 unresolved threads** (to avoid
+   overloading context). If more than 10 exist, note the remainder and tell the user
+   to run `/smithy.fix` again for the next batch.
+
+   Each thread contains a `comments[]` array (full reply chain, oldest first). Read
+   the **entire thread** before deciding — the last comment often has the most
+   relevant context. Use the first comment's `databaseId` as the thread's reply
+   target. Continue to the **Fix Loop**.
 
 ### Path B — No arguments, no PR or no comments
 
@@ -149,7 +177,8 @@ After all items have been fixed or declined, reply to each thread's root comment
 
 2. Post each reply:
    ```
-   bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <PR-number> <databaseId> /tmp/smithy_reply_<databaseId>.json
+   gh api repos/<owner>/<repo>/pulls/<PR-number>/comments/<databaseId>/replies \
+     --method POST --input /tmp/smithy_reply_<databaseId>.json
    ```
 
 3. Push the branch:
