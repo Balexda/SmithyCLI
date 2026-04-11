@@ -23,7 +23,7 @@
 
 - [x] Add `extractCanonicalText(events: StreamEvent[]): string` as an eighth export on `parse-stream.ts`. It implements the FR-001 precedence rule: return `result.text` if a `result` event is present with non-empty text; otherwise return the concatenation of assistant text blocks. This must never combine both sources — the duplicate-output issue documented in FINDINGS.md item 6 means naïve concatenation produces false double-matches.
 
-- [ ] Write unit tests at `evals/lib/parse-stream.test.ts` covering: empty input, single valid event, malformed JSON line error, `extractCanonicalText` preferring `result.text`, `extractCanonicalText` falling back when no result event, `extractCanonicalText` falling back when `result.text` is empty, correct `extractSubAgentDispatches` pairing, and unknown event types passing through without error.
+- [x] Write unit tests at `evals/lib/parse-stream.test.ts` covering: empty input, single valid event, malformed JSON line error, `extractCanonicalText` preferring `result.text`, `extractCanonicalText` falling back when no result event, `extractCanonicalText` falling back when `result.text` is empty, correct `extractSubAgentDispatches` pairing, and unknown event types passing through without error.
 
 - [ ] Verify `npm test` passes and `npm run typecheck` passes.
 
