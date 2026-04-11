@@ -32,6 +32,11 @@ const { values } = parseArgs({
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
 const timeoutSec = parseInt(values['timeout'] as string, 10);
 
+if (Number.isNaN(timeoutSec) || timeoutSec <= 0) {
+  console.error(`Error: Invalid timeout value: ${values['timeout']}`);
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
 // Preflight — fail fast before any invocation (FR-003)
 // ---------------------------------------------------------------------------
