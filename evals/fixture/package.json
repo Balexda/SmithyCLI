@@ -1,0 +1,18 @@
+{
+  "name": "smithy-eval-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Express API project used as the reference fixture for Smithy eval scenarios. Not a real application — exists solely to give eval agents a concrete, stable codebase to plan against.",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
