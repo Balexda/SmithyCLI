@@ -10,8 +10,8 @@ Deployed to:
 
 | Command | Purpose | Sub-Agents Used |
 |---------|---------|-----------------|
-| `smithy.strike` | Lightweight planning + implementation in one session | clarify |
-| `smithy.ignite` | Workshop an idea into an RFC with milestones | clarify, refine |
+| `smithy.strike` | Lightweight planning + implementation in one session | clarify, plan, reconcile |
+| `smithy.ignite` | Workshop an idea into an RFC with milestones | clarify, refine, plan, reconcile |
 | `smithy.render` | Break an RFC milestone into a feature map | clarify, refine, **scout** |
 | `smithy.mark` | Transform a feature into a spec with user stories | clarify, refine, **scout** |
 | `smithy.cut` | Decompose a user story into PR-sized task slices | clarify, refine, **scout** |
