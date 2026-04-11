@@ -17,15 +17,15 @@
 
 ### Tasks
 
-- [ ] Create `evals/lib/types.ts` defining the shared types for the framework per the data model spec: `StreamEvent`, `ResultSummary`, `ToolUse`, `ToolResult`, `AgentDispatch`, `EventSummary`, `StructuralExpectations`, `SubAgentEvidence`, `EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`. Type `StreamEvent` loosely (a base interface with optional fields, not a discriminated union) so the parser tolerates new claude CLI event types without code changes.
+- [x] Create `evals/lib/types.ts` defining the shared types for the framework per the data model spec: `StreamEvent`, `ResultSummary`, `ToolUse`, `ToolResult`, `AgentDispatch`, `EventSummary`, `StructuralExpectations`, `SubAgentEvidence`, `EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`. Type `StreamEvent` loosely (a base interface with optional fields, not a discriminated union) so the parser tolerates new claude CLI event types without code changes.
 
-- [ ] Create `evals/lib/parse-stream.ts` as a TypeScript port of `evals/spike/parse-stream.mjs`, exporting all seven FR-015 functions: `parseStreamString`, `extractText`, `extractResult`, `extractToolUses`, `extractToolResults`, `extractSubAgentDispatches`, `summarizeEvents`. Drop `parseStreamFile` (file I/O is the runner's concern, not the parser's). Inline `countEventTypes` — it is not a required export.
+- [x] Create `evals/lib/parse-stream.ts` as a TypeScript port of `evals/spike/parse-stream.mjs`, exporting all seven FR-015 functions: `parseStreamString`, `extractText`, `extractResult`, `extractToolUses`, `extractToolResults`, `extractSubAgentDispatches`, `summarizeEvents`. Drop `parseStreamFile` (file I/O is the runner's concern, not the parser's). Inline `countEventTypes` — it is not a required export.
 
-- [ ] Add `extractCanonicalText(events: StreamEvent[]): string` as an eighth export on `parse-stream.ts`. It implements the FR-001 precedence rule: return `result.text` if a `result` event is present with non-empty text; otherwise return the concatenation of assistant text blocks. This must never combine both sources — the duplicate-output issue documented in FINDINGS.md item 6 means naïve concatenation produces false double-matches.
+- [x] Add `extractCanonicalText(events: StreamEvent[]): string` as an eighth export on `parse-stream.ts`. It implements the FR-001 precedence rule: return `result.text` if a `result` event is present with non-empty text; otherwise return the concatenation of assistant text blocks. This must never combine both sources — the duplicate-output issue documented in FINDINGS.md item 6 means naïve concatenation produces false double-matches.
 
-- [ ] Write unit tests at `evals/lib/parse-stream.test.ts` covering: empty input, single valid event, malformed JSON line error, `extractCanonicalText` preferring `result.text`, `extractCanonicalText` falling back when no result event, `extractCanonicalText` falling back when `result.text` is empty, correct `extractSubAgentDispatches` pairing, and unknown event types passing through without error.
+- [x] Write unit tests at `evals/lib/parse-stream.test.ts` covering: empty input, single valid event, malformed JSON line error, `extractCanonicalText` preferring `result.text`, `extractCanonicalText` falling back when no result event, `extractCanonicalText` falling back when `result.text` is empty, correct `extractSubAgentDispatches` pairing, and unknown event types passing through without error.
 
-- [ ] Verify `npm test` passes and `npm run typecheck` passes.
+- [x] Verify `npm test` passes and `npm run typecheck` passes.
 
 **PR Outcome**: A fully-typed, unit-tested stream-json parser that is the single source of truth for interpreting `claude --output-format stream-json` output across the entire evals framework.
 
