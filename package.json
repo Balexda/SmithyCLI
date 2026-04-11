@@ -8,6 +8,7 @@
     "build": "tsup src/cli.ts --format esm --clean",
     "start": "node dist/cli.js",
     "typecheck": "tsc --noEmit",
+    "preeval": "tsup src/cli.ts --format esm --clean",
     "eval": "tsx evals/run-evals.ts"
   },
   "repository": {
