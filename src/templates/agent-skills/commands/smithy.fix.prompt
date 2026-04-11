@@ -26,14 +26,14 @@ Use the `smithy.pr-review` skill to check for PR review comments. Invoke
 1. Run the **Find Open PR** operation. If the result is `{}` (no PR), skip to **Path B**.
 2. Run the **List Inline Comments** operation with the `ownerRepo` and `pr` from step 1.
    If the result is an empty array `[]`, skip to **Path B**.
-3. Build a **problem list** from the first **10 unresolved threads** (to avoid
-   overloading context). If more than 10 exist, note the remainder and tell the user
-   to run `/smithy.fix` again for the next batch.
+3. Build a **problem list** — **one item per thread**, not per comment. Cap at the
+   first **10 threads**; if more remain, tell the user to re-run `/smithy.fix` for
+   the next batch.
 
-   Each thread contains a `comments[]` array (full reply chain, oldest first). Read
-   the **entire thread** before deciding — the last comment often has the most
-   relevant context. Use the first comment's `databaseId` as the thread's reply
-   target. Continue to the **Fix Loop**.
+   For each thread: read its full `comments[]` chain before deciding how to act.
+   The **last** comment has the most recent context (a reviewer follow-up or
+   escalation takes precedence over the original). Post your reply to
+   `comments[0].databaseId` (the thread root). Continue to the **Fix Loop**.
 
 ### Path B — No arguments, no PR or no comments
 

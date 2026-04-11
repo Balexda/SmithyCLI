@@ -30,13 +30,15 @@ are automatically filtered out.
 bash ${CLAUDE_SKILL_DIR}/scripts/get-comments.sh <ownerRepo> <pr-number>
 ```
 
-Each thread object includes:
-- `isResolved` (always `false` — resolved threads are filtered out)
-- `comments[]` — full reply chain, oldest first. Each comment has:
+The result is an array of **threads** (one entry per review thread). Each thread:
+- `isResolved`: always `false` (resolved threads are filtered out)
+- `comments[]`: full reply chain for this thread, **oldest first**. Each comment:
   `databaseId`, `body`, `path`, `diffHunk`, `author.login`, `createdAt`
 
-Read the **entire thread** (all comments in the chain) before deciding how to act.
-The last comment in the chain typically contains the most relevant context.
+To work a thread: read the full `comments[]` chain for context — the **last** entry
+is the most recent reply and typically has the highest-priority context (e.g. a
+follow-up or escalation from the reviewer). Use `comments[0].databaseId` as the
+reply target when posting a response to this thread.
 
 ---
 
