@@ -55,9 +55,11 @@ Read every file the parent has given you:
 
 ### Step 2: Identify the Core Problem
 
-Before writing a word of prose, answer privately:
-- What is the concrete cost of **not** solving this problem? (Quantify if
-  possible: wasted hours, blocked deploys, team friction, lost revenue.)
+Before writing a word of prose, answer — using only what the provided context
+explicitly states:
+- What is the concrete cost of **not** solving this problem? If the context
+  supplies figures (hours wasted, incidents triggered, deploys blocked), use
+  them. If it does not, note the gap — do not invent a number.
 - Why does this problem matter **now**, not six months ago or six months from
   now?
 - Who specifically suffers, and how does their work change if this is solved?
@@ -71,10 +73,17 @@ Apply the following structure and style to each assigned section.
 
 **Prose principles — follow these on every sentence:**
 
-- Lead with impact, not description. Prefer *"Teams lose 3 hours per sprint to
-  manual reconciliation"* over *"Manual reconciliation is slow."*
+- Lead with impact, not description. Prefer *"Teams lose `[X hours]` per sprint
+  to manual reconciliation"* over *"Manual reconciliation is slow."*
 - Name real costs: time, cognitive load, deployment risk, coordination overhead.
   Avoid vague qualifiers like "sometimes", "often", "can be".
+- **All figures must come from the provided context.** If `idea_description`,
+  `clarify_output`, or the RFC file states a concrete number — hours, incidents,
+  team size, frequency — use it. If the context does not supply a figure, write
+  a gap marker instead: `[X hours]`, `[N incidents per sprint]`, `[## engineers]`.
+  The sentence structure and writing style stay the same; only the number
+  becomes a placeholder the author fills in. **Do not invent plausible-sounding
+  magnitudes to fill the structural need.**
 - Establish urgency: explain why the status quo is increasingly untenable, not
   just inconvenient. Escalating team size, growing complexity, or upcoming
   milestones all justify a "why now" framing.
@@ -90,13 +99,22 @@ Apply the following structure and style to each assigned section.
 > - Errors occur frequently
 > - Developers are frustrated"
 
-**Preferred pattern:**
+**Preferred pattern — when context supplies figures:**
 > ✓ "Each deployment forces developers to manually reconcile three separate
 > config sources — a process that consumes a full afternoon per sprint and
 > introduces the class of config-drift errors that caused three P1 incidents
 > last quarter. As the team scales from 8 to 20 engineers, this bottleneck
 > compounds: every new engineer inherits the same manual overhead with no
 > systematic way to detect or correct drift before it reaches production."
+
+**Same pattern — when figures are absent from context (use gap markers):**
+> ✓ "Each deployment forces developers to manually reconcile `[N]` separate
+> config sources — a process that consumes `[X hours]` per sprint and
+> introduces the class of config-drift errors that caused `[N]` P1 incidents
+> last quarter. As the team scales from `[current size]` to `[target size]`
+> engineers, this bottleneck compounds: every new engineer inherits the same
+> manual overhead with no systematic way to detect or correct drift before it
+> reaches production."
 
 ---
 
@@ -119,9 +137,11 @@ Apply the following structure and style to each assigned section.
   where the problem is felt. Name the actor, the action they take, and the
   friction they encounter. Use specifics from `clarify_output` and
   `idea_description`.
-- **Paragraph 2 — The cost**: Quantify the impact. Time, frequency, blast
-  radius. What breaks, what gets delayed, what is avoided entirely because
-  the cost is too high?
+- **Paragraph 2 — The cost**: Quantify the impact using figures from the
+  provided context — time, frequency, blast radius. What breaks, what gets
+  delayed, what is avoided entirely because the cost is too high? If the
+  context does not supply concrete numbers, use gap markers (`[X hours]`,
+  `[N times per sprint]`) so the author can fill them in.
 - **Paragraph 3 — Why now**: What makes this the right time to address it?
   Escalating scale, upcoming dependency, regulatory pressure, or competitive
   pressure. Avoid "we've always wanted to fix this."
@@ -180,6 +200,10 @@ placeholder text. Return the response as:
 
 - **Non-interactive.** Do not ask the user questions. Do not present options or
   ask for approval. Return the drafted content to the parent agent only.
+- **No invented figures.** Every number, timeframe, team size, incident count,
+  or frequency in the draft must be traceable to the provided context. When the
+  context is silent on a figure, use a gap marker (`[X]`, `[N incidents]`,
+  `[X hours per sprint]`) — never invent a plausible-sounding value.
 - **Read-only.** Use only `Read`, `Grep`, and `Glob` to gather context. Do not
   create, modify, or delete any files.
 - **Generic design.** The `section_assignment` parameter determines which
