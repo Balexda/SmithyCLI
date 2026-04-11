@@ -49,7 +49,7 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
     deployedFiles.push(path.relative(baseDir, dest));
   }
 
-  // Deploy skills -> .claude/skills/<skillname>/SKILL.md + companion scripts
+  // Deploy skills -> .claude/skills/<skillname>/SKILL.md + scripts/ subdirectory
   for (const [skillName, skill] of templates.skills) {
     const skillDir = path.join(baseDir, '.claude', 'skills', skillName);
     if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
@@ -59,11 +59,15 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
     fs.writeFileSync(skillMd, stripFrontmatter(skill.prompt));
     deployedFiles.push(path.relative(baseDir, skillMd));
 
-    // Copy scripts as executable files
-    for (const [filename, content] of skill.scripts) {
-      const dest = path.join(skillDir, filename);
-      fs.writeFileSync(dest, content, { mode: 0o755 });
-      deployedFiles.push(path.relative(baseDir, dest));
+    // Copy scripts into scripts/ subdirectory as executable files
+    if (skill.scripts.size > 0) {
+      const scriptsDir = path.join(skillDir, 'scripts');
+      if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+      for (const [filename, content] of skill.scripts) {
+        const dest = path.join(scriptsDir, filename);
+        fs.writeFileSync(dest, content, { mode: 0o755 });
+        deployedFiles.push(path.relative(baseDir, dest));
+      }
     }
   }
 

@@ -219,8 +219,8 @@ export const permissions: Record<string, PermissionEntry> = {
   // Specific scripts deployed by smithy init to .claude/skills/; more narrowly
   // scoped than `gh api repos/*` — permission is clearly for these operations only.
   bash: {
-    ".claude/skills/smithy.pr-review/get-comments.sh": ["*"],
-    ".claude/skills/smithy.pr-review/reply-comment.sh": ["*"],
+    ".claude/skills/smithy.pr-review/scripts/get-comments.sh": ["*"],
+    ".claude/skills/smithy.pr-review/scripts/reply-comment.sh": ["*"],
   },
 
   // --- Misc utilities ---

@@ -1,10 +1,12 @@
 ---
 name: smithy-pr-review
 description: "GitHub PR review operations: list inline comments, reply to comments, check CI run status. Use when handling review feedback on an open pull request."
+allowed-tools: Bash(gh api *) Bash(gh pr list *) Bash(gh repo view *) Bash(gh run *) Bash(gh run view *) Bash(git branch --show-current)
 ---
 # smithy-pr-review
 
-Provides GitHub PR review operations via shell scripts deployed alongside this skill.
+Provides GitHub PR review operations via shell scripts bundled in this skill's `scripts/`
+directory. Reference them using `${CLAUDE_SKILL_DIR}/scripts/<script-name>`.
 Use these operations to inspect and respond to inline review comments on the current branch's PR.
 
 ## Operation: List Inline Comments
@@ -30,7 +32,7 @@ gh repo view --json owner,name --jq '.owner.login + "/" + .name'
 
 **Step 4 — fetch unresolved review threads:**
 ```bash
-bash .claude/skills/smithy.pr-review/get-comments.sh <owner/repo> <PR-number>
+bash ${CLAUDE_SKILL_DIR}/scripts/get-comments.sh <owner/repo> <PR-number>
 ```
 
 Each thread object includes:
@@ -58,7 +60,7 @@ EOF
 
 **Step 2 — post reply:**
 ```bash
-bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <PR-number> <comment-id> /tmp/smithy_reply_<comment-id>.json
+bash ${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh <owner/repo> <PR-number> <comment-id> /tmp/smithy_reply_<comment-id>.json
 ```
 
 For a **fix** reply: `"Fixed in <commit-sha>: <one-line explanation of what changed and why>"`

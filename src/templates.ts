@@ -170,7 +170,7 @@ function listSkillNames(): string[] {
 
 /**
  * Read a single skill directory: find SKILL.prompt → renders to prompt string,
- * and collect all *.sh files as raw scripts.
+ * and collect all *.sh files from the scripts/ subdirectory as raw scripts.
  */
 async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<SkillTemplate> {
   const skillDir = path.join(skillsTemplateDir, skillName);
@@ -184,11 +184,14 @@ async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<Ski
     promptContent = await resolveSnippets(raw, renderer);
   }
 
-  // Collect all shell scripts
+  // Collect shell scripts from the scripts/ subdirectory
   const scripts = new Map<string, string>();
-  for (const entry of entries) {
-    if (entry.endsWith('.sh')) {
-      scripts.set(entry, fs.readFileSync(path.join(skillDir, entry), 'utf8'));
+  const scriptsDir = path.join(skillDir, 'scripts');
+  if (fs.existsSync(scriptsDir)) {
+    for (const entry of fs.readdirSync(scriptsDir)) {
+      if (entry.endsWith('.sh')) {
+        scripts.set(entry, fs.readFileSync(path.join(scriptsDir, entry), 'utf8'));
+      }
     }
   }
 
