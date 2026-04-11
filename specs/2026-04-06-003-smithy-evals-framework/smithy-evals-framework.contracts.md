@@ -23,6 +23,7 @@ The evals framework has three internal integration boundaries: the runner (execu
 | `extractToolResults` | `(events: StreamEvent[]) => ToolResult[]` | Tool results from user messages |
 | `extractSubAgentDispatches` | `(events: StreamEvent[]) => AgentDispatch[]` | Agent tool-use blocks with their result text |
 | `summarizeEvents` | `(events: StreamEvent[]) => EventSummary` | Aggregate counts, tool names, duration, text length |
+| `extractCanonicalText` | `(events: StreamEvent[]) => string` | Canonical text using FR-001 precedence: `result.text` if present and non-empty, otherwise concatenated `assistant` text blocks |
 
 #### Stream Event Types (observed in spike)
 
