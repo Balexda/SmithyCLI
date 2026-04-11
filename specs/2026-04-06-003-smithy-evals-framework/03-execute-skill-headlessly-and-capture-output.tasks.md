@@ -25,7 +25,7 @@
 
 - [x] Write unit tests at `evals/lib/parse-stream.test.ts` covering: empty input, single valid event, malformed JSON line error, `extractCanonicalText` preferring `result.text`, `extractCanonicalText` falling back when no result event, `extractCanonicalText` falling back when `result.text` is empty, correct `extractSubAgentDispatches` pairing, and unknown event types passing through without error.
 
-- [ ] Verify `npm test` passes and `npm run typecheck` passes.
+- [x] Verify `npm test` passes and `npm run typecheck` passes.
 
 **PR Outcome**: A fully-typed, unit-tested stream-json parser that is the single source of truth for interpreting `claude --output-format stream-json` output across the entire evals framework.
 
