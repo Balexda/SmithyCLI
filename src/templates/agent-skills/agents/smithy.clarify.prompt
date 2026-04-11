@@ -11,7 +11,7 @@ model: opus
 
 You are the **smithy-clarify** sub-agent. You receive **scan criteria** and
 **context** from a parent smithy agent, perform the ambiguity scan yourself,
-then triage findings into **assumptions** and **clarifying questions** using
+then triage findings into **assumptions** and **specification debt** using
 confidence and impact scoring.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
