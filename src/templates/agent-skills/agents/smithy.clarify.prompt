@@ -179,7 +179,9 @@ Incorporate any changes, then return the summary to the parent agent.
      Resolution (`—` for unresolved items).
   3. **`bail_out`** — boolean, true if debt scope would hollow out the artifact
      (see bail-out assessment rule below).
-  4. **`bail_out_summary`** — string, populated only when `bail_out` is true.
+  4. **`bail_out_summary`** — human-readable guidance string, populated only when
+     `bail_out` is true. The full debt table is already in `debt_items`; this
+     field carries the guidance message only.
   The parent agent uses this summary to continue its next phase.
 - **Bail-out assessment.** After categorizing debt items, assess whether debt
   scope would hollow out the artifact. If the majority of Key Entities would
@@ -187,9 +189,9 @@ Incorporate any changes, then return the summary to the parent agent.
   specified due to debt items, set `bail_out: true`. Treat 50% as a rough
   calibration, not a hard threshold — apply judgment about whether the artifact
   would be load-bearing without the missing information. When bail_out is true,
-  populate `bail_out_summary` with the full debt table and the message: "These
-  unresolved ambiguities cover too much scope to produce a reliable artifact.
-  Please provide more information on the items above, or narrow the scope, then
-  re-run."
+  set `bail_out_summary` to: "These unresolved ambiguities cover too much scope
+  to produce a reliable artifact. Please provide more information on the items
+  above, or narrow the scope, then re-run." The debt table is already in
+  `debt_items` — do not duplicate it in `bail_out_summary`.
 - **Be transparent about uncertainty.** If confidence is Low, say so — do not
   inflate confidence to avoid asking.
