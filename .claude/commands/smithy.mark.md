@@ -14,22 +14,71 @@ The user's input: $ARGUMENTS
 This may be:
 - A **feature description** (e.g., "add webhook support for build events").
 - A **path to an RFC** (e.g., `docs/rfcs/2026-001-webhook-support/webhook-support.rfc.md`).
+- A **path to a `.features.md`** (feature map) with an optional feature number
+  (e.g., `docs/rfcs/2026-001-foo/01-core.features.md` or
+  `docs/rfcs/2026-001-foo/01-core.features.md 3`).
 - Empty — if so, ask the user what they want to specify.
+
+---
+
+## Routing
+
+Before starting, determine the mode:
+
+1. **If the input is a `.features.md` file path** (with or without a feature number):
+   a. Read the file and parse `### Feature N: <Title>` headings. If no such
+      headings are found, abort with: "This file does not appear to be a valid
+      feature map — expected `### Feature N: <Title>` headings."
+   b. Extract the `**Source RFC**` path from the file header.
+   c. Determine which features already have specs by checking the
+      `## Spec Progress` checklist at the bottom of the `.features.md`. A
+      feature is "specc'd" when its entry is checked (`- [x]`). A feature is
+      unspecced when its entry is unchecked (`- [ ]`). If the checklist does
+      not exist yet, create it now with all features unchecked, write it to
+      the file, and treat every feature as unspecced. (Mark updates the
+      checklist after creating a spec — see Phase 6.)
+   d. **With feature number**: If the number is out of range, list available
+      features with their numbers and titles, then stop. If the feature is
+      already specc'd (per step c), extract the spec folder path from its
+      checked entry (after the `→`) and go to **Phase 0** (Review Loop) with
+      that spec. Otherwise, go to **Phase 1** targeting that feature.
+   e. **Without feature number**: Auto-select the first `### Feature N` that
+      is not yet specc'd (per step c). If **all** features already have specs,
+      present a table of features with their spec folder paths and ask the
+      user which to audit (Phase 0).
+2. **If the input is an RFC path** (`.rfc.md`): existing behavior — go to Phase 1.
+3. **If the input is a feature description** (plain text, no file extension):
+   existing behavior — go to Phase 1.
+4. **If the input is empty**: ask the user what they want to specify.
+
+When entering Phase 1 from a `.features.md`, carry forward:
+- The selected feature's **Title**, **Description**, **User-Facing Value**, and
+  **Scope Boundaries** as the starting context.
+- The **Source RFC** path from the `.features.md` header (if present; if missing,
+  look for a co-located `.rfc.md` in the same directory).
+- The **feature map path** and **feature number** for traceability.
 
 ---
 
 ## Phase 1: Intake
 
-1. Parse the input. If it's an RFC path, read and extract goals, constraints,
-   and open questions. If it's a feature description, treat it as the starting
-   context.
+1. Parse the input:
+   - **RFC path**: Read and extract goals, constraints, and open questions.
+   - **Feature description**: Treat as the starting context.
+   - **Feature map** (from Routing): Use the selected feature's Title,
+     Description, User-Facing Value, and Scope Boundaries as the starting
+     context. Also read the Source RFC (resolved during Routing) for additional
+     goals and constraints.
 2. Explore the codebase to understand current architecture, relevant modules,
    and existing patterns that inform the specification.
 3. Determine the spec folder name:
    - Scan `specs/` for existing folders matching `YYYY-MM-DD-NNN-*`.
    - Derive `<NNN>` as the next sequential number (zero-padded to 3 digits,
      starting at `001`).
-   - Derive `<slug>` as a short kebab-case name from the feature description.
+   - Derive `<slug>` from the feature title (when from a feature map) or the
+     feature description: lowercase, replace spaces and special characters
+     with hyphens, collapse consecutive hyphens, trim leading/trailing
+     hyphens. Use the **full** title — do not shorten or abbreviate.
    - Folder name: `<YYYY-MM-DD>-<NNN>-<slug>` (e.g., `2026-03-14-004-webhook-support`).
 4. Create a git branch with the same name as the folder:
    ```
@@ -74,35 +123,36 @@ report — the only difference is the **additional planning directives** field.
 
 Use the following lens directives (one per sub-agent):
 
-#### Simplification
+#### Scope Minimalism
 
-> **Directive:** Actively seek unnecessary complexity, over-engineering, and
-> YAGNI violations. Propose simpler alternatives — fewer files, fewer
-> indirections, inline solutions over extracted utilities. Challenge
-> abstractions that don't earn their keep. In the Tradeoffs section, surface at
-> least one simpler alternative even if you ultimately recommend against it.
-> This directive biases your attention, not your coverage — still flag critical
-> robustness issues or separation concerns if you find them.
+> **Directive:** Challenge scope creep. Propose tighter boundaries, question
+> optional requirements, and look for elements that can be deferred without
+> blocking the core artifact. Favor fewer entities, narrower stories, and
+> smaller milestones. In the Tradeoffs section, surface at least one narrower
+> alternative even if you ultimately recommend against it. This directive biases
+> your attention, not your coverage — still flag completeness gaps or coherence
+> issues if you find them.
 
-#### Separation of Concerns
+#### Completeness
 
-> **Directive:** Actively seek mixed responsibilities, coupling between
-> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
-> clear interfaces, single-purpose files, explicit dependency injection. In the
-> Tradeoffs section, surface at least one alternative with better separation
-> even if you ultimately recommend against it. This directive biases your
-> attention, not your coverage — still flag simplification opportunities or
-> robustness issues if you find them.
+> **Directive:** Look for gaps in coverage: missing user stories, unstated
+> assumptions, edge cases in contracts, entities without clear ownership, and
+> milestones that skip necessary groundwork. Verify that every requirement
+> traces to a concrete artifact element. In the Tradeoffs section, surface at
+> least one more thorough alternative even if you ultimately recommend against
+> it. This directive biases your attention, not your coverage — still flag
+> scope bloat or coherence issues if you find them.
 
-#### Robustness
+#### Coherence
 
-> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
-> and missing validation at system boundaries. Flag assumptions about external
-> state and unhandled error conditions. Prefer defensive design. In the
-> Tradeoffs section, surface at least one more defensive alternative even if
-> you ultimately recommend against it. This directive biases your attention,
-> not your coverage — still flag unnecessary complexity or separation concerns
-> if you find them.
+> **Directive:** Look for inconsistencies between elements: stories that don't
+> trace to contracts, data model entities that overlap or have ambiguous
+> ownership, feature boundaries that create awkward cross-cutting dependencies,
+> and milestones whose ordering doesn't match their actual dependencies.
+> Propose cleaner groupings and sharper boundaries. In the Tradeoffs section,
+> surface at least one better-structured alternative even if you ultimately
+> recommend against it. This directive biases your attention, not your
+> coverage — still flag scope bloat or completeness gaps if you find them.
 
 ---
 
@@ -112,8 +162,8 @@ field for the corresponding smithy-plan run.
 After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
 
 - All 3 plan outputs, each labeled with its lens name (e.g.,
-  "**[Simplification]** …", "**[Separation of Concerns]** …",
-  "**[Robustness]** …")
+  "**[Scope Minimalism]** …", "**[Completeness]** …",
+  "**[Coherence]** …")
 - The same context file paths
 - The planning context and feature description
 
@@ -181,13 +231,14 @@ Draft the `<slug>.spec.md` file with this structure:
 **Created**: YYYY-MM-DD
 **Status**: Draft
 **Input**: <source — user description or RFC path with summary>
+**Source Feature Map**: `<path-to-.features.md>` — Feature <N>: <Title> *(include only when input is a `.features.md`)*
 
 ## Clarifications
 
 ### Session YYYY-MM-DD
 
-- Q: <question> → A: <answer>
-- ...
+- _Assumption text_ `[Critical Assumption]`
+- _Assumption text_
 
 ## Artifact Hierarchy
 
@@ -390,8 +441,26 @@ Existing contracts remain unchanged.
 
 ## Phase 6: Write & Review
 
-Create the spec folder and write all three files to disk first, then present a
-summary to the user:
+Create the spec folder and write all three files to disk first.
+
+**Feature map write-back** (when input was a `.features.md`): Update the
+`.features.md` to track progress. If a `## Spec Progress` section does not
+exist at the bottom of the file, create it with one checklist entry per
+feature parsed during Routing. Mark the current feature's entry as complete
+and include the spec folder path:
+
+```markdown
+## Spec Progress
+
+- [x] Feature 1: Template Deployment → `specs/2026-03-14-001-template-deployment/`
+- [ ] Feature 2: Permission Management
+- [ ] Feature 3: Webhook Support
+```
+
+If the section already exists, update only the current feature's entry from
+`- [ ]` to `- [x]` and append the spec folder path.
+
+Then present a summary to the user:
 
 1. Show a summary of what was produced:
    - Spec folder path and branch name.
@@ -463,13 +532,14 @@ through Phase 0).
   is the job of a downstream command.
 - **Do NOT** skip the clarification phase. Even if the input seems clear, do a
   quick scan and confirm with the user.
-- **DO** accept both RFC paths and direct feature descriptions as input.
+- **DO** accept RFC paths, direct feature descriptions, and `.features.md` paths as input.
+- **DO** auto-select the first unspecced feature when given a `.features.md` without a feature number.
 - **DO** keep specs anchored to user value — every requirement should trace to
   a user story.
 - **DO** number user stories sequentially — downstream commands depend on this.
 - **DO** order user stories by priority (P1 first, then P2, then P3) and renumber
   them when priorities change during refinement.
-- **DO** internally generate all clarifying questions first, then present them one at a time with recommended answers.
+- **DO** invoke smithy-clarify for ambiguity scanning and triage.
 - **DO** create the git branch and spec folder automatically.
 - **DO** write minimal placeholder files for data-model and contracts when they
   don't apply, rather than omitting them.
