@@ -13,6 +13,7 @@ export const commandsTemplateDir = path.join(agentSkillsDir, 'commands');
 export const promptsTemplateDir = path.join(agentSkillsDir, 'prompts');
 export const agentsTemplateDir = path.join(agentSkillsDir, 'agents');
 export const snippetsTemplateDir = path.join(agentSkillsDir, 'snippets');
+export const skillsTemplateDir = path.join(agentSkillsDir, 'skills');
 export const issueTemplatesSrcDir = path.join(templatesBaseDir, 'issues');
 
 /**

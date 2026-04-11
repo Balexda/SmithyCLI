@@ -49,6 +49,29 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
     deployedFiles.push(path.relative(baseDir, dest));
   }
 
+  // Deploy skills -> .claude/skills/<skillname>/SKILL.md + scripts/ subdirectory
+  for (const [skillName, skill] of templates.skills) {
+    const skillDir = path.join(baseDir, '.claude', 'skills', skillName);
+    if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
+
+    // Write SKILL.md (frontmatter kept — Claude Code reads allowed-tools from it)
+    const skillMd = path.join(skillDir, 'SKILL.md');
+    fs.writeFileSync(skillMd, skill.prompt);
+    deployedFiles.push(path.relative(baseDir, skillMd));
+
+    // Copy scripts into scripts/ subdirectory as executable files
+    if (skill.scripts.size > 0) {
+      const scriptsDir = path.join(skillDir, 'scripts');
+      if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+      for (const [filename, content] of skill.scripts) {
+        const dest = path.join(scriptsDir, filename);
+        fs.writeFileSync(dest, content);
+        fs.chmodSync(dest, 0o755);
+        deployedFiles.push(path.relative(baseDir, dest));
+      }
+    }
+  }
+
   if (permissionLevel !== 'none') {
     writePermissions(targetDir, permissionLevel);
   }
@@ -70,6 +93,10 @@ export function removeLegacy(targetDir: string): number {
   }
   for (const file of categories.agents) {
     if (removeIfExists(path.join(targetDir, '.claude', 'agents', file))) removedCount++;
+  }
+  for (const skillName of categories.skills) {
+    const skillDir = path.join(targetDir, '.claude', 'skills', skillName);
+    if (removeIfExists(skillDir)) removedCount++;
   }
   return removedCount;
 }
