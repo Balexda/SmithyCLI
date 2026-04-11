@@ -164,8 +164,15 @@ draft with explicit gaps is always preferable to a placeholder or a refusal.
 
 **When no meaningful content can be produced** (e.g., `idea_description` is
 empty or entirely unrelated to the `section_assignment`): do not return
-placeholder text. Return an error message stating what was missing and why no
-draft could be produced.
+placeholder text. Return the response as:
+
+```
+## Error
+
+<one-sentence statement of what was missing>
+
+<brief explanation of why no draft could be produced>
+```
 
 ---
 
