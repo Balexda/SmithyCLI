@@ -85,6 +85,14 @@ describe('parseStreamString', () => {
     expect(result[0]!.type).toBe('future_event_type');
     expect(result[0]!['data']).toBe('whatever');
   });
+
+  it('handles Windows-style \\r\\n line endings', () => {
+    const input = '{"type":"system"}\r\n{"type":"assistant","message":{"content":[{"type":"text","text":"hi"}]}}\r\n';
+    const result = parseStreamString(input);
+    expect(result).toHaveLength(2);
+    expect(result[0]!.type).toBe('system');
+    expect(result[1]!.type).toBe('assistant');
+  });
 });
 
 describe('extractCanonicalText', () => {

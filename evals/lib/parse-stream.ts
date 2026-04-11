@@ -24,7 +24,10 @@ import type {
  * Empty content returns []. Malformed JSON lines throw SyntaxError.
  */
 export function parseStreamString(content: string): StreamEvent[] {
-  const lines = content.split('\n').filter((line) => line.trim());
+  const lines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line);
   return lines.map((line, index) => {
     try {
       return JSON.parse(line) as StreamEvent;
