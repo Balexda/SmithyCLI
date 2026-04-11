@@ -230,6 +230,16 @@ Draft the tasks file with this structure:
 
 ---
 
+## Specification Debt
+
+| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
+|----|-------------|-----------------|--------|------------|--------|------------|
+| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+
+_If no debt items, write: "None — all ambiguities resolved."_
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
@@ -259,6 +269,7 @@ Guidelines for slicing:
 - Slices are numbered sequentially starting at 1.
 - Include tests, docs, and validation steps within the slice that introduces the
   code — do not batch these into a separate "testing slice".
+- Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Leave Resolution as `—` for all `open` items. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands.
 
 Guidelines for task authoring:
 

@@ -240,6 +240,14 @@ As a <persona>, I want <goal> so that <benefit>.
 
 - ...
 
+## Specification Debt
+
+| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
+|----|-------------|-----------------|--------|------------|--------|------------|
+| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+
+_If no debt items, write: "None — all ambiguities resolved."_
+
 ## Out of Scope
 
 - ...
@@ -264,6 +272,7 @@ Guidelines for the spec:
 - Do NOT include implementation phases, milestones, or task breakdowns.
 - Do NOT include specific file paths, function names, or implementation details.
 - DO trace back to RFC sections when input is an RFC.
+- Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the description, source_category, impact, confidence, and status fields directly from clarify's return. Leave Resolution as `—` for all `open` items.
 
 ---
 

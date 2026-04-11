@@ -43,7 +43,7 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
 ### Tasks
 
-- [ ] In `src/templates/agent-skills/commands/smithy.mark.prompt`, insert a `## Specification Debt` section into the Phase 3 spec template between `## Assumptions` (line 239) and `## Out of Scope` (line 243). Use this structure:
+- [x] In `src/templates/agent-skills/commands/smithy.mark.prompt`, insert a `## Specification Debt` section into the Phase 3 spec template between `## Assumptions` (line 239) and `## Out of Scope` (line 243). Use this structure:
   ```markdown
   ## Specification Debt
 
@@ -53,10 +53,10 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
   _If no debt items, write: "None — all ambiguities resolved."_
   ```
-- [ ] In mark's Phase 3 spec guidelines (the bulleted list after the template code fence), add: "Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the description, source_category, impact, confidence, and status fields directly from clarify's return. Leave Resolution as `—` for all `open` items."
-- [ ] In `src/templates/agent-skills/commands/smithy.cut.prompt`, insert a `## Specification Debt` section into the Phase 4 tasks template before `## Dependency Order` (after the last `## Slice N` block). The tasks template has no `## Assumptions` or `## Out of Scope` sections, so placement before `## Dependency Order` brackets the operational content. Use the same table structure as in mark, but add an inline origin annotation for inherited items (see Slice 4 for inheritance wiring).
-- [ ] In cut's Phase 4 guidelines, add: "Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands."
-- [ ] Add two Tier 2 test assertions in `src/templates.test.ts`:
+- [x] In mark's Phase 3 spec guidelines (the bulleted list after the template code fence), add: "Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the description, source_category, impact, confidence, and status fields directly from clarify's return. Leave Resolution as `—` for all `open` items."
+- [x] In `src/templates/agent-skills/commands/smithy.cut.prompt`, insert a `## Specification Debt` section into the Phase 4 tasks template before `## Dependency Order` (after the last `## Slice N` block). The tasks template has no `## Assumptions` or `## Out of Scope` sections, so placement before `## Dependency Order` brackets the operational content. Use the same table structure as in mark, but add an inline origin annotation for inherited items (see Slice 4 for inheritance wiring).
+- [x] In cut's Phase 4 guidelines, add: "Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands."
+- [x] Add two Tier 2 test assertions in `src/templates.test.ts`:
   - Verify the mark template contains `## Specification Debt`, and that its `indexOf('## Specification Debt')` falls between `indexOf('## Assumptions')` and `indexOf('## Out of Scope')`.
   - Verify the cut template contains `## Specification Debt` and that its `indexOf('## Specification Debt')` falls before `indexOf('## Dependency Order')`.
 
