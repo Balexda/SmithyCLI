@@ -30,7 +30,7 @@ const { values } = parseArgs({
 });
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
-const timeoutSec = parseInt(values['timeout'] as string, 10);
+const timeoutSec = Number(values['timeout']);
 
 if (Number.isNaN(timeoutSec) || timeoutSec <= 0) {
   console.error(`Error: Invalid timeout value: ${values['timeout']}`);
