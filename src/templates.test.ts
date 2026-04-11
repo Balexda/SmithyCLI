@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(10);
+    expect(snippets.size).toBe(11);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -109,6 +109,7 @@ describe('loadSnippets', () => {
       'audit-checklist-spec.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
+      'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
       'competing-lenses-scoping.md',
       'guidance-shell.md',
@@ -131,6 +132,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
     expect(snippets.get('review-protocol.md')).toContain('Code Review Protocol');
+    expect(snippets.get('competing-lenses-decomposition.md')).toContain('Competing Slice Lenses');
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
   });
@@ -141,7 +143,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(8);
+    expect(byCategory.agents).toHaveLength(10);
   });
 
   it('commands includes expected template files', () => {
@@ -163,7 +165,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, review, plan, and reconcile', () => {
+  it('agents includes clarify, refine, implement, review, plan, reconcile, reconcile-slices, and slice', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
@@ -171,12 +173,15 @@ describe('getTemplateFilesByCategory', () => {
     expect(agents).toContain('smithy.review.md');
     expect(agents).toContain('smithy.plan.md');
     expect(agents).toContain('smithy.reconcile.md');
+    expect(agents).toContain('smithy.reconcile-slices.md');
+    expect(agents).toContain('smithy.slice.md');
   });
 
-  it('does not include smithy.slice.md (deleted)', () => {
+  it('smithy.slice.md is categorized as an agent', () => {
     const { commands, prompts, agents } = getTemplateFilesByCategory();
-    const allFiles = [...commands, ...prompts, ...agents];
-    expect(allFiles).not.toContain('smithy.slice.md');
+    expect(agents).toContain('smithy.slice.md');
+    expect(commands).not.toContain('smithy.slice.md');
+    expect(prompts).not.toContain('smithy.slice.md');
   });
 });
 
@@ -418,23 +423,23 @@ describe('getComposedTemplates', () => {
     expect(mark).not.toContain('Competing Plan Lenses');
   });
 
-  it('cut with claude variant renders competing plan dispatch', async () => {
+  it('cut with claude variant renders competing slice dispatch', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     const cut = claudeComposed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
-    expect(cut).toContain('smithy-plan');
-    expect(cut).toContain('smithy-reconcile');
-    expect(cut).toContain('Competing Plan Lenses');
+    expect(cut).toContain('smithy-slice');
+    expect(cut).toContain('smithy-reconcile-slices');
+    expect(cut).toContain('Competing Slice Lenses');
     expect(cut).not.toContain('{{>');
     expect(cut).not.toContain('{{');
   });
 
-  it('cut default does not contain competing plan dispatch', () => {
+  it('cut default does not contain competing slice dispatch', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
-    expect(cut).not.toContain('smithy-plan');
-    expect(cut).not.toContain('smithy-reconcile');
-    expect(cut).not.toContain('Competing Plan Lenses');
+    expect(cut).not.toContain('smithy-slice');
+    expect(cut).not.toContain('smithy-reconcile-slices');
+    expect(cut).not.toContain('Competing Slice Lenses');
   });
 
   it('variant does not change the number of template keys', async () => {
