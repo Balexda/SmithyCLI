@@ -13,7 +13,7 @@
 
 **Justification**: Story 3's entire behavioral surface lives in the ignite prompt's Phase 3 — there is no new agent file and no TypeScript change. The `{{#ifAgent}}` gating pattern is already established in Phase 1.5 of the same prompt, and is required to preserve the existing test that asserts the default render does not contain `smithy-plan`. All three sub-phase dispatch blocks (3c, 3d, 3f) follow the same pattern and belong in a single PR: they share the append-and-continue protocol, use the same smithy-plan interface, and are covered by the same test assertions. Story 4 builds on this by wiring the full pipeline (file creation, 3a/3b/3e/3g, sequential orchestration).
 
-**Addresses**: FR-002, FR-003, FR-007a, FR-007b; Acceptance Scenarios 3.1, 3.2, 3.3, 3.4
+**Addresses**: FR-002, FR-003, FR-007a, FR-007b; Acceptance Scenarios US3-1, US3-2, US3-3, US3-4
 
 ### Tasks
 
@@ -34,7 +34,7 @@
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Only slice. The prompt change and test augmentation are tightly coupled (the test verifies the rendering of the prompt change) and belong in a single PR.
+1. **Slice 1** — Only slice. The prompt change and test augmentation are tightly coupled (the test verifies the rendering of the prompt change) and belong in a single PR. Covers Acceptance Scenarios US3-1, US3-2, US3-3, US3-4.
 
 ### Cross-Story Dependencies
 
