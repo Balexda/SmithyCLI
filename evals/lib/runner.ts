@@ -15,6 +15,12 @@ import path from 'node:path';
 import type { EvalScenario, RunOutput, StreamEvent } from './types.js';
 import { parseStreamString, extractCanonicalText } from './parse-stream.js';
 
+/** Path to the built Smithy CLI, resolved relative to this module. */
+const CLI_PATH = path.resolve(
+  path.dirname(new URL(import.meta.url).pathname),
+  '../../dist/cli.js',
+);
+
 /** Default per-case timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -243,6 +249,14 @@ export async function runScenario(
   try {
     // FR-002: Copy fixture to temp directory.
     fs.cpSync(fixtureDir, tmpDir, { recursive: true });
+
+    // Deploy Smithy skills into the temp copy. The fixture intentionally does
+    // not commit .claude/ — skills are deployed fresh each run so evals always
+    // test against the latest templates.
+    execFileSync('node', [CLI_PATH, 'init', '-a', 'claude', '-y'], {
+      cwd: tmpDir,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
     // FR-011: Checksum the source fixture *before* execution.
     const checksumBefore = hashDirectory(fixtureDir);
