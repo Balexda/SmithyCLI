@@ -46,13 +46,16 @@ Tests that templates compose correctly (snippet/partial resolution, frontmatter 
 
 ### Tier 3: Agent-Skill Execution Behavior (evals)
 
-Tests that the deployed skills actually *work* when invoked by an AI agent — slash commands trigger, output has the correct structure, sub-agents are dispatched, and results meet quality expectations. **Not yet covered** — planned via a dedicated evals framework.
+Tests that the deployed skills actually *work* when invoked by an AI agent — slash commands trigger, output has the correct structure, sub-agents are dispatched, and results meet quality expectations. Run via `npm run eval` (local on-demand, not CI).
 
-The evals framework (under `evals/`) will:
-- Execute skills via `claude -p` in headless mode against a reference fixture codebase
-- Validate outputs structurally (required headings, sections, tables)
-- Verify sub-agent invocation (e.g., strike dispatches plan, scout, reconcile, clarify)
-- Run locally on demand (`npm run eval`), not in CI, due to LLM cost
+The evals framework (under `evals/`) — implemented:
+- Executes skills via `claude -p` in headless mode against a reference fixture codebase
+- Runs locally on demand (`npm run eval`), not in CI, due to LLM cost
+
+Pending:
+- Structural output validation (required headings, sections, tables)
+- Sub-agent invocation verification (e.g., strike dispatches plan, scout, reconcile, clarify)
+- YAML-defined scenario loading (`evals/cases/`)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 
