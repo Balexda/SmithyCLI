@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] Create `evals/lib/types.ts` defining the shared types for the framework per the data model spec: `StreamEvent`, `ResultSummary`, `ToolUse`, `ToolResult`, `AgentDispatch`, `EventSummary`, `StructuralExpectations`, `SubAgentEvidence`, `EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`. Type `StreamEvent` loosely (a base interface with optional fields, not a discriminated union) so the parser tolerates new claude CLI event types without code changes.
+- [x] Create `evals/lib/types.ts` defining the shared types for the framework per the data model spec: `StreamEvent`, `ResultSummary`, `ToolUse`, `ToolResult`, `AgentDispatch`, `EventSummary`, `StructuralExpectations`, `SubAgentEvidence`, `EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`. Type `StreamEvent` loosely (a base interface with optional fields, not a discriminated union) so the parser tolerates new claude CLI event types without code changes.
 
 - [ ] Create `evals/lib/parse-stream.ts` as a TypeScript port of `evals/spike/parse-stream.mjs`, exporting all seven FR-015 functions: `parseStreamString`, `extractText`, `extractResult`, `extractToolUses`, `extractToolResults`, `extractSubAgentDispatches`, `summarizeEvents`. Drop `parseStreamFile` (file I/O is the runner's concern, not the parser's). Inline `countEventTypes` — it is not a required export.
 
