@@ -269,7 +269,7 @@ Guidelines for slicing:
 - Slices are numbered sequentially starting at 1.
 - Include tests, docs, and validation steps within the slice that introduces the
   code — do not batch these into a separate "testing slice".
-- Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands.
+- Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Leave Resolution as `—` for all `open` items. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands.
 
 Guidelines for task authoring:
 
