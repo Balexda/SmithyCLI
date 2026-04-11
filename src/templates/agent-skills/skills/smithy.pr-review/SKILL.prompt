@@ -9,8 +9,8 @@ Use these operations to inspect and respond to inline review comments on the cur
 
 ## Operation: List Inline Comments
 
-Fetches all root-level inline review comments (excludes thread replies) for the open PR
-on the current branch. Returns a JSON array.
+Fetches all **unresolved** review threads with their full reply chains for the open PR
+on the current branch. Resolved threads are automatically filtered out. Returns a JSON array.
 
 **Step 1 — get current branch:**
 ```bash
@@ -28,12 +28,19 @@ If the result is an empty array, there is no open PR. Stop.
 gh repo view --json owner,name --jq '.owner.login + "/" + .name'
 ```
 
-**Step 4 — fetch root comments:**
+**Step 4 — fetch unresolved review threads:**
 ```bash
 bash .claude/skills/smithy.pr-review/get-comments.sh <owner/repo> <PR-number>
 ```
 
-Each comment object includes: `id`, `path` (file), `line`, `diff_hunk`, `body`, `user.login`.
+Each thread object includes:
+- `isResolved` (always `false` — resolved threads are filtered out)
+- `comments[]` — full reply chain, oldest first. Each comment has:
+  `databaseId`, `body`, `path`, `diffHunk`, `author.login`, `createdAt`
+
+Read the **entire thread** (all comments in the chain) before deciding how to act.
+The last comment in the chain typically contains the most relevant context — a reviewer's
+clarification, a follow-up question, or a narrowed request.
 
 ---
 

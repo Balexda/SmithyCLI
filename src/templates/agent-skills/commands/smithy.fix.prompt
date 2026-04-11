@@ -38,14 +38,17 @@ Run these steps sequentially (no subshells):
    gh repo view --json owner,name --jq '.owner.login + "/" + .name'
    ```
 
-4. Fetch root-level inline review comments:
+4. Fetch unresolved review threads (resolved threads are automatically filtered out):
    ```
    bash .claude/skills/smithy.pr-review/get-comments.sh <owner/repo> <PR-number>
    ```
    If the result is an empty array `[]`, skip to **Path B**.
 
-5. Build a **problem list**: each root comment is one problem item with fields
-   `id`, `path`, `diff_hunk`, `body`, `user.login`. Continue to the **Fix Loop**.
+5. Build a **problem list**: each unresolved thread is one problem item. Each thread
+   contains a `comments[]` array (full reply chain, oldest first). Read the **entire
+   thread** before deciding — the last comment often has the most relevant context.
+   Use the first comment's `databaseId` as the thread's reply target. Continue to
+   the **Fix Loop**.
 
 ### Path B — No arguments, no PR or no comments
 
@@ -133,11 +136,12 @@ one logical fix per commit.
 
 ### For PR review comments (Path A)
 
-After all items have been fixed or declined, reply to each root comment:
+After all items have been fixed or declined, reply to each thread's root comment
+(use `databaseId` from the first comment in the thread's `comments[]` array):
 
-1. Write the reply body (one per comment):
+1. Write the reply body (one per thread):
    ```
-   cat > /tmp/smithy_reply_<comment-id>.json << 'EOF'
+   cat > /tmp/smithy_reply_<databaseId>.json << 'EOF'
    {"body": "Fixed in <commit-sha>: <one-line explanation>"}
    EOF
    ```
@@ -145,7 +149,7 @@ After all items have been fixed or declined, reply to each root comment:
 
 2. Post each reply:
    ```
-   bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <comment-id> /tmp/smithy_reply_<comment-id>.json
+   bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <databaseId> /tmp/smithy_reply_<databaseId>.json
    ```
 
 3. Push the branch:
