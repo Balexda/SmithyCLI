@@ -220,20 +220,6 @@ For each stale doc found:
 
 ---
 
-## Validation
-
-After implementation, review, and documentation check, run the full validation
-suite against the **current HEAD** (which includes any maid auto-fix commits):
-- Build
-- Lint
-- Tests
-
-For `.strike.md` mode: also run through the **Validation Plan** checklist from the strike document and check off each item.
-
-Include the command output summary in your final response so reviewers know what passed locally.
-
----
-
 ## Mark Slice Complete
 
 For `.tasks.md` mode only:
@@ -251,6 +237,20 @@ Commit the change: `mark slice <N> complete in dependency order`
 
 This ensures the PR diff includes the Dependency Order context, making it easy
 for reviewers to see which slice was completed and what comes next.
+
+---
+
+## Validation
+
+After implementation, review, and documentation check, run the full validation
+suite against the **current HEAD** (which includes any maid auto-fix commits):
+- Build
+- Lint
+- Tests
+
+For `.strike.md` mode: also run through the **Validation Plan** checklist from the strike document and check off each item.
+
+Include the command output summary in your final response so reviewers know what passed locally.
 
 ---
 
