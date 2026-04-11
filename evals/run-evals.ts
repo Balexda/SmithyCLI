@@ -52,8 +52,13 @@ try {
 // Validate fixture directory
 // ---------------------------------------------------------------------------
 
-if (!fs.existsSync(fixtureDir)) {
+const fixtureStat = fs.statSync(fixtureDir, { throwIfNoEntry: false });
+if (!fixtureStat) {
   console.error(`Error: Fixture directory not found: ${fixtureDir}`);
+  process.exit(1);
+}
+if (!fixtureStat.isDirectory()) {
+  console.error(`Error: Fixture path is not a directory: ${fixtureDir}`);
   process.exit(1);
 }
 
