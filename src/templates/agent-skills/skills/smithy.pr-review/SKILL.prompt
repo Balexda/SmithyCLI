@@ -1,0 +1,91 @@
+---
+name: smithy-pr-review
+description: "GitHub PR review operations: list inline comments, reply to comments, check CI run status. Use when handling review feedback on an open pull request."
+---
+# smithy-pr-review
+
+Provides GitHub PR review operations via shell scripts deployed alongside this skill.
+Use these operations to inspect and respond to inline review comments on the current branch's PR.
+
+## Operation: List Inline Comments
+
+Fetches all root-level inline review comments (excludes thread replies) for the open PR
+on the current branch. Returns a JSON array.
+
+**Step 1 — get current branch:**
+```bash
+git branch --show-current
+```
+
+**Step 2 — find open PR:**
+```bash
+gh pr list --head <branch-name> --json number,title,url --state open
+```
+If the result is an empty array, there is no open PR. Stop.
+
+**Step 3 — get owner/repo:**
+```bash
+gh repo view --json owner,name --jq '.owner.login + "/" + .name'
+```
+
+**Step 4 — fetch root comments:**
+```bash
+bash .claude/skills/smithy.pr-review/get-comments.sh <owner/repo> <PR-number>
+```
+
+Each comment object includes: `id`, `path` (file), `line`, `diff_hunk`, `body`, `user.login`.
+
+---
+
+## Operation: Reply to a Comment
+
+Posts an inline reply to a specific review comment. Write the reply body to a temp JSON
+file first to avoid quoting issues, then POST it.
+
+**Step 1 — write reply body:**
+```bash
+cat > /tmp/smithy_reply_<comment-id>.json << 'EOF'
+{"body": "your reply text here"}
+EOF
+```
+
+**Step 2 — post reply:**
+```bash
+bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <comment-id> /tmp/smithy_reply_<comment-id>.json
+```
+
+For a **fix** reply: `"Fixed in <commit-sha>: <one-line explanation of what changed and why>"`
+For a **decline** reply: `"Not addressed: <explanation — why the comment doesn't apply, or what was misunderstood>"`
+
+---
+
+## Operation: Check CI Run Status
+
+Lists recent workflow runs for the current branch and optionally fetches logs.
+
+**List runs:**
+```bash
+gh run list --branch <branch-name> --limit 5 --json status,conclusion,name,databaseId,url
+```
+
+**Fetch logs for a specific run:**
+```bash
+gh run view <run-id> --log --repo <owner/repo> > /tmp/smithy_run_<run-id>.log
+```
+
+---
+
+## Decision Criteria: Fix vs. Decline
+
+When evaluating a review comment, apply these criteria:
+
+**Fix when:**
+- The comment identifies a clear bug, typo, wrong logic, or naming issue
+- The change is mechanical and low-risk (no design tradeoffs)
+- The reviewer's reasoning is sound
+
+**Decline when:**
+- The comment is a stylistic preference where the current approach is equally valid
+- Accepting would expand scope beyond the PR's intent
+- The comment is based on a misunderstanding of the intent (explain why)
+- The change requires design discussion or dependency-version approval

@@ -215,6 +215,14 @@ export const permissions: Record<string, PermissionEntry> = {
     "repo view": ["", "*"],
   },
 
+  // --- Smithy skill scripts ---
+  // Specific scripts deployed by smithy init to .claude/skills/; more narrowly
+  // scoped than `gh api repos/*` — permission is clearly for these operations only.
+  bash: {
+    ".claude/skills/smithy.pr-review/get-comments.sh": ["*"],
+    ".claude/skills/smithy.pr-review/reply-comment.sh": ["*"],
+  },
+
   // --- Misc utilities ---
   echo: ["*"],
   printf: ["*"],

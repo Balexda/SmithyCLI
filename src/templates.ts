@@ -1,16 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import { Dotprompt } from 'dotprompt';
-import { commandsTemplateDir, promptsTemplateDir, agentsTemplateDir, snippetsTemplateDir } from './utils.js';
+import { commandsTemplateDir, promptsTemplateDir, agentsTemplateDir, snippetsTemplateDir, skillsTemplateDir } from './utils.js';
 
 const dp = new Dotprompt();
 
-export type TemplateCategory = 'commands' | 'prompts' | 'agents';
+export type TemplateCategory = 'commands' | 'prompts' | 'agents' | 'skills';
+
+export interface SkillTemplate {
+  prompt: string;               // rendered SKILL.md content (frontmatter not yet stripped)
+  scripts: Map<string, string>; // filename → raw script content
+}
 
 export interface ComposedTemplates {
   commands: Map<string, string>;  // filename → composed content
   prompts: Map<string, string>;
   agents: Map<string, string>;
+  skills: Map<string, SkillTemplate>; // skill name → { prompt, scripts }
 }
 
 export function stripFrontmatter(content: string): string {
@@ -153,6 +159,43 @@ export async function resolveSnippets(content: string, renderer: Dotprompt): Pro
 }
 
 /**
+ * List skill names (subdirectory names) in the skills template directory.
+ */
+function listSkillNames(): string[] {
+  if (!fs.existsSync(skillsTemplateDir)) return [];
+  return fs.readdirSync(skillsTemplateDir, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .map(e => e.name);
+}
+
+/**
+ * Read a single skill directory: find SKILL.prompt → renders to prompt string,
+ * and collect all *.sh files as raw scripts.
+ */
+async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<SkillTemplate> {
+  const skillDir = path.join(skillsTemplateDir, skillName);
+  const entries = fs.readdirSync(skillDir);
+
+  // Find and render the SKILL.prompt file
+  const promptFile = entries.find(f => f.endsWith('.prompt'));
+  let promptContent = '';
+  if (promptFile) {
+    const raw = fs.readFileSync(path.join(skillDir, promptFile), 'utf8');
+    promptContent = await resolveSnippets(raw, renderer);
+  }
+
+  // Collect all shell scripts
+  const scripts = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.endsWith('.sh')) {
+      scripts.set(entry, fs.readFileSync(path.join(skillDir, entry), 'utf8'));
+    }
+  }
+
+  return { prompt: promptContent, scripts };
+}
+
+/**
  * Returns filenames for each template category (without reading content).
  * Only includes base templates — variant files are excluded.
  * Useful for remove/cleanup operations.
@@ -163,6 +206,7 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
     commands: toMd(listBaseTemplateFiles(commandsTemplateDir)),
     prompts: toMd(listBaseTemplateFiles(promptsTemplateDir)),
     agents: toMd(listBaseTemplateFiles(agentsTemplateDir)),
+    skills: listSkillNames(),
   };
 }
 
@@ -196,9 +240,17 @@ export async function getComposedTemplates(variant?: string): Promise<ComposedTe
     return new Map(entries);
   };
 
+  // Resolve skills: each skill is a directory with a SKILL.prompt and optional scripts
+  const skillNames = listSkillNames();
+  const skillEntries = await Promise.all(
+    skillNames.map(async name => [name, await readSkillDir(name, renderer)] as const),
+  );
+  const skills = new Map<string, SkillTemplate>(skillEntries);
+
   return {
     commands: await resolve(commandsTemplateDir),
     prompts: await resolve(promptsTemplateDir),
     agents: await resolve(agentsTemplateDir),
+    skills,
   };
 }
