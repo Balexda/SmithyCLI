@@ -63,13 +63,13 @@
 
 ### Tasks
 
-- [ ] Add `tsx` to `devDependencies` in `package.json` and add `"eval": "tsx evals/run-evals.ts"` to `scripts`. Confirm the `eval` script does not appear in the `pretest` or `test` chains (FR-010).
+- [x] Add `tsx` to `devDependencies` in `package.json` and add `"eval": "tsx evals/run-evals.ts"` to `scripts`. Confirm the `eval` script does not appear in the `pretest` or `test` chains (FR-010).
 
-- [ ] Create `vitest.config.ts` restricting vitest discovery to `src/**/*.test.ts` only. This prevents any future `evals/` test file from running under `npm test`. Verify `npm test` still passes and evals tests are excluded.
+- [x] Create `vitest.config.ts` restricting vitest discovery to `src/**/*.test.ts` only. This prevents any future `evals/` test file from running under `npm test`. Verify `npm test` still passes and evals tests are excluded.
 
-- [ ] Create `evals/run-evals.ts` as the minimal orchestrator entry point: accept `--fixture` and `--timeout` CLI flags; call `preflight()` and exit 1 with the error message on failure; validate the fixture directory exists; run a single hardcoded smoke-test scenario via `runScenario` (with `skill` and `prompt` as separate fields, composed by the runner into the full `-p` invocation) and print a brief result summary. This entry point is intentionally minimal — US7 replaces the hardcoded scenario with YAML loading.
+- [x] Create `evals/run-evals.ts` as the minimal orchestrator entry point: accept `--fixture` and `--timeout` CLI flags; call `preflight()` and exit 1 with the error message on failure; validate the fixture directory exists; run a single hardcoded smoke-test scenario via `runScenario` (with `skill` and `prompt` as separate fields, composed by the runner into the full `-p` invocation) and print a brief result summary. This entry point is intentionally minimal — US7 replaces the hardcoded scenario with YAML loading.
 
-- [ ] Verify end-to-end: `npm run typecheck` covers `evals/run-evals.ts`; running `npm run eval` without `claude` in PATH exits 1 with an actionable error; running `npm test` does not invoke any live `claude -p` calls.
+- [x] Verify end-to-end: `npm run typecheck` covers `evals/run-evals.ts`; running `npm run eval` without `claude` in PATH exits 1 with an actionable error; running `npm test` does not invoke any live `claude -p` calls.
 
 **PR Outcome**: The evals framework is runnable via `npm run eval` with pre-flight gating. Eval execution is fully decoupled from the test suite (FR-010).
 

@@ -7,7 +7,9 @@
     "test": "vitest run",
     "build": "tsup src/cli.ts --format esm --clean",
     "start": "node dist/cli.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preeval": "tsup src/cli.ts --format esm --clean",
+    "eval": "tsx evals/run-evals.ts"
   },
   "repository": {
     "type": "git",
@@ -30,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "tsup": "^8.5.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
