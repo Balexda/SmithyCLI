@@ -248,7 +248,8 @@ export async function runScenario(
     const checksumBefore = hashDirectory(fixtureDir);
 
     // Build the invocation string: skill + prompt composed into slash-command form.
-    const invocation = `${scenario.skill} '${scenario.prompt}'`;
+    // No shell quoting needed — spawn passes args directly to the process.
+    const invocation = `${scenario.skill} ${scenario.prompt}`;
 
     // Determine timeout: scenario-level override (in seconds) → default.
     const timeoutMs = scenario.timeout != null
