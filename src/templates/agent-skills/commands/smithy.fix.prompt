@@ -149,7 +149,7 @@ After all items have been fixed or declined, reply to each thread's root comment
 
 2. Post each reply:
    ```
-   bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <databaseId> /tmp/smithy_reply_<databaseId>.json
+   bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <PR-number> <databaseId> /tmp/smithy_reply_<databaseId>.json
    ```
 
 3. Push the branch:

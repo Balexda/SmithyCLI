@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # reply-comment.sh — Post an inline reply to a PR review comment
 #
-# Usage: bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <comment-id> <body-file>
+# Usage: bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <pr-number> <comment-id> <body-file>
 #
 # body-file: path to a JSON file with content: {"body": "your reply text"}
 # Write it with a heredoc before calling this script to avoid quoting issues:
@@ -9,14 +9,15 @@
 #   cat > /tmp/smithy_reply_<id>.json << 'EOF'
 #   {"body": "Fixed in abc1234: changed X to Y because Z"}
 #   EOF
-#   bash .claude/skills/smithy.pr-review/reply-comment.sh owner/repo 123456 /tmp/smithy_reply_123456.json
+#   bash .claude/skills/smithy.pr-review/reply-comment.sh owner/repo 42 123456 /tmp/smithy_reply_123456.json
 
 set -euo pipefail
 
 REPO="$1"
-COMMENT_ID="$2"
-BODY_FILE="$3"
+PR="$2"
+COMMENT_ID="$3"
+BODY_FILE="$4"
 
-gh api "repos/$REPO/pulls/comments/$COMMENT_ID/replies" \
+gh api "repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   --method POST \
   --input "$BODY_FILE"

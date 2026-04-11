@@ -58,7 +58,7 @@ EOF
 
 **Step 2 — post reply:**
 ```bash
-bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <comment-id> /tmp/smithy_reply_<comment-id>.json
+bash .claude/skills/smithy.pr-review/reply-comment.sh <owner/repo> <PR-number> <comment-id> /tmp/smithy_reply_<comment-id>.json
 ```
 
 For a **fix** reply: `"Fixed in <commit-sha>: <one-line explanation of what changed and why>"`
