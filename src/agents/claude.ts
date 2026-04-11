@@ -54,9 +54,9 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
     const skillDir = path.join(baseDir, '.claude', 'skills', skillName);
     if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
 
-    // Write SKILL.md (frontmatter stripped)
+    // Write SKILL.md (frontmatter kept — Claude Code reads allowed-tools from it)
     const skillMd = path.join(skillDir, 'SKILL.md');
-    fs.writeFileSync(skillMd, stripFrontmatter(skill.prompt));
+    fs.writeFileSync(skillMd, skill.prompt);
     deployedFiles.push(path.relative(baseDir, skillMd));
 
     // Copy scripts into scripts/ subdirectory as executable files

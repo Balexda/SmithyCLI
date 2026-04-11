@@ -217,9 +217,8 @@ describe('getComposedTemplates', () => {
     expect(skill!.scripts.has('reply-comment.sh')).toBe(true);
   });
 
-  it('smithy.pr-review prompt has frontmatter stripped after composition', () => {
-    // getComposedTemplates returns raw content with frontmatter intact (stripped at deploy time)
-    // The prompt should have the allowed-tools frontmatter
+  it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
+    // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
     const skill = composed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain('smithy-pr-review');
     expect(skill.prompt).toContain('allowed-tools');

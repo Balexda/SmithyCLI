@@ -121,15 +121,29 @@ describe('deploy', () => {
     }
   });
 
-  it('strips frontmatter from deployed SKILL.md', async () => {
+  it('keeps frontmatter in deployed SKILL.md so allowed-tools is preserved', async () => {
     await deploy(tmpDir, 'none');
 
     const templates = await getComposedTemplates();
-    for (const [skillName] of templates.skills) {
+    for (const [skillName, skill] of templates.skills) {
       const skillMd = path.join(tmpDir, '.claude', 'skills', skillName, 'SKILL.md');
       const content = fs.readFileSync(skillMd, 'utf8');
-      expect(content).not.toMatch(/^---\s*\n/);
+      // Frontmatter must be present — Claude Code reads allowed-tools from it
+      expect(content).toMatch(/^---\s*\n/);
+      // Content should match what's in the template
+      expect(content).toBe(skill.prompt);
     }
+  });
+
+  it('deployed SKILL.md contains allowed-tools directive', async () => {
+    await deploy(tmpDir, 'none');
+
+    const skillMd = path.join(tmpDir, '.claude', 'skills', 'smithy.pr-review', 'SKILL.md');
+    const content = fs.readFileSync(skillMd, 'utf8');
+    expect(content).toContain('allowed-tools:');
+    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/find-pr.sh)');
+    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/get-comments.sh *)');
+    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/reply-comment.sh *)');
   });
 
   it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
