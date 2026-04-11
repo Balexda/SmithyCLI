@@ -47,7 +47,7 @@
 
 - [x] Write unit tests at `evals/lib/runner.test.ts` with a mocked child process covering: successful run with NDJSON stdout produces correct `RunOutput`; non-zero exit code is surfaced; timeout is detected and `timed_out: true` is returned; fixture source directory is unchanged after the run; temp directory is removed after the run (including on error); `preflight` throws when the CLI is unavailable; `preflight` passes when `ANTHROPIC_API_KEY` is set; `preflight` passes when no API key but OAuth is active; `preflight` throws when neither API key nor OAuth is configured.
 
-- [ ] Verify `npm test` passes and `npm run typecheck` passes.
+- [x] Verify `npm test` passes and `npm run typecheck` passes.
 
 **PR Outcome**: A working, fully-tested `runScenario()` satisfying all four US3 acceptance scenarios. Downstream stories (US4, US5) can import and use it immediately.
 
