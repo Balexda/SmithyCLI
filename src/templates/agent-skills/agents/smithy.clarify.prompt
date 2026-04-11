@@ -53,7 +53,7 @@ targeting the most ambiguous categories (Partial and Missing first).
 
 For each candidate, produce all four elements:
 
-1. **Question statement** — a clear, specific question about the ambiguity.
+1. **Ambiguity description** — a clear, specific description of what is uncertain.
 2. **Recommended answer** — your best inference based on codebase context,
    conventions, and the information available. Include brief reasoning.
 3. **Impact**: Critical / High / Medium / Low — how much does getting this wrong
@@ -108,8 +108,9 @@ item is recorded with structured metadata for downstream resolution.
 
 - If no candidates qualify as assumptions, skip the assumptions block entirely.
 - If triage produces zero debt items (all candidates are High confidence), return
-  only assumptions and an empty debt list. This is a valid and expected outcome
-  when the feature description is clear.
+  the full structured summary with `debt_items` as an empty list, `bail_out`
+  as `false`, and `bail_out_summary` omitted. This is a valid and expected
+  outcome when the feature description is clear.
 
 ### Triage examples
 
