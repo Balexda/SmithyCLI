@@ -234,8 +234,8 @@ Draft the tasks file with this structure:
 
 Recommended implementation sequence:
 
-1. **Slice N** — <why this comes first>
-2. **Slice M** — <why this follows>
+1. [ ] **Slice N** — <why this comes first>
+2. [ ] **Slice M** — <why this follows>
 3. ...
 
 ### Cross-Story Dependencies
