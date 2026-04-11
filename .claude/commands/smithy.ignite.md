@@ -108,35 +108,36 @@ report — the only difference is the **additional planning directives** field.
 
 Use the following lens directives (one per sub-agent):
 
-#### Simplification
+#### Scope Minimalism
 
-> **Directive:** Actively seek unnecessary complexity, over-engineering, and
-> YAGNI violations. Propose simpler alternatives — fewer files, fewer
-> indirections, inline solutions over extracted utilities. Challenge
-> abstractions that don't earn their keep. In the Tradeoffs section, surface at
-> least one simpler alternative even if you ultimately recommend against it.
-> This directive biases your attention, not your coverage — still flag critical
-> robustness issues or separation concerns if you find them.
+> **Directive:** Challenge scope creep. Propose tighter boundaries, question
+> optional requirements, and look for elements that can be deferred without
+> blocking the core artifact. Favor fewer entities, narrower stories, and
+> smaller milestones. In the Tradeoffs section, surface at least one narrower
+> alternative even if you ultimately recommend against it. This directive biases
+> your attention, not your coverage — still flag completeness gaps or coherence
+> issues if you find them.
 
-#### Separation of Concerns
+#### Completeness
 
-> **Directive:** Actively seek mixed responsibilities, coupling between
-> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
-> clear interfaces, single-purpose files, explicit dependency injection. In the
-> Tradeoffs section, surface at least one alternative with better separation
-> even if you ultimately recommend against it. This directive biases your
-> attention, not your coverage — still flag simplification opportunities or
-> robustness issues if you find them.
+> **Directive:** Look for gaps in coverage: missing user stories, unstated
+> assumptions, edge cases in contracts, entities without clear ownership, and
+> milestones that skip necessary groundwork. Verify that every requirement
+> traces to a concrete artifact element. In the Tradeoffs section, surface at
+> least one more thorough alternative even if you ultimately recommend against
+> it. This directive biases your attention, not your coverage — still flag
+> scope bloat or coherence issues if you find them.
 
-#### Robustness
+#### Coherence
 
-> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
-> and missing validation at system boundaries. Flag assumptions about external
-> state and unhandled error conditions. Prefer defensive design. In the
-> Tradeoffs section, surface at least one more defensive alternative even if
-> you ultimately recommend against it. This directive biases your attention,
-> not your coverage — still flag unnecessary complexity or separation concerns
-> if you find them.
+> **Directive:** Look for inconsistencies between elements: stories that don't
+> trace to contracts, data model entities that overlap or have ambiguous
+> ownership, feature boundaries that create awkward cross-cutting dependencies,
+> and milestones whose ordering doesn't match their actual dependencies.
+> Propose cleaner groupings and sharper boundaries. In the Tradeoffs section,
+> surface at least one better-structured alternative even if you ultimately
+> recommend against it. This directive biases your attention, not your
+> coverage — still flag scope bloat or completeness gaps if you find them.
 
 ---
 
@@ -146,8 +147,8 @@ field for the corresponding smithy-plan run.
 After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
 
 - All 3 plan outputs, each labeled with its lens name (e.g.,
-  "**[Simplification]** …", "**[Separation of Concerns]** …",
-  "**[Robustness]** …")
+  "**[Scope Minimalism]** …", "**[Completeness]** …",
+  "**[Coherence]** …")
 - The same context file paths
 - The planning context and feature description
 
@@ -222,6 +223,16 @@ of not solving it?>
 - <Goal 1>
 - <Goal 2>
 - <Goal 3>
+
+## Out of Scope
+
+- <Explicitly excluded capability 1>
+- <Explicitly excluded capability 2>
+
+## Personas
+
+- <Persona 1 — role and how they benefit from this RFC>
+- <Persona 2 — role and how they benefit>
 
 ## Proposal
 
