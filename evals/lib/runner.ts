@@ -3,7 +3,7 @@
  * `claude --output-format stream-json -p` against a temp copy of the
  * reference fixture and returning parsed output.
  *
- * Implements FR-001, FR-002, FR-003, FR-004, FR-011, FR-013.
+ * Implements FR-001, FR-002, FR-003, FR-004, FR-011, FR-013 (consumes FR-015 StreamParser).
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -246,9 +246,8 @@ function spawnClaude(
       stdoutChunks.push(chunk);
     });
 
-    // We capture stderr but do not use it — it may be useful for debugging.
     child.stderr.on('data', () => {
-      // Intentionally ignored.
+      // Intentionally ignored — stderr is not captured in RunOutput.
     });
 
     const timer = setTimeout(() => {
