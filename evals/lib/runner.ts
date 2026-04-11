@@ -165,7 +165,10 @@ export async function runScenario(
     const checksumBefore = await computeFixtureChecksum(fixtureDir);
 
     // Build the invocation string: skill + prompt composed into one string.
-    const invocation = `${scenario.skill} '${scenario.prompt}'`;
+    // No wrapper quotes — spawn bypasses the shell, so the full string is
+    // passed as a single argv element to `-p`. Wrapper quotes would be
+    // delivered literally and break prompts containing apostrophes.
+    const invocation = `${scenario.skill} ${scenario.prompt}`;
 
     const timeoutMs = scenario.timeout !== undefined
       ? scenario.timeout * 1000
