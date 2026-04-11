@@ -53,3 +53,4 @@ Sub-agents are invoked by parent commands, not directly by users:
 | smithy-review | Code review with auto-fix | forge |
 | smithy-scout | Pre-planning consistency scan | render, mark, cut |
 | smithy-maid | Post-implementation doc cleanup | forge |
+| smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b) |
