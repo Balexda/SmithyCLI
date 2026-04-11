@@ -144,6 +144,12 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(9);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(11);
+    expect(byCategory.skills).toHaveLength(1);
+  });
+
+  it('skills includes smithy.pr-review', () => {
+    const { skills } = getTemplateFilesByCategory();
+    expect(skills).toContain('smithy.pr-review');
   });
 
   it('commands includes expected template files', () => {
@@ -193,10 +199,54 @@ describe('getComposedTemplates', () => {
     composed = await getComposedTemplates();
   });
 
-  it('returns commands, prompts, and agents maps', () => {
+  it('returns commands, prompts, agents, and skills maps', () => {
     expect(composed.commands).toBeInstanceOf(Map);
     expect(composed.prompts).toBeInstanceOf(Map);
     expect(composed.agents).toBeInstanceOf(Map);
+    expect(composed.skills).toBeInstanceOf(Map);
+  });
+
+  it('skills map includes smithy.pr-review with prompt and scripts', () => {
+    const skill = composed.skills.get('smithy.pr-review');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toBeTruthy();
+    expect(skill!.scripts).toBeInstanceOf(Map);
+    expect(skill!.scripts.size).toBe(3);
+    expect(skill!.scripts.has('find-pr.sh')).toBe(true);
+    expect(skill!.scripts.has('get-comments.sh')).toBe(true);
+    expect(skill!.scripts.has('reply-comment.sh')).toBe(true);
+  });
+
+  it('smithy.pr-review prompt has frontmatter stripped after composition', () => {
+    // getComposedTemplates returns raw content with frontmatter intact (stripped at deploy time)
+    // The prompt should have the allowed-tools frontmatter
+    const skill = composed.skills.get('smithy.pr-review')!;
+    expect(skill.prompt).toContain('smithy-pr-review');
+    expect(skill.prompt).toContain('allowed-tools');
+  });
+
+  it('smithy.pr-review scripts start with bash shebang', () => {
+    const skill = composed.skills.get('smithy.pr-review')!;
+    for (const [filename, content] of skill.scripts) {
+      expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+    }
+  });
+
+  it('get-comments.sh uses GraphQL for full thread data', () => {
+    const skill = composed.skills.get('smithy.pr-review')!;
+    const script = skill.scripts.get('get-comments.sh')!;
+    expect(script).toContain('gh api graphql');
+    expect(script).toContain('reviewThreads');
+    expect(script).toContain('isResolved');
+    expect(script).toContain('databaseId');
+  });
+
+  it('reply-comment.sh uses correct REST API path with pr number', () => {
+    const skill = composed.skills.get('smithy.pr-review')!;
+    const script = skill.scripts.get('reply-comment.sh')!;
+    expect(script).toContain('repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies');
+    expect(script).toContain('--method POST');
+    expect(script).toContain('--input "$BODY_FILE"');
   });
 
   it('categorizes templates correctly', () => {
@@ -462,5 +512,6 @@ describe('getComposedTemplates', () => {
     expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
     expect([...composed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
     expect([...composed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
+    expect([...composed.skills.keys()].sort()).toEqual([...claudeComposed.skills.keys()].sort());
   });
 });

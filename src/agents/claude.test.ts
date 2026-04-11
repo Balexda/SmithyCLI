@@ -108,6 +108,75 @@ describe('deploy', () => {
     }
   });
 
+  it('deploys skills to .claude/skills/<name>/ with SKILL.md and scripts/', async () => {
+    await deploy(tmpDir, 'none');
+
+    const templates = await getComposedTemplates();
+    for (const [skillName] of templates.skills) {
+      const skillDir = path.join(tmpDir, '.claude', 'skills', skillName);
+      expect(fs.existsSync(skillDir)).toBe(true);
+
+      const skillMd = path.join(skillDir, 'SKILL.md');
+      expect(fs.existsSync(skillMd)).toBe(true);
+    }
+  });
+
+  it('strips frontmatter from deployed SKILL.md', async () => {
+    await deploy(tmpDir, 'none');
+
+    const templates = await getComposedTemplates();
+    for (const [skillName] of templates.skills) {
+      const skillMd = path.join(tmpDir, '.claude', 'skills', skillName, 'SKILL.md');
+      const content = fs.readFileSync(skillMd, 'utf8');
+      expect(content).not.toMatch(/^---\s*\n/);
+    }
+  });
+
+  it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
+    await deploy(tmpDir, 'none');
+
+    const templates = await getComposedTemplates();
+    for (const [skillName, skill] of templates.skills) {
+      if (skill.scripts.size > 0) {
+        const scriptsDir = path.join(tmpDir, '.claude', 'skills', skillName, 'scripts');
+        expect(fs.existsSync(scriptsDir)).toBe(true);
+
+        for (const [filename] of skill.scripts) {
+          const scriptPath = path.join(scriptsDir, filename);
+          expect(fs.existsSync(scriptPath)).toBe(true);
+
+          // Verify execute bit is set (owner can execute)
+          const stat = fs.statSync(scriptPath);
+          expect(stat.mode & 0o111).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('includes skill files in deployed file list', async () => {
+    const files = await deploy(tmpDir, 'none');
+
+    const templates = await getComposedTemplates();
+    for (const [skillName, skill] of templates.skills) {
+      expect(files).toContain(`.claude/skills/${skillName}/SKILL.md`);
+      for (const [filename] of skill.scripts) {
+        expect(files).toContain(`.claude/skills/${skillName}/scripts/${filename}`);
+      }
+    }
+  });
+
+  it('deploys smithy.pr-review skill with all three scripts', async () => {
+    await deploy(tmpDir, 'none');
+
+    const scriptsDir = path.join(tmpDir, '.claude', 'skills', 'smithy.pr-review', 'scripts');
+    expect(fs.existsSync(scriptsDir)).toBe(true);
+
+    const scripts = fs.readdirSync(scriptsDir).sort();
+    expect(scripts).toContain('find-pr.sh');
+    expect(scripts).toContain('get-comments.sh');
+    expect(scripts).toContain('reply-comment.sh');
+  });
+
   it('strips frontmatter from deployed prompt files', async () => {
     await deploy(tmpDir, 'none');
 
@@ -219,6 +288,10 @@ describe('removeLegacy', () => {
     }
     for (const file of categories.agents) {
       expect(fs.existsSync(path.join(tmpDir, '.claude', 'agents', file))).toBe(false);
+    }
+    for (const skillName of categories.skills) {
+      const skillDir = path.join(tmpDir, '.claude', 'skills', skillName);
+      expect(fs.existsSync(skillDir)).toBe(false);
     }
   });
 
