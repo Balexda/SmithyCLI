@@ -159,7 +159,7 @@ CLAUDE.md. Apply those conventions to all headings in this artifact.
 Before any sub-phase begins, create the RFC folder and file:
 
 1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
-2. Create `<slug>.rfc.md` with only the RFC header — nothing else:
+2. Create `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md` with only the RFC header — nothing else:
 
 ```markdown
 # RFC: <Title>
@@ -168,14 +168,17 @@ Before any sub-phase begins, create the RFC folder and file:
 ```
 
 Do not add a template skeleton or empty section placeholders. Each sub-phase
-will append its own section headings and content.
+will append its own section headings and content. The RFC template code fence
+below is a reference for section ordering and format — do not copy it into the
+file.
 
 ### Append-and-Continue Protocol
 
 After each sub-phase's sub-agent returns, the orchestrator appends the returned
 content to `<slug>.rfc.md` before dispatching the next sub-phase. This is the
-append-and-continue protocol for all sub-phases below. For inline sub-phases
-(3e, 3g), the orchestrator writes directly.
+append-and-continue protocol for sub-phases 3a–3f. For inline sub-phase 3e, the
+orchestrator appends directly. Sub-phase 3g is an exception: it rewrites the
+entire file in place (harmonize pass) rather than appending.
 
 ### Sub-phase 3a: Summary + Motivation
 
