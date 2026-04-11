@@ -241,6 +241,12 @@ describe('getComposedTemplates', () => {
     expect(clarify).toMatch(/tools:\s*\n\s+-\s+Read/);
   });
 
+  it('clarify agent triage uses Specification Debt category, not Questions', () => {
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    expect(clarify).not.toContain('### Questions');
+    expect(clarify).toContain('debt_items');
+  });
+
   it('command templates without partials are returned as-is', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
