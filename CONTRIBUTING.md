@@ -51,11 +51,13 @@ Tests that the deployed skills actually *work* when invoked by an AI agent — s
 The evals framework (under `evals/`) — implemented:
 - Executes skills via `claude -p` in headless mode against a reference fixture codebase
 - Runs locally on demand (`npm run eval`), not in CI, due to LLM cost
+- Structural output validation (`validateStructure` — required headings, patterns, tables, forbidden patterns)
+- Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)
+- Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
 
 Pending:
-- Structural output validation (required headings, sections, tables)
-- Sub-agent invocation verification (e.g., strike dispatches plan, scout, reconcile, clarify)
 - YAML-defined scenario loading (`evals/cases/`)
+- Wiring validator into the orchestrator (`run-evals.ts` Slice 2)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 

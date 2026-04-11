@@ -9,7 +9,9 @@
     "start": "node dist/cli.js",
     "typecheck": "tsc --noEmit",
     "preeval": "tsup src/cli.ts --format esm --clean",
-    "eval": "tsx evals/run-evals.ts"
+    "eval": "tsx evals/run-evals.ts",
+    "pretest:evals": "tsup src/cli.ts --format esm --clean",
+    "test:evals": "vitest run --config evals/vitest.config.ts"
   },
   "repository": {
     "type": "git",
