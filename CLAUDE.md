@@ -71,6 +71,7 @@ npm run build        # Build with tsup
 npm run typecheck    # Type-check without emitting
 npm test             # Run all tests
 npm run eval         # Run evals framework (requires claude CLI + auth)
+npm run test:evals   # Run evals unit tests (structural, parse-stream, runner, fixture)
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow
 node dist/cli.js update  # Test update flow
@@ -84,7 +85,7 @@ Smithy has three testing tiers, each tested differently:
 
 1. **CLI behavior** (Tier 1) — init/uninit/update flows, option parsing, file deployment, idempotency. Covered by `npm test` (automated, CI) and interactive terminal tests (H1-H4).
 2. **Agent-skill file validation** (Tier 2) — template composition, partial resolution, frontmatter, agent variants, file categorization. Covered by `npm test` (automated, CI) and agent-session tests (A1-A6).
-3. **Agent-skill execution behavior** (Tier 3) — skills produce correct output when invoked by an AI agent, sub-agents are dispatched, output structure matches expectations. Covered by evals framework (`npm run eval`, local on-demand, not CI). **Status: runner and entry point implemented (stream parser, runner, `npm run eval` wired); structural validator and YAML scenario loading pending.**
+3. **Agent-skill execution behavior** (Tier 3) — skills produce correct output when invoked by an AI agent, sub-agents are dispatched, output structure matches expectations. Covered by evals framework (`npm run eval`, local on-demand, not CI). **Status: runner, entry point, and structural validator implemented (stream parser, runner, `validateStructure`, `verifySubAgents`, `npm run eval` and `npm run test:evals` wired); YAML scenario loading pending.**
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for test file details. Agent and human test cases are in **[tests/](tests/)**: [tests/Agent.tests.md](tests/Agent.tests.md) (A-series), [tests/Manual.tests.md](tests/Manual.tests.md) (H-series).
 
