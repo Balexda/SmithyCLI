@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { validateStructure } from './structural.js';
-import type { StructuralExpectations } from './types.js';
+import { validateStructure, verifySubAgents } from './structural.js';
+import type {
+  StructuralExpectations,
+  AgentDispatch,
+  SubAgentEvidence,
+} from './types.js';
 
 describe('validateStructure', () => {
   // -----------------------------------------------------------------------
@@ -289,5 +293,149 @@ describe('validateStructure', () => {
       expect(results).toHaveLength(4);
       expect(results.every((r) => r.passed)).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// verifySubAgents
+// ---------------------------------------------------------------------------
+describe('verifySubAgents', () => {
+  const makeDispatch = (
+    overrides: Partial<AgentDispatch> = {},
+  ): AgentDispatch => ({
+    id: 'dispatch-1',
+    description: 'Run smithy-plan agent',
+    prompt: 'Do planning',
+    resultText: 'Plan completed successfully',
+    ...overrides,
+  });
+
+  it('returns empty array when evidence is empty', () => {
+    const results = verifySubAgents('some text', [makeDispatch()], []);
+    expect(results).toEqual([]);
+  });
+
+  it('passes when pattern matches in extracted text', () => {
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'plan.*output' },
+    ];
+    const results = verifySubAgents(
+      'The plan has output here',
+      [],
+      evidence,
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(true);
+    expect(results[0]!.check_name).toBe('smithy-plan evidence present');
+    expect(results[0]!.expected).toBe('plan.*output');
+    expect(results[0]!.actual).toBe('matched in extracted text');
+  });
+
+  it('passes when pattern matches in dispatch description', () => {
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'planning\\s+agent' },
+    ];
+    const dispatch = makeDispatch({
+      description: 'Invoke the planning agent for analysis',
+    });
+    const results = verifySubAgents('unrelated text', [dispatch], evidence);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(true);
+    expect(results[0]!.actual).toBe('matched in dispatch description');
+  });
+
+  it('passes when pattern matches in dispatch resultText', () => {
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'risk\\s+assessment' },
+    ];
+    const dispatch = makeDispatch({
+      resultText: 'Completed risk assessment for the feature',
+    });
+    const results = verifySubAgents('unrelated text', [dispatch], evidence);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(true);
+    expect(results[0]!.actual).toBe('matched in dispatch result');
+  });
+
+  it('fails when pattern does not match anywhere', () => {
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'nonexistent_pattern_xyz' },
+    ];
+    const dispatch = makeDispatch();
+    const results = verifySubAgents('some text', [dispatch], evidence);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(false);
+    expect(results[0]!.actual).toBe('no match found');
+    expect(results[0]!.expected).toBe('nonexistent_pattern_xyz');
+  });
+
+  it('does not pass based solely on agent name in dispatch', () => {
+    // The dispatch description mentions "smithy-plan" but the configured
+    // pattern requires something specific that is NOT present anywhere.
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'specific_marker_abc' },
+    ];
+    const dispatch = makeDispatch({
+      description: 'smithy-plan sub-agent invocation',
+      resultText: 'smithy-plan finished',
+    });
+    const results = verifySubAgents('smithy-plan ran', [dispatch], evidence);
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(false);
+    expect(results[0]!.actual).toBe('no match found');
+  });
+
+  it('handles multiple evidence entries with mixed results', () => {
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'plan.*completed' },
+      { agent: 'smithy-review', pattern: 'review_marker_missing' },
+      { agent: 'smithy-implement', pattern: 'TDD.*cycle' },
+    ];
+    const dispatches: AgentDispatch[] = [
+      makeDispatch({
+        id: 'd1',
+        description: 'planning',
+        resultText: 'plan was completed',
+      }),
+      makeDispatch({
+        id: 'd2',
+        description: 'implementation',
+        resultText: 'TDD red-green cycle done',
+      }),
+    ];
+    const results = verifySubAgents('unrelated', dispatches, evidence);
+    expect(results).toHaveLength(3);
+
+    // smithy-plan: matches in dispatch resultText
+    expect(results[0]!.check_name).toBe('smithy-plan evidence present');
+    expect(results[0]!.passed).toBe(true);
+
+    // smithy-review: no match anywhere
+    expect(results[1]!.check_name).toBe('smithy-review evidence present');
+    expect(results[1]!.passed).toBe(false);
+
+    // smithy-implement: matches in dispatch resultText
+    expect(results[2]!.check_name).toBe('smithy-implement evidence present');
+    expect(results[2]!.passed).toBe(true);
+  });
+
+  it('prefers extracted text match over dispatch matches', () => {
+    // When the pattern matches in the full text AND in dispatches,
+    // the actual should report "matched in extracted text" (first source checked)
+    const evidence: SubAgentEvidence[] = [
+      { agent: 'smithy-plan', pattern: 'found_everywhere' },
+    ];
+    const dispatch = makeDispatch({
+      description: 'found_everywhere in desc',
+      resultText: 'found_everywhere in result',
+    });
+    const results = verifySubAgents(
+      'found_everywhere in text',
+      [dispatch],
+      evidence,
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.passed).toBe(true);
+    expect(results[0]!.actual).toBe('matched in extracted text');
   });
 });

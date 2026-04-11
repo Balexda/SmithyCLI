@@ -89,3 +89,65 @@ export function validateStructure(
 
   return results;
 }
+
+/**
+ * Verify sub-agent evidence in skill output and dispatch records.
+ *
+ * For each SubAgentEvidence entry, compile its pattern as a RegExp and test
+ * it against (a) the full extracted text, (b) each AgentDispatch description,
+ * and (c) each AgentDispatch resultText. A check passes if the pattern
+ * matches at least one source. Agent-name presence alone (without the
+ * configured pattern matching) is NOT sufficient (FR-016).
+ *
+ * Returns an empty array when `evidence` is empty.
+ */
+export function verifySubAgents(
+  text: string,
+  dispatches: AgentDispatch[],
+  evidence: SubAgentEvidence[],
+): CheckResult[] {
+  const results: CheckResult[] = [];
+
+  for (const entry of evidence) {
+    const re = new RegExp(entry.pattern);
+    let passed = false;
+    let actual = 'no match found';
+
+    // (a) Check full extracted text
+    if (re.test(text)) {
+      passed = true;
+      actual = 'matched in extracted text';
+    }
+
+    // (b) Check each dispatch description
+    if (!passed) {
+      for (const dispatch of dispatches) {
+        if (re.test(dispatch.description)) {
+          passed = true;
+          actual = 'matched in dispatch description';
+          break;
+        }
+      }
+    }
+
+    // (c) Check each dispatch resultText
+    if (!passed) {
+      for (const dispatch of dispatches) {
+        if (re.test(dispatch.resultText)) {
+          passed = true;
+          actual = 'matched in dispatch result';
+          break;
+        }
+      }
+    }
+
+    results.push({
+      check_name: `${entry.agent} evidence present`,
+      passed,
+      expected: entry.pattern,
+      actual,
+    });
+  }
+
+  return results;
+}
