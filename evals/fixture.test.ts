@@ -8,8 +8,6 @@ import path from 'node:path';
 const CLI = path.resolve('dist/cli.js');
 const FIXTURE_DIR = path.resolve('evals/fixture');
 
-const EXCLUDED_DIRS = new Set(['node_modules', '.claude', '.smithy', 'dist']);
-
 function hashDirectory(dirPath: string): string {
   const hash = crypto.createHash('sha256');
   const entries: string[] = [];
@@ -17,7 +15,6 @@ function hashDirectory(dirPath: string): string {
   function collectFiles(dir: string, prefix: string): void {
     const items = fs.readdirSync(dir, { withFileTypes: true });
     for (const item of items) {
-      if (EXCLUDED_DIRS.has(item.name)) continue;
       const rel = prefix ? `${prefix}/${item.name}` : item.name;
       if (item.isDirectory()) {
         collectFiles(path.join(dir, item.name), rel);
