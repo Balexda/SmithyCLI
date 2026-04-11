@@ -264,13 +264,21 @@ export async function runScenario(
     );
 
     // Parse the NDJSON output.
+    // On clean runs (exit 0, no timeout), parse errors propagate — they
+    // indicate a real regression in output capture. On incomplete runs
+    // (timeout or non-zero exit), tolerate malformed/partial output.
     let events: StreamEvent[] = [];
     let extractedText = '';
-    try {
+    if (result.timed_out || result.exit_code !== 0) {
+      try {
+        events = parseStreamString(result.stdout);
+        extractedText = extractCanonicalText(events);
+      } catch {
+        // Partial/malformed output from timeout or error — keep empty defaults.
+      }
+    } else {
       events = parseStreamString(result.stdout);
       extractedText = extractCanonicalText(events);
-    } catch {
-      // If parsing fails (e.g., partial output on timeout), keep empty defaults.
     }
 
     // FR-011: Re-verify the source fixture after execution.
