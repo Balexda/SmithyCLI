@@ -180,7 +180,7 @@ Dispatch **smithy-plan** with:
 
 Append the returned content to the RFC file.
 
-### Sub-phase 3f: Milestones
+### Sub-phase 3e: Milestones
 
 Dispatch **smithy-plan** with:
 

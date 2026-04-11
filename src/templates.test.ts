@@ -420,7 +420,7 @@ describe('getComposedTemplates', () => {
     // Sub-phase dispatch identifiers from Phase 3 (Story 3)
     expect(ignite).toContain('3c');
     expect(ignite).toContain('3d');
-    expect(ignite).toContain('3f');
+    expect(ignite).toContain('3e');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
