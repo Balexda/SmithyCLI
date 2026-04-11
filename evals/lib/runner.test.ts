@@ -175,6 +175,25 @@ describe('runScenario', () => {
       expect(output.duration_ms).toBeGreaterThanOrEqual(0);
       expect(output.exit_code).toBe(0);
       expect(output.timed_out).toBe(false);
+
+      // Fixture isolation: spawn must target the temp copy, not the source.
+      expect(spawn).toHaveBeenCalledWith(
+        'claude',
+        ['--output-format', 'stream-json', '-p', '/smithy.strike do something'],
+        expect.objectContaining({
+          cwd: expect.stringContaining('smithy-eval-'),
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }),
+      );
+
+      // Skills deployment: smithy init must run in the temp copy before claude.
+      expect(execFileSync).toHaveBeenCalledWith(
+        'node',
+        expect.arrayContaining(['init', '-a', 'claude', '-y']),
+        expect.objectContaining({
+          cwd: expect.stringContaining('smithy-eval-'),
+        }),
+      );
     } finally {
       fixture.cleanup();
     }
