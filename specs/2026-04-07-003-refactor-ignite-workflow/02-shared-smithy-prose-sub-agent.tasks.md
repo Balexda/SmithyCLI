@@ -17,18 +17,18 @@
 
 ### Tasks
 
-- [ ] Read `src/templates/agent-skills/agents/smithy.plan.prompt` and `src/templates/agent-skills/agents/smithy.clarify.prompt` to confirm the exact YAML frontmatter schema used by read-only agents (YAML array format for `tools`, `model: opus`).
-- [ ] Read `specs/2026-04-07-003-refactor-ignite-workflow/refactor-ignite-workflow.contracts.md` (Smithy-Prose Sub-Agent Interface section) to extract all five input parameters, the output format, and the two error conditions (partial-output fallback and halt-on-empty).
-- [ ] Create `src/templates/agent-skills/agents/smithy.prose.prompt` with:
+- [x] Read `src/templates/agent-skills/agents/smithy.plan.prompt` and `src/templates/agent-skills/agents/smithy.clarify.prompt` to confirm the exact YAML frontmatter schema used by read-only agents (YAML array format for `tools`, `model: opus`).
+- [x] Read `specs/2026-04-07-003-refactor-ignite-workflow/refactor-ignite-workflow.contracts.md` (Smithy-Prose Sub-Agent Interface section) to extract all five input parameters, the output format, and the two error conditions (partial-output fallback and halt-on-empty).
+- [x] Create `src/templates/agent-skills/agents/smithy.prose.prompt` with:
   - **Frontmatter**: `name: smithy-prose`, `description` (narrative/persuasive prose drafting for planning artifact sections), `tools` as YAML array (`- Read`, `- Grep`, `- Glob`), `model: opus`.
   - **Input section**: document all five parameters — `section_assignment` (required, text), `idea_description` (required, text), `clarify_output` (required, text), `rfc_file_path` (optional, path to accumulating RFC for context), `tone_directives` (optional, specific prose guidance). Include an instruction to read `rfc_file_path` if provided, so prior sections inform the current draft.
   - **Drafting protocol**: step-by-step instructions for producing persuasive narrative prose — open with the impact of not solving the problem, establish urgency, articulate stakeholder value, then move to concrete description. Include at least one concrete stylistic example and one anti-pattern (e.g., "write 'Teams lose 3 hours per sprint to manual reconciliation' rather than '- Manual reconciliation is slow'").
   - **Section-specific guidance**: instructions covering all three section types smithy-prose handles — Summary (2-3 sentence pitch, what and why it matters), Motivation / Problem Statement (impact of not solving, why now, stakeholder pain), and Personas (named role + how they benefit, narrative style rather than bullet enumeration).
   - **Output format**: return the drafted section(s) as plain Markdown — the full response body is the section content; do not wrap it in a named field or JSON structure (consistent with how smithy-plan and smithy-reconcile return their output). When context is insufficient to produce a complete draft, return the best partial draft possible and append a `## Gaps / Missing Context` section listing specific missing facts. When no meaningful content can be produced, halt and return an error rather than placeholder text.
   - **Rules**: non-interactive — return output to the parent agent only; do not ask the user questions. Read-only — use only `Read`, `Grep`, `Glob` tools to gather codebase context; do not write or edit any files. Generic design — the `section_assignment` parameter drives what section(s) to draft; do not hardcode ignite-specific section names so the agent remains reusable by any parent command.
-- [ ] Update `src/templates.test.ts`, line 144: change `expect(byCategory.agents).toHaveLength(8)` to `toHaveLength(9)`.
-- [ ] Update `src/templates.test.ts`, lines 166–174 (the `agents includes clarify, refine, implement, review, plan, and reconcile` block): add `expect(agents).toContain('smithy.prose.md')` alongside the existing `toContain` assertions. Leave the `it(...)` description string unchanged (existing convention omits a full roster from the description).
-- [ ] Add a new `it` block in `src/templates.test.ts` inside the `getComposedTemplates` describe block (after the `reconcile agent retains frontmatter` test, following the same pattern as lines 294–303 and 305–314):
+- [x] Update `src/templates.test.ts`, line 144: change `expect(byCategory.agents).toHaveLength(8)` to `toHaveLength(9)`.
+- [x] Update `src/templates.test.ts`, lines 166–174 (the `agents includes clarify, refine, implement, review, plan, and reconcile` block): add `expect(agents).toContain('smithy.prose.md')` alongside the existing `toContain` assertions. Leave the `it(...)` description string unchanged (existing convention omits a full roster from the description).
+- [x] Add a new `it` block in `src/templates.test.ts` inside the `getComposedTemplates` describe block (after the `reconcile agent retains frontmatter` test, following the same pattern as lines 294–303 and 305–314):
   ```
   it('prose agent retains frontmatter with read-only tools', () => {
     const prose = composed.agents.get('smithy.prose.md')!;
@@ -44,7 +44,7 @@
     expect(prose).not.toContain('{{>');
   });
   ```
-- [ ] Run `npm test` and confirm all assertions pass with no regressions.
+- [x] Run `npm test` and confirm all assertions pass with no regressions.
 
 **PR Outcome**: The `smithy-prose` sub-agent exists as a deployable template, is auto-discovered by the template system, and has its frontmatter and tool constraints verified by the automated test suite. The story's acceptance scenarios 1, 2, and 3 are satisfied at the artifact level — the agent is ready to be dispatched by any parent command.
 
