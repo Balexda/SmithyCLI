@@ -20,56 +20,13 @@ Determine what to fix based on `$ARGUMENTS`.
 
 ### Path A — No arguments: check for open PR
 
-Run these steps sequentially (no subshells):
+Use the `smithy.pr-review` skill to check for PR review comments. Invoke
+`Skill("smithy.pr-review")` to load the operations, then:
 
-1. Get current branch:
-   ```
-   git branch --show-current
-   ```
-
-2. Check for an open PR on this branch:
-   ```
-   gh pr list --head <branch-name> --json number,title,url --state open
-   ```
-   If the result is an empty array, skip to **Path B**.
-
-3. Get owner/repo (split into owner and name for the GraphQL query):
-   ```
-   gh repo view --json owner,name --jq '.owner.login'
-   gh repo view --json owner,name --jq '.name'
-   ```
-
-4. Fetch unresolved review threads via GraphQL (resolved threads are filtered out,
-   full reply chains are included):
-   ```
-   gh api graphql \
-     -F owner="<owner>" -F name="<repo>" -F pr=<PR-number> \
-     -f query='
-   query($owner: String!, $name: String!, $pr: Int!) {
-     repository(owner: $owner, name: $name) {
-       pullRequest(number: $pr) {
-         reviewThreads(first: 100) {
-           nodes {
-             isResolved
-             comments(first: 50) {
-               nodes {
-                 databaseId
-                 body
-                 path
-                 diffHunk
-                 author { login }
-                 createdAt
-               }
-             }
-           }
-         }
-       }
-     }
-   }' --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)]'
-   ```
+1. Run the **Find Open PR** operation. If the result is `{}` (no PR), skip to **Path B**.
+2. Run the **List Inline Comments** operation with the `ownerRepo` and `pr` from step 1.
    If the result is an empty array `[]`, skip to **Path B**.
-
-5. Build a **problem list** from the first **10 unresolved threads** (to avoid
+3. Build a **problem list** from the first **10 unresolved threads** (to avoid
    overloading context). If more than 10 exist, note the remainder and tell the user
    to run `/smithy.fix` again for the next batch.
 
@@ -164,27 +121,17 @@ one logical fix per commit.
 
 ### For PR review comments (Path A)
 
-After all items have been fixed or declined, reply to each thread's root comment
-(use `databaseId` from the first comment in the thread's `comments[]` array):
+After all items have been fixed or declined, use the `smithy.pr-review` skill's
+**Reply to a Comment** operation for each thread's root comment (use `databaseId`
+from the first comment in the thread's `comments[]` array):
 
-1. Write the reply body (one per thread):
-   ```
-   cat > /tmp/smithy_reply_<databaseId>.json << 'EOF'
-   {"body": "Fixed in <commit-sha>: <one-line explanation>"}
-   EOF
-   ```
-   For declined items: `{"body": "Not addressed: <explanation>"}`
+- For fixed items: `"Fixed in <commit-sha>: <one-line explanation>"`
+- For declined items: `"Not addressed: <explanation>"`
 
-2. Post each reply:
-   ```
-   gh api repos/<owner>/<repo>/pulls/<PR-number>/comments/<databaseId>/replies \
-     --method POST --input /tmp/smithy_reply_<databaseId>.json
-   ```
-
-3. Push the branch:
-   ```
-   git push -u origin <branch-name>
-   ```
+Then push the branch:
+```
+git push -u origin <branch-name>
+```
 
 ### For CI failures (Path C)
 
