@@ -450,6 +450,15 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('3c');
     expect(ignite).toContain('3d');
     expect(ignite).toContain('3e');
+    expect(ignite).toContain('3f');
+    // Sub-phase dispatch identifiers from Phase 3 (Story 4)
+    expect(ignite).toContain('Sub-phase 3a');
+    expect(ignite).toContain('Sub-phase 3b');
+    expect(ignite).toContain('Sub-phase 3e');
+    expect(ignite).toContain('Sub-phase 3g');
+    expect(ignite).toContain('smithy-prose');
+    // Phase 4 agent path must NOT contain the unconditional file-write instruction
+    expect(ignite).not.toContain('Write the RFC to');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
@@ -458,6 +467,8 @@ describe('getComposedTemplates', () => {
     expect(ignite).not.toContain('smithy-plan');
     expect(ignite).not.toContain('smithy-reconcile');
     expect(ignite).not.toContain('Competing Plan Lenses');
+    // Default (non-agent) path retains the unconditional file-write instruction
+    expect(ignite).toContain('Write the RFC to');
   });
 
   it('ignite RFC template contains Out of Scope and Personas sections in correct order', () => {
