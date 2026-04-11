@@ -65,7 +65,8 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
       if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
       for (const [filename, content] of skill.scripts) {
         const dest = path.join(scriptsDir, filename);
-        fs.writeFileSync(dest, content, { mode: 0o755 });
+        fs.writeFileSync(dest, content);
+        fs.chmodSync(dest, 0o755);
         deployedFiles.push(path.relative(baseDir, dest));
       }
     }

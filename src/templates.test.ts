@@ -220,7 +220,7 @@ describe('getComposedTemplates', () => {
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
     // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
     const skill = composed.skills.get('smithy.pr-review')!;
-    expect(skill.prompt).toContain('smithy-pr-review');
+    expect(skill.prompt).toContain('smithy.pr-review');
     expect(skill.prompt).toContain('allowed-tools');
   });
 
