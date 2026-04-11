@@ -59,11 +59,13 @@ export function validateStructure(
     for (const patternStr of expectations.forbidden_patterns) {
       const re = new RegExp(patternStr);
       const match = re.exec(output);
+      const absent = match === null;
+      const passed = absent && output.length > 0;
       results.push({
         check_name: `forbidden pattern absent: ${patternStr}`,
-        passed: match === null,
+        passed,
         expected: patternStr,
-        actual: match === null ? 'not found' : match[0],
+        actual: absent ? 'not found' : match[0],
       });
     }
   }

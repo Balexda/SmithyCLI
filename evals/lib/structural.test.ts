@@ -158,15 +158,14 @@ describe('validateStructure', () => {
       expect(() => validateStructure('some output', expectations)).toThrow();
     });
 
-    it('passes on empty output (forbidden pattern absent)', () => {
+    it('fails on empty output (contract: all checks fail)', () => {
       const expectations: StructuralExpectations = {
         required_headings: [],
         forbidden_patterns: ['something'],
       };
       const results = validateStructure('', expectations);
       expect(results).toHaveLength(1);
-      // Empty output means the forbidden pattern is absent, so it passes
-      expect(results[0]!.passed).toBe(true);
+      expect(results[0]!.passed).toBe(false);
     });
   });
 
@@ -238,7 +237,6 @@ describe('validateStructure', () => {
         required_headings: ['## Plan', '## Summary'],
         required_patterns: ['\\d+'],
         required_tables: [{ columns: ['A', 'B'] }],
-        // forbidden_patterns pass on empty (pattern is absent)
         forbidden_patterns: ['something'],
       };
       const results = validateStructure('', expectations);
@@ -261,11 +259,10 @@ describe('validateStructure', () => {
       );
       expect(tableCheck?.passed).toBe(false);
 
-      // Forbidden pattern passes on empty output
       const forbiddenCheck = results.find((r) =>
         r.check_name.includes('forbidden'),
       );
-      expect(forbiddenCheck?.passed).toBe(true);
+      expect(forbiddenCheck?.passed).toBe(false);
     });
   });
 
