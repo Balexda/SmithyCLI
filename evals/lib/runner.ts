@@ -18,6 +18,12 @@ import { parseStreamString, extractCanonicalText } from './parse-stream.js';
 /** Default per-case timeout in milliseconds. */
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+/** Grace period after SIGTERM before escalating to SIGKILL. */
+const SIGKILL_GRACE_MS = 5_000;
+
+/** Final safety net — force-resolve if SIGKILL also doesn't produce a close event. */
+const FORCE_RESOLVE_MS = 2_000;
+
 /** Directories excluded from fixture checksum computation. */
 const CHECKSUM_EXCLUDE_DIRS = new Set([
   'node_modules',
@@ -109,18 +115,16 @@ function spawnClaude(
       // intentionally ignored
     });
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill('SIGTERM');
-    }, timeoutMs);
+    let settled = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    let forceTimer: ReturnType<typeof setTimeout> | undefined;
 
-    child.on('error', (err) => {
+    function settle(code: number | null): void {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      reject(err);
-    });
-
-    child.on('close', (code) => {
-      clearTimeout(timer);
+      clearTimeout(killTimer);
+      clearTimeout(forceTimer);
       const duration = performance.now() - start;
       resolve({
         stdout: Buffer.concat(chunks).toString('utf-8'),
@@ -128,6 +132,35 @@ function spawnClaude(
         timed_out: timedOut,
         duration_ms: Math.round(duration),
       });
+    }
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+
+      // Escalate to SIGKILL if the process doesn't exit after SIGTERM.
+      killTimer = setTimeout(() => {
+        child.kill('SIGKILL');
+
+        // Last resort: force-resolve if even SIGKILL doesn't produce a
+        // close event (e.g. zombie process or broken pipe).
+        forceTimer = setTimeout(() => {
+          settle(null);
+        }, FORCE_RESOLVE_MS);
+      }, SIGKILL_GRACE_MS);
+    }, timeoutMs);
+
+    child.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(killTimer);
+      clearTimeout(forceTimer);
+      reject(err);
+    });
+
+    child.on('close', (code) => {
+      settle(code);
     });
   });
 }
