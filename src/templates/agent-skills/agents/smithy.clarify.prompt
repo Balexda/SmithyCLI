@@ -29,8 +29,8 @@ The parent agent passes you:
    feature map, strike document) and any relevant file paths, input documents,
    or working state.
 3. **Special instructions** — any template-specific notes (e.g., "if all
-   categories are Clear, skip clarification" or "always ask at least one question
-   about X").
+   categories are Clear, skip clarification" or "always flag X as a debt item
+   if confidence is not High").
 
 ---
 
