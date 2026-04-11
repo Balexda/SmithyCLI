@@ -314,10 +314,10 @@ the zero-padded user story number).
 **Spec write-back**: After writing the tasks file, update the source `.spec.md`
 to reflect that this story has been cut. Find the `## Story Dependency Order`
 section in the spec file and change the checkbox for the current user story from
-`- [ ]` to `- [x]`, appending the tasks file path:
+`- [ ]` to `- [x]`, appending the repo-relative tasks file path:
 
 ```markdown
-- [x] **User Story 3: <Title>** — <rationale> → `03-story-slug.tasks.md`
+- [x] **User Story 3: <Title>** — <rationale> → `specs/<folder>/03-story-slug.tasks.md`
 ```
 
 If the `## Story Dependency Order` section does not exist in the spec (e.g.,
@@ -392,7 +392,7 @@ ask again.
 1. **Audit findings and refinements** (if repeating the command on existing tasks).
 2. Created/updated files:
    - `specs/<folder>/<NN>-<story-slug>.tasks.md`
-   - `specs/<folder>/<slug>.spec.md` *(Story Dependency Order checkbox updated)*
+   - `specs/<date>-<NNN>-<slug>/<slug>.spec.md` *(Story Dependency Order checkbox updated)*
 3. Summary report containing:
    - Slice count with titles.
    - FR and acceptance scenario coverage.
