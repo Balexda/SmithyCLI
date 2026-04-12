@@ -130,7 +130,7 @@
 
 ### Tasks
 
-- [ ] **Update all four audit-checklist snippets to check the 4-column Dependency Order table**
+- [x] **Update all four audit-checklist snippets to check the 4-column Dependency Order table**
 
   Update `src/templates/agent-skills/snippets/audit-checklist-spec.md`, `audit-checklist-features.md`, `audit-checklist-tasks.md`, and `audit-checklist-rfc.md`. Replace checkbox-format descriptions with 4-column table descriptions. The rfc snippet gains a new `Dependency Order` row (currently absent). No snippet should retain `[ ]`/`[x]` references for dependency ordering. Satisfies FR-029; AS 8.1–8.4.
 
