@@ -49,7 +49,7 @@
   - No `1. [ ] **Slice N` or `- [ ] **Slice` numbered/bulleted-checkbox format remains
   - Per-task checkboxes inside `## Slice N:` bodies are preserved unchanged
 
-- [ ] **Add Dependency Order table to smithy.ignite RFC template**
+- [x] **Add Dependency Order table to smithy.ignite RFC template**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, add a `## Dependency Order` section immediately after the final `### Milestone N:` block in the RFC template code fence. Update the sub-phase 3f instructions to direct the drafting agent to produce this table alongside milestones. Satisfies AS 8.4, AS 8.5, AS 8.6, AS 8.7.
 
