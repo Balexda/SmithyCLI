@@ -137,9 +137,10 @@ Each sub-phase follows this protocol:
 #### Process
 
 1. Read the complete `<slug>.rfc.md`
-2. Perform coherence pass (smooth tone across sections, fix cross-references)
-3. Verify all template sections are present and non-empty
-4. Rewrite the file in place
+2. Reorder sections to match the RFC template structure (sub-phases draft in execution order, which may differ from template order)
+3. Perform coherence pass (smooth tone across sections, fix cross-references)
+4. Verify all template sections are present and non-empty
+5. Rewrite the file in place
 
 ### Clarify Log Contract
 

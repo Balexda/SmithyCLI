@@ -200,7 +200,7 @@ Recommended implementation sequence:
 - **FR-001**: The system MUST replace the monolithic Phase 3 (Draft RFC) with sequential sub-phases 3a through 3g, each producing one or more RFC sections.
 - **FR-002**: Each sub-phase (3a-3f) MUST append its output directly to `<slug>.rfc.md` before the next sub-phase begins.
 - **FR-003**: Each sub-phase (3b-3f) MUST pass the path to the accumulating `<slug>.rfc.md` to its sub-agent as context, ensuring prior sections inform the current one without relying on the context window.
-- **FR-004**: Sub-phase 3g (Harmonize) MUST read the complete `<slug>.rfc.md`, perform a coherence pass to smooth tone and fix cross-references, and rewrite the file in place.
+- **FR-004**: Sub-phase 3g (Harmonize) MUST read the complete `<slug>.rfc.md`, reorder sections to match the RFC template structure, perform a coherence pass to smooth tone and fix cross-references, and rewrite the file in place.
 - **FR-005**: The RFC template MUST include a mandatory `## Personas` section positioned after `## Out of Scope` and before `## Proposal`.
 - **FR-006**: The RFC template MUST include a mandatory `## Out of Scope` section positioned after Goals and before Personas.
 - **FR-007**: A new shared `smithy-prose` sub-agent MUST be created at `src/templates/agent-skills/agents/smithy.prose.prompt` for drafting narrative/persuasive RFC sections (Summary, Motivation/Problem Statement).
