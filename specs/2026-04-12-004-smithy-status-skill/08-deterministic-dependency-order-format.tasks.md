@@ -84,7 +84,7 @@
   - Mark does not write to or migrate legacy files during the routing phase
   - No `[x]`/`[ ]` references remain in Phase 1c
 
-- [ ] **Update smithy.mark Phase 6 write-back to populate the Artifact column**
+- [x] **Update smithy.mark Phase 6 write-back to populate the Artifact column**
 
   Rewrite the Phase 6 feature-map write-back in `smithy.mark.prompt` so that after creating a spec folder, mark locates the matching `F<N>` row in the features file's `## Dependency Order` table and sets the `Artifact` cell to the spec folder path (replacing `—`). If the table is absent, create it in the 4-column format seeded from the feature list. If only the legacy checkbox format is present, skip silently. Satisfies AS 8.3, AS 8.7.
 
