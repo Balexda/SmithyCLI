@@ -88,25 +88,27 @@ console.log(`  Fixture: ${fixtureDir}`);
 console.log(`  Timeout: ${timeoutSec}s`);
 console.log('');
 
+let output;
 try {
-  const output = await runScenario(scenario, fixtureDir);
+  output = await runScenario(scenario, fixtureDir);
+} catch (err) {
+  console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+}
 
-  const status = output.timed_out
-    ? 'TIMEOUT'
-    : output.exit_code !== 0
-      ? `FAIL (exit ${output.exit_code})`
-      : 'OK';
+console.log(`  Duration:  ${output.duration_ms}ms`);
+if (output.timed_out) console.log('  Timed out: yes');
+if (output.exit_code !== 0) console.log(`  Exit code: ${output.exit_code}`);
+console.log(`  Text length: ${output.extracted_text.length} chars`);
+console.log(`  Stream events: ${output.stream_events.length}`);
 
-  console.log(`Process: ${status}`);
-  console.log(`  Duration:  ${output.duration_ms}ms`);
-  console.log(`  Text length: ${output.extracted_text.length} chars`);
-  console.log(`  Stream events: ${output.stream_events.length}`);
+// ---------------------------------------------------------------------------
+// Structural validation (FR-005, FR-006)
+// ---------------------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-  // Structural validation (FR-005, FR-006)
-  // ---------------------------------------------------------------------------
-
-  const structuralChecks: CheckResult[] = validateStructure(
+let allChecks: CheckResult[];
+try {
+  const structuralChecks = validateStructure(
     output.extracted_text,
     scenario.structural_expectations,
   );
@@ -121,29 +123,29 @@ try {
     );
   }
 
-  const allChecks = [...structuralChecks, ...subAgentChecks];
-
-  console.log('');
-  console.log('Checks:');
-  for (const check of allChecks) {
-    if (check.passed) {
-      console.log(`  [PASS] ${check.check_name}`);
-    } else {
-      console.log(
-        `  [FAIL] ${check.check_name} — expected: ${check.expected}, actual: ${check.actual}`,
-      );
-    }
-  }
-
-  const anyCheckFailed = allChecks.some((c) => !c.passed);
-  const exitCode =
-    output.exit_code !== 0 || output.timed_out || anyCheckFailed ? 1 : 0;
-
-  console.log('');
-  console.log(`Result: ${exitCode === 0 ? 'PASS' : 'FAIL'}`);
-
-  process.exit(exitCode);
+  allChecks = [...structuralChecks, ...subAgentChecks];
 } catch (err) {
-  console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 }
+
+console.log('');
+console.log('Checks:');
+for (const check of allChecks) {
+  if (check.passed) {
+    console.log(`  [PASS] ${check.check_name}`);
+  } else {
+    console.log(
+      `  [FAIL] ${check.check_name} — expected: ${check.expected}, actual: ${check.actual}`,
+    );
+  }
+}
+
+const anyCheckFailed = allChecks.some((c) => !c.passed);
+const exitCode =
+  output.exit_code !== 0 || output.timed_out || anyCheckFailed ? 1 : 0;
+
+console.log('');
+console.log(`Result: ${exitCode === 0 ? 'PASS' : 'FAIL'}`);
+
+process.exit(exitCode);
