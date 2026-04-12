@@ -325,6 +325,57 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(dependencyIdx);
   });
 
+  it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+
+    const decisionsIdx = strike.indexOf('## Decisions');
+    const debtIdx = strike.indexOf('## Specification Debt');
+    const singleSliceIdx = strike.indexOf('## Single Slice');
+
+    expect(decisionsIdx).toBeGreaterThan(-1);
+    expect(debtIdx).toBeGreaterThan(-1);
+    expect(singleSliceIdx).toBeGreaterThan(-1);
+
+    expect(debtIdx).toBeGreaterThan(decisionsIdx);
+    expect(debtIdx).toBeLessThan(singleSliceIdx);
+  });
+
+  it('ignite template contains ## Specification Debt between ## Open Questions and ## Milestones', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+
+    // Scope assertions to the markdown code fence block to avoid matching
+    // instructional text that references these headings in backticks
+    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markdownBlockMatch).not.toBeNull();
+
+    const markdownBlock = markdownBlockMatch![1]!;
+    const openQuestionsIdx = markdownBlock.indexOf('\n## Open Questions\n');
+    const debtIdx = markdownBlock.indexOf('\n## Specification Debt\n');
+    const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
+
+    expect(openQuestionsIdx).toBeGreaterThan(-1);
+    expect(debtIdx).toBeGreaterThan(-1);
+    expect(milestonesIdx).toBeGreaterThan(-1);
+
+    expect(debtIdx).toBeGreaterThan(openQuestionsIdx);
+    expect(debtIdx).toBeLessThan(milestonesIdx);
+  });
+
+  it('render template contains ## Specification Debt before ## Cross-Milestone Dependencies', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+
+    const debtIdx = render.indexOf('## Specification Debt');
+    const crossMilestoneIdx = render.indexOf('## Cross-Milestone Dependencies');
+
+    expect(debtIdx).toBeGreaterThan(-1);
+    expect(crossMilestoneIdx).toBeGreaterThan(-1);
+
+    expect(debtIdx).toBeLessThan(crossMilestoneIdx);
+  });
+
   it('command templates without partials are returned as-is', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
