@@ -270,9 +270,10 @@ _If no debt items, write: "None — all ambiguities resolved."_
 
 Recommended implementation sequence:
 
-1. [ ] **Slice N** — <why this comes first>
-2. [ ] **Slice M** — <why this follows>
-3. ...
+| ID | Title | Depends On | Artifact |
+|----|-------|-----------|----------|
+| S1 | <Title> | — | — |
+| S2 | <Title> | — | — |
 
 ### Cross-Story Dependencies
 

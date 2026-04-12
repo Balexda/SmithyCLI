@@ -39,7 +39,7 @@
   - Rules section contains no `[ ]`/`[x]` checkbox mechanics or `**Feature N Spec:` row-title format
   - No `- [ ] **Feature N Spec:` patterns remain in the template
 
-- [ ] **Migrate smithy.cut tasks template to S-ID Dependency Order table**
+- [x] **Migrate smithy.cut tasks template to S-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.cut.prompt`, replace the numbered-checkbox `## Dependency Order` template in Phase 4 (Slice) with a 4-column table using `S<N>` IDs. Per-task checkboxes inside each `## Slice N:` body are not affected — those track implementation progress. Satisfies AS 8.2, AS 8.5, AS 8.6, AS 8.7.
 
