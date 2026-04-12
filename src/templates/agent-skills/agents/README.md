@@ -13,7 +13,7 @@ Deployed to:
 
 | Agent | Role | Invoked By | Model |
 |-------|------|------------|-------|
-| `smithy-clarify` | Ambiguity scanning, assumption/question triage | strike, ignite, mark, cut, render | opus |
+| `smithy-clarify` | Ambiguity scanning, triage to assumptions and specification debt | strike, ignite, mark, cut, render | opus |
 | `smithy-refine` | Artifact review, audit categories, refinement questions | mark, cut, ignite, render (Phase 0) | opus |
 | `smithy-implement` | TDD implementation: failing test → code → commit | forge (per task) | opus |
 | `smithy-review` | Code review with auto-fix capability | forge (after implementation) | opus |

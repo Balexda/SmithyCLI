@@ -132,7 +132,7 @@ Pipeline proceeds with all items as assumptions. Empty debt list returned.
 | "Whether webhooks are synchronous or async" — no prior art | Low | Debt item |
 | **Assumptions:** 0 | | |
 
-Zero assumptions. All scope is uncertain. Bail-out assessment applies (see Rules).
+Zero assumptions. All scope is uncertain. Bail-out assessment applies (see Step 3).
 
 **(c) Mixed → assumptions block + non-empty debt list**
 
