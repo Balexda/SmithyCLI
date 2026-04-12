@@ -214,5 +214,6 @@ The parent command will append it to the PRD's Alternatives section as-is.
   survey" or similar. The response body is the content itself.
 - **Fail gracefully.** If you cannot formulate any credible search at all
   (e.g., `problem_description` is empty or incoherent), return a single
-  `## Error` block describing what was missing and let the parent record it
-  as debt.
+  `### Error` block describing what was missing and let the parent record it
+  as debt. (`### Error` — not `## Error` — so the response still begins with
+  the `###` heading level the parent expects.)

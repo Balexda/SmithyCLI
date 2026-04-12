@@ -1,6 +1,6 @@
 ---
 name: smithy-spark
-description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces docs/prds/<slug>.prd.md as an optional upstream input to smithy.ignite."
+description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces docs/prds/<YYYY>-<NNN>-<slug>.prd.md as an optional upstream input to smithy.ignite."
 ---
 # smithy-spark
 
@@ -157,7 +157,7 @@ append whichever was returned verbatim into the PRD in Phase 3d.
 
 **Do not skip this phase.** Alternatives / build-vs-buy awareness is the
 defining differentiator of the PRD and must always be populated. If
-smithy-survey returns an `## Error` block (e.g., context was too thin to
+smithy-survey returns an `### Error` block (e.g., context was too thin to
 formulate any search), record the error as a debt item
 (`source_category: "Off-the-Shelf Alternatives"`, `impact: High`,
 `confidence: Low`) and use the empty-state stub for the section body.
@@ -173,7 +173,11 @@ H1 follows the pattern `# PRD: <Title>`.
 
 ### PRD File Creation
 
-Create the PRD file with only the header — nothing else:
+1. Create the `docs/prds/` directory if it does not already exist. Phase 1
+   explicitly allows this folder to be missing on repositories that have
+   never run spark before — the first write will fail otherwise.
+2. Create the PRD file `docs/prds/<YYYY>-<NNN>-<slug>.prd.md` with only the
+   header — nothing else:
 
 ```markdown
 # PRD: <Title>
@@ -256,19 +260,25 @@ that stub unchanged.
 
 ### Sub-phase 3e: Assumptions + Specification Debt
 
-From the Phase 2 clarify output, draft the `## Assumptions` and
-`## Specification Debt` sections.
+From the Phase 2 clarify output, draft the `## Assumptions` section. Draft
+the `## Specification Debt` section from the **combined** set of debt items
+collected so far: the items returned by smithy-clarify in Phase 2, **plus**
+any additional debt items recorded during Phase 2.5 (for example, the
+survey-error debt item that spark records when smithy-survey returns an
+`### Error` block). Do not drop additions contributed by later phases.
 
 **Assumptions**: A bulleted list. Items that came from Critical+High
 candidates must carry a `[Critical Assumption]` annotation at the start of
 the bullet.
 
-**Specification Debt**: The standard 7-column table. Follow the positioning
-rule from the reduce-interaction-friction spec (FR-006): `## Specification
-Debt` appears **after** `## Assumptions`. The PRD has no `## Out of Scope`
-section — scope edges are part of the Problem Statement framing and the
-debt table — so Specification Debt is the last structured section before the
-closing Open Questions block.
+**Specification Debt**: The standard 7-column table. Include every debt item
+from clarify **and** every debt item added during Phase 2.5, assigning
+sequential `SD-NNN` identifiers across the merged list. Follow the
+positioning rule from the reduce-interaction-friction spec (FR-006):
+`## Specification Debt` appears **after** `## Assumptions`. The PRD has no
+`## Out of Scope` section — scope edges are part of the Problem Statement
+framing and the debt table — so Specification Debt is the last structured
+section before the closing Open Questions block.
 
 Format:
 
@@ -313,7 +323,14 @@ responsibility of each sub-agent dispatch.
 
 Present a compact terminal summary to the user. Do **not** dump the PRD
 contents into the terminal — the file is on disk, the user can review it in
-their editor. Output in this order:
+their editor.
+
+Phase 4 has **two variants** depending on which upstream phase invoked it:
+
+### Variant A: After Phase 3 (fresh draft)
+
+Use this variant when Phase 4 was reached from Phase 3 (a new PRD was just
+drafted). All Phase 2 data is available. Output in this order:
 
 1. **Phase summary** — one line describing what was produced:
    > Produced a one-page PRD with problem statement, proposed solution,
@@ -334,9 +351,39 @@ their editor. Output in this order:
    > Ready for `smithy.ignite docs/prds/<YYYY>-<NNN>-<slug>.prd.md` to expand
    > this PRD into an RFC.
 
+### Variant B: After Phase 0 (review loop)
+
+Use this variant when Phase 4 was reached from Phase 0. There was **no**
+Phase 2 run in this session; Phase 2-specific fields (fresh assumptions,
+derived slug) must not be fabricated. Use only data that is actually
+available from the review pass. Output in this order:
+
+1. **Phase summary** — one line describing what was refined:
+   > Refined <reviewed-file-path> with <N> high-confidence fix(es) applied
+   > and <M> low-confidence finding(s) recorded as debt.
+
+2. **Refinement summary** — a short bulleted list of the smithy-refine
+   findings that were applied directly, plus any that were declined with a
+   one-line reason. If no findings were produced, write:
+   > "Review complete — no refinements needed."
+
+3. **Specification Debt delta** — one line describing debt introduced by
+   the review pass: `<M> new debt item(s) recorded — see ## Specification
+   Debt in the PRD.` or `No new debt introduced by review.`. Do not report
+   the total debt count — the PRD's existing table is the source of truth.
+
+4. **PRD path** — the full path to the reviewed file (the same path that
+   was passed in as input, **not** a newly derived slug).
+
+5. **Handoff hint** — close with:
+   > Ready for `smithy.ignite <reviewed-file-path>` to expand this PRD
+   > into an RFC.
+
+### Common rules (both variants)
+
 Do **not** STOP and ask for approval. Spark is one-shot — if the user wants
 changes, they can edit the file directly or re-run spark on the `.prd.md`
-path to trigger the Phase 0 review loop.
+path to trigger another Phase 0 review loop.
 
 ---
 
