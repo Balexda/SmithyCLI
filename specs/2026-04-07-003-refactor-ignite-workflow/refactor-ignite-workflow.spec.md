@@ -112,13 +112,14 @@ As a developer using `smithy.ignite`, I want the RFC to always include an explic
 
 **Why this priority**: Directly addresses Issue #50. The clarification phase asks about scope but the RFC template previously had no section to receive the answer. With the template updated (Story 1) and smithy-plan dispatched for scope (Story 3), this story ensures the pipeline actually produces the section.
 
-**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Out of Scope` section, even if the content is "None identified at this time."
+**Independent Test**: Verify that sub-phase 3c's dispatch to smithy-plan includes "Out of Scope" in its section assignment, and that the generated RFC contains a `## Out of Scope` section with substantive content or an explicit "None identified at this time" placeholder, positioned after Goals and before Personas.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after the Goals section.
-2. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
-3. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
+1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after Goals and before Personas.
+2. **Given** the Out of Scope section is drafted in sub-phase 3c alongside Goals, **When** sub-phase 3c dispatches smithy-plan, **Then** smithy-plan produces an explicit Out of Scope section and the orchestrator appends it to `<slug>.rfc.md`.
+3. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
+4. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
 
 ---
 
@@ -199,7 +200,7 @@ Recommended implementation sequence:
 - **FR-001**: The system MUST replace the monolithic Phase 3 (Draft RFC) with sequential sub-phases 3a through 3g, each producing one or more RFC sections.
 - **FR-002**: Each sub-phase (3a-3f) MUST append its output directly to `<slug>.rfc.md` before the next sub-phase begins.
 - **FR-003**: Each sub-phase (3b-3f) MUST pass the path to the accumulating `<slug>.rfc.md` to its sub-agent as context, ensuring prior sections inform the current one without relying on the context window.
-- **FR-004**: Sub-phase 3g (Harmonize) MUST read the complete `<slug>.rfc.md`, perform a coherence pass to smooth tone and fix cross-references, and rewrite the file in place.
+- **FR-004**: Sub-phase 3g (Harmonize) MUST read the complete `<slug>.rfc.md`, reorder sections to match the RFC template structure, perform a coherence pass to smooth tone and fix cross-references, and rewrite the file in place.
 - **FR-005**: The RFC template MUST include a mandatory `## Personas` section positioned after `## Out of Scope` and before `## Proposal`.
 - **FR-006**: The RFC template MUST include a mandatory `## Out of Scope` section positioned after Goals and before Personas.
 - **FR-007**: A new shared `smithy-prose` sub-agent MUST be created at `src/templates/agent-skills/agents/smithy.prose.prompt` for drafting narrative/persuasive RFC sections (Summary, Motivation/Problem Statement).
@@ -214,6 +215,7 @@ Recommended implementation sequence:
 
 - **`.clarify-log.md`**: Persistent file in the RFC folder that records Q&A and assumptions from each clarification session for cross-session deduplication.
 - **`smithy-prose` sub-agent**: New shared sub-agent specialized for narrative/persuasive writing. Dispatched for Summary, Motivation/Problem Statement, and other prose-heavy sections across any smithy command.
+- **`<slug>.rfc.md`**: The RFC file itself, written incrementally by the piecewise pipeline. Each sub-phase (3a-3f) appends its sections; the harmonize step (3g) rewrites in place. Also serves as the resume checkpoint for interrupted sessions.
 
 ## Assumptions
 
