@@ -225,7 +225,7 @@ Recommended implementation sequence:
 - [x] **User Story 3: Execute a Skill Headlessly and Capture Output** — Foundational runner capability; nothing else works without headless capture. Depends on US1 and US2. → `specs/2026-04-06-003-smithy-evals-framework/03-execute-skill-headlessly-and-capture-output.tasks.md`
 - [x] **User Story 4: Validate Output Structure** — Core validation logic; depends on US3 (captured output to validate). → `specs/2026-04-06-003-smithy-evals-framework/04-validate-output-structure.tasks.md`
 - [ ] **User Story 9: Eval Summary Report** — Reporting layer; depends on US3 and US4 producing results to summarize.
-- [ ] **User Story 5: Verify Strike End-to-End Output** — First full eval case; depends on US3 (runner) and US4 (structural validator) being implemented.
+- [x] **User Story 5: Verify Strike End-to-End Output** — First full eval case; depends on US3 (runner) and US4 (structural validator) being implemented. → `specs/2026-04-06-003-smithy-evals-framework/05-verify-strike-end-to-end-output.tasks.md`
 - [ ] **User Story 6: Verify Sub-Agent Invocation** — Extends US5; depends on US5 strike eval infrastructure and the stream-json parser for detecting dispatch events.
 - [ ] **User Story 7: Define Eval Scenarios Declaratively** — Maintainability improvement; depends on at least one eval case (US5) existing to migrate. Can parallelize with US5/US6.
 - [ ] **User Story 8: Fixture Contains Deliberate Inconsistencies for Scout** — Enhancement to the fixture (US2); depends on basic eval framework working (US5+). Can parallelize with US7.
