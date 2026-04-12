@@ -433,7 +433,12 @@ Write-back procedure:
 4. **Idempotency**: If the matching row's `Artifact` cell already contains the
    same repo-relative tasks file path, skip the write entirely — this is a
    no-op. Do not append, duplicate, or rewrite the cell.
-5. **Table absent**: If the spec contains neither a `## Dependency Order`
+5. **Row missing**: If the `## Dependency Order` table exists but contains no
+   row whose `ID` cell equals `US<N>`, append a new row to the end of the
+   table: set `ID` to `US<N>`, `Title` to the user story title from the story
+   list parsed in Phase 1, `Depends On` to `—`, and `Artifact` to the
+   repo-relative tasks file path.
+6. **Table absent**: If the spec contains neither a `## Dependency Order`
    table nor a legacy `## Story Dependency Order` section, create a new
    `## Dependency Order` section at the end of the spec file. Seed the table
    from the user story list parsed in Phase 1 — one `US<N>` row per story in
@@ -451,7 +456,7 @@ Write-back procedure:
    | US3 | <Story 3 title> | — | specs/<folder>/03-story-slug.tasks.md |
    ```
 
-6. **Legacy format present**: If the spec contains only the legacy
+7. **Legacy format present**: If the spec contains only the legacy
    `## Story Dependency Order` checkbox section and NO `## Dependency Order`
    table, **skip write-back silently**. Do not migrate, rewrite, or annotate
    the legacy section. Do not flip any checkbox. The tasks file is still

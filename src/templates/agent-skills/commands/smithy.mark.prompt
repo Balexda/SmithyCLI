@@ -464,7 +464,12 @@ Write-back procedure:
 4. **Idempotency**: If the matching row's `Artifact` cell already contains
    the correct spec folder path, skip the write entirely — this is a no-op.
    Do not append, duplicate, or rewrite the cell.
-5. **Table absent**: If the file contains neither a `## Dependency Order`
+5. **Row missing**: If the `## Dependency Order` table exists but contains no
+   row whose `ID` cell equals `F<N>`, append a new row to the end of the
+   table: set `ID` to `F<N>`, `Title` to the feature title from the feature
+   list parsed during Routing, `Depends On` to `—`, and `Artifact` to the
+   spec folder path.
+6. **Table absent**: If the file contains neither a `## Dependency Order`
    table nor a legacy `## Feature Dependency Order` section, create a new
    `## Dependency Order` section just before `## Cross-Milestone Dependencies`
    (or at the end of the file if that section is absent). Seed the table
@@ -483,7 +488,7 @@ Write-back procedure:
    | F3 | Webhook Support | — | — |
    ```
 
-6. **Legacy format present**: If the file contains only the legacy
+7. **Legacy format present**: If the file contains only the legacy
    `## Feature Dependency Order` checkbox section and NO `## Dependency Order`
    table, **skip write-back silently**. Do not migrate, rewrite, or annotate
    the legacy section. Do not flip any checkbox. The spec folder is still
