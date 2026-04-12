@@ -245,6 +245,6 @@ _None — all ambiguities resolved._
 - **SC-003**: The Out of Scope section in generated RFCs contains explicit content — either exclusions or "None identified" (Issue #50 resolved).
 - **SC-004**: Running `smithy.ignite` on the same idea twice in separate sessions does not re-ask questions that were answered and logged in `.clarify-log.md`.
 - **SC-005**: Interrupting a `smithy.ignite` session mid-pipeline and restarting successfully resumes from the first missing section (detected by parsing RFC headings) without losing prior work.
-- **SC-006**: The `audit-checklist-rfc.md` snippet includes persona coverage and out-of-scope completeness checks, and `smithy.audit` flags RFCs missing these sections.
+- **SC-006**: The `audit-checklist-rfc.md` snippet includes persona clarity and scope boundaries checks, and `smithy.audit` flags RFCs missing these sections.
 - **SC-007**: The ignite prompt template dispatches smithy-prose for narrative sections and smithy-plan for structured sections, keeping the orchestrator focused on pipeline management rather than inline drafting.
 - **SC-008**: The `smithy-prose` sub-agent produces compelling narrative framing (impact, urgency, stakeholder value) that is qualitatively distinct from bullet-point-style output.
