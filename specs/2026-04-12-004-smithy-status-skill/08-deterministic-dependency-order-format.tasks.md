@@ -73,7 +73,7 @@
 
 ### Tasks
 
-- [ ] **Rewrite smithy.mark routing to detect specc'd features from the Artifact column**
+- [x] **Rewrite smithy.mark routing to detect specc'd features from the Artifact column**
 
   Update Phase 1c of `smithy.mark.prompt` so that a feature is "specc'd" when its `## Dependency Order` table row's `Artifact` cell contains a path (not `—`). Add an explicit backward-compat clause: if the features file only contains the legacy `## Feature Dependency Order` checkbox section and no table, treat every feature as unspecced and do not modify the file during routing. Satisfies AS 8.3, AS 8.7.
 
@@ -84,7 +84,7 @@
   - Mark does not write to or migrate legacy files during the routing phase
   - No `[x]`/`[ ]` references remain in Phase 1c
 
-- [ ] **Update smithy.mark Phase 6 write-back to populate the Artifact column**
+- [x] **Update smithy.mark Phase 6 write-back to populate the Artifact column**
 
   Rewrite the Phase 6 feature-map write-back in `smithy.mark.prompt` so that after creating a spec folder, mark locates the matching `F<N>` row in the features file's `## Dependency Order` table and sets the `Artifact` cell to the spec folder path (replacing `—`). If the table is absent, create it in the 4-column format seeded from the feature list. If only the legacy checkbox format is present, skip silently. Satisfies AS 8.3, AS 8.7.
 
@@ -95,7 +95,7 @@
   - If only legacy `## Feature Dependency Order` is present, write-back skips silently
   - Authoring-guidelines section contains no checkbox-flip instructions
 
-- [ ] **Update smithy.cut Phase 5 write-back to populate the spec Artifact column**
+- [x] **Update smithy.cut Phase 5 write-back to populate the spec Artifact column**
 
   Rewrite the Phase 5 spec write-back in `smithy.cut.prompt` so that after writing the tasks file, cut finds the matching `US<N>` row in the spec's `## Dependency Order` table and sets the `Artifact` cell to the repo-relative tasks file path. If the spec only has the legacy `## Story Dependency Order` section and no table, skip silently. Satisfies AS 8.1, AS 8.7.
 
@@ -106,7 +106,7 @@
   - If only legacy `## Story Dependency Order` exists, write-back skips silently
   - No checkbox-flip language remains in Phase 5 or in the Rules section
 
-- [ ] **Remove "Mark Slice Complete" section and update "Story Completion Cascade" in smithy.forge**
+- [x] **Remove "Mark Slice Complete" section and update "Story Completion Cascade" in smithy.forge**
 
   Delete the "Mark Slice Complete" section in `smithy.forge.prompt` entirely — forge no longer writes to any `## Dependency Order` table. Rewrite "Story Completion Cascade" to explain that slice completion is derived from per-task checkboxes inside `## Slice N:` bodies, and that parent artifacts' `Artifact` columns are set by `smithy.mark` and `smithy.cut`, not forge. Satisfies AS 8.2.
 
