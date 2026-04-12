@@ -350,7 +350,7 @@ describe('getComposedTemplates', () => {
     const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(markdownBlockMatch).not.toBeNull();
 
-    const markdownBlock = markdownBlockMatch![1];
+    const markdownBlock = markdownBlockMatch![1]!;
     const openQuestionsIdx = markdownBlock.indexOf('\n## Open Questions\n');
     const debtIdx = markdownBlock.indexOf('\n## Specification Debt\n');
     const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
