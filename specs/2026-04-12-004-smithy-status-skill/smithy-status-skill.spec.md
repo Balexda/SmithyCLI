@@ -234,7 +234,7 @@ As a Smithy user with multiple in-progress artifacts, I want `smithy status` to 
 | US5  | Invoke Status via the smithy.status Skill                                  | US1, US2, US3, US4 | —    |
 | US6  | Filter and Scope the View                                                  | US2            | —        |
 | US7  | Summary Roll-up Header                                                     | US1            | —        |
-| US8  | Deterministic Dependency Order Format Across All Artifacts                 | —              | —        |
+| US8  | Deterministic Dependency Order Format Across All Artifacts                 | —              | `specs/2026-04-12-004-smithy-status-skill/08-deterministic-dependency-order-format.tasks.md` |
 | US9  | Scanner Classifies Without Relying on Dependency-Order Checkboxes          | US1, US8       | —        |
 | US10 | Visualize the Dependency Graph for Parallel Work                           | US8, US9       | —        |
 
