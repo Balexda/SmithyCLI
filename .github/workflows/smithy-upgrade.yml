@@ -28,11 +28,46 @@ jobs:
           node-version: 24
           cache: 'npm'
 
-      - name: Install latest Smithy CLI
-        run: npm install -g @balexda/smithy@latest
+      - name: Resolve target Smithy version from package.json
+        id: smithy-version
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Target Smithy version: ${VERSION}"
 
-      - name: Show installed version
-        run: smithy --version
+      - name: Install Smithy CLI at the just-published version
+        env:
+          VERSION: ${{ steps.smithy-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # npm publish → registry propagation for a brand-new version can
+          # lag a few seconds behind the triggering publish workflow. Retry
+          # with exponential backoff so we always install the version we
+          # intend to upgrade TO, rather than whatever @latest currently
+          # resolves to.
+          for attempt in 1 2 3 4 5; do
+            if npm install -g "@balexda/smithy@${VERSION}"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to install @balexda/smithy@${VERSION} after 5 attempts"
+              exit 1
+            fi
+            sleep "$((attempt * 5))"
+          done
+
+      - name: Verify installed version matches
+        env:
+          VERSION: ${{ steps.smithy-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          INSTALLED=$(smithy --version)
+          echo "Installed: ${INSTALLED}  Expected: ${VERSION}"
+          if [ "${INSTALLED}" != "${VERSION}" ]; then
+            echo "::error::Installed Smithy version (${INSTALLED}) does not match target (${VERSION})"
+            exit 1
+          fi
 
       - name: Run smithy update
         run: smithy update -y
@@ -47,7 +82,8 @@ jobs:
           body: |
             Automated upgrade run by `.github/workflows/smithy-upgrade.yml`.
 
-            - Installed `@balexda/smithy@latest` globally
+            - Installed `@balexda/smithy` at the version in `package.json`
+              on the triggering commit
             - Ran `smithy update -y` against the repo manifest
 
             Review the diff in `.claude/` and `.smithy/smithy-manifest.json`
