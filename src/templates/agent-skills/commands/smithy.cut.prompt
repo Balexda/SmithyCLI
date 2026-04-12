@@ -75,8 +75,11 @@ Phase 0).
    files, also read the spec's `## Specification Debt` section. Extract all
    items with `status: open` or `status: inherited`. Carry them forward into
    the tasks file's `## Specification Debt` table with status `inherited` and
-   a description prefixed with `inherited from spec: <original SD-NNN
-   description>`. Leave the Resolution column as `—`. If the upstream
+   a description prefixed with
+   `inherited from spec: <original SD-NNN description>`. Preserve the
+   upstream SD-NNN identifiers in the ID column (cut's own new items will
+   continue numbering from where the inherited list leaves off — see Phase 4
+   guidelines). Leave the Resolution column as `—`. If the upstream
    `## Specification Debt` section is absent, empty, or the table is
    malformed, treat this as a non-blocking warning: append an italic note
    directly below the `## Specification Debt` table heading (before any table
@@ -199,9 +202,10 @@ Use the **smithy-clarify** sub-agent. Pass it:
   a piece of functionality. If all categories are Clear, skip to Phase 4.
 
 **Bail-out check**: If clarify returns `bail_out: true`, output the
-`bail_out_summary` to the terminal. Do not write any artifact files. Stop and
-wait for the user to provide expanded information or narrow the scope, then
-re-run.
+`debt_items` table and the `bail_out_summary` guidance message to the terminal
+so the user can see exactly which ambiguities need resolution. Do not write any
+artifact files. Stop and wait for the user to provide expanded information or
+narrow the scope, then re-run.
 
 ---
 
