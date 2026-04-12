@@ -35,4 +35,4 @@ _None — all ambiguities resolved._
 
 Recommended implementation sequence:
 
-- [ ] **Slice 1** — Only slice. Insert Out of Scope and Personas sections into the Phase 3 RFC template.
+- [x] **Slice 1** — Only slice. Insert Out of Scope and Personas sections into the Phase 3 RFC template.
