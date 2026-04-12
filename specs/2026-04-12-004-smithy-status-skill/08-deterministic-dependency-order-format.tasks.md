@@ -95,7 +95,7 @@
   - If only legacy `## Feature Dependency Order` is present, write-back skips silently
   - Authoring-guidelines section contains no checkbox-flip instructions
 
-- [ ] **Update smithy.cut Phase 5 write-back to populate the spec Artifact column**
+- [x] **Update smithy.cut Phase 5 write-back to populate the spec Artifact column**
 
   Rewrite the Phase 5 spec write-back in `smithy.cut.prompt` so that after writing the tasks file, cut finds the matching `US<N>` row in the spec's `## Dependency Order` table and sets the `Artifact` cell to the repo-relative tasks file path. If the spec only has the legacy `## Story Dependency Order` section and no table, skip silently. Satisfies AS 8.1, AS 8.7.
 
