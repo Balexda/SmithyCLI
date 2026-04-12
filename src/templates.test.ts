@@ -607,6 +607,132 @@ describe('getComposedTemplates', () => {
     expect(cut).not.toContain('Competing Slice Lenses');
   });
 
+  it('mark template uses 4-column Dependency Order table with US<N> IDs', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+
+    // New unified heading present
+    expect(mark).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(mark).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Legacy heading must be absent
+    expect(mark).not.toContain('## Story Dependency Order');
+
+    // No checkbox dependency rows inside the Dependency Order section.
+    // Slice from the first "## Dependency Order" heading to the next "## "
+    // heading and assert no checkbox list-item markup appears there.
+    const depIdx = mark.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = mark.slice(depIdx + '## Dependency Order'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('render template uses 4-column Dependency Order table with F<N> IDs', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+
+    // New unified heading present
+    expect(render).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(render).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Legacy heading must be absent in the emitted feature map template
+    // (the audit checklist still references `## Feature Dependency Order`
+    // as a legacy format, so scope this check to the feature map template
+    // shape section — verified by the presence of `F1` and `F2` rows).
+    expect(render).toContain('| F1 | <Title> | — | — |');
+    expect(render).toContain('| F2 | <Title> | — | — |');
+
+    // No checkbox dependency rows inside the Dependency Order section
+    const depIdx = render.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = render.slice(depIdx + '## Dependency Order'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('cut template uses 4-column Dependency Order table with S<N> IDs', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+
+    // New unified heading present
+    expect(cut).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(cut).toContain('| ID | Title | Depends On | Artifact |');
+
+    // S<N> rows present in the table shape
+    expect(cut).toContain('| S1 | <Title> | — | — |');
+    expect(cut).toContain('| S2 | <Title> | — | — |');
+
+    // Old numbered-checkbox format must be absent.
+    // NOTE: Per-task checkboxes inside `## Slice N:` bodies are intentionally
+    // still present (they track implementation progress); do NOT assert those
+    // are absent.
+    expect(cut).not.toContain('1. [ ] **Slice');
+    expect(cut).not.toContain('2. [ ] **Slice');
+
+    // No checkbox dependency rows inside the Dependency Order section.
+    // Scope narrowly: from `## Dependency Order` to the first subsequent
+    // `### ` subheading or end-of-code-fence marker — whichever comes first.
+    // This avoids matching the task-format example (which legitimately uses
+    // `- [ ] **<Title>**` markup) that appears later in the prompt under the
+    // task authoring guidelines.
+    const depIdx = cut.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = cut.slice(depIdx + '## Dependency Order'.length);
+    const endMatch = afterDep.search(/\n### |\n```|\n## /);
+    const depSection =
+      endMatch === -1 ? afterDep : afterDep.slice(0, endMatch);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('ignite RFC template contains ## Dependency Order after ## Milestones with M<N> IDs', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+
+    // Scope assertions to the markdown code fence block (the RFC template
+    // shape), mirroring the pattern used by sibling ignite tests.
+    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markdownBlockMatch).not.toBeNull();
+    const markdownBlock = markdownBlockMatch![1]!;
+
+    const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
+    const depIdx = markdownBlock.indexOf('\n## Dependency Order\n');
+
+    expect(milestonesIdx).toBeGreaterThan(-1);
+    expect(depIdx).toBeGreaterThan(-1);
+    expect(depIdx).toBeGreaterThan(milestonesIdx);
+
+    // 4-column table header present in the RFC template block
+    expect(markdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+
+    // M<N> ID format appears in the table
+    expect(markdownBlock).toMatch(/\|\s*M1\s*\|/);
+    expect(markdownBlock).toMatch(/\|\s*M2\s*\|/);
+
+    // No checkbox markup in the Dependency Order section of the RFC block
+    const afterDep = markdownBlock.slice(depIdx + '\n## Dependency Order\n'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+    expect(depSection).not.toContain('- [ ]');
+    expect(depSection).not.toContain('- [x]');
+  });
+
   it('variant does not change the number of template keys', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());

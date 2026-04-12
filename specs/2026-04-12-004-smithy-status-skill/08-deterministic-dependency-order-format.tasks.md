@@ -142,7 +142,7 @@
   - The tasks snippet notes every `S<N>` row's `Artifact` cell should be `—`
   - The rfc snippet has a new `Dependency Order` row asserting the table appears after `## Milestones`
 
-- [ ] **Add templates.test.ts regression tests for 4-column Dependency Order format**
+- [x] **Add templates.test.ts regression tests for 4-column Dependency Order format**
 
   Add four test cases to `src/templates.test.ts` — one per authoring command (mark, render, cut, ignite) — that compose each template and assert the new format is present and the old format is absent. These are pattern-based assertions against the rendered template text. Satisfies FR-029; AS 8.1–8.4.
 
