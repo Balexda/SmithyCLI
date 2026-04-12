@@ -74,10 +74,10 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
 ### Tasks
 
-- [ ] In `src/templates/agent-skills/commands/smithy.strike.prompt`, insert `## Specification Debt` into the Phase 4 strike document template between `## Decisions` and `## Single Slice` (around line 134). The strike document has no `## Assumptions` section; positioning debt after Decisions is the structural analogue — Decisions are resolved ambiguities, Specification Debt is unresolved ones. Use the same debt table structure as in Slice 2.
-- [ ] In `src/templates/agent-skills/commands/smithy.ignite.prompt`, insert `## Specification Debt` into the Phase 3 RFC template between `## Open Questions` and `## Milestones` (around line 209). RFCs use Open Questions rather than Assumptions; debt is conceptually adjacent to open questions. Use the same debt table structure.
-- [ ] In `src/templates/agent-skills/commands/smithy.render.prompt`, insert `## Specification Debt` into the Phase 3 feature map template before `## Cross-Milestone Dependencies` (after the last `### Feature N` entry, around line 247). Feature maps have neither `## Assumptions` nor `## Out of Scope` sections. This placement is a documented variant of FR-006's ordering rule for templates that do not follow the Assumptions → Debt → Out of Scope structure. Add a brief inline comment in the template: `<!-- Specification Debt appears here for templates without ## Assumptions sections -->`.
-- [ ] Add Tier 2 test assertions in `src/templates.test.ts` verifying each of strike, ignite, and render templates contains `## Specification Debt`.
+- [x] In `src/templates/agent-skills/commands/smithy.strike.prompt`, insert `## Specification Debt` into the Phase 4 strike document template between `## Decisions` and `## Single Slice` (around line 134). The strike document has no `## Assumptions` section; positioning debt after Decisions is the structural analogue — Decisions are resolved ambiguities, Specification Debt is unresolved ones. Use the same debt table structure as in Slice 2.
+- [x] In `src/templates/agent-skills/commands/smithy.ignite.prompt`, insert `## Specification Debt` into the Phase 3 RFC template between `## Open Questions` and `## Milestones` (around line 209). RFCs use Open Questions rather than Assumptions; debt is conceptually adjacent to open questions. Use the same debt table structure.
+- [x] In `src/templates/agent-skills/commands/smithy.render.prompt`, insert `## Specification Debt` into the Phase 3 feature map template before `## Cross-Milestone Dependencies` (after the last `### Feature N` entry, around line 247). Feature maps have neither `## Assumptions` nor `## Out of Scope` sections. This placement is a documented variant of FR-006's ordering rule for templates that do not follow the Assumptions → Debt → Out of Scope structure. Add a brief inline comment in the template: `<!-- Specification Debt appears here for templates without ## Assumptions sections -->`.
+- [x] Add Tier 2 test assertions in `src/templates.test.ts` verifying each of strike, ignite, and render templates contains `## Specification Debt`.
 
 **PR Outcome**: All five planning artifact templates (spec, tasks, strike, RFC, feature map) contain a `## Specification Debt` section. FR-005 and SC-003 are satisfied.
 
@@ -154,7 +154,7 @@ Recommended implementation sequence:
 
 - [x] **Slice 1** — The clarify triage engine must produce `debt_items` and `bail_out` fields before any parent command can consume them. This is the foundational change.
 - [x] **Slice 2** — Mark and cut get their debt sections and population instructions. These are the primary consumers of Slice 1's output and the most important pipeline to validate early.
-- [ ] **Slice 3** — Remaining templates (strike, ignite, render) can land in parallel with or after Slice 2; they are independent of it. Recommended after Slice 2 to let the mark/cut debt section format stabilize first.
+- [x] **Slice 3** — Remaining templates (strike, ignite, render) can land in parallel with or after Slice 2; they are independent of it. Recommended after Slice 2 to let the mark/cut debt section format stabilize first.
 - [x] **Slice 4** — Debt inheritance and bail-out require both Slice 1 (the `bail_out` field) and Slice 2 (the tasks template debt section structure) to be complete before wiring inheritance into cut.
 - [ ] **Slice 5** — Phase 0 resolution, audit checklists, and tests depend on all prior slices. Tests added here validate changes from Slices 1–4.
 
