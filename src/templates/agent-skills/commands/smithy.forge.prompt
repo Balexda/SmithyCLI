@@ -240,6 +240,57 @@ for reviewers to see which slice was completed and what comes next.
 
 ---
 
+## Story Completion Cascade
+
+For `.tasks.md` mode only. After marking the slice complete, check whether
+**all** slices in the `## Dependency Order` section are now `[x]`. If any
+slices remain `[ ]`, skip this section entirely.
+
+If ALL slices are complete, cascade completion upward through the artifact
+hierarchy:
+
+### Step 1: Update the source spec
+
+Read the source spec file (from the tasks file header `**Source**` field). Find
+this story's entry in the `## Story Dependency Order` section by matching
+`User Story <N>` in the bold text (where `<N>` is the story number from the
+tasks file header `**Story Number**` field). Change the second checkbox from
+`[ ]` to `[x]`:
+
+```
+- [x][x] **User Story N: <Title>** — <rationale> → `<tasks-file-path>`
+```
+
+If the entry is already `[x][x]`, skip. If the `## Story Dependency Order`
+section does not exist (legacy spec), skip silently.
+
+Commit the change: `mark story <N> complete in story dependency order`
+
+### Step 2: Check for feature completion
+
+After updating the spec, check whether **all** stories in the spec's
+`## Story Dependency Order` section are now `[x][x]`. If any stories are not
+fully complete (`[ ][ ]` or `[x][ ]`), skip this step.
+
+If ALL stories are `[x][x]`:
+
+1. Check the spec header for a `**Source Feature Map**` field.
+2. If the field is absent (spec was not created from a feature map), skip
+   silently.
+3. If present, read the feature map file at that path.
+4. Find this feature's entry in the `## Feature Dependency Order` section by
+   matching the spec folder path after `→` in the entry text.
+5. Change the second checkbox from `[ ]` to `[x]`:
+   ```
+   - [x][x] **Feature N: <Title>** — <rationale> → `<spec-folder-path>/`
+   ```
+6. If the entry is already `[x][x]`, skip. If the `## Feature Dependency Order`
+   section does not exist (legacy feature map), skip silently.
+
+Commit the change: `mark feature complete in feature dependency order`
+
+---
+
 ## Validation
 
 After implementation, review, and documentation check, run the full validation
