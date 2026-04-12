@@ -71,13 +71,25 @@ Phase 0).
      artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`).
    - **User story number** — validate it exists in the spec file.
 2. Read all three spec artifacts to build full context.
-3. Extract the target user story — its title, acceptance scenarios, priority,
+3. **Inherit upstream debt.** After reading the source spec's three artifact
+   files, also read the spec's `## Specification Debt` section. Extract all
+   items with `status: open` or `status: inherited`. Carry them forward into
+   the tasks file's `## Specification Debt` table with status `inherited` and
+   a description prefixed with `inherited from spec: <original SD-NNN
+   description>`. Leave the Resolution column as `—`. If the upstream
+   `## Specification Debt` section is absent, empty, or the table is
+   malformed, treat this as a non-blocking warning: append an italic note
+   directly below the `## Specification Debt` table heading (before any table
+   rows): `_Upstream spec debt could not be parsed — inheritance skipped._`
+   This keeps the warning outside the table so it does not break the
+   structured row format.
+4. Extract the target user story — its title, acceptance scenarios, priority,
    and any FRs that trace to it.
-4. Derive the **story slug** — a short kebab-case name from the user story
+5. Derive the **story slug** — a short kebab-case name from the user story
    title (e.g., "User Story 4: Slice a User Story into Tasks" →
    `slice-story-into-tasks`). Older specs may use an em dash (`—`) instead
    of a colon as the separator; accept both when parsing.
-5. Confirm the target to the user:
+6. Confirm the target to the user:
    - Spec folder path.
    - User story number and title.
    - Derived filename: `<NN>-<story-slug>.tasks.md`.
