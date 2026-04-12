@@ -550,6 +550,39 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('<Persona 2');
   });
 
+  it('ignite Phase 0 audit table includes Persona Coverage and Out of Scope Completeness', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+
+    // Both new audit categories must appear in the composed ignite template
+    expect(ignite).toContain('Persona Coverage');
+    expect(ignite).toContain('Out of Scope Completeness');
+
+    // Existing Phase 0 audit categories must be preserved
+    expect(ignite).toContain('Problem Statement');
+    expect(ignite).toContain('Goals');
+    expect(ignite).toContain('Milestones');
+    expect(ignite).toContain('Feasibility');
+    expect(ignite).toContain('Scope');
+    expect(ignite).toContain('Stakeholders');
+  });
+
+  it('audit template renders audit-checklist-rfc snippet with renamed categories', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toBeDefined();
+
+    // Snippet partial must be resolved (no unresolved references)
+    expect(audit).not.toContain('{{>audit-checklist-rfc}}');
+
+    // The new category names from the snippet must be present
+    expect(audit).toContain('Persona Coverage');
+    expect(audit).toContain('Out of Scope Completeness');
+
+    // The retired row labels must no longer appear in the audit template
+    expect(audit).not.toContain('Persona Clarity');
+    expect(audit).not.toContain('Scope Boundaries');
+  });
+
   it('render with claude variant renders competing plan dispatch', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     const render = claudeComposed.commands.get('smithy.render.md')!;
