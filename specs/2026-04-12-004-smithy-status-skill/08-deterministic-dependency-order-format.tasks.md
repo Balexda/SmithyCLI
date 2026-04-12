@@ -73,7 +73,7 @@
 
 ### Tasks
 
-- [ ] **Rewrite smithy.mark routing to detect specc'd features from the Artifact column**
+- [x] **Rewrite smithy.mark routing to detect specc'd features from the Artifact column**
 
   Update Phase 1c of `smithy.mark.prompt` so that a feature is "specc'd" when its `## Dependency Order` table row's `Artifact` cell contains a path (not `—`). Add an explicit backward-compat clause: if the features file only contains the legacy `## Feature Dependency Order` checkbox section and no table, treat every feature as unspecced and do not modify the file during routing. Satisfies AS 8.3, AS 8.7.
 

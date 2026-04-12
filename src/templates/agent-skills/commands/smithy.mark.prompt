@@ -35,24 +35,29 @@ Before starting, determine the mode:
       feature map — expected `### Feature N: <Title>` headings."
    b. Extract the `**Source RFC**` path from the file header.
    c. Determine which features already have specs by checking the
-      `## Feature Dependency Order` section in the `.features.md` (locate by
+      `## Dependency Order` 4-column table in the `.features.md` (locate by
       heading name, not by position — it may appear before
-      `## Cross-Milestone Dependencies` or at the end of the file).
-      Each entry uses a single GFM task-list checkbox and an artifact-qualified
-      row title of the form `- [ ] **Feature N Spec: <Title>** — <rationale>`.
-      The checkbox tracks whether the spec folder for that feature exists:
-      `[ ]` means the spec has not been created yet, `[x]` means it has.
-      A feature is "specc'd" when its checkbox is `[x]`; unspecced when `[ ]`.
-      If the section does not exist yet, create it now with all features as
-      `- [ ] **Feature N Spec: <Title>** — <rationale>`, ordered by dependency
-      graph, write it to the file, and treat every feature as unspecced.
-      (Mark flips the checkbox from `[ ]` to `[x]` after creating a spec —
-      see Phase 6.)
+      `## Cross-Milestone Dependencies` or at the end of the file). The table
+      has columns `ID | Title | Depends On | Artifact`, with one `F<N>` row
+      per feature. A feature is "specc'd" when its row's `Artifact` cell
+      contains a non-`—` path (the path points to the feature's spec folder).
+      A feature is "unspecced" when its row's `Artifact` cell is `—` or when
+      the row is missing from the table.
+
+      **Backward-compat clause**: If the file contains only the legacy
+      `## Feature Dependency Order` checkbox section and NO `## Dependency Order`
+      table, treat every feature as unspecced and do NOT modify the file during
+      routing. Mark will not migrate or write to legacy files in this phase.
+
+      If neither a `## Dependency Order` table nor a legacy
+      `## Feature Dependency Order` section exists, treat every feature as
+      unspecced. Do NOT create the section during routing — section creation
+      and write-back happen in Phase 6.
    d. **With feature number**: If the number is out of range, list available
       features with their numbers and titles, then stop. If the feature is
       already specc'd (per step c), extract the spec folder path from its
-      checked entry (after the `→`) and go to **Phase 0** (Review Loop) with
-      that spec. Otherwise, go to **Phase 1** targeting that feature.
+      `Artifact` cell and go to **Phase 0** (Review Loop) with that spec.
+      Otherwise, go to **Phase 1** targeting that feature.
    e. **Without feature number**: Auto-select the first `### Feature N` that
       is not yet specc'd (per step c). If **all** features already have specs,
       present a table of features with their spec folder paths and ask the
