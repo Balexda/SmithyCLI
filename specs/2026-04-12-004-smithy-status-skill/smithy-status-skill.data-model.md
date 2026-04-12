@@ -20,7 +20,7 @@ Purpose: One entry per discovered artifact file, carrying everything needed to r
 | `total` | number | No | Total count of children. Omitted alongside `completed`. |
 | `parent_path` | string \| null | No | Repo-relative path to the parent artifact (e.g., a tasks record's parent is its spec). Null for top-level RFCs and orphans. JSON consumers MUST distinguish `null` from an omitted field — an omitted field means "unknown," `null` means "no parent." |
 | `parent_missing` | boolean | No | True when `parent_path` was declared by the artifact but the referenced file does not exist. Drives "Broken Links" grouping. |
-| `virtual` | boolean | No | True for "not-started" records that were inferred from a parent's checklist but have no file on disk yet (e.g., a story in a spec's `## Story Dependency Order` that has no tasks file). |
+| `virtual` | boolean | No | True for "not-started" records that were inferred from a parent's parsed `## Dependency Order` table but have no file on disk yet (e.g., a spec row whose `Artifact` column identifies an expected tasks file that does not exist yet, or a row whose `Artifact` column is `—`). |
 | `next_action` | NextAction \| null | No | Populated by the suggestion rules; null for `done` records. |
 | `dependency_order` | DependencyOrderTable \| null | No | The parsed `## Dependency Order` section for this artifact. Null when the section is absent (legacy artifacts, or tasks files with no slice ordering). See "DependencyOrderTable" below. |
 | `warnings` | string[] | No | Non-fatal parse issues encountered while reading the file (unknown sections, ambiguous numbering, legacy formats, malformed dependency tables, dangling ID references). Empty array if clean. |
