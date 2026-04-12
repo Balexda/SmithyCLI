@@ -270,9 +270,10 @@ _If no debt items, write: "None — all ambiguities resolved."_
 
 Recommended implementation sequence:
 
-1. [ ] **Slice N** — <why this comes first>
-2. [ ] **Slice M** — <why this follows>
-3. ...
+| ID | Title | Depends On | Artifact |
+|----|-------|-----------|----------|
+| S1 | <Title> | — | — |
+| S2 | <Title> | — | — |
 
 ### Cross-Story Dependencies
 
@@ -296,6 +297,7 @@ Guidelines for slicing:
 - Include tests, docs, and validation steps within the slice that introduces the
   code — do not batch these into a separate "testing slice".
 - Populate the `## Specification Debt` section with both (1) inherited items from the source spec (carried over in Phase 1) and (2) new items from cut's own clarify run. Inherited items use status `inherited`; new items use status `open`. Assign new SD-NNN identifiers to cut's own items, continuing from where the inherited list left off.
+- In the `## Dependency Order` table, `Depends On` must be exactly `—` or a comma-separated list of same-table `S<N>` IDs (e.g., `S1` or `S1, S2`); do not use prose. `Artifact` must always be `—` for every slice row — slices live inline as `## Slice N:` bodies and have no separate artifact file.
 
 Guidelines for task authoring:
 

@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Migrate smithy.mark spec template to US-ID Dependency Order table**
+- [x] **Migrate smithy.mark spec template to US-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.mark.prompt`, replace the `## Story Dependency Order` checkbox-list template in Phase 3 (Specify) with a `## Dependency Order` 4-column table using `US<N>` IDs. Also update the authoring-guidelines section so no checkbox-format instructions remain. Satisfies AS 8.1, AS 8.5, AS 8.6, AS 8.7.
 
@@ -29,7 +29,7 @@
   - `Artifact` column contains `—` in the template placeholder
   - No `- [ ]` or `- [x]` checkbox syntax appears in the spec template or its authoring guidelines
 
-- [ ] **Migrate smithy.render features template to F-ID Dependency Order table**
+- [x] **Migrate smithy.render features template to F-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.render.prompt`, replace the `## Feature Dependency Order` checkbox-list template in Phase 3 (Draft Feature Map) with a `## Dependency Order` 4-column table using `F<N>` IDs. Update the Rules section to remove checkbox-based instructions. Satisfies AS 8.3, AS 8.5, AS 8.6, AS 8.7.
 
@@ -39,7 +39,7 @@
   - Rules section contains no `[ ]`/`[x]` checkbox mechanics or `**Feature N Spec:` row-title format
   - No `- [ ] **Feature N Spec:` patterns remain in the template
 
-- [ ] **Migrate smithy.cut tasks template to S-ID Dependency Order table**
+- [x] **Migrate smithy.cut tasks template to S-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.cut.prompt`, replace the numbered-checkbox `## Dependency Order` template in Phase 4 (Slice) with a 4-column table using `S<N>` IDs. Per-task checkboxes inside each `## Slice N:` body are not affected — those track implementation progress. Satisfies AS 8.2, AS 8.5, AS 8.6, AS 8.7.
 
@@ -49,7 +49,7 @@
   - No `1. [ ] **Slice N` or `- [ ] **Slice` numbered/bulleted-checkbox format remains
   - Per-task checkboxes inside `## Slice N:` bodies are preserved unchanged
 
-- [ ] **Add Dependency Order table to smithy.ignite RFC template**
+- [x] **Add Dependency Order table to smithy.ignite RFC template**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, add a `## Dependency Order` section immediately after the final `### Milestone N:` block in the RFC template code fence. Update the sub-phase 3f instructions to direct the drafting agent to produce this table alongside milestones. Satisfies AS 8.4, AS 8.5, AS 8.6, AS 8.7.
 
