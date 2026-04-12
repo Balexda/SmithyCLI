@@ -39,7 +39,7 @@ The orchestrator dispatches smithy-prose with a section assignment and context. 
 | Condition | Response | Description |
 |-----------|----------|-------------|
 | Insufficient context | Return partial in `section_content` with `## Gaps / Missing Context` | If the idea description is too vague to write a fully compelling narrative, return the best partial draft possible and append a `## Gaps / Missing Context` section so the orchestrator can detect and address the gaps consistently. |
-| Empty output | Halt | If no meaningful content can be produced, return an error rather than placeholder text. |
+| Empty output | Halt pipeline | If no meaningful content can be produced, return an error rather than placeholder text. The orchestrator reports the failure to the user and stops the pipeline — no silent skip or automatic retry. |
 
 #### Agent Properties
 
@@ -209,14 +209,14 @@ New sections vs. current template:
 |----------|---------------|
 | **Problem Statement** | Problem clarity, solution outline, compelling motivation |
 | **Goals** | Concrete, achievable, non-overlapping |
-| **Out of Scope Completeness** | Explicit exclusions documented, scope boundaries clear |
-| **Persona Coverage** | Personas identified with descriptions, relevant to stated goals |
+| **Scope Boundaries** | Explicit exclusions documented, scope boundaries clear |
+| **Persona Clarity** | Personas identified with descriptions, relevant to stated goals |
 | **Milestones** | Well-defined scope, clear boundaries, success criteria |
 | **Feasibility** | Technical risks, dependency concerns, resource assumptions |
 | **Scope** | Drift from stated goals, feature creep indicators |
 | **Stakeholders** | Missing perspectives, unconsidered personas |
 
-New categories vs. current: **Out of Scope Completeness** and **Persona Coverage**.
+New categories vs. current: **Scope Boundaries** and **Persona Clarity**.
 
 ## Integration Boundaries
 

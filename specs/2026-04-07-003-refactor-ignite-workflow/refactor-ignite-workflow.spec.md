@@ -49,7 +49,7 @@ As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (
 
 **Acceptance Scenarios**:
 
-1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phase 3a, **Then** it returns the drafted Summary and Motivation/Problem Statement sections to the orchestrator, which appends them to `<slug>.rfc.md`.
+1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phases 3a and 3b, **Then** it returns the drafted sections (Summary and Motivation/Problem Statement for 3a; Personas for 3b) to the orchestrator, which appends them to `<slug>.rfc.md`.
 2. **Given** smithy-prose receives the idea description and clarification output as context, **When** it drafts the narrative sections, **Then** the output uses persuasive framing (impact of not solving, urgency, stakeholder value) rather than dry bullet-point style.
 3. **Given** smithy-prose is designed as a shared sub-agent, **When** other commands (render, mark) need narrative sections drafted, **Then** they can dispatch smithy-prose with their own context without modification.
 4. **Given** the ignite orchestrator dispatches smithy-prose, **When** the sub-agent returns its content, **Then** the orchestrator appends it to the RFC file on disk so that subsequent sub-phases can read the accumulating file for context.
@@ -156,7 +156,7 @@ As a developer iterating on an RFC across multiple `smithy.ignite` sessions, I w
 
 ### User Story 9: Updated Phase 0 Audit Categories (Priority: P2)
 
-As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the audit to check for persona coverage and out-of-scope completeness so that the review catches the same gaps that the new template sections are designed to prevent.
+As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the audit to check for persona clarity and scope boundaries so that the review catches the same gaps that the new template sections are designed to prevent.
 
 **Why this priority**: Ensures the review loop stays aligned with the new RFC template. Without this, Phase 0 could approve an RFC that is missing the new mandatory sections.
 
@@ -164,8 +164,8 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 
 **Acceptance Scenarios**:
 
-1. **Given** the Phase 0 review loop runs on an existing RFC, **When** the audit categories are evaluated, **Then** "Persona Coverage" and "Out of Scope Completeness" are included alongside existing categories (Problem Statement, Goals, Milestones, Feasibility, Scope, Stakeholders).
-2. **Given** the `audit-checklist-rfc.md` snippet is used by `smithy.audit`, **When** it audits an RFC, **Then** it includes checks for persona coverage and out-of-scope completeness.
+1. **Given** the Phase 0 review loop runs on an existing RFC, **When** the audit categories are evaluated, **Then** "Persona Clarity" and "Scope Boundaries" are included alongside existing categories (Problem Statement, Goals, Milestones, Feasibility, Scope, Stakeholders).
+2. **Given** the `audit-checklist-rfc.md` snippet is used by `smithy.audit`, **When** it audits an RFC, **Then** it includes checks for persona clarity and scope boundaries.
 3. **Given** an RFC has a Personas section but it contains only vague references, **When** the audit runs, **Then** it flags the section as Weak rather than Sound.
 
 ---
@@ -208,12 +208,13 @@ Recommended implementation sequence:
 - **FR-008**: Phase 0 MUST detect partial RFC files (by parsing which template headings exist) and offer to resume from the first missing section's sub-phase.
 - **FR-009**: After each clarification phase completes, the system MUST write Q&A and assumptions to a `.clarify-log.md` file in the RFC folder.
 - **FR-010**: When a `.clarify-log.md` exists from a prior session, the system MUST pass its contents to smithy-clarify as additional context with instructions to avoid re-asking answered questions.
-- **FR-011**: Phase 0 audit categories MUST include "Persona Coverage" and "Out of Scope Completeness" alongside existing categories.
-- **FR-012**: The `audit-checklist-rfc.md` snippet MUST be updated to include persona coverage and out-of-scope completeness checks.
+- **FR-011**: Phase 0 audit categories MUST include "Persona Clarity" and "Scope Boundaries" alongside existing categories.
+- **FR-012**: The `audit-checklist-rfc.md` snippet MUST be updated to include persona clarity and scope boundaries checks.
 ### Key Entities
 
 - **`.clarify-log.md`**: Persistent file in the RFC folder that records Q&A and assumptions from each clarification session for cross-session deduplication.
 - **`smithy-prose` sub-agent**: New shared sub-agent specialized for narrative/persuasive writing. Dispatched for Summary, Motivation/Problem Statement, and other prose-heavy sections across any smithy command.
+- **RFC File (`<slug>.rfc.md`)**: Intermediate and final artifact of piecewise RFC generation. Each sub-phase appends its section(s) to this file; the harmonize step rewrites it in place.
 
 ## Assumptions
 
