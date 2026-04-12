@@ -97,7 +97,7 @@ try {
       ? `FAIL (exit ${output.exit_code})`
       : 'OK';
 
-  console.log(`Result: ${status}`);
+  console.log(`Process: ${status}`);
   console.log(`  Duration:  ${output.duration_ms}ms`);
   console.log(`  Text length: ${output.extracted_text.length} chars`);
   console.log(`  Stream events: ${output.stream_events.length}`);
@@ -138,6 +138,9 @@ try {
   const anyCheckFailed = allChecks.some((c) => !c.passed);
   const exitCode =
     output.exit_code !== 0 || output.timed_out || anyCheckFailed ? 1 : 0;
+
+  console.log('');
+  console.log(`Result: ${exitCode === 0 ? 'PASS' : 'FAIL'}`);
 
   process.exit(exitCode);
 } catch (err) {
