@@ -35,7 +35,9 @@ Before starting, determine the mode:
       feature map — expected `### Feature N: <Title>` headings."
    b. Extract the `**Source RFC**` path from the file header.
    c. Determine which features already have specs by checking the
-      `## Feature Dependency Order` section at the bottom of the `.features.md`.
+      `## Feature Dependency Order` section in the `.features.md` (locate by
+      heading name, not by position — it may appear before
+      `## Cross-Milestone Dependencies` or at the end of the file).
       Each entry uses dual checkboxes: `- [ ][ ]` (unspecced),
       `- [x][ ]` (spec created), or `- [x][x]` (fully implemented). A feature
       is "specc'd" when its first checkbox is `[x]` (matches `[x][ ]` or
@@ -443,7 +445,9 @@ Create the spec folder and write all three files to disk first.
 
 **Feature map write-back** (when input was a `.features.md`): Update the
 `.features.md` to track progress. If a `## Feature Dependency Order` section
-does not exist at the bottom of the file, create it with one dual-checkbox
+does not exist in the file, create it just before `## Cross-Milestone
+Dependencies` (or at the end of the file if that section is absent) with one
+dual-checkbox
 entry per feature parsed during Routing, ordered by dependency graph with
 rationale. Then update the current feature's first checkbox to `[x]` and
 append the spec folder path:

@@ -253,16 +253,23 @@ hierarchy:
 
 Read the source spec file (from the tasks file header `**Source**` field). Find
 this story's entry in the `## Story Dependency Order` section by matching
-`User Story <N>` in the bold text (where `<N>` is the story number from the
-tasks file header `**Story Number**` field). Change the second checkbox from
-`[ ]` to `[x]`:
+`User Story <N>` in the bold text. The `<N>` comes from the tasks file header
+`**Story Number**` field — **strip any leading zeros** before matching (e.g.,
+`03` → `3`) since spec entries use unpadded numbers (`User Story 3`, not
+`User Story 03`).
+
+Only update entries whose first checkbox is already `[x]` — i.e., change
+`[x][ ]` → `[x][x]`. Do NOT update `[ ][ ]` entries (that would produce the
+invalid state `[ ][x]`):
 
 ```
 - [x][x] **User Story N: <Title>** — <rationale> → `<tasks-file-path>`
 ```
 
-If the entry is already `[x][x]`, skip. If the `## Story Dependency Order`
-section does not exist (legacy spec), skip silently.
+If the entry is already `[x][x]`, skip. If the entry is `[ ][ ]` (first
+checkbox not set), skip with a warning — the spec write-back from cut may not
+have run. If the `## Story Dependency Order` section does not exist (legacy
+spec), skip silently.
 
 Commit the change: `mark story <N> complete in story dependency order`
 
@@ -280,12 +287,14 @@ If ALL stories are `[x][x]`:
 3. If present, read the feature map file at that path.
 4. Find this feature's entry in the `## Feature Dependency Order` section by
    matching the spec folder path after `→` in the entry text.
-5. Change the second checkbox from `[ ]` to `[x]`:
+5. Only update entries whose first checkbox is already `[x]` — change
+   `[x][ ]` → `[x][x]`. Do NOT update `[ ][ ]` entries:
    ```
    - [x][x] **Feature N: <Title>** — <rationale> → `<spec-folder-path>/`
    ```
-6. If the entry is already `[x][x]`, skip. If the `## Feature Dependency Order`
-   section does not exist (legacy feature map), skip silently.
+6. If the entry is already `[x][x]`, skip. If the entry is `[ ][ ]`, skip
+   with a warning. If the `## Feature Dependency Order` section does not exist
+   (legacy feature map), skip silently.
 
 Commit the change: `mark feature complete in feature dependency order`
 
