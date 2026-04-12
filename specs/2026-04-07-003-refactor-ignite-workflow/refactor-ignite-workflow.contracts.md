@@ -71,8 +71,8 @@ Each sub-phase follows this protocol:
 | Sub-Phase | Sub-Agent | Rationale |
 |-----------|-----------|-----------|
 | 3a (Summary, Motivation) | smithy-prose | Narrative/persuasive writing |
-| 3b (Personas) | smithy-prose | Persona descriptions are narrative |
-| 3c (Goals, Out of Scope) | smithy-plan | Structured analytical decomposition |
+| 3b (Goals, Out of Scope) | smithy-plan | Structured analytical decomposition |
+| 3c (Personas) | smithy-prose | Persona descriptions are narrative |
 | 3d (Proposal, Design Considerations) | smithy-plan | Analytical, draws on reconciled approach |
 | 3e (Decisions, Open Questions) | Orchestrator inline | Synthesis of clarification record — straightforward partitioning |
 | 3f (Milestones) | smithy-plan | Structured decomposition with success criteria |
@@ -110,8 +110,8 @@ Each sub-phase follows this protocol:
 | Sub-Phase | RFC Sections Produced |
 |-----------|----------------------|
 | 3a | Summary, Motivation / Problem Statement |
-| 3b | Personas |
-| 3c | Goals, Out of Scope |
+| 3b | Goals, Out of Scope |
+| 3c | Personas |
 | 3d | Proposal, Design Considerations |
 | 3e | Decisions, Open Questions |
 | 3f | Milestones (with Success Criteria per milestone) |

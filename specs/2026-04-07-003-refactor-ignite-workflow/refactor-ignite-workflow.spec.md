@@ -49,7 +49,7 @@ As a developer using `smithy.ignite`, I want narrative/persuasive RFC sections (
 
 **Acceptance Scenarios**:
 
-1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phases 3a and 3b, **Then** it returns the drafted sections (Summary and Motivation/Problem Statement for 3a; Personas for 3b) to the orchestrator, which appends them to `<slug>.rfc.md`.
+1. **Given** a new `smithy-prose` sub-agent definition exists at `src/templates/agent-skills/agents/smithy.prose.prompt`, **When** it is dispatched by the ignite orchestrator during sub-phases 3a and 3c, **Then** it returns the drafted sections (Summary and Motivation/Problem Statement for 3a; Personas for 3c) to the orchestrator, which appends them to `<slug>.rfc.md`.
 2. **Given** smithy-prose receives the idea description and clarification output as context, **When** it drafts the narrative sections, **Then** the output uses persuasive framing (impact of not solving, urgency, stakeholder value) rather than dry bullet-point style.
 3. **Given** smithy-prose is designed as a shared sub-agent, **When** other commands (render, mark) need narrative sections drafted, **Then** they can dispatch smithy-prose with their own context without modification.
 4. **Given** the ignite orchestrator dispatches smithy-prose, **When** the sub-agent returns its content, **Then** the orchestrator appends it to the RFC file on disk so that subsequent sub-phases can read the accumulating file for context.
@@ -62,11 +62,11 @@ As a developer using `smithy.ignite`, I want structured analytical RFC sections 
 
 **Why this priority**: Structured sections like Goals, Proposal, and Milestones require analytical decomposition — the same kind of work smithy-plan already does well. Reusing smithy-plan for these sections leverages an existing, proven sub-agent rather than relying on the orchestrator to draft inline. This dispatch pattern must be defined before the pipeline can use it.
 
-**Independent Test**: During sub-phase 3c (Goals + Out of Scope), verify that smithy-plan is dispatched with the clarification output and the accumulating RFC file as context, and that it returns a structured Goals list and Out of Scope section.
+**Independent Test**: During sub-phase 3b (Goals + Out of Scope), verify that smithy-plan is dispatched with the clarification output and the accumulating RFC file as context, and that it returns a structured Goals list and Out of Scope section.
 
 **Acceptance Scenarios**:
 
-1. **Given** sub-phase 3c (Goals + Out of Scope) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan receives the clarification output and the path to the accumulating `<slug>.rfc.md` (containing Summary, Motivation, Personas) as context and produces structured Goals and Out of Scope sections.
+1. **Given** sub-phase 3b (Goals + Out of Scope) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan receives the clarification output and the path to the accumulating `<slug>.rfc.md` (containing Summary, Motivation) as context and produces structured Goals and Out of Scope sections.
 2. **Given** sub-phase 3d (Proposal + Design Considerations) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan receives the reconciled approach from Phase 1.5 plus the accumulating RFC file and produces the Proposal and Design Considerations sections.
 3. **Given** sub-phase 3f (Milestones) begins, **When** the orchestrator dispatches smithy-plan, **Then** smithy-plan produces milestone decomposition with success criteria, informed by the accumulated RFC content.
 4. **Given** smithy-plan is dispatched for a structured section, **When** it completes, **Then** its returned content is appended to the RFC file by the orchestrator.
@@ -84,7 +84,7 @@ As a developer using `smithy.ignite`, I want the RFC to be built section by sect
 **Acceptance Scenarios**:
 
 1. **Given** a user provides a broad idea description, **When** ignite reaches Phase 3, **Then** the orchestrator creates `<slug>.rfc.md` with the RFC header, then dispatches sub-agents for each section group (smithy-prose for narrative sections, smithy-plan for structured sections), appending each sub-agent's returned content to the RFC file.
-2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives the path to the accumulating `<slug>.rfc.md` (containing Summary, Motivation, Personas, Goals, Out of Scope) as context, ensuring prior sections inform the current one.
+2. **Given** sub-phase 3d (Proposal) is being drafted via smithy-plan, **When** the sub-agent begins, **Then** it receives the path to the accumulating `<slug>.rfc.md` (containing Summary, Motivation, Goals, Out of Scope, Personas) as context, ensuring prior sections inform the current one.
 3. **Given** all sub-phases 3a-3f have completed, **When** the harmonization pass (3g) runs, **Then** the orchestrator reads the full RFC file, performs a coherence pass to smooth tone and fix cross-references, and rewrites the file in place.
 4. **Given** a sub-agent returns its drafted content to the orchestrator, **When** the orchestrator appends it to the RFC file, **Then** the next sub-phase can begin in a fresh context by reading the file from disk rather than relying on the context window.
 
@@ -101,7 +101,7 @@ As a developer using `smithy.ignite`, I want personas identified during clarific
 **Acceptance Scenarios**:
 
 1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Personas` section listing identified users/stakeholders with descriptions.
-2. **Given** the Personas section is drafted in sub-phase 3b, **When** sub-phase 3b completes, **Then** the personas are appended to `<slug>.rfc.md` and are available for subsequent sub-phases to reference by reading the file.
+2. **Given** the Personas section is drafted in sub-phase 3c, **When** sub-phase 3c completes, **Then** the personas are appended to `<slug>.rfc.md` and are available for subsequent sub-phases to reference by reading the file.
 3. **Given** the Phase 2 clarification identifies personas, **When** the sub-phases draft the RFC, **Then** the personas from clarification appear in the Personas section (not lost between clarification and drafting).
 
 ---
