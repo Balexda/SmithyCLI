@@ -33,7 +33,8 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 Smithy provides a collection of workflow prompts, each for a different stage/style of development:
 
 - **smithy.strike** — The lightweight "just do it" command. Interactive planning + implementation in one session. This is the starting point we're actively developing. Has `command: true` so it deploys as a Claude Code slash command (`/smithy.strike`).
-- **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.)
+- **smithy.spark** — Optional upstream entry point. Turns a raw idea into a ~1 page PRD (problem statement, proposed solution, alternatives / build-vs-buy) at `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`. One-shot by default. The PRD can then feed `smithy.ignite`.
+- **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.). Accepts a PRD file path as input to workshop into an RFC.
 - **smithy.forge** — Implementation executor that works from task specs
 - **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description, RFC, or `.features.md` feature map (auto-selects the first unspecced feature).
 - **smithy.fix** — Minimal-diff bug fix from a GitHub issue
@@ -50,7 +51,8 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-review** — Code review with auto-fix (used by forge)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
-- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; designed for reuse by other commands)
+- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; used by spark for the PRD Problem Statement; designed for reuse by other commands)
+- **smithy-survey** — WebFetch/WebSearch-enabled landscape survey: finds off-the-shelf alternatives and returns a structured build-vs-buy rationale (used by spark during PRD drafting; first smithy sub-agent to use web-research tools)
 
 ## Key Concepts
 
