@@ -113,22 +113,22 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
 ### Tasks
 
-- [ ] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add a row:
+- [x] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add a row:
   `| **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |`
-- [ ] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add the same row.
-- [ ] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0c. Apply Refinements), add: "When the refine sub-agent identifies debt items that can now be resolved, update those items in the spec's `## Specification Debt` table: change status from `open` to `resolved` and populate the Resolution column with a note describing how and when the item was addressed (e.g., 'Resolved 2026-04-10 — user confirmed webhooks are HTTP-only')."
-- [ ] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0c. Apply Refinements), add the same debt resolution instruction.
-- [ ] In `src/templates/agent-skills/snippets/audit-checklist-spec.md`, add a row:
+- [x] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0a–0b, the audit categories table passed to smithy-refine), add the same row.
+- [x] In `src/templates/agent-skills/commands/smithy.mark.prompt`, Phase 0 section (0c. Apply Refinements), add: "When the refine sub-agent identifies debt items that can now be resolved, update those items in the spec's `## Specification Debt` table: change status from `open` to `resolved` and populate the Resolution column with a note describing how and when the item was addressed (e.g., 'Resolved 2026-04-10 — user confirmed webhooks are HTTP-only')."
+- [x] In `src/templates/agent-skills/commands/smithy.cut.prompt`, Phase 0 section (0c. Apply Refinements), add the same debt resolution instruction.
+- [x] In `src/templates/agent-skills/snippets/audit-checklist-spec.md`, add a row:
   `| **Specification Debt** | Does the spec contain a \`## Specification Debt\` section between \`## Assumptions\` and \`## Out of Scope\`? Are debt items structured with ID, Description, Source Category, Impact, Confidence, Status, and Resolution columns? Are any previously-open items now resolvable? |`
-- [ ] In `src/templates/agent-skills/snippets/audit-checklist-tasks.md`, add a row:
+- [x] In `src/templates/agent-skills/snippets/audit-checklist-tasks.md`, add a row:
   `| **Specification Debt** | Does the tasks file contain a \`## Specification Debt\` section before \`## Dependency Order\`? Are inherited items properly attributed to the source spec? Are any open items resolvable given the current codebase state? |`
-- [ ] In `src/templates/agent-skills/snippets/audit-checklist-strike.md`, add a row:
+- [x] In `src/templates/agent-skills/snippets/audit-checklist-strike.md`, add a row:
   `| **Specification Debt** | Does the strike document contain a \`## Specification Debt\` section? Are debt items structured with required metadata? |`
-- [ ] In `src/templates/agent-skills/snippets/audit-checklist-rfc.md`, add a row:
+- [x] In `src/templates/agent-skills/snippets/audit-checklist-rfc.md`, add a row:
   `| **Specification Debt** | Does the RFC contain a \`## Specification Debt\` section? Are debt items structured with required metadata? |`
-- [ ] In `src/templates/agent-skills/snippets/audit-checklist-features.md`, add a row:
+- [x] In `src/templates/agent-skills/snippets/audit-checklist-features.md`, add a row:
   `| **Specification Debt** | Does the feature map contain a \`## Specification Debt\` section? Are debt items structured with required metadata? |`
-- [ ] Add A-series agent tests in `tests/Agent.tests.md` (after the existing A6 test):
+- [x] Add A-series agent tests in `tests/Agent.tests.md` (after the existing A6 test):
   - **A7** — smithy-clarify produces debt items for Medium/Low-confidence candidates. Steps: invoke clarify with a context producing candidates at mixed confidence levels. Expected: High-confidence items appear as assumptions; Medium/Low-confidence items appear in `debt_items` with structured metadata (ID, Description, Source Category, Impact, Confidence, Status: open); no Questions section appears.
   - **A8** — mark spec artifact contains a populated `## Specification Debt` section. Steps: invoke smithy-mark with a feature description that includes at least one ambiguous domain term (Medium-confidence candidate). Expected: the produced spec file contains a `## Specification Debt` section between `## Assumptions` and `## Out of Scope` with at least one structured debt item.
   - **A9** — cut tasks artifact inherits debt from the upstream spec. Steps: use a spec that contains a `## Specification Debt` section with one open item; invoke smithy-cut on that spec. Expected: the produced tasks file contains a `## Specification Debt` section with the inherited item annotated as `inherited from spec: <original description>` and status `inherited`.
