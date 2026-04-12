@@ -169,6 +169,12 @@ Use the **smithy-clarify** sub-agent. Pass it:
 
 Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
 
+**Bail-out check**: If clarify returns `bail_out: true`, output the
+`debt_items` table and the `bail_out_summary` guidance message to the terminal
+so the user can see exactly which ambiguities need resolution. Do not write any
+artifact files. Stop and wait for the user to provide expanded information or
+narrow the scope, then re-run.
+
 ---
 
 ## Phase 3: Specify

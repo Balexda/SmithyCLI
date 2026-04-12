@@ -71,13 +71,28 @@ Phase 0).
      artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`).
    - **User story number** — validate it exists in the spec file.
 2. Read all three spec artifacts to build full context.
-3. Extract the target user story — its title, acceptance scenarios, priority,
+3. **Inherit upstream debt.** After reading the source spec's three artifact
+   files, also read the spec's `## Specification Debt` section. Extract all
+   items with `status: open` or `status: inherited`. Carry them forward into
+   the tasks file's `## Specification Debt` table with status `inherited` and
+   a description prefixed with
+   `inherited from spec: <original SD-NNN description>`. Preserve the
+   upstream SD-NNN identifiers in the ID column (cut's own new items will
+   continue numbering from where the inherited list leaves off — see Phase 4
+   guidelines). Leave the Resolution column as `—`. If the upstream
+   `## Specification Debt` section is absent, empty, or the table is
+   malformed, treat this as a non-blocking warning: append an italic note
+   directly below the `## Specification Debt` table heading (before any table
+   rows): `_Upstream spec debt could not be parsed — inheritance skipped._`
+   This keeps the warning outside the table so it does not break the
+   structured row format.
+4. Extract the target user story — its title, acceptance scenarios, priority,
    and any FRs that trace to it.
-4. Derive the **story slug** — a short kebab-case name from the user story
+5. Derive the **story slug** — a short kebab-case name from the user story
    title (e.g., "User Story 4: Slice a User Story into Tasks" →
    `slice-story-into-tasks`). Older specs may use an em dash (`—`) instead
    of a colon as the separator; accept both when parsing.
-5. Confirm the target to the user:
+6. Confirm the target to the user:
    - Spec folder path.
    - User story number and title.
    - Derived filename: `<NN>-<story-slug>.tasks.md`.
@@ -186,6 +201,12 @@ Use the **smithy-clarify** sub-agent. Pass it:
   flag as Partial/Missing if the spec itself is ambiguous about which story owns
   a piece of functionality. If all categories are Clear, skip to Phase 4.
 
+**Bail-out check**: If clarify returns `bail_out: true`, output the
+`debt_items` table and the `bail_out_summary` guidance message to the terminal
+so the user can see exactly which ambiguities need resolution. Do not write any
+artifact files. Stop and wait for the user to provide expanded information or
+narrow the scope, then re-run.
+
 ---
 
 ## Phase 4: Slice
@@ -269,7 +290,7 @@ Guidelines for slicing:
 - Slices are numbered sequentially starting at 1.
 - Include tests, docs, and validation steps within the slice that introduces the
   code — do not batch these into a separate "testing slice".
-- Populate the `## Specification Debt` section with debt items from cut's own clarify run. Assign SD-NNN identifiers. Leave Resolution as `—` for all `open` items. Inherited items from the upstream spec are added by Slice 4 — do not duplicate them here until that slice lands.
+- Populate the `## Specification Debt` section with both (1) inherited items from the source spec (carried over in Phase 1) and (2) new items from cut's own clarify run. Inherited items use status `inherited`; new items use status `open`. Assign new SD-NNN identifiers to cut's own items, continuing from where the inherited list left off.
 
 Guidelines for task authoring:
 
