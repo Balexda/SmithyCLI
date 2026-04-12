@@ -186,6 +186,11 @@ Use the **smithy-clarify** sub-agent. Pass it:
   flag as Partial/Missing if the spec itself is ambiguous about which story owns
   a piece of functionality. If all categories are Clear, skip to Phase 4.
 
+**Bail-out check**: If clarify returns `bail_out: true`, output the
+`bail_out_summary` to the terminal. Do not write any artifact files. Stop and
+wait for the user to provide expanded information or narrow the scope, then
+re-run.
+
 ---
 
 ## Phase 4: Slice
