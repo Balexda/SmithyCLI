@@ -111,7 +111,7 @@ The status feature emits no events and installs no hooks. It is a read-only, on-
 ## Integration Boundaries
 
 - **Smithy CLI package**: The `status` subcommand is added alongside existing subcommands (`init`, `uninit`, `update`). It reuses the CLI's argument parsing (Commander) and exit-code conventions. It must not introduce new dependencies beyond what the CLI already uses for file I/O and markdown parsing.
-- **Agent-skill templates**: A new `smithy.status.prompt` file is added under `src/templates/agent-skills/commands/`. It follows existing Dotprompt conventions (YAML frontmatter with `name` and `description`, Handlebars body, `command: true` so it deploys as a slash command on Claude).
+- **Agent-skill templates**: A new `smithy.status.prompt` file is added under `src/templates/agent-skills/commands/`. It follows existing Dotprompt conventions — YAML frontmatter with `name` and `description` only (matching `smithy.strike.prompt`, `smithy.audit.prompt`, etc.), plus a Handlebars body. The `commands/` directory itself is what makes the file deploy as a Claude slash command; no `command: true` frontmatter field is introduced (the repo does not currently use one).
 - **Manifest**: The skill is registered in the standard template manifest so `smithy init` / `smithy update` deploys it alongside other commands. The status subcommand itself is part of the CLI and requires no manifest entry.
 - **Filesystem**: Read-only access to the working directory and any path passed via `--root`. The scanner MUST NOT write, create, or modify files. It MUST NOT follow symlinks outside the scan root.
 - **Network**: None. The scanner MUST make no network calls and MUST function offline.

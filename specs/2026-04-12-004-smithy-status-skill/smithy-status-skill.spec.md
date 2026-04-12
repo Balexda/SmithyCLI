@@ -11,7 +11,7 @@
 ### Session 2026-04-12
 
 - _The status scanner is a deterministic script shipped with the Smithy CLI (not a separate package), exposed as a `smithy status` subcommand and wrapped by a thin `smithy.status` agent-skill that invokes the script and passes its output through with minimal interpretation._ `[Critical Assumption]`
-- _Artifact discovery is rooted at the repo working directory and walks `specs/`, `docs/rfcs/`, and `strikes/` by default; additional roots can be configured but are out of scope for v1._ `[Critical Assumption]`
+- _Artifact discovery is rooted at the repo working directory and walks `specs/`, `docs/rfcs/`, and `specs/strikes/` by default; additional roots can be configured but are out of scope for v1._ `[Critical Assumption]`
 - _Status classification is derived entirely from existing markdown patterns already written by `smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut` — no new frontmatter fields, no hidden metadata files, no `.smithy-status.json` sidecar._ `[Critical Assumption]`
 - _The default output is human-readable terminal text (with optional ANSI color); a `--format json` mode exists for programmatic consumers but is secondary._
 - _"Done" collapsing rule: a tasks file displays as `DONE` when all its slice checkboxes are checked, and as `N/M` (checked slices over total slices) otherwise. Fully-done parents (feature, spec) collapse to `DONE` similarly — their children are hidden unless `--all` is passed._
@@ -22,7 +22,7 @@
 
 RFC → Milestone → Feature → User Story → Slice → Tasks
 
-(The status skill reads this hierarchy from existing artifacts — it does not define a new one.)
+This is the canonical smithy conceptual lineage (shared across all specs). The **status tree this feature actually builds** is narrower and reflects only the discoverable artifact files on disk: `RFC → feature map → spec → tasks`, with slices represented as per-tasks-record counters (not as standalone nodes). Milestone and User Story do not appear as standalone nodes in the rendered tree — they are folded into their containing feature-map and spec records respectively.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -36,7 +36,7 @@ As a Smithy user with multiple in-flight planning artifacts, I want a single com
 
 **Acceptance Scenarios**:
 
-1. **Given** a repo with `specs/2026-04-08-003-reduce-interaction-friction/` containing a spec, two completed tasks files, and one unchecked story, **When** the scanner runs, **Then** it emits one spec record (status: in-progress), two tasks records (status: done), and one story record (status: not-started).
+1. **Given** a repo with `specs/2026-04-08-003-reduce-interaction-friction/` containing a spec, two completed tasks files, and one unchecked story in the spec's `## Story Dependency Order`, **When** the scanner runs, **Then** it emits one spec record (status: in-progress), two tasks records (status: done), and one virtual tasks record (status: not-started) for the unchecked story.
 2. **Given** a tasks file where 3 of 6 slice checkboxes are checked, **When** the scanner classifies it, **Then** its status is `in-progress` with `completed=3, total=6`.
 3. **Given** a tasks file where all slice checkboxes are checked, **When** the scanner classifies it, **Then** its status is `done`.
 4. **Given** a spec's `## Story Dependency Order` references a tasks file at `01-foo.tasks.md` that does not exist on disk, **When** the scanner runs, **Then** a virtual "not-started" tasks record is emitted for that story with the suggested path.
@@ -58,7 +58,7 @@ As a Smithy user reviewing my backlog, I want the scan results rendered as a tre
 1. **Given** a scanned repo with one RFC, two feature maps, three specs, and five tasks files, **When** the view renders, **Then** every artifact appears under its parent in a tree structure (children indented beneath parents) and every tasks file traces back to its owning user story, spec, feature, and RFC.
 2. **Given** a spec with no parent feature map (created directly from a description, not from a `.features.md`), **When** the view renders, **Then** the spec appears at the top level of the tree under an "Orphaned Specs" group.
 3. **Given** a tasks file that references a spec folder that no longer exists, **When** the view renders, **Then** the tasks file is grouped under a "Broken Links" section with its dangling reference shown.
-4. **Given** the tree is rendered to a terminal, **When** the display mode is interactive, **Then** indentation, tree connectors (`├─`, `└─`), and titles (not file paths) are the primary visual elements.
+4. **Given** the tree is rendered to a terminal, **When** the default terminal text output is shown, **Then** indentation, tree connectors (`├─`, `└─`), and titles (not file paths) are the primary visual elements.
 
 ---
 
@@ -110,16 +110,16 @@ As a Smithy user inside an AI coding session, I want to type `/smithy.status` an
 
 1. **Given** `smithy init -a claude` has deployed the skill, **When** the user invokes `/smithy.status`, **Then** the skill shells out to the `smithy status` script and returns its output verbatim with minimal additional commentary.
 2. **Given** the skill runs with no arguments, **When** it executes, **Then** it uses the repo working directory as the scan root.
-3. **Given** the skill runs with a filter argument (e.g., `/smithy.status in-progress`), **When** it executes, **Then** the filter is forwarded to the script and applied there — the skill does not re-filter in the LLM.
+3. **Given** the skill runs with a filter argument (e.g., `/smithy.status --status in-progress`), **When** it executes, **Then** the filter is forwarded to the script and applied there — the skill does not re-filter in the LLM.
 4. **Given** the skill encounters an error (script missing, parse error), **When** it runs, **Then** it reports the error verbatim rather than attempting to reconstruct the missing information via LLM inference.
 
 ---
 
-### User Story 6: Filter and Scope the View (Priority: P2)
+### User Story 6: Filter and Scope the View (Priority: P1)
 
 As a Smithy user with a specific question (e.g., "what's still in progress?"), I want to filter the status view by status, by hierarchy branch, or by artifact type, so that I can narrow the report without reading the full tree.
 
-**Why this priority**: Valuable polish, but the full unfiltered tree from US1–US3 is already useful. Filtering is additive.
+**Why this priority**: Filtering is a required v1 behavior — FR-017 specifies it with MUST language because "show me just the in-progress work" is one of the core questions this feature exists to answer. It is implemented after US1–US3 only because it reuses their rendering.
 
 **Independent Test**: Run `smithy status --status in-progress` and verify only in-progress artifacts are shown. Run `smithy status --root specs/2026-04-08-003-reduce-interaction-friction` and verify only that subtree is shown.
 
@@ -131,11 +131,11 @@ As a Smithy user with a specific question (e.g., "what's still in progress?"), I
 
 ---
 
-### User Story 7: Summary Roll-up Header (Priority: P2)
+### User Story 7: Summary Roll-up Header (Priority: P1)
 
 As a Smithy user glancing at the status report, I want a one-line summary at the top showing total counts of done / in-progress / not-started items per artifact type, so that I get the high-level picture before diving into the tree.
 
-**Why this priority**: Adds scannability. Not required for the report to be useful, but a natural complement to US2/US3.
+**Why this priority**: The summary header is a required v1 behavior — FR-016 specifies it with MUST language because users need a high-level view before diving into details. It is implemented after US1 only because it consumes US1's record counts.
 
 **Independent Test**: Run the status view and verify a summary line or block appears above the tree with per-type counts that match the records rendered below.
 
@@ -165,14 +165,14 @@ Recommended implementation sequence:
 - [ ] **User Story 3: Collapse Completed Items** — Extends US2's rendering with collapsing logic. Depends on US2.
 - [ ] **User Story 4: Suggest the Next Command** — Reads US1 records and annotates the US2 tree. Depends on US1; can parallelize with US2/US3.
 - [ ] **User Story 5: Invoke Status via the smithy.status Skill** — Wraps the CLI produced by US1–US4 in an agent-skill. Depends on US1–US4 being callable via `smithy status`.
-- [ ] **User Story 6: Filter and Scope the View** — Adds flags to the renderer from US2/US3. Depends on US2.
-- [ ] **User Story 7: Summary Roll-up Header** — Aggregates US1 record counts. Depends on US1; can parallelize with US2–US6.
+- [ ] **User Story 6: Filter and Scope the View** (P1) — Adds required filter flags to the renderer from US2/US3. Depends on US2.
+- [ ] **User Story 7: Summary Roll-up Header** (P1) — Aggregates US1 record counts. Depends on US1; can parallelize with US2–US6.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST provide a `smithy status` CLI subcommand that walks the repo working directory (default) or a specified root and discovers all Smithy artifact files by extension: `.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`.
+- **FR-001**: The system MUST provide a `smithy status` CLI subcommand that scans a fixed set of default roots relative to the working directory (or to `--root` when supplied) — namely `specs/`, `docs/rfcs/`, and `specs/strikes/` — and discovers all Smithy artifact files within those roots by extension: `.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`. Files outside those roots are not scanned.
 - **FR-002**: The system MUST parse each discovered artifact deterministically — no LLM calls, no network access, no external services — using markdown pattern matching on the headings and checkbox conventions already produced by existing smithy commands.
 - **FR-003**: The system MUST classify every artifact as one of: `done`, `in-progress`, `not-started`, or `unknown` (for parse failures).
 - **FR-004**: Tasks-file classification MUST count slice checkboxes inside `## Slice N:` sections only — checkboxes elsewhere in the file MUST NOT affect the count.

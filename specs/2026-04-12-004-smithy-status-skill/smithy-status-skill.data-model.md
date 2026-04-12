@@ -18,7 +18,7 @@ Purpose: One entry per discovered artifact file, carrying everything needed to r
 | `status` | `'done' \| 'in-progress' \| 'not-started' \| 'unknown'` | Yes | See "State Transitions" below. |
 | `completed` | number | No | Count of completed children (slices for tasks; stories for specs; features for feature maps). Omitted for records where counting is not meaningful. |
 | `total` | number | No | Total count of children. Omitted alongside `completed`. |
-| `parent_path` | string | No | Repo-relative path to the parent artifact (e.g., a tasks record's parent is its spec). Null for top-level RFCs and orphans. |
+| `parent_path` | string \| null | No | Repo-relative path to the parent artifact (e.g., a tasks record's parent is its spec). Null for top-level RFCs and orphans. JSON consumers MUST distinguish `null` from an omitted field — an omitted field means "unknown," `null` means "no parent." |
 | `parent_missing` | boolean | No | True when `parent_path` was declared by the artifact but the referenced file does not exist. Drives "Broken Links" grouping. |
 | `virtual` | boolean | No | True for "not-started" records that were inferred from a parent's checklist but have no file on disk yet (e.g., a story in a spec's `## Story Dependency Order` that has no tasks file). |
 | `next_action` | NextAction \| null | No | Populated by the suggestion rules; null for `done` records. |
@@ -65,7 +65,8 @@ Purpose: The hierarchical view built from `ArtifactRecord[]` by grouping descend
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `roots` | TreeNode[] | Yes | Top-level nodes — typically RFCs, plus an implicit "Orphaned Specs" group and a "Broken Links" group when populated. |
-| `summary` | ScanSummary | Yes | The aggregate view for the summary header. |
+
+`StatusTree` contains only the hierarchical projection. The aggregate `ScanSummary` is **not** duplicated inside `StatusTree` — it appears only at the top level of the JSON response (see contracts). This avoids two copies of the same counts drifting out of sync.
 
 `TreeNode` is a recursive wrapper around `ArtifactRecord` with a `children: TreeNode[]` field. It carries no additional data — it exists only to encode parent/child relationships that ArtifactRecord records flatten.
 
