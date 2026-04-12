@@ -38,11 +38,17 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — This is the only slice. It is the prerequisite for all other stories in the spec.
+- [x] **Slice 1** — This is the only slice. It is the prerequisite for all other stories in the spec.
 
 ### Cross-Story Dependencies
 

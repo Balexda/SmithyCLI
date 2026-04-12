@@ -22,3 +22,17 @@
 - [ ] Task 5 (pending assignment by orchestrator)
 - [ ] Task 6 (pending assignment by orchestrator)
 - [ ] Task 7 (pending assignment by orchestrator)
+
+---
+
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
+## Dependency Order
+
+Recommended implementation sequence:
+
+- [x] **Slice 1** — Only slice. Insert Out of Scope and Personas sections into the Phase 3 RFC template.

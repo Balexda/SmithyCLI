@@ -216,6 +216,22 @@ Plan and scout are tested **both** ways:
 - **Indirectly** via strike (US5, US6) — verifying they are dispatched as sub-agents and their output appears in strike's output.
 - **Standalone** via their own YAML eval scenarios — invoking them directly as sub-agents with their own structural expectations (e.g., `## Plan` with 4 sections for plan, `## Scout Report` with severity tables for scout). This validates their output structure independently of strike's orchestration.
 
+## Story Dependency Order
+
+Recommended implementation sequence:
+
+- [x] **User Story 1: Validate Headless Execution Assumptions** — Must be confirmed first; the entire framework depends on `claude -p` assumptions. Blocks all other stories. → `specs/2026-04-06-003-smithy-evals-framework/01-validate-headless-execution-assumptions.tasks.md`
+- [x] **User Story 2: Reference Fixture Exists and Is Deployable** — Every eval case requires a fixture. Depends on US1 assumptions being validated. → `specs/2026-04-06-003-smithy-evals-framework/02-reference-fixture-exists-and-is-deployable.tasks.md`
+- [x] **User Story 3: Execute a Skill Headlessly and Capture Output** — Foundational runner capability; nothing else works without headless capture. Depends on US1 and US2. → `specs/2026-04-06-003-smithy-evals-framework/03-execute-skill-headlessly-and-capture-output.tasks.md`
+- [x] **User Story 4: Validate Output Structure** — Core validation logic; depends on US3 (captured output to validate). → `specs/2026-04-06-003-smithy-evals-framework/04-validate-output-structure.tasks.md`
+- [ ] **User Story 9: Eval Summary Report** — Reporting layer; depends on US3 and US4 producing results to summarize.
+- [ ] **User Story 5: Verify Strike End-to-End Output** — First full eval case; depends on US3 (runner) and US4 (structural validator) being implemented.
+- [ ] **User Story 6: Verify Sub-Agent Invocation** — Extends US5; depends on US5 strike eval infrastructure and the stream-json parser for detecting dispatch events.
+- [ ] **User Story 7: Define Eval Scenarios Declaratively** — Maintainability improvement; depends on at least one eval case (US5) existing to migrate. Can parallelize with US5/US6.
+- [ ] **User Story 8: Fixture Contains Deliberate Inconsistencies for Scout** — Enhancement to the fixture (US2); depends on basic eval framework working (US5+). Can parallelize with US7.
+- [ ] **User Story 10: Baseline Structural Expectations** — Optional regression layer; depends on structural evals (US4, US5) being stable first.
+- [ ] **User Story 11: Cost and Time Transparency** — Developer experience enhancement; can be added any time after US9 (summary report) exists.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -252,6 +268,10 @@ Plan and scout are tested **both** ways:
 - Both OAuth (via `claude login`) and `ANTHROPIC_API_KEY` are valid for authentication in headless mode — the spike ran successfully with OAuth only. The eval runner must support both.
 - Developers running evals have the `claude` CLI installed and authenticated locally.
 - A minimal 5-6 file fixture is sufficient for strike/plan/scout to produce structurally meaningful output.
+
+## Specification Debt
+
+_None — all ambiguities resolved._
 
 ## Out of Scope
 

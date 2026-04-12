@@ -57,9 +57,15 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Core template must exist before the review loop can be added or tested.
-2. **Slice 2** — Adds review loop on top of the working template from Slice 1.
+- [x] **Slice 1** — Core template must exist before the review loop can be added or tested.
+- [x] **Slice 2** — Adds review loop on top of the working template from Slice 1.

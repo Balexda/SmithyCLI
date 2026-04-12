@@ -100,6 +100,15 @@ As a developer who hasn't created `.smithy/` templates, I want `smithy.orders` t
 - `.smithy/` is gitignored but the user later wants to commit it — this is a manual git operation, not smithy's responsibility.
 - `.smithy/` contains extra files beyond the 4 known templates (e.g., `README.md`, custom templates) — overwrite during init replaces only the 4 known files and leaves extras untouched.
 
+## Story Dependency Order
+
+Recommended implementation sequence:
+
+- [x] **User Story 1 — Create `.smithy/` issue templates during init** — Foundational; templates must exist before `orders` can use them. Init is the natural setup point. → `specs/2026-03-21-002-smithy-orders-issue-templates/01-create-smithy-issue-templates-during-init.tasks.md`
+- [x] **User Story 3 — Commit-or-gitignore choice for `.smithy/`** — Setup-time decision that accompanies template creation (User Story 1). Can parallelize with User Story 1. → `specs/2026-03-21-002-smithy-orders-issue-templates/03-commit-or-gitignore-smithy-dir.tasks.md`
+- [x] **User Story 2 — Orders uses `.smithy/` templates when creating issues** — Core value proposition; depends on templates existing (User Story 1). → `specs/2026-03-21-002-smithy-orders-issue-templates/02-orders-uses-smithy-templates.tasks.md`
+- [x] **User Story 4 — Orders falls back to built-in defaults** — Fallback path; depends on orders integration being implemented (User Story 2) to validate the fallback is correct. → `specs/2026-03-21-002-smithy-orders-issue-templates/04-orders-falls-back-to-defaults.tasks.md`
+
 ## Requirements
 
 ### Functional Requirements
@@ -215,6 +224,10 @@ Run `smithy.{{next_step}}` to implement this slice as a PR.
 - The `{{variable}}` names defined in these templates become the interface between templates and `orders` — changes require coordination.
 - GitHub CLI (`gh`) is available and authenticated for issue creation.
 - Smithy artifacts (specs, RFCs, etc.) are checked into the repo so that repo-relative paths in issue bodies are valid references.
+
+## Specification Debt
+
+_None — all ambiguities resolved._
 
 ## Out of Scope
 

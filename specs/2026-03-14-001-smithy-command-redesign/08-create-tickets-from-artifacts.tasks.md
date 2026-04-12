@@ -52,9 +52,15 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Must come first because Slice 2 deletes the source file whose patterns Slice 1 draws from.
-2. **Slice 2** — Safe after Slice 1 since the new template is in place.
+- [x] **Slice 1** — Must come first because Slice 2 deletes the source file whose patterns Slice 1 draws from.
+- [x] **Slice 2** — Safe after Slice 1 since the new template is in place.

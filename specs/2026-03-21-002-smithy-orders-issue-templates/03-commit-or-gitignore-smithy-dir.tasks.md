@@ -32,8 +32,14 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — This is the only slice. It depends on Story 1 (template creation) being implemented first, as the prompt is triggered by successful template creation.
+- [ ] **Slice 1** — This is the only slice. It depends on Story 1 (template creation) being implemented first, as the prompt is triggered by successful template creation.

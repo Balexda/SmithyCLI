@@ -37,11 +37,17 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Only slice. All tasks within the slice are ordered sequentially: RFC creation and protocol note (tasks 1–2) must precede 3a (task 3), which must precede 3b (task 4); 3e (task 5) inserts between the already-present 3d and 3f; 3g (task 6) inserts after the already-present 3f; Phase 4 update (task 7) and tests (task 8) complete the PR.
+- [x] **Slice 1** — Only slice. All tasks within the slice are ordered sequentially: RFC creation and protocol note (tasks 1–2) must precede 3a (task 3), which must precede 3b (task 4); 3e (task 5) inserts between the already-present 3d and 3f; 3g (task 6) inserts after the already-present 3f; Phase 4 update (task 7) and tests (task 8) complete the PR.
 
 ### Cross-Story Dependencies
 

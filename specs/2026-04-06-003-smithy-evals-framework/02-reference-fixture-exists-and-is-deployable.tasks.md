@@ -69,12 +69,18 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — fixture source files are the foundation; the deployment test depends on them existing.
-2. **Slice 2** — deployment verification test; depends on Slice 1 and on `dist/cli.js` (built by the `pretest` script).
+- [x] **Slice 1** — fixture source files are the foundation; the deployment test depends on them existing.
+- [x] **Slice 2** — deployment verification test; depends on Slice 1 and on `dist/cli.js` (built by the `pretest` script).
 
 ### Cross-Story Dependencies
 

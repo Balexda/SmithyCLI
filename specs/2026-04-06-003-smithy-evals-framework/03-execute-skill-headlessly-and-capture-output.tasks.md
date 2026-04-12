@@ -75,13 +75,19 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1: Stream Parser and Shared Types** — no upstream dependencies; must land before Slice 2 can import from it.
-2. **Slice 2: Runner with Fixture Management** — depends on Slice 1; delivers the core US3 capability.
-3. **Slice 3: Entry Point and Build Tooling** — depends on Slice 2; wires everything into a runnable CLI.
+- [x] **Slice 1: Stream Parser and Shared Types** — no upstream dependencies; must land before Slice 2 can import from it.
+- [x] **Slice 2: Runner with Fixture Management** — depends on Slice 1; delivers the core US3 capability.
+- [x] **Slice 3: Entry Point and Build Tooling** — depends on Slice 2; wires everything into a runnable CLI.
 
 ### Cross-Story Dependencies
 

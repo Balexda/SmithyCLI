@@ -48,9 +48,15 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Default template files must exist first so Slice 2 can reference their content inline in the prompt.
-2. **Slice 2** — Adds resolution, interpolation, and fallback logic to the orders prompt, consuming Slice 1's templates.
+- [ ] **Slice 1** — Default template files must exist first so Slice 2 can reference their content inline in the prompt.
+- [ ] **Slice 2** — Adds resolution, interpolation, and fallback logic to the orders prompt, consuming Slice 1's templates.

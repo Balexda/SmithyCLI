@@ -178,6 +178,20 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 - **Partial RFC from a different idea**: Phase 0's resume detection should verify that the RFC's Summary/Motivation are contextually related to the current idea. If unrelated, warn the user and offer to overwrite or create a new RFC.
 - **Session crash during harmonization (3g)**: If the harmonization pass crashes mid-rewrite, the RFC file may be in an inconsistent state. The next session's Phase 0 should detect the RFC and enter the review loop, where smithy-refine can identify and repair inconsistencies.
 
+## Story Dependency Order
+
+Recommended implementation sequence:
+
+- [x] **User Story 1: Updated RFC Template Schema** — Foundational; defines the slots all other stories write into. All piecewise generation stories depend on the template having the correct sections. → `specs/2026-04-07-003-refactor-ignite-workflow/01-updated-rfc-template-schema.tasks.md`
+- [x] **User Story 2: Shared Smithy-Prose Sub-Agent** — Must exist before the piecewise pipeline can dispatch it for narrative sections (3a, 3b). → `specs/2026-04-07-003-refactor-ignite-workflow/02-shared-smithy-prose-sub-agent.tasks.md`
+- [x] **User Story 3: Smithy-Plan for Structured RFC Sections** — Defines the dispatch pattern for structured sections; required before piecewise orchestration can be wired together. Can parallelize with US2. → `specs/2026-04-07-003-refactor-ignite-workflow/03-smithy-plan-for-structured-rfc-sections.tasks.md`
+- [x] **User Story 4: Piecewise RFC Generation** — Core orchestration that wires US1+US2+US3 together. Depends on all three preceding stories. → `specs/2026-04-07-003-refactor-ignite-workflow/04-piecewise-rfc-generation.tasks.md`
+- [ ] **User Story 5: Mandatory Personas Section** — Verifies the Personas section is produced end-to-end; depends on US1 (template slot) and US2 (smithy-prose dispatch). Can be validated after US4.
+- [ ] **User Story 6: Mandatory Out of Scope Section** — Verifies the Out of Scope section is produced end-to-end; depends on US1 (template slot) and US3 (smithy-plan dispatch). Can parallelize with US5.
+- [ ] **User Story 9: Updated Phase 0 Audit Categories** — Updates the review loop and audit snippet; depends on US1 (new sections defined). Can be done any time after US1.
+- [ ] **User Story 7: Session Resume from Partial State** — Robustness enhancement; depends on US4 (direct-write approach) naturally leaving partial files on disk to detect.
+- [ ] **User Story 8: Cross-Session Question Deduplication** — Enhancement on top of the core pipeline; depends on US4 (sessions producing output files). Implement after core flow is solid.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -208,6 +222,10 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 - The competing plans phase (Phase 1.5) with three lenses and smithy-reconcile remains unchanged in structure, though it now benefits from richer context when sub-phases reference its output.
 - smithy-scout is NOT added to the ignite pipeline (ignite works from ideas/PRDs, not existing code).
 - smithy-prose is designed as a shared sub-agent from day one, but adoption by other commands (render, mark) is deferred to future work.
+
+## Specification Debt
+
+_None — all ambiguities resolved._
 
 ## Out of Scope
 
