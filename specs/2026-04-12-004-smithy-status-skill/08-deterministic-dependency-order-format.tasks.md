@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Migrate smithy.mark spec template to US-ID Dependency Order table**
+- [x] **Migrate smithy.mark spec template to US-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.mark.prompt`, replace the `## Story Dependency Order` checkbox-list template in Phase 3 (Specify) with a `## Dependency Order` 4-column table using `US<N>` IDs. Also update the authoring-guidelines section so no checkbox-format instructions remain. Satisfies AS 8.1, AS 8.5, AS 8.6, AS 8.7.
 
