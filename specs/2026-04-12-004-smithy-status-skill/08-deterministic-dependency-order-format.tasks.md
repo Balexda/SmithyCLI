@@ -106,7 +106,7 @@
   - If only legacy `## Story Dependency Order` exists, write-back skips silently
   - No checkbox-flip language remains in Phase 5 or in the Rules section
 
-- [ ] **Remove "Mark Slice Complete" section and update "Story Completion Cascade" in smithy.forge**
+- [x] **Remove "Mark Slice Complete" section and update "Story Completion Cascade" in smithy.forge**
 
   Delete the "Mark Slice Complete" section in `smithy.forge.prompt` entirely — forge no longer writes to any `## Dependency Order` table. Rewrite "Story Completion Cascade" to explain that slice completion is derived from per-task checkboxes inside `## Slice N:` bodies, and that parent artifacts' `Artifact` columns are set by `smithy.mark` and `smithy.cut`, not forge. Satisfies AS 8.2.
 
