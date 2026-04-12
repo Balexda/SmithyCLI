@@ -538,7 +538,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Story Dependency Order** | If the spec contains a `## Story Dependency Order` section: does it list all user stories with a single `[ ]`/`[x]` checkbox and a `**User Story N Tasks: <Title>**` row title? Is the sequence logically justified? Do `[x]` entries match stories with `.tasks.md` files in the spec folder? If absent (legacy spec), treat as N/A. |
+  | **Dependency Order** | Does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`)? Does it list every user story with a `US<N>` ID (no leading zeros)? Does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.
