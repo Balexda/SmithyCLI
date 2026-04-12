@@ -189,7 +189,7 @@ Recommended implementation sequence:
 - [x] **User Story 4: Piecewise RFC Generation** — Core orchestration that wires US1+US2+US3 together. Depends on all three preceding stories. → `specs/2026-04-07-003-refactor-ignite-workflow/04-piecewise-rfc-generation.tasks.md`
 - [ ] **User Story 5: Mandatory Personas Section** — Verifies the Personas section is produced end-to-end; depends on US1 (template slot) and US2 (smithy-prose dispatch). Can be validated after US4.
 - [ ] **User Story 6: Mandatory Out of Scope Section** — Verifies the Out of Scope section is produced end-to-end; depends on US1 (template slot) and US3 (smithy-plan dispatch). Can parallelize with US5.
-- [ ] **User Story 9: Updated Phase 0 Audit Categories** — Updates the review loop and audit snippet; depends on US1 (new sections defined). Can be done any time after US1.
+- [x] **User Story 9: Updated Phase 0 Audit Categories** — Updates the review loop and audit snippet; depends on US1 (new sections defined). Can be done any time after US1. → `specs/2026-04-07-003-refactor-ignite-workflow/09-updated-phase-0-audit-categories.tasks.md`
 - [ ] **User Story 7: Session Resume from Partial State** — Robustness enhancement; depends on US4 (direct-write approach) naturally leaving partial files on disk to detect.
 - [ ] **User Story 8: Cross-Session Question Deduplication** — Enhancement on top of the core pipeline; depends on US4 (sessions producing output files). Implement after core flow is solid.
 
