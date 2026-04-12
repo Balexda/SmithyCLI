@@ -103,8 +103,9 @@ the task:
   content from the spec instead of referencing it by ID (e.g., "AS 2.1"),
   replace with a reference. The implement agent receives the spec file path.
 - **No exact error strings or function signatures.** If a task embeds the
-  exact text of an error message or prescribes a specific API call, replace
-  with a reference to the acceptance scenario or contract that defines it.
+  exact text of an error message, prescribes a specific API call, or pastes
+  a function or type signature, replace with a reference to the acceptance
+  scenario or contract that defines it.
 - **Format violations.** Every task must follow the structured format: bold
   imperative title (max 12 words), 2–3 sentence behavioral description,
   bulleted acceptance criteria (3–7 items). If a task is a freeform paragraph
