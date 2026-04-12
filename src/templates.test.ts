@@ -345,9 +345,15 @@ describe('getComposedTemplates', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
 
-    const openQuestionsIdx = ignite.indexOf('## Open Questions');
-    const debtIdx = ignite.indexOf('## Specification Debt');
-    const milestonesIdx = ignite.indexOf('## Milestones');
+    // Scope assertions to the markdown code fence block to avoid matching
+    // instructional text that references these headings in backticks
+    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markdownBlockMatch).not.toBeNull();
+
+    const markdownBlock = markdownBlockMatch![1];
+    const openQuestionsIdx = markdownBlock.indexOf('\n## Open Questions\n');
+    const debtIdx = markdownBlock.indexOf('\n## Specification Debt\n');
+    const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
 
     expect(openQuestionsIdx).toBeGreaterThan(-1);
     expect(debtIdx).toBeGreaterThan(-1);
