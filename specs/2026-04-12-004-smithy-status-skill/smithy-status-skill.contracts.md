@@ -19,6 +19,7 @@ smithy status [--root <path>]
               [--status <state>]
               [--type <artifact-type>]
               [--all]
+              [--graph]
               [--format <text|json>]
               [--no-color]
 ```
@@ -31,6 +32,7 @@ smithy status [--root <path>]
 | `--status` | `done \| in-progress \| not-started \| unknown` | No | Show only artifacts matching this status. Ancestors are still rendered for context. |
 | `--type` | `rfc \| features \| spec \| tasks` | No | Show only artifacts of this type. |
 | `--all` | flag | No | Disable collapsing of `DONE` subtrees and expand every artifact and slice. |
+| `--graph` | flag | No | Render the cross-artifact dependency graph as topological layers (Layer 0 = items ready to work now, Layer 1 = items whose dependencies are all in Layer 0, and so on). Can be combined with `--format json` to emit the graph data structure. |
 | `--format` | `text \| json` | No | Output format. Defaults to `text`. |
 | `--no-color` | flag | No | Suppress ANSI color output. Implied when stdout is not a TTY. |
 
@@ -49,16 +51,38 @@ smithy status [--root <path>]
 ```json
 {
   "summary": { "counts": { "...": {...} }, "orphan_count": 0, "broken_link_count": 0, "parse_error_count": 0 },
-  "records": [ { "type": "...", "path": "...", "title": "...", "status": "...", "completed": 0, "total": 0, "parent_path": "...", "next_action": { ... }, "warnings": [] } ],
-  "tree": { "roots": [ { "record": { ... }, "children": [ ... ] } ] }
+  "records": [
+    {
+      "type": "...", "path": "...", "title": "...", "status": "...",
+      "completed": 0, "total": 0, "parent_path": "...",
+      "dependency_order": {
+        "id_prefix": "US",
+        "format": "table",
+        "rows": [
+          { "id": "US1", "title": "...", "depends_on": [], "artifact_path": "specs/.../01-foo.tasks.md" },
+          { "id": "US2", "title": "...", "depends_on": ["US1"], "artifact_path": null }
+        ]
+      },
+      "next_action": { "..." : "..." },
+      "warnings": []
+    }
+  ],
+  "tree": { "roots": [ { "record": { "..." : "..." }, "children": [] } ] },
+  "graph": {
+    "nodes": { "specs/.../spec.md#US1": { "record_path": "...", "row": { "..." : "..." }, "status": "in-progress" } },
+    "layers": [ { "layer": 0, "node_ids": ["specs/.../spec.md#US1", "specs/.../spec.md#US4"] } ],
+    "cycles": [],
+    "dangling_refs": []
+  }
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `summary` | ScanSummary | Aggregate counts (see data model). |
-| `records` | ArtifactRecord[] | Flat list of every record produced by the scan. |
-| `tree` | StatusTree | Hierarchical view of the same records. |
+| `records` | ArtifactRecord[] | Flat list of every record produced by the scan. Each record embeds its parsed `dependency_order` table. |
+| `tree` | `{ roots: StatusNode[] }` | Hierarchical view of the same records; contains only root nodes and their descendants. Does NOT duplicate `summary`. |
+| `graph` | DependencyGraph | Cross-artifact dependency graph with topological layers and any detected cycles / dangling refs. Emitted unconditionally in JSON mode; the `--graph` flag only controls text-mode rendering. |
 
 #### Error Conditions
 

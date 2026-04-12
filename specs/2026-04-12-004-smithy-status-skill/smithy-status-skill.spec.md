@@ -17,6 +17,10 @@
 - _"Done" collapsing rule: a tasks file displays as `DONE` when all its slice checkboxes are checked, and as `N/M` (checked slices over total slices) otherwise. Fully-done parents (feature, spec) collapse to `DONE` similarly — their children are hidden unless `--all` is passed._
 - _"Not started" for a spec means the `## Story Dependency Order` section exists but no referenced tasks file exists on disk yet. "Not started" for a feature means its feature-map checklist entry is unchecked and no spec folder exists._
 - _Next-action suggestions are pattern-based, not LLM-inferred: if a feature has no spec → suggest `smithy.mark`; if a spec has an unspecced user story → suggest `smithy.cut`; if a tasks file has open slices → suggest `smithy.forge`._
+- _All four planning artifact types (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`) use a unified, deterministic `## Dependency Order` table format with columns `ID | Title | Depends On | Artifact`. IDs are canonical per level (`M` for milestones, `F` for features, `US` for user stories, `S` for slices). Dependencies are expressed as comma-separated ID references within the same table. The `Artifact` column holds a repo-relative path to the downstream file/folder (or `—` when the downstream does not yet exist) and replaces the checkbox as the "started/not" signal._ `[Critical Assumption]`
+- _The legacy checkbox-based dependency-order format (`- [x] **Feature N Spec: Title** → path`) is removed from all smithy command templates in a clean break. The scanner understands only the new table format; existing artifacts using the old format must be converted (migration script or manual pass) before the scanner can classify them correctly. This is deliberate — the checkbox format caused merge conflicts, and a tolerant parser would perpetuate the problem._ `[Critical Assumption]`
+- _The implementation checkboxes inside `## Slice N:` task lists in `.tasks.md` files are **not** affected. Only the checkboxes in the top-level `## Dependency Order` section are removed. Slice completion continues to be derived from the task checkboxes inside each slice's body._ `[Critical Assumption]`
+- _`.rfc.md` templates gain a new `## Dependency Order` section, placed immediately after the list of milestones, using the same 4-column table format._ `[Critical Assumption]`
 
 ## Artifact Hierarchy
 
@@ -146,6 +150,64 @@ As a Smithy user glancing at the status report, I want a one-line summary at the
 
 ---
 
+### User Story 8: Deterministic Dependency Order Format Across All Artifacts (Priority: P1)
+
+As a Smithy user maintaining planning artifacts in git, I want the `## Dependency Order` section in every `.rfc.md`, `.features.md`, `.spec.md`, and `.tasks.md` to be a machine-parseable table without checkboxes, so that merge conflicts on completion state disappear and the dependency graph becomes derivable without LLM inference.
+
+**Why this priority**: This is the scope-expansion the feature pivoted on. Checkbox conflicts are already hurting daily work; the scanner's US1/US2 classification logic depends on this new format; and the dependency-graph visualization (US10) cannot be built without it. It is foundational for everything below.
+
+**Independent Test**: Open a freshly-generated `.spec.md` from `smithy.mark` against a clean repo. Verify the `## Dependency Order` section uses the 4-column `ID | Title | Depends On | Artifact` table, contains no checkboxes, and references dependencies by canonical ID (e.g., `US2, US3`) — not prose. Parse the table with a regex-only script and reconstruct the dependency list.
+
+**Acceptance Scenarios**:
+
+1. **Given** a developer runs `smithy.mark` to create a new spec, **When** the spec file is written, **Then** its `## Dependency Order` section is a 4-column table (`ID | Title | Depends On | Artifact`) with no `- [ ]` or `- [x]` checkboxes anywhere inside the section.
+2. **Given** a `smithy.cut` run decomposes a user story into slices, **When** the tasks file is written, **Then** its `## Dependency Order` table uses `S1`, `S2`, ... IDs and expresses slice dependencies as comma-separated ID references (e.g., `S1, S3`).
+3. **Given** a `smithy.render` run creates a feature map, **When** the feature map is written, **Then** its `## Dependency Order` table uses `F1`, `F2`, ... IDs and each row's `Artifact` column points at the spec folder for that feature (or `—` if no spec exists yet).
+4. **Given** a `smithy.ignite` run produces an RFC, **When** the RFC file is written, **Then** it contains a new `## Dependency Order` section placed immediately after the list of milestones, using `M1`, `M2`, ... IDs and pointing each row's `Artifact` column at the corresponding feature-map file.
+5. **Given** a row's `Depends On` column contains IDs, **When** a deterministic parser splits on commas and trims whitespace, **Then** every resulting ID matches another row's ID in the same table — no prose, no cross-artifact references, no free-text justifications.
+6. **Given** a row has no dependencies, **When** the table is written, **Then** the `Depends On` column contains `—` (em dash) rather than being empty or containing prose like "No dependencies."
+7. **Given** a row's downstream artifact does not exist on disk yet, **When** the table is written, **Then** the `Artifact` column contains `—` rather than a placeholder path.
+
+---
+
+### User Story 9: Scanner Classifies Without Relying on Dependency-Order Checkboxes (Priority: P1)
+
+As a Smithy developer running `smithy status` after the template migration, I want the scanner to derive completion state from the existence and status of downstream artifacts (not from dependency-order checkboxes, which no longer exist), so that classification remains accurate under the new format.
+
+**Why this priority**: US1's original FR-005/FR-006 keyed classification off the checkboxes that are now being removed. Without this replacement rule, the scanner's core classification logic is broken. P1 because US1 depends on it.
+
+**Independent Test**: Run the scanner against a spec whose `## Dependency Order` table lists three user stories, where two have existing tasks files (one done, one in progress) and one has `—` in its Artifact column. Verify the scanner classifies the spec as `in-progress` based on the downstream tasks-file statuses, not on any checkbox state.
+
+**Acceptance Scenarios**:
+
+1. **Given** a spec's `## Dependency Order` row has a populated `Artifact` column pointing at an existing tasks file, **When** the scanner runs, **Then** that row's status rolls up from the tasks file's computed status (done / in-progress / not-started based on slice checkboxes in `## Slice N:` bodies).
+2. **Given** a spec's `## Dependency Order` row has `—` in its `Artifact` column, **When** the scanner runs, **Then** a virtual "not-started" tasks record is emitted for that row with the expected filename derived from naming convention (e.g., `NN-<story-slug>.tasks.md`).
+3. **Given** a feature-map row points at a spec folder that exists on disk, **When** the scanner runs, **Then** the feature's status is the rolled-up status of the underlying spec (and recursively the spec's tasks files).
+4. **Given** an RFC row in `## Dependency Order` points at an existing `.features.md`, **When** the scanner runs, **Then** the milestone's status is the rolled-up status of the feature map.
+5. **Given** the scanner encounters a legacy artifact with the old checkbox-based `## Dependency Order` format, **When** it reads the section, **Then** it emits a `format_legacy` warning on the record and classifies it as `unknown` — it does not attempt tolerant parsing of the old format.
+6. **Given** the unified table format is the only source of child ordering, **When** the scanner parses the `## Dependency Order` section, **Then** it does not count `- [ ]` or `- [x]` patterns anywhere in the section (even if present) — checkboxes inside the dependency-order section are semantically meaningless under the new format.
+
+---
+
+### User Story 10: Visualize the Dependency Graph for Parallel Work (Priority: P1)
+
+As a Smithy user with multiple in-progress artifacts, I want `smithy status` to show me the dependency graph in topological layers so that I can immediately see which items are ready to work on in parallel right now.
+
+**Why this priority**: The user explicitly called this out — the whole point of making the dependency format deterministic is to enable this view. Without it, the format change is half-delivered. It depends on US8 (deterministic format) and US9 (classification), but nothing else depends on it, so it slots in at the end of the P1 sequence.
+
+**Independent Test**: Run `smithy status --graph` against a repo with at least one spec whose `## Dependency Order` has a mix of independent and dependent user stories (e.g., US1, US4 independent; US2 depends on US1; US3 depends on US2). Verify the output groups US1 and US4 into "Layer 0 (ready)", US2 into Layer 1, US3 into Layer 2.
+
+**Acceptance Scenarios**:
+
+1. **Given** a spec with 4 user stories where US1 and US4 have no dependencies, US2 depends on US1, and US3 depends on US2, **When** the user runs `smithy status --graph`, **Then** the output shows Layer 0 containing `US1, US4`, Layer 1 containing `US2`, and Layer 2 containing `US3`.
+2. **Given** the dependency tables across RFC, features, spec, and tasks artifacts are unioned into a single graph, **When** `smithy status --graph` renders, **Then** layer assignment uses the rolled-up (cross-artifact) graph — a tasks-file slice cannot be "ready" until its parent user story is ready, which requires its parent feature to be ready, and so on up the chain.
+3. **Given** the graph contains a cycle (e.g., US1 depends on US2 and US2 depends on US1 — user error), **When** the scanner builds the graph, **Then** the cycle is reported as a structured error listing the participating IDs, and the graph view falls back to flat rendering with a warning instead of crashing.
+4. **Given** all items in a layer are `done`, **When** `--graph` renders in default (collapsed) mode, **Then** that layer collapses to `Layer N: DONE (M items)` and its children are hidden unless `--all` is passed.
+5. **Given** `--format json` is combined with `--graph` (or `--format json` alone), **When** the view renders, **Then** the JSON output includes a top-level `graph` object with `layers: Array<{ layer: number, ids: string[] }>` and a `cycles: string[][]` field (empty when the graph is a DAG).
+6. **Given** a dependency ID in the `Depends On` column references an ID that does not exist in any dependency table, **When** the graph builder runs, **Then** the dangling reference is reported as a warning on the record and the graph is built using only the valid edges.
+
+---
+
 ### Edge Cases
 
 - A `.features.md` exists but has no `## Feature Dependency Order` section (legacy or hand-edited file) — scanner must not crash; treat as "unknown" structure and surface a parse warning.
@@ -155,6 +217,11 @@ As a Smithy user glancing at the status report, I want a one-line summary at the
 - A tasks file's `## Slice` sections use non-standard numbering (e.g., "Slice 1.1", "Slice A") — scanner must either tolerate or emit a clear format-violation warning.
 - The repo has zero Smithy artifacts — scanner prints a friendly "no artifacts found; try `smithy.ignite` to start" message rather than empty output.
 - The scanner is run outside a git repo — it still works, rooted at CWD.
+- A `## Dependency Order` table has malformed rows (missing columns, invalid ID format, Markdown table syntax errors) — scanner emits a parse warning on the artifact, treats the section as empty, and continues without crashing.
+- A `Depends On` cell references an ID that does not exist in the same table (typo or stale edit) — scanner emits a `dangling_dep` warning and builds the graph using only valid edges.
+- The unioned dependency graph contains a cycle introduced by user error — scanner reports the cycle's participating IDs as a structured error and the `--graph` view falls back to flat layer-0 rendering with a warning.
+- A repo is mid-migration and contains a mix of new-format and legacy-format artifacts — scanner classifies new-format artifacts normally and flags legacy-format artifacts as `unknown` with a `format_legacy` warning pointing to the migration instructions.
+- The `Artifact` column is `—` for a user-story row but a file matching the expected naming convention already exists on disk (the author forgot to update the table) — scanner emits a `stale_artifact_column` warning, uses the existing file for classification, and suggests re-running the authoring command to refresh the table.
 
 ## Story Dependency Order
 
@@ -167,6 +234,9 @@ Recommended implementation sequence:
 - [ ] **User Story 5: Invoke Status via the smithy.status Skill** — Wraps the CLI produced by US1–US4 in an agent-skill. Depends on US1–US4 being callable via `smithy status`.
 - [ ] **User Story 6: Filter and Scope the View** (P1) — Adds required filter flags to the renderer from US2/US3. Depends on US2.
 - [ ] **User Story 7: Summary Roll-up Header** (P1) — Aggregates US1 record counts. Depends on US1; can parallelize with US2–US6.
+- [ ] **User Story 8: Deterministic Dependency Order Format Across All Artifacts** (P1) — Template + authoring-command change that replaces the checkbox-based dependency order with a machine-parseable table. Blocks US9 and US10. Has no code dependency on US1–US7 and can be authored in parallel, but the scanner changes in US9 must land in the same release for status classification to remain correct.
+- [ ] **User Story 9: Scanner Classifies Without Relying on Dependency-Order Checkboxes** (P1) — Rewrites US1's classification rules (FR-005, FR-006) to derive state from downstream artifact existence and rolled-up status. Depends on US1 (scanner skeleton) and US8 (new format available to parse).
+- [ ] **User Story 10: Visualize the Dependency Graph for Parallel Work** (P1) — Adds `--graph` rendering. Depends on US8 (deterministic format) and US9 (correct classification). End of the P1 sequence.
 
 ## Requirements *(mandatory)*
 
@@ -176,8 +246,8 @@ Recommended implementation sequence:
 - **FR-002**: The system MUST parse each discovered artifact deterministically — no LLM calls, no network access, no external services — using markdown pattern matching on the headings and checkbox conventions already produced by existing smithy commands.
 - **FR-003**: The system MUST classify every artifact as one of: `done`, `in-progress`, `not-started`, or `unknown` (for parse failures).
 - **FR-004**: Tasks-file classification MUST count slice checkboxes inside `## Slice N:` sections only — checkboxes elsewhere in the file MUST NOT affect the count.
-- **FR-005**: Spec-file classification MUST use the `## Story Dependency Order` checklist as the source of truth for story completion, with a virtual "not-started" record emitted for each referenced tasks file that does not exist on disk.
-- **FR-006**: Feature-map classification MUST use the `## Feature Dependency Order` checklist as the source of truth for feature completion.
+- **FR-005**: Spec-file classification MUST derive each user story's state from the existence and status of its downstream tasks file, located via the `Artifact` column of the spec's `## Dependency Order` table (or a `—` cell, which triggers a virtual "not-started" tasks record using the naming-convention-expected path). The scanner MUST NOT use checkboxes in the `## Dependency Order` section for classification — those checkboxes are no longer emitted by any smithy authoring command.
+- **FR-006**: Feature-map classification MUST derive each feature's state from the existence and rolled-up status of its downstream spec folder, located via the `Artifact` column of the feature map's `## Dependency Order` table. Checkbox counting in the `## Dependency Order` section is explicitly forbidden.
 - **FR-007**: The system MUST render a hierarchical tree view that visually nests descendants under their ancestors using titles (not file paths) as the primary labels.
 - **FR-008**: The system MUST collapse any fully-done subtree to a single `DONE` line by default, hiding its children, and expand any partially-done subtree to show its children with a `N/M` counter.
 - **FR-009**: The system MUST provide an `--all` flag that disables collapsing and shows every artifact and slice regardless of status.
@@ -191,10 +261,22 @@ Recommended implementation sequence:
 - **FR-017**: The system MUST support filtering via `--status <state>`, `--root <path>`, and `--type <artifact-type>` flags, with filtering applied inside the script (not the skill).
 - **FR-018**: On parse failures, the system MUST emit the error as part of the record (not a crash) and continue scanning remaining artifacts.
 - **FR-019**: The system MUST handle the zero-artifacts case by printing a discoverable hint that directs the user to `smithy.ignite` or `smithy.mark` rather than emitting empty output.
+- **FR-020**: All smithy authoring commands that produce `.rfc.md`, `.features.md`, `.spec.md`, or `.tasks.md` artifacts (currently `smithy.ignite`, `smithy.render`, `smithy.mark`, `smithy.cut`, and `smithy.strike`) MUST emit a unified `## Dependency Order` section using a 4-column Markdown table with columns `ID | Title | Depends On | Artifact`. The authoring commands MUST NOT emit the legacy checkbox-based format. Prompt-template updates required to satisfy this FR are in scope for this feature.
+- **FR-021**: IDs in the `## Dependency Order` table MUST use canonical per-level prefixes: `M` for milestones (RFC), `F` for features (feature map), `US` for user stories (spec), and `S` for slices (tasks). IDs MUST be unique within a single table and MUST be written as `<prefix><number>` (e.g., `M1`, `F2`, `US3`, `S4`) with no leading zeros.
+- **FR-022**: The `Depends On` column MUST contain either `—` (em dash, no dependencies) or a comma-separated list of IDs drawn exclusively from the same table. Free-text justifications and cross-artifact ID references are forbidden — authoring commands place cross-artifact lineage in the `Artifact` column and the narrative prose elsewhere in the document.
+- **FR-023**: The `Artifact` column MUST contain either `—` (no downstream artifact yet) or a repo-relative path to the downstream file or folder (`.features.md` for milestones, a spec folder for features, `.tasks.md` for user stories). Slice rows in tasks files MUST use `—` (slices have no separate files). This column replaces the checkbox as the "started/not started" signal.
+- **FR-024**: `.rfc.md` templates MUST include a `## Dependency Order` section placed immediately after the list of milestones. The section lists every milestone with its dependencies and the path to its feature-map file (or `—` if not yet rendered).
+- **FR-025**: The scanner MUST parse each artifact's `## Dependency Order` table deterministically (Markdown table regex + simple ID tokenization) and build a per-artifact dependency list. The scanner MUST NOT use LLM inference, prose parsing, or graph heuristics.
+- **FR-026**: The scanner MUST union the per-artifact dependency lists into a single cross-artifact DependencyGraph by joining on `Artifact` column paths (a child artifact's nodes become children of the parent row that references it). The scanner MUST detect cycles and report them as structured errors rather than crashing or infinite-looping.
+- **FR-027**: The system MUST provide a `--graph` flag that renders the DependencyGraph as topological layers, where Layer 0 contains all nodes with no incoming edges and each subsequent layer contains nodes whose dependencies are all satisfied by earlier layers. Layers containing only `done` nodes MUST collapse to a single line in the default view and expand under `--all`.
+- **FR-028**: When the scanner encounters a legacy checkbox-based `## Dependency Order` section, it MUST flag the artifact with a `format_legacy` warning, classify the record as `unknown`, and suggest the migration path in its warning text. The scanner MUST NOT attempt tolerant parsing of the legacy format.
+- **FR-029**: The artifact hierarchy and the deterministic `## Dependency Order` table format MUST be documented in two authoritative in-repo locations so the mapping is maintained as Smithy evolves: (a) `CLAUDE.md` (project instructions loaded into every session) MUST contain an "Artifact Hierarchy and Relationships" subsection describing the RFC → Feature Map → Spec → Tasks lineage and naming the Dependency Order table as the deterministic link, and (b) `src/templates/agent-skills/README.md` MUST contain a section with the canonical 4-column table schema (`ID | Title | Depends On | Artifact`), the canonical ID prefixes (`M`, `F`, `US`, `S`), and the relationship rules (each parent row's `Artifact` column points at a child file/folder; slices are dependency rows inside tasks files with no separate files). Every planning-artifact-producing command template (`smithy.ignite`, `smithy.render`, `smithy.mark`, `smithy.cut`, `smithy.strike`) MUST link back to these docs rather than redefining the format inline, so the rules have a single source of truth.
 
 ### Key Entities *(include if feature involves data)*
 
-- **ArtifactRecord**: One entry per discovered artifact file, carrying its type (`rfc | features | spec | tasks`), path, title, status, optional `completed/total` counts, parent reference, and any parse warnings.
+- **ArtifactRecord**: One entry per discovered artifact file, carrying its type (`rfc | features | spec | tasks`), path, title, status, optional `completed/total` counts, parent reference, its parsed `DependencyOrderTable`, and any parse warnings.
+- **DependencyOrderTable**: The parsed contents of an artifact's `## Dependency Order` section, as an ordered list of `DependencyRow` entries. Each row carries `id`, `title`, `depends_on: string[]`, and `artifact_path: string | null`.
+- **DependencyGraph**: The unioned cross-artifact DAG built from every artifact's `DependencyOrderTable`. Nodes are keyed by fully-qualified IDs (e.g., `specs/.../spec.md#US2`), edges are dependency relationships, and the graph carries topological layers and any detected cycles.
 - **StatusTree**: A rendered hierarchical view built by grouping ArtifactRecords under their parents (RFC → features → spec → tasks), with orphan and broken-link groups for records whose parents are missing.
 - **NextAction**: A suggested smithy command (name + arguments) attached to a non-done ArtifactRecord, derived by deterministic rules from the record's type and status.
 - **ScanSummary**: Aggregate counts of records per type and per status for the summary header and JSON output.
@@ -216,10 +298,17 @@ Recommended implementation sequence:
 | SD-002 | The handling of `strikes/` folder contents (lightweight strike artifacts that don't follow the full RFC → tasks hierarchy) is unspecified — are they rendered as a flat list, ignored, or promoted into the tree as orphans? | Functional Scope | Medium | Medium | open | — |
 | SD-003 | Whether the scanner should respect `.gitignore` / `.smithyignore` when walking the repo is undefined. | Functional Scope | Low | Medium | open | — |
 | SD-004 | Whether `smithy status --watch` (continuous refresh) is in scope is undefined — leaning out-of-scope for v1 but not stated. | Interaction & UX | Low | High | open | — |
+| SD-005 | A one-time migration tool or script to convert legacy checkbox-based `## Dependency Order` sections to the new table format is implied by FR-020/FR-028 but not specified. Open question: manual edit, dedicated `smithy migrate` command, or a one-off script in `scripts/`? | Functional Scope | Medium | Medium | open | — |
+| SD-006 | The exact ASCII rendering for the `--graph` dependency layer view (plain indented list vs. tree connectors vs. Mermaid-style) is not pinned down. | Interaction & UX | Low | High | open | — |
+| SD-007 | Whether the `DependencyGraph` spans only the current scan root or can cross repository boundaries (mono-repo vs. multi-repo) is unaddressed. Leaning single-root but not stated. | Functional Scope | Low | High | open | — |
+| SD-008 | The interaction between `--graph` and `--status` / `--root` / `--type` filters is unspecified — does filtering prune the graph before layering, or does it hide filtered nodes within the full graph? | Interaction & UX | Medium | Medium | open | — |
+| SD-009 | The documentation mirror required by FR-029 lives in two places (CLAUDE.md and `src/templates/agent-skills/README.md`). If those two drift from each other or from the spec, there is no automated check to catch it. A lint rule or doc-generation step is implied but not designed. | Integration | Medium | Medium | open | — |
 
 ## Out of Scope
 
-- New metadata fields, sidecar files, or hidden state. Status MUST derive from existing artifact contents only.
+- New metadata fields, sidecar files, or hidden state beyond the `## Dependency Order` table format defined in this spec. Status MUST derive from artifact contents only.
+- Backwards-compatible tolerant parsing of the legacy checkbox-based dependency-order format. The break is clean by design (see FR-028).
+- Automatic bulk migration of existing artifacts to the new format. A migration tool may ship alongside this feature, but its design is tracked in SD-005 and not specified here.
 - LLM-driven summarization, prioritization, or narrative rendering. The skill is a thin passthrough.
 - Web dashboards, HTML reports, or any non-terminal rendering target.
 - GitHub issue integration (that is `smithy.orders`' job).
@@ -239,3 +328,8 @@ Recommended implementation sequence:
 - **SC-005**: The `smithy.status` skill invoked via `/smithy.status` in a deployed Claude Code session produces byte-for-byte the same tree text as `smithy status` run from the shell (ignoring any optional one-sentence framing).
 - **SC-006**: Adding a new slice checkbox to an existing tasks file and re-running `smithy status` reflects the updated `N/M` count with zero additional input from the user.
 - **SC-007**: Running `smithy status` on an empty repo (no Smithy artifacts) prints a single friendly hint message and exits cleanly, not an error.
+- **SC-008**: Every artifact produced by a post-migration `smithy.ignite`, `smithy.render`, `smithy.mark`, `smithy.cut`, or `smithy.strike` run contains a `## Dependency Order` table conforming to the 4-column format and zero `- [ ]` / `- [x]` checkboxes inside that section (verified by automated test).
+- **SC-009**: A deterministic parser using only Markdown table regex and ID tokenization can reconstruct the full dependency graph from a repo's artifacts with zero LLM calls and zero prose parsing (100% of rows parsed correctly on a test corpus of at least 5 artifacts).
+- **SC-010**: `smithy status --graph` on a repo with a known dependency structure (4 stories, 2 independent in Layer 0, cascading downstream) produces layer assignments that match a hand-computed reference exactly.
+- **SC-011**: Modifying a `Depends On` cell from `US1` to `US1, US3` and re-running `smithy status --graph` reflects the new edge in the layer output immediately, with no cache invalidation step.
+- **SC-012**: A legacy artifact with the old checkbox format is flagged with a `format_legacy` warning and classified as `unknown` rather than being silently misclassified.

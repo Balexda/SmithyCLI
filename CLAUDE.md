@@ -64,6 +64,30 @@ Templates are organized by their deployment target:
 ### Cross-Agent Compatibility
 The same template source serves all three agents. Gemini keeps frontmatter (for skill metadata). Claude/Codex strip it. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
 
+### Artifact Hierarchy and Relationships
+
+Smithy planning artifacts form a strict parent/child lineage. Each parent artifact links to its children through a unified `## Dependency Order` table — **that table is the authoritative link, not filename conventions, not prose, not directory layout**.
+
+```
+RFC (.rfc.md)              — milestones
+  └── Feature Map (.features.md)   — features
+        └── Spec (.spec.md)        — user stories
+              └── Tasks (.tasks.md) — slices (inline, no separate files)
+```
+
+Every `## Dependency Order` section at every level uses the same 4-column Markdown table:
+
+| Column | Meaning |
+|--------|---------|
+| `ID` | Canonical per-level identifier: `M<N>` for milestones, `F<N>` for features, `US<N>` for user stories, `S<N>` for slices. No leading zeros. Unique within the table. |
+| `Title` | Human-readable title of the milestone / feature / story / slice. |
+| `Depends On` | Comma-separated list of IDs from the **same table** (e.g., `US1, US3`), or `—` if no dependencies. Cross-artifact dependencies are implicit in the parent/child lineage and never written here. |
+| `Artifact` | Repo-relative path to the downstream file or folder (`.features.md` for milestones, spec folder for features, `.tasks.md` for stories), or `—` if not yet created. Slice rows always use `—` because slices live inline. The `Artifact` column replaces the old checkbox as the "started / not started" signal. |
+
+**Do not use checkboxes in `## Dependency Order` sections.** The legacy `- [x] ... → path` format is removed because it caused merge conflicts and forced LLM inference for the dependency graph. Any new or edited artifact must use the table format above. Task-completion checkboxes inside `## Slice N:` bodies of tasks files are unaffected — those are implementation progress, not dependency ordering.
+
+The canonical schema and rules live in `src/templates/agent-skills/README.md`. When adding, refactoring, or documenting any smithy command template, link to that README rather than redefining the format — the goal is one source of truth.
+
 ## Development
 
 ```bash
