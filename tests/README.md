@@ -14,7 +14,7 @@ Smithy's testing covers three tiers (see [CONTRIBUTING.md](../CONTRIBUTING.md#te
 |------|--------|-------------|
 | [Agent.tests.md](Agent.tests.md) | Claude Code agent or developer in a Claude Code session | Verifies deployed prompts, slash commands, permissions, stale cleanup, and sub-agent output structure |
 | [Manual.tests.md](Manual.tests.md) | Developer at an interactive terminal | Verifies Inquirer-based prompts that cannot be driven programmatically |
-| `evals/` (planned) | Developer running `npm run eval` locally | Executes skills via `claude -p` headless mode against a reference fixture, validates output structure |
+| `evals/` | Developer running `npm run eval` locally | Executes skills via `claude -p` headless mode against a reference fixture, validates output structure |
 
 ## Setup
 
