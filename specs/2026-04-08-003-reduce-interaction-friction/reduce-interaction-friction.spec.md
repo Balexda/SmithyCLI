@@ -222,6 +222,15 @@ returned as a finding for the parent command to act on.
   runs non-interactively, applies changes, creates a new PR with the
   diff from the previous version.
 
+## Story Dependency Order
+
+Recommended implementation sequence:
+
+- [x] **User Story 1: Relax Critical Decision Blocking** — Smallest, most contained change; prerequisite for one-shot mode since Critical items always blocking prevents one-shot from fully proceeding. → `specs/2026-04-08-003-reduce-interaction-friction/01-relax-critical-decision-blocking.tasks.md`
+- [x] **User Story 2: Track Specification Debt** — Foundational for one-shot mode; without it, unresolved items would be silently dropped. Depends on US1 triage matrix update. → `specs/2026-04-08-003-reduce-interaction-friction/02-track-specification-debt.tasks.md`
+- [ ] **User Story 3: One-Shot Planning Workflows** — Core friction-reduction change; depends on US1 (relaxed triage) and US2 (debt tracking) to maintain quality without gates.
+- [ ] **User Story 4: Unified Review Pattern** — Quality assurance layer for one-shot; depends on US3 (one-shot mode existing) to add the automated review before PR creation.
+
 ## Requirements
 
 ### Functional Requirements
@@ -314,8 +323,7 @@ returned as a finding for the parent command to act on.
 
 ## Specification Debt
 
-_No specification debt items. All clarification questions were resolved during
-the session._
+_None — all ambiguities resolved._
 
 ## Out of Scope
 

@@ -35,8 +35,14 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Single slice; the rewrite is self-contained.
+- [x] **Slice 1** — Single slice; the rewrite is self-contained.

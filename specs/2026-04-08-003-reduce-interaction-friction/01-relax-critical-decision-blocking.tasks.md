@@ -123,13 +123,19 @@ test case validates end-to-end triage behavior.
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Core triage logic must exist before parent commands can render
+- [x] **Slice 1** — Core triage logic must exist before parent commands can render
    the annotation. This is the foundational behavioral change.
-2. **Slice 2** — Depends on Slice 1's annotation format being defined. Ensures
+- [x] **Slice 2** — Depends on Slice 1's annotation format being defined. Ensures
    annotation visibility in downstream artifacts and provides verification.
 
 ### Cross-Story Dependencies

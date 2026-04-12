@@ -152,11 +152,11 @@ Primary changes are in `src/templates/agent-skills/agents/smithy.clarify.prompt`
 
 Recommended implementation sequence:
 
-1. **Slice 1** — The clarify triage engine must produce `debt_items` and `bail_out` fields before any parent command can consume them. This is the foundational change.
-2. **Slice 2** — Mark and cut get their debt sections and population instructions. These are the primary consumers of Slice 1's output and the most important pipeline to validate early.
-3. **Slice 3** — Remaining templates (strike, ignite, render) can land in parallel with or after Slice 2; they are independent of it. Recommended after Slice 2 to let the mark/cut debt section format stabilize first.
-4. **Slice 4** — Debt inheritance and bail-out require both Slice 1 (the `bail_out` field) and Slice 2 (the tasks template debt section structure) to be complete before wiring inheritance into cut.
-5. **Slice 5** — Phase 0 resolution, audit checklists, and tests depend on all prior slices. Tests added here validate changes from Slices 1–4.
+- [x] **Slice 1** — The clarify triage engine must produce `debt_items` and `bail_out` fields before any parent command can consume them. This is the foundational change.
+- [x] **Slice 2** — Mark and cut get their debt sections and population instructions. These are the primary consumers of Slice 1's output and the most important pipeline to validate early.
+- [ ] **Slice 3** — Remaining templates (strike, ignite, render) can land in parallel with or after Slice 2; they are independent of it. Recommended after Slice 2 to let the mark/cut debt section format stabilize first.
+- [ ] **Slice 4** — Debt inheritance and bail-out require both Slice 1 (the `bail_out` field) and Slice 2 (the tasks template debt section structure) to be complete before wiring inheritance into cut.
+- [ ] **Slice 5** — Phase 0 resolution, audit checklists, and tests depend on all prior slices. Tests added here validate changes from Slices 1–4.
 
 ### Cross-Story Dependencies
 

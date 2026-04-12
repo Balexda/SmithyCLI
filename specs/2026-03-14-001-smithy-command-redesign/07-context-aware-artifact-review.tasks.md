@@ -76,10 +76,16 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — Checklists must exist in source templates before they can be extracted
-2. **Slice 2** — Composition logic must exist before init can use it
-3. **Slice 3** — Connects everything: rewritten audit template + init wiring
+- [x] **Slice 1** — Checklists must exist in source templates before they can be extracted
+- [x] **Slice 2** — Composition logic must exist before init can use it
+- [x] **Slice 3** — Connects everything: rewritten audit template + init wiring

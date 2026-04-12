@@ -67,12 +67,18 @@
 
 ---
 
+## Specification Debt
+
+_None — all ambiguities resolved._
+
+---
+
 ## Dependency Order
 
 Recommended implementation sequence:
 
-1. **Slice 1** — creates the agent file and passes automated tests; must be merged before the orchestrator (Story 4) can reference smithy-prose in the ignite prompt
-2. **Slice 2** — documentation updates; depends on Slice 1 being merged so the file being documented actually exists
+- [x] **Slice 1** — creates the agent file and passes automated tests; must be merged before the orchestrator (Story 4) can reference smithy-prose in the ignite prompt
+- [x] **Slice 2** — documentation updates; depends on Slice 1 being merged so the file being documented actually exists
 
 ### Cross-Story Dependencies
 
