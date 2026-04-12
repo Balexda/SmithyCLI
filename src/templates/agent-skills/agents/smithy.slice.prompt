@@ -163,9 +163,9 @@ Return a structured decomposition to the parent agent:
 **Addresses**: <FR-XXX, FR-YYY; Acceptance Scenario N.M>
 
 Tasks:
-- [ ] **<Imperative title, max 12 words>**
+- [ ] **<Title — imperative verb phrase, max 12 words>**
 
-  <2–3 sentence behavioral description. Reference target files/modules
+  <Description — 2–3 sentences. Reference target files/modules
    and acceptance scenarios by ID (e.g., "AS 2.1").>
 
   _Acceptance criteria:_

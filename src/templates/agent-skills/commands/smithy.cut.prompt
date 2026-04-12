@@ -216,9 +216,9 @@ Draft the tasks file with this structure:
 
 ### Tasks
 
-- [ ] **<Imperative title, max 12 words>**
+- [ ] **<Title — imperative verb phrase, max 12 words>**
 
-  <2–3 sentence behavioral description. Reference target files/modules
+  <Description — 2–3 sentences. Reference target files/modules
    and acceptance scenarios by ID (e.g., "AS 2.1").>
 
   _Acceptance criteria:_
@@ -289,10 +289,10 @@ tasks accordingly.
 Every task must use this structure:
 
 ```
-- [ ] **<Imperative verb phrase, max 12 words>**
+- [ ] **<Title — imperative verb phrase, max 12 words>**
 
-  <2–3 sentence behavioral description. Name the target file/module and
-   the outcome. Reference acceptance scenarios by ID (e.g., "AS 2.1").>
+  <Description — 2–3 sentences. Name the target file/module and the outcome.
+   Reference acceptance scenarios by ID (e.g., "AS 2.1").>
 
   _Acceptance criteria:_
   - <observable invariant or behavior to verify>
@@ -300,7 +300,7 @@ Every task must use this structure:
   - ...
 ```
 
-- **Title**: imperative verb phrase, max 12 words. Scannable at a glance.
+- **Title**: bold imperative verb phrase, max 12 words. Scannable at a glance.
 - **Description**: 2–3 sentences. States WHAT changes and WHERE.
 - **Acceptance criteria**: 3–7 bullets. Observable invariants — what the
   implement agent verifies via TDD.

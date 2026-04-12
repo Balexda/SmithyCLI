@@ -166,9 +166,9 @@ Return a single reconciled decomposition to the parent agent:
 **Addresses**: <FR-XXX, FR-YYY; Acceptance Scenario N.M>
 
 Tasks:
-- [ ] **<Imperative title, max 12 words>** [via <lens>]
+- [ ] **<Title — imperative verb phrase, max 12 words>** [via <lens>]
 
-  <2–3 sentence behavioral description. Reference AS N.M by ID.>
+  <Description — 2–3 sentences. Reference AS N.M by ID.>
 
   _Acceptance criteria:_
   - <observable invariant>
