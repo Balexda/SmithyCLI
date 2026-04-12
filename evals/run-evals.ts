@@ -2,12 +2,15 @@
  * Minimal orchestrator entry point for the Smithy evals framework.
  *
  * Accepts --fixture and --timeout CLI flags; calls preflight() on startup;
- * runs a single hardcoded smoke-test scenario and prints a brief result summary.
+ * runs a single hardcoded smoke-test scenario, validates output structure,
+ * prints per-check pass/fail results to stdout, and exits with code 1 if
+ * any check fails or the process exits non-zero or times out.
  *
  * US7 will replace the hardcoded scenario with YAML loading.
  * US9 will extend the result summary into a full EvalReport.
  *
- * Addresses: FR-003 (fail-fast on startup), FR-010; Acceptance Scenario 3.3
+ * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-010;
+ * Acceptance Scenarios 3.3, 4.1, 4.2, 4.3
  */
 
 import { parseArgs } from 'node:util';

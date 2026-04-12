@@ -57,7 +57,6 @@ The evals framework (under `evals/`) — implemented:
 
 Pending:
 - YAML-defined scenario loading (`evals/cases/`)
-- Wiring validator into the orchestrator (`run-evals.ts` Slice 2)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 
