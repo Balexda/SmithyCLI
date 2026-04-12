@@ -29,7 +29,7 @@
   - `Artifact` column contains `—` in the template placeholder
   - No `- [ ]` or `- [x]` checkbox syntax appears in the spec template or its authoring guidelines
 
-- [ ] **Migrate smithy.render features template to F-ID Dependency Order table**
+- [x] **Migrate smithy.render features template to F-ID Dependency Order table**
 
   In `src/templates/agent-skills/commands/smithy.render.prompt`, replace the `## Feature Dependency Order` checkbox-list template in Phase 3 (Draft Feature Map) with a `## Dependency Order` 4-column table using `F<N>` IDs. Update the Rules section to remove checkbox-based instructions. Satisfies AS 8.3, AS 8.5, AS 8.6, AS 8.7.
 
