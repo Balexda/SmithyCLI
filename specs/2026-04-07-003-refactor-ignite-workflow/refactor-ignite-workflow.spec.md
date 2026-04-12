@@ -112,13 +112,14 @@ As a developer using `smithy.ignite`, I want the RFC to always include an explic
 
 **Why this priority**: Directly addresses Issue #50. The clarification phase asks about scope but the RFC template previously had no section to receive the answer. With the template updated (Story 1) and smithy-plan dispatched for scope (Story 3), this story ensures the pipeline actually produces the section.
 
-**Independent Test**: Run `smithy.ignite` and verify the generated RFC contains a `## Out of Scope` section, even if the content is "None identified at this time."
+**Independent Test**: Verify that sub-phase 3c's dispatch to smithy-plan includes "Out of Scope" in its section assignment, and that the generated RFC contains a `## Out of Scope` section with substantive content or an explicit "None identified at this time" placeholder, positioned after Goals and before Personas.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after the Goals section.
-2. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
-3. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
+1. **Given** the user runs `smithy.ignite` with any idea, **When** the RFC is generated, **Then** the final RFC contains a `## Out of Scope` section after Goals and before Personas.
+2. **Given** the Out of Scope section is drafted in sub-phase 3c alongside Goals, **When** sub-phase 3c dispatches smithy-plan, **Then** smithy-plan produces an explicit Out of Scope section and the orchestrator appends it to `<slug>.rfc.md`.
+3. **Given** clarification identifies items as out of scope, **When** the RFC is drafted, **Then** those items appear in the Out of Scope section.
+4. **Given** nothing is identified as out of scope during clarification, **When** the RFC is drafted, **Then** the Out of Scope section contains a placeholder (e.g., "None identified at this time") rather than being omitted.
 
 ---
 
@@ -214,6 +215,7 @@ Recommended implementation sequence:
 
 - **`.clarify-log.md`**: Persistent file in the RFC folder that records Q&A and assumptions from each clarification session for cross-session deduplication.
 - **`smithy-prose` sub-agent**: New shared sub-agent specialized for narrative/persuasive writing. Dispatched for Summary, Motivation/Problem Statement, and other prose-heavy sections across any smithy command.
+- **`<slug>.rfc.md`**: The RFC file itself, written to incrementally by the piecewise pipeline. Each sub-phase (3a-3f) appends its sections; the harmonize step (3g) rewrites in place. Also serves as the resume checkpoint for interrupted sessions.
 
 ## Assumptions
 
