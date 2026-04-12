@@ -15,7 +15,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { preflight, runScenario } from './lib/runner.js';
-import type { EvalScenario } from './lib/types.js';
+import { validateStructure, verifySubAgents } from './lib/structural.js';
+import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import type { CheckResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
 // CLI flags
@@ -97,7 +99,44 @@ try {
   console.log(`  Text length: ${output.extracted_text.length} chars`);
   console.log(`  Stream events: ${output.stream_events.length}`);
 
-  process.exit(output.exit_code === 0 && !output.timed_out ? 0 : 1);
+  // ---------------------------------------------------------------------------
+  // Structural validation (FR-005, FR-006)
+  // ---------------------------------------------------------------------------
+
+  const structuralChecks: CheckResult[] = validateStructure(
+    output.extracted_text,
+    scenario.structural_expectations,
+  );
+
+  let subAgentChecks: CheckResult[] = [];
+  if (scenario.sub_agent_evidence && scenario.sub_agent_evidence.length > 0) {
+    const dispatches = extractSubAgentDispatches(output.stream_events);
+    subAgentChecks = verifySubAgents(
+      output.extracted_text,
+      dispatches,
+      scenario.sub_agent_evidence,
+    );
+  }
+
+  const allChecks = [...structuralChecks, ...subAgentChecks];
+
+  console.log('');
+  console.log('Checks:');
+  for (const check of allChecks) {
+    if (check.passed) {
+      console.log(`  [PASS] ${check.check_name}`);
+    } else {
+      console.log(
+        `  [FAIL] ${check.check_name} — expected: ${check.expected}, actual: ${check.actual}`,
+      );
+    }
+  }
+
+  const anyCheckFailed = allChecks.some((c) => !c.passed);
+  const exitCode =
+    output.exit_code !== 0 || output.timed_out || anyCheckFailed ? 1 : 0;
+
+  process.exit(exitCode);
 } catch (err) {
   console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);

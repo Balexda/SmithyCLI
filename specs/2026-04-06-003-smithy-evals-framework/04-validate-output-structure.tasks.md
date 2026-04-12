@@ -37,7 +37,7 @@
 
 ### Tasks
 
-- [ ] Update `evals/run-evals.ts` to import `validateStructure` and `verifySubAgents` from `./lib/structural.js` and `extractSubAgentDispatches` from `./lib/parse-stream.js`. After `runScenario` returns, call `validateStructure(output.extracted_text, scenario.structural_expectations)` to obtain `structuralChecks: CheckResult[]`. If `scenario.sub_agent_evidence` is defined and non-empty, call `extractSubAgentDispatches(output.stream_events)` then `verifySubAgents(output.extracted_text, dispatches, scenario.sub_agent_evidence)` to obtain `subAgentChecks: CheckResult[]`. Print each `CheckResult` to stdout using the format `  [PASS] <check_name>` or `  [FAIL] <check_name> — expected: <expected>, actual: <actual>`. Determine the final exit code as `1` if (a) the process exited with a non-zero code, (b) it timed out, or (c) any `CheckResult` has `passed: false`; otherwise `0`. The existing hardcoded smoke-test scenario (`required_headings: ['## Plan']`) remains unchanged — updating it to reflect actual strike output is a US5 concern, and the `[FAIL]` from a missing `## Plan` heading demonstrates the validator is working correctly.
+- [x] Update `evals/run-evals.ts` to import `validateStructure` and `verifySubAgents` from `./lib/structural.js` and `extractSubAgentDispatches` from `./lib/parse-stream.js`. After `runScenario` returns, call `validateStructure(output.extracted_text, scenario.structural_expectations)` to obtain `structuralChecks: CheckResult[]`. If `scenario.sub_agent_evidence` is defined and non-empty, call `extractSubAgentDispatches(output.stream_events)` then `verifySubAgents(output.extracted_text, dispatches, scenario.sub_agent_evidence)` to obtain `subAgentChecks: CheckResult[]`. Print each `CheckResult` to stdout using the format `  [PASS] <check_name>` or `  [FAIL] <check_name> — expected: <expected>, actual: <actual>`. Determine the final exit code as `1` if (a) the process exited with a non-zero code, (b) it timed out, or (c) any `CheckResult` has `passed: false`; otherwise `0`. The existing hardcoded smoke-test scenario (`required_headings: ['## Plan']`) remains unchanged — updating it to reflect actual strike output is a US5 concern, and the `[FAIL]` from a missing `## Plan` heading demonstrates the validator is working correctly.
 
 **PR Outcome**: `npm run eval` prints per-check structural results alongside the scenario status. Structural regressions surface as named `[FAIL]` entries with actionable context. Exit code reflects both process health and validation outcomes.
 
@@ -54,7 +54,7 @@ _None — all ambiguities resolved._
 Recommended implementation sequence:
 
 - [x] **Slice 1: StructuralValidator and SubAgentVerifier Library** — pure module with no runtime dependencies; establishes the vitest config for all evals tests; Slice 2 imports from it.
-- [ ] **Slice 2: Wire Validator into the Orchestrator** — depends on Slice 1 exports; narrow orchestrator change that delivers the user-visible outcome.
+- [x] **Slice 2: Wire Validator into the Orchestrator** — depends on Slice 1 exports; narrow orchestrator change that delivers the user-visible outcome.
 
 ### Cross-Story Dependencies
 
