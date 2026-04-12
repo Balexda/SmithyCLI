@@ -26,9 +26,9 @@ Purpose: One entry per discovered artifact file, carrying everything needed to r
 | `warnings` | string[] | No | Non-fatal parse issues encountered while reading the file (unknown sections, ambiguous numbering, legacy formats, malformed dependency tables, dangling ID references). Empty array if clean. |
 
 Validation rules:
-- `status = 'done'` requires `completed === total` (when counts are present) or all checked-state indicators to be checked (when counts are not meaningful, e.g., an RFC).
-- `status = 'in-progress'` requires `0 < completed < total` OR at least one checked child and at least one unchecked child.
-- `status = 'unknown'` requires at least one entry in `warnings` describing the parse failure.
+- For a **tasks** record (the only leaf type), `status = 'done'` requires `completed === total`, where both counts come from slice-body task checkboxes inside `## Slice N:` sections. `status = 'in-progress'` requires `0 < completed < total`.
+- For **spec**, **features**, and **rfc** records (parent types), `status = 'done'` requires that every row in the record's parsed `dependency_order` table has a rolled-up status of `done`. `status = 'in-progress'` requires at least one row whose rolled-up status is `in-progress` or `done` AND at least one row that is not yet `done`. `status = 'not-started'` requires every row to be `not-started` (or its `Artifact` column to be `—`).
+- `status = 'unknown'` requires at least one entry in `warnings` describing the parse failure (malformed table, legacy-format detection, missing required section, etc.).
 - `virtual === true` implies `status === 'not-started'` and `path` is the *expected* path, not an existing file.
 
 ---
@@ -146,23 +146,25 @@ An `artifact_path` cell containing `—` signals "not yet created" and causes th
 
 ### ArtifactRecord status lifecycle (per scan)
 
-A record's status is computed freshly on each scan from the underlying file contents. There is no persistent state machine — the "transitions" below describe the rules the classifier applies.
+A record's status is computed freshly on each scan from the underlying file contents. There is no persistent state machine — the "transitions" below describe the rules the classifier applies when comparing one scan to a prior one, not live observations.
+
+Trigger terminology: "a child reaches status X" means (a) for tasks records, a slice-body task checkbox flipped, or (b) for spec / features / rfc records, a downstream artifact referenced by the record's `dependency_order` table rolled up to status X.
 
 1. `unknown` → (any other status)
-   - Trigger: parser succeeds and the artifact's checkbox pattern becomes readable.
-   - Effects: the record's `warnings` are cleared; `status` is set by the rules below.
+   - Trigger: the artifact's `## Dependency Order` table (or slice bodies, for tasks files) parses successfully where a prior scan could not.
+   - Effects: the record's parse-error `warnings` are cleared; `status` is recomputed from the validation rules above.
 
 2. `not-started` → `in-progress`
-   - Trigger: at least one child (slice / story / feature) transitions from unchecked to checked.
-   - Effects: `completed` becomes ≥ 1; `next_action` is recomputed to point at the current actionable item.
+   - Trigger: at least one child reaches `in-progress` or `done`, while at least one child is still `not-started`.
+   - Effects: `completed` becomes ≥ 1 (for tasks records) or the record's rolled-up count reflects the new child state (for parent records); `next_action` is recomputed to point at the current actionable item.
 
 3. `in-progress` → `done`
-   - Trigger: the last unchecked child is checked.
+   - Trigger: the last non-`done` child reaches `done`.
    - Effects: `next_action` becomes null; the record collapses in the default tree view.
 
 4. `*` → `unknown`
-   - Trigger: a subsequent edit removes or malforms the required headings/checklists.
-   - Effects: `warnings` gains an entry describing the parse failure; the record is rendered under the default group with a clear warning marker.
+   - Trigger: a subsequent edit removes or malforms the `## Dependency Order` table or introduces the legacy checkbox format that triggers a `format_legacy` warning (see FR-028).
+   - Effects: `warnings` gains an entry describing the parse failure; the record is rendered under the default group with a clear warning marker and no rolled-up status.
 
 ## Identity & Uniqueness
 
