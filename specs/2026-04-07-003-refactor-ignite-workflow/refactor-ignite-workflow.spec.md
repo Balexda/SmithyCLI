@@ -215,7 +215,7 @@ Recommended implementation sequence:
 
 - **`.clarify-log.md`**: Persistent file in the RFC folder that records Q&A and assumptions from each clarification session for cross-session deduplication.
 - **`smithy-prose` sub-agent**: New shared sub-agent specialized for narrative/persuasive writing. Dispatched for Summary, Motivation/Problem Statement, and other prose-heavy sections across any smithy command.
-- **`<slug>.rfc.md`**: The RFC file itself, written to incrementally by the piecewise pipeline. Each sub-phase (3a-3f) appends its sections; the harmonize step (3g) rewrites in place. Also serves as the resume checkpoint for interrupted sessions.
+- **`<slug>.rfc.md`**: The RFC file itself, written incrementally by the piecewise pipeline. Each sub-phase (3a-3f) appends its sections; the harmonize step (3g) rewrites in place. Also serves as the resume checkpoint for interrupted sessions.
 
 ## Assumptions
 
