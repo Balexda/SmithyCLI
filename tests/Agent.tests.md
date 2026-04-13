@@ -163,7 +163,100 @@ ls /tmp/smithy-test/.claude/commands/smithy.oldname.md 2>/dev/null && echo "FAIL
 3. Inspect the returned output.
 
 **Expected**:
-- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not in the questions list
+- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not as a debt item
 - [ ] That assumption carries a `[Critical Assumption]` annotation in the format `[Impact: Critical · Confidence: High]`
-- [ ] No Critical+High item appears as an interactive question
-- [ ] Non-High-confidence items (if any) remain in the questions section
+- [ ] No Critical+High item appears in `debt_items`
+- [ ] Non-High-confidence items (if any) are routed to `debt_items`, not a questions section
+
+---
+
+## A7: smithy-clarify produces debt items for Medium/Low-confidence candidates
+
+**Purpose**: Verify that smithy-clarify's two-category triage routes
+Medium/Low-confidence candidates into `debt_items` (with structured metadata)
+rather than into an interactive Questions list.
+
+**Steps**:
+1. Build and deploy the latest templates:
+   ```bash
+   npm run build
+   node dist/cli.js update -d /path/to/SmithyCLI
+   ```
+2. Invoke smithy-clarify as a sub-agent (or via a general-purpose agent acting
+   as smithy-clarify) with this input:
+   - **Criteria**: standard clarify categories (Functional Scope, Domain &
+     Data Model, Non-Functional, Integration & Dependencies, Edge Cases,
+     Scope Edges)
+   - **Context**: a feature description that yields candidates at mixed
+     confidence levels — some clear/High-confidence items and at least two
+     ambiguous domain terms or unresolved integration details that should
+     land at Medium or Low confidence.
+   - **Special instructions**: none
+3. Inspect the returned output.
+
+**Expected**:
+- [ ] High-confidence items appear in the assumptions list
+- [ ] Medium and Low-confidence items appear in a `debt_items` list with
+      structured columns: ID (SD-NNN), Description, Source Category, Impact,
+      Confidence, Status (`open`), Resolution (`—` for unresolved items)
+- [ ] Each debt item has a sequential SD-NNN identifier starting at SD-001
+- [ ] No `### Questions` section appears in the output
+- [ ] The return summary includes `bail_out` (boolean) and
+      `bail_out_summary` (string, populated only when `bail_out` is true)
+
+---
+
+## A8: mark spec artifact contains a populated Specification Debt section
+
+**Purpose**: Verify that smithy.mark threads clarify's `debt_items` into the
+spec's `## Specification Debt` section with correct placement and structure.
+
+**Steps**:
+1. Build and deploy the latest templates:
+   ```bash
+   npm run build
+   node dist/cli.js update -d /path/to/SmithyCLI
+   ```
+2. Invoke smithy.mark (or a general-purpose agent acting as smithy.mark) with
+   a feature description that includes at least one ambiguous domain term
+   that will register as a Medium-confidence candidate in clarify's triage.
+3. Inspect the produced `.spec.md` file.
+
+**Expected**:
+- [ ] The spec file contains a `## Specification Debt` section
+- [ ] The `## Specification Debt` heading appears between `## Assumptions`
+      and `## Out of Scope`
+- [ ] At least one structured debt item is present with columns: ID,
+      Description, Source Category, Impact, Confidence, Status, Resolution
+- [ ] Each item's ID follows the `SD-NNN` format (sequential from SD-001)
+- [ ] Open items have Resolution set to `—`
+
+---
+
+## A9: cut tasks artifact inherits debt from the upstream spec
+
+**Purpose**: Verify that smithy.cut inherits `## Specification Debt` items
+from the source spec and carries them forward into the generated tasks file
+with the correct origin annotation and status.
+
+**Steps**:
+1. Build and deploy the latest templates:
+   ```bash
+   npm run build
+   node dist/cli.js update -d /path/to/SmithyCLI
+   ```
+2. Prepare a spec folder where `<slug>.spec.md` contains a
+   `## Specification Debt` section with at least one item whose status is
+   `open` (e.g., `SD-001 | <description> | Domain & Data Model | Medium |
+   Medium | open | —`).
+3. Invoke smithy.cut (or a general-purpose agent acting as smithy.cut) on
+   that spec and user story.
+4. Inspect the produced `<NN>-<story-slug>.tasks.md` file.
+
+**Expected**:
+- [ ] The tasks file contains a `## Specification Debt` section
+- [ ] The upstream debt item appears in the tasks file's debt table
+- [ ] The inherited item's Description is prefixed with
+      `inherited from spec: <original SD-NNN description>`
+- [ ] The inherited item's Status is `inherited` (not `open`)
+- [ ] The Resolution column remains `—` for the inherited item

@@ -537,6 +537,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Data Model Integrity** | Are relationships, state transitions, and validation rules internally consistent? Are there entities referenced but not defined, or defined but never referenced? |
   | **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
+  | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
   | **Dependency Order** | Does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`)? Does it list every user story with a `US<N>` ID (no leading zeros)? Does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
 
@@ -551,6 +552,13 @@ and/or contracts files on disk to incorporate the refinements. Present a summary
 of what changed — do not dump the full file contents into the terminal. **STOP
 and ask** the user to review the updated files at their paths and let you know
 if further changes are needed.
+
+**Resolving specification debt**: When the refine sub-agent identifies debt
+items that can now be resolved based on new information or user answers,
+update those items in the spec's `## Specification Debt` table: change status
+from `open` to `resolved` and populate the Resolution column with a note
+describing how and when the item was addressed (e.g., `Resolved 2026-04-10 —
+user confirmed webhooks are HTTP-only`).
 
 **Priority re-ordering**: If any user story priorities changed during refinement,
 renumber and reorder the user stories so all P1 stories come first, then P2,
