@@ -201,8 +201,15 @@ Dispatch **smithy-prose** with:
 - **idea_description**: the user's idea description or PRD content from intake
 - **clarify_output**: the Q&A and assumptions from Phase 2 clarification
 - **rfc_file_path**: the path to the accumulating `<slug>.rfc.md` (which at this point contains the header plus Summary and Motivation)
+- **tone_directives**: "Personas named or described during Phase 2 clarification are mandatory — every persona surfaced there MUST appear in the drafted `## Personas` section with a role and a description of how this RFC benefits them. Do not return placeholder or empty content."
 
-After smithy-prose returns, append the returned content to the RFC file.
+After smithy-prose returns, verify that the returned content contains a
+non-empty `## Personas` section with at least one named persona. If the
+sub-agent returns empty output, placeholder content (e.g., the template's
+`<Persona 1 ...>` literal), or a response missing the `## Personas` heading,
+**halt the pipeline** with a diagnostic that points at the Phase 2
+clarification record so the user can confirm which personas were identified
+before retrying. Otherwise, append the returned content to the RFC file.
 
 ### Sub-phase 3c: Goals + Out of Scope
 
