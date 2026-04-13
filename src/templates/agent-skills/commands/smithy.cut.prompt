@@ -45,6 +45,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
   | **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
   | **Task Scoping** | Do tasks follow the structured format (bold title + behavioral description + acceptance criteria bullets)? Are any tasks over 150 words? Do tasks reference acceptance scenarios by ID rather than restating their content? Are test mechanics absent (no stub configs, mock patterns, assertion structures)? Are there standalone test tasks, file-reading tasks, verification tasks, line-number references, exact code prescriptions, exact error strings, or exact function signatures that would break fresh-context dispatch or create brittleness? |
+  | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Spec Alignment** | Do the slices fully cover the user story's acceptance scenarios? Has the spec changed since the tasks file was written? |
 
 - **Target files**: the `.tasks.md` file alongside the source spec (`.spec.md`),
@@ -57,6 +58,13 @@ After the sub-agent returns its summary, update the existing tasks file on disk
 to incorporate the refinements. Present a summary of what changed — do not dump
 the full file contents into the terminal. **STOP and ask** the user to review
 the updated file at its path and let you know if further changes are needed.
+
+**Resolving specification debt**: When the refine sub-agent identifies debt
+items that can now be resolved based on new information or user answers,
+update those items in the tasks file's `## Specification Debt` table: change
+status from `open` or `inherited` to `resolved` and populate the Resolution
+column with a note describing how and when the item was addressed (e.g.,
+`Resolved 2026-04-10 — user confirmed webhooks are HTTP-only`).
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through
@@ -438,13 +446,12 @@ Write-back procedure:
    table: set `ID` to `US<N>`, `Title` to the user story title from the story
    list parsed in Phase 1, `Depends On` to `—`, and `Artifact` to the
    repo-relative tasks file path.
-6. **Table absent**: If the spec contains neither a `## Dependency Order`
-   table nor a legacy `## Story Dependency Order` section, create a new
-   `## Dependency Order` section at the end of the spec file. Seed the table
-   from the user story list parsed in Phase 1 — one `US<N>` row per story in
-   story-number order, with `Depends On` set to `—` for every row and
-   `Artifact` set to `—` for every row **except** the current story's row,
-   which gets the repo-relative tasks file path. Use this shape:
+6. **Table absent**: If the spec contains no `## Dependency Order` table,
+   create a new `## Dependency Order` section at the end of the spec file.
+   Seed the table from the user story list parsed in Phase 1 — one `US<N>`
+   row per story in story-number order, with `Depends On` set to `—` for
+   every row and `Artifact` set to `—` for every row **except** the current
+   story's row, which gets the repo-relative tasks file path. Use this shape:
 
    ```markdown
    ## Dependency Order
@@ -456,15 +463,8 @@ Write-back procedure:
    | US3 | <Story 3 title> | — | specs/<folder>/03-story-slug.tasks.md |
    ```
 
-7. **Legacy format present**: If the spec contains only the legacy
-   `## Story Dependency Order` checkbox section and NO `## Dependency Order`
-   table, **skip write-back silently**. Do not migrate, rewrite, or annotate
-   the legacy section. Do not flip any checkbox. The tasks file is still
-   written to disk; only the source spec is left untouched. Mention in the
-   summary that the legacy spec was not updated.
-
 The `Artifact` cell is the single source of truth for "does this user story
-have a tasks file yet" — it replaces the legacy checkbox signal entirely.
+have a tasks file yet".
 
 Then present a summary to the user:
 
@@ -513,9 +513,7 @@ ask again.
 - **DO** update the spec file's `## Dependency Order` table after writing the
   tasks file: set the matching `US<N>` row's `Artifact` cell to the
   repo-relative tasks file path. The `Artifact` cell tracks tasks-file
-  creation, not implementation completeness. If only the legacy
-  `## Story Dependency Order` checkbox section is present (and no table),
-  skip the write-back silently — do not migrate legacy files.
+  creation, not implementation completeness.
 - **DO** use the structured task format (bold title + behavioral description +
   acceptance criteria bullets). See "Guidelines for task authoring" above.
 - **DO** reference acceptance scenarios by ID (e.g., "AS 2.1") rather than

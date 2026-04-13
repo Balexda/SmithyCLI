@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Tighten sub-phase 3b dispatch to enforce persona forwarding**
+- [x] **Tighten sub-phase 3b dispatch to enforce persona forwarding**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, update the Sub-phase 3b block inside `{{#ifAgent}}` so the orchestrator explicitly requires personas surfaced during Phase 2 clarification to appear in the drafted section. Satisfies AS US5-3.
 
@@ -27,7 +27,7 @@
   - 3b instructs the orchestrator to halt with a diagnostic pointing at the clarification record if smithy-prose returns empty or placeholder content for Personas
   - Non-agent (`{{else}}`) path and other sub-phases remain unchanged
 
-- [ ] **Add explicit Personas verification and repair to sub-phase 3g harmonize**
+- [x] **Add explicit Personas verification and repair to sub-phase 3g harmonize**
 
   In the same file, extend the Sub-phase 3g harmonize block so the coherence pass names `## Personas` as a mandatory section and repairs it if missing or empty. Satisfies AS US5-1 and US5-2 at the harmonize boundary.
 
@@ -38,7 +38,7 @@
   - Generic present/non-empty verification for unaffected sections is preserved
   - Non-agent path is unchanged
 
-- [ ] **Lock Personas enforcement with ignite template tests**
+- [x] **Lock Personas enforcement with ignite template tests**
 
   Extend `src/templates.test.ts` to verify that the ignite claude-variant rendered output encodes both the 3b dispatch enforcement and the 3g harmonize verification for Personas. Covers AS US5-1, US5-2, US5-3 at the template-composition level.
 
