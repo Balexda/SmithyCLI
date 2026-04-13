@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Define status scanner types in `src/status/types.ts`**
+- [x] **Define status scanner types in `src/status/types.ts`**
 
   Create `src/status/types.ts` declaring the TypeScript entities specified in `smithy-status-skill.data-model.md`: `ArtifactType`, `Status`, `ArtifactRecord`, `DependencyRow`, `DependencyOrderTable`, `NextAction`, and `ScanSummary`. Re-export through `src/status/index.ts` so downstream modules and tests have a single import surface.
 
@@ -30,7 +30,7 @@
   - `DependencyRow` fields match `id`, `title`, `depends_on`, `artifact_path` exactly.
   - The module compiles under `npm run typecheck` with no `any` escape hatches.
 
-- [ ] **Implement pure `parseDependencyTable` in `src/status/parser.ts`**
+- [x] **Implement pure `parseDependencyTable` in `src/status/parser.ts`**
 
   Add a named export `parseDependencyTable(markdown, artifactType)` that locates the `## Dependency Order` section, parses the 4-column table with regex / string splitting (no new npm dependency), and returns a `DependencyOrderTable`. Derive `id_prefix` from `artifactType`. Normalize `—` cells to an empty `depends_on` array or `null` `artifact_path`. Validate each row's `id` against `^(M|F|US|S)[1-9][0-9]*$`. Drop dangling `depends_on` IDs (IDs that do not appear elsewhere in the same table) and append a warning describing each drop. Coerce absolute paths in the `Artifact` column to `null` with a warning. When the section is absent, return `format: 'missing'` with empty rows. When the section contains any `- [ ]` / `- [x]` line and no 4-column header, return `format: 'legacy'` with empty rows.
 
@@ -45,7 +45,7 @@
   - Legacy checkbox section (any `- [ ]` or `- [x]` line inside `## Dependency Order` with no 4-column header) → `format: 'legacy'`, empty rows. Must distinguish cleanly from `format: 'table'` on synthetic fixtures representing both.
   - `id_prefix` is derived from `artifactType` (rfc→M, features→F, spec→US, tasks→S); a row whose actual prefix disagrees produces a warning.
 
-- [ ] **Implement `parseArtifact` in `src/status/parser.ts` covering title, slice counts, and warnings**
+- [x] **Implement `parseArtifact` in `src/status/parser.ts` covering title, slice counts, and warnings**
 
   Add `parseArtifact(filePath, content)` that extracts the artifact's title from its first H1 (handling the canonical `# Feature Specification: <Title>` prefix and arbitrary H1s, with fallback to the filename stem when absent), calls `parseDependencyTable` with an artifact type derived from the filename extension, and for `.tasks.md` files counts `completed` / `total` checkboxes found inside `## Slice N:` body sections only. Collects every non-fatal issue into `warnings[]`; never throws on malformed input.
 
@@ -156,7 +156,7 @@
 
 Recommended implementation sequence:
 
-1. [ ] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
+1. [x] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
 2. [ ] **Slice 2** — the scanner consumes the parser from Slice 1 to produce a fully-classified record set; this is the first slice whose output matches the US1 acceptance contract end-to-end.
 3. [ ] **Slice 3** — the CLI subcommand composes the finished scanner, exposing US1 to end users and matching the contracts file's JSON shape.
 
