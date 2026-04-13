@@ -38,7 +38,7 @@
   - Safety-net language does not contradict 3c's directive — both point at the same placeholder phrasing
   - Existing 3g responsibilities (tone smoothing, cross-reference fixing, generic completeness verification, in-place rewrite) remain intact
 
-- [ ] **Assert ignite agent variant enforces Out of Scope mandate**
+- [x] **Assert ignite agent variant enforces Out of Scope mandate**
 
   In `src/templates.test.ts`, extend the existing `'ignite with claude variant renders competing plan dispatch'` test (the agent-variant rendering test that already covers Phase 3 sub-phases) to verify the strengthened 3c directive and the 3g safety net both render in the composed claude-variant ignite prompt. The new assertions must target distinctive phrases from the strengthened wording rather than substrings that could match the unrelated RFC template code fence.
 

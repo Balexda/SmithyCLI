@@ -512,6 +512,18 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('smithy-prose');
     // Phase 4 agent path must NOT contain the unconditional file-write instruction
     expect(ignite).not.toContain('Write the RFC to');
+    // Task 1: sub-phase 3c must mandate the Out of Scope section as a required,
+    // never-omitted output. "required section, never omitted" is introduced by
+    // the strengthened 3c directive and does not appear in the RFC template code
+    // fence, so it will regress if task 1 is reverted.
+    expect(ignite).toContain('required section, never omitted');
+    // Task 2: sub-phase 3g's coherence pass must contain the explicit safety-net
+    // bullet. "Out of Scope safety net" is introduced by task 2 and is absent
+    // from the RFC template code fence.
+    expect(ignite).toContain('Out of Scope safety net');
+    // Shared canonical placeholder phrase introduced by tasks 1 and 2 — distinct
+    // from the RFC template's `<Explicitly excluded capability ...>` placeholder.
+    expect(ignite).toContain('None identified at this time');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
