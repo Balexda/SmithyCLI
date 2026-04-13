@@ -30,7 +30,7 @@
   - `DependencyRow` fields match `id`, `title`, `depends_on`, `artifact_path` exactly.
   - The module compiles under `npm run typecheck` with no `any` escape hatches.
 
-- [ ] **Implement pure `parseDependencyTable` in `src/status/parser.ts`**
+- [x] **Implement pure `parseDependencyTable` in `src/status/parser.ts`**
 
   Add a named export `parseDependencyTable(markdown, artifactType)` that locates the `## Dependency Order` section, parses the 4-column table with regex / string splitting (no new npm dependency), and returns a `DependencyOrderTable`. Derive `id_prefix` from `artifactType`. Normalize `—` cells to an empty `depends_on` array or `null` `artifact_path`. Validate each row's `id` against `^(M|F|US|S)[1-9][0-9]*$`. Drop dangling `depends_on` IDs (IDs that do not appear elsewhere in the same table) and append a warning describing each drop. Coerce absolute paths in the `Artifact` column to `null` with a warning. When the section is absent, return `format: 'missing'` with empty rows. When the section contains any `- [ ]` / `- [x]` line and no 4-column header, return `format: 'legacy'` with empty rows.
 
