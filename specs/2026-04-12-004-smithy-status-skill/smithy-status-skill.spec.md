@@ -238,7 +238,7 @@ As a Smithy user with multiple in-progress artifacts, I want `smithy status` to 
 | US9  | Scanner Classifies Without Relying on Dependency-Order Checkboxes          | US1, US8       | —        |
 | US10 | Visualize the Dependency Graph for Parallel Work                           | US8, US9       | —        |
 
-All `Artifact` cells are `—` because tasks files have not been cut yet; `smithy.cut` will populate them as each slice is created. Parallelizable work surfaces directly from the `Depends On` column: at the start of implementation, `US1` and `US8` form Layer 0 and can be worked in parallel. US9 must land in the same release as US8 so the scanner's classification rules (FR-005/FR-006) remain correct after the template migration.
+Rows whose `Artifact` cell is `—` have not been cut yet; `smithy.cut` populates each row's path as its tasks file is created (e.g., US1 and US8 have been cut and carry their tasks-file paths; the remaining rows are still `—`). Parallelizable work surfaces directly from the `Depends On` column: at the start of implementation, `US1` and `US8` form Layer 0 and can be worked in parallel. US9 must land in the same release as US8 so the scanner's classification rules (FR-005/FR-006) remain correct after the template migration.
 
 Notes on this table's form (which is itself the format mandated by US8 / FR-020 – FR-023):
 

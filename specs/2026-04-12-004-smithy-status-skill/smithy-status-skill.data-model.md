@@ -22,7 +22,7 @@ Purpose: One entry per discovered artifact file, carrying everything needed to r
 | `parent_missing` | boolean | No | True when `parent_path` was declared by the artifact but the referenced file does not exist. Drives "Broken Links" grouping. |
 | `virtual` | boolean | No | True for "not-started" records that were inferred from a parent's parsed `## Dependency Order` table but have no file on disk yet (e.g., a spec row whose `Artifact` column identifies an expected tasks file that does not exist yet, or a row whose `Artifact` column is `—`). |
 | `next_action` | NextAction \| null | No | Populated by the suggestion rules; null for `done` records. |
-| `dependency_order` | DependencyOrderTable \| null | No | The parsed `## Dependency Order` section for this artifact. Null when the section is absent (legacy artifacts, or tasks files with no slice ordering). See "DependencyOrderTable" below. |
+| `dependency_order` | DependencyOrderTable | Yes | The parsed `## Dependency Order` section for this artifact. Always present — when the section is absent or still uses the legacy checkbox format, the table is emitted with `format: 'missing'` or `format: 'legacy'` respectively and `rows: []`. Consumers key absence off the `format` field rather than a null check. See "DependencyOrderTable" below. |
 | `warnings` | string[] | No | Non-fatal parse issues encountered while reading the file (unknown sections, ambiguous numbering, legacy formats, malformed dependency tables, dangling ID references). Empty array if clean. |
 
 Validation rules:
