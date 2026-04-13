@@ -7,4 +7,8 @@
  */
 
 export * from './types.js';
-export { parseDependencyTable, type ParsedDependencyTable } from './parser.js';
+export {
+  parseArtifact,
+  parseDependencyTable,
+  type ParsedDependencyTable,
+} from './parser.js';

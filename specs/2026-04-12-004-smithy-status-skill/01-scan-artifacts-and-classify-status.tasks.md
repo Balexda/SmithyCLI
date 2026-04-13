@@ -45,7 +45,7 @@
   - Legacy checkbox section (any `- [ ]` or `- [x]` line inside `## Dependency Order` with no 4-column header) → `format: 'legacy'`, empty rows. Must distinguish cleanly from `format: 'table'` on synthetic fixtures representing both.
   - `id_prefix` is derived from `artifactType` (rfc→M, features→F, spec→US, tasks→S); a row whose actual prefix disagrees produces a warning.
 
-- [ ] **Implement `parseArtifact` in `src/status/parser.ts` covering title, slice counts, and warnings**
+- [x] **Implement `parseArtifact` in `src/status/parser.ts` covering title, slice counts, and warnings**
 
   Add `parseArtifact(filePath, content)` that extracts the artifact's title from its first H1 (handling the canonical `# Feature Specification: <Title>` prefix and arbitrary H1s, with fallback to the filename stem when absent), calls `parseDependencyTable` with an artifact type derived from the filename extension, and for `.tasks.md` files counts `completed` / `total` checkboxes found inside `## Slice N:` body sections only. Collects every non-fatal issue into `warnings[]`; never throws on malformed input.
 

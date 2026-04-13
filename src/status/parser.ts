@@ -7,6 +7,7 @@
  */
 
 import type {
+  ArtifactRecord,
   ArtifactType,
   DependencyOrderTable,
   DependencyRow,
@@ -168,6 +169,155 @@ export function parseDependencyTable(
     table: { rows, id_prefix, format: 'table' },
     warnings,
   };
+}
+
+/**
+ * Parse a Smithy artifact Markdown file into an {@link ArtifactRecord}.
+ *
+ * Pure function — does not touch the filesystem and never throws. The
+ * `filePath` argument is used only to derive the {@link ArtifactType}
+ * and to compute a fallback title from the filename stem. Any non-fatal
+ * issue (malformed dependency-order rows, unknown filename suffix) is
+ * appended to the record's `warnings` list.
+ *
+ * Status classification is deferred to Slice 2 — every record returned
+ * here carries `status: 'unknown'` as a placeholder.
+ */
+export function parseArtifact(
+  filePath: string,
+  content: string,
+): ArtifactRecord {
+  const warnings: string[] = [];
+
+  // Derive ArtifactType from the filename suffix.
+  let type: ArtifactType;
+  if (filePath.endsWith('.rfc.md')) {
+    type = 'rfc';
+  } else if (filePath.endsWith('.features.md')) {
+    type = 'features';
+  } else if (filePath.endsWith('.spec.md')) {
+    type = 'spec';
+  } else if (filePath.endsWith('.tasks.md')) {
+    type = 'tasks';
+  } else {
+    type = 'spec';
+    warnings.push(
+      `artifact_type: unknown filename suffix for ${filePath} — defaulted to 'spec'`,
+    );
+  }
+
+  // Extract the title (never throw).
+  let title: string;
+  try {
+    title = extractTitle(content, filePath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    warnings.push(`parser: unexpected error while parsing title — ${message}`);
+    title = filenameStem(filePath);
+  }
+
+  // Delegate to parseDependencyTable.
+  const depResult = parseDependencyTable(content, type);
+  warnings.push(...depResult.warnings);
+
+  const record: ArtifactRecord = {
+    type,
+    path: filePath,
+    title,
+    status: 'unknown',
+    dependency_order: depResult.table,
+    warnings,
+  };
+
+  if (type === 'tasks') {
+    try {
+      const counts = countSliceBodyCheckboxes(content);
+      record.completed = counts.completed;
+      record.total = counts.total;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(
+        `parser: unexpected error while counting slice checkboxes — ${message}`,
+      );
+      record.completed = 0;
+      record.total = 0;
+    }
+  }
+
+  return record;
+}
+
+/**
+ * Extract the artifact title from its first H1, handling the canonical
+ * `# Feature Specification: <Title>` prefix. Falls back to the filename
+ * stem when no H1 exists.
+ */
+function extractTitle(content: string, filePath: string): string {
+  const lines = content.split('\n');
+  for (const line of lines) {
+    if (/^#\s+/.test(line)) {
+      const raw = line.replace(/^#\s+/, '').trimEnd();
+      const specPrefix = 'Feature Specification:';
+      if (raw.startsWith(specPrefix)) {
+        return raw.slice(specPrefix.length).trim();
+      }
+      return raw.trim();
+    }
+  }
+  return filenameStem(filePath);
+}
+
+/**
+ * Strip the directory and the longest matching suffix from
+ * `{.rfc.md, .features.md, .spec.md, .tasks.md, .md}` off a path,
+ * preserving the remaining stem verbatim.
+ */
+function filenameStem(filePath: string): string {
+  const base =
+    filePath.split('/').pop() ?? filePath.split('\\').pop() ?? filePath;
+  const suffixes = ['.rfc.md', '.features.md', '.spec.md', '.tasks.md', '.md'];
+  for (const suffix of suffixes) {
+    if (base.endsWith(suffix)) {
+      return base.slice(0, base.length - suffix.length);
+    }
+  }
+  return base;
+}
+
+/**
+ * Count `- [ ]` and `- [x]` / `- [X]` items that appear only inside
+ * `## Slice <N>:` H2 body sections. Checkboxes anywhere else in the
+ * file (e.g., `## Dependency Order`, appendices) are ignored.
+ */
+function countSliceBodyCheckboxes(content: string): {
+  completed: number;
+  total: number;
+} {
+  const lines = content.split('\n');
+  const sliceHeadingRegex = /^##\s+Slice\s+\d+:/;
+  const h2Regex = /^##\s/;
+  const checkboxRegex = /^\s*-\s*\[([ xX])\]\s/;
+
+  let completed = 0;
+  let total = 0;
+  let insideSlice = false;
+
+  for (const line of lines) {
+    if (h2Regex.test(line)) {
+      insideSlice = sliceHeadingRegex.test(line);
+      continue;
+    }
+    if (!insideSlice) continue;
+    const match = checkboxRegex.exec(line);
+    if (match === null) continue;
+    total += 1;
+    const marker = match[1] ?? ' ';
+    if (marker === 'x' || marker === 'X') {
+      completed += 1;
+    }
+  }
+
+  return { completed, total };
 }
 
 /**
