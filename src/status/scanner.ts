@@ -1,0 +1,444 @@
+/**
+ * Filesystem scanner for Smithy artifact files.
+ *
+ * `scan(root)` is the single entry point that turns a working directory
+ * into a fully-classified `ArtifactRecord[]` matching the data-model
+ * contract in `smithy-status-skill.data-model.md`. It proceeds in three
+ * phases:
+ *
+ *   1. **Discovery / parse** — walk `specs/`, `docs/rfcs/`, and
+ *      `specs/strikes/` under `root`, collect files by suffix
+ *      (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`), read their
+ *      contents, and call {@link parseArtifact} for each. Symlinks whose
+ *      real path escapes `root` are silently skipped.
+ *
+ *   2. **Resolution + virtual emission** — walk every real parent
+ *      record's `dependency_order.rows`, match each row to an existing
+ *      child record per the data-model lineage (RFC → features file,
+ *      feature row → spec folder → spec file, spec row → tasks file).
+ *      Rows whose `artifact_path` is `—` or points at a file not present
+ *      on disk produce a virtual `ArtifactRecord` with `virtual: true`,
+ *      `status: 'not-started'`, and a naming-convention-derived path. On
+ *      a virtual/real collision at the same path, the real record wins
+ *      and the virtual is discarded.
+ *
+ *   3. **Classification** — call {@link classifyRecord} leaf-to-root
+ *      (`tasks` → `spec` → `features` → `rfc`) so every parent sees its
+ *      children's finalized `status` when it is classified. Records that
+ *      carry a `read_error:` warning from Phase 1 are preserved as
+ *      `status: 'unknown'` and are not re-classified.
+ *
+ * The scanner performs no network I/O and never throws on an individual
+ * artifact failure. Per-file errors are surfaced as warnings on the
+ * affected record and scanning continues.
+ *
+ * Notes on unresolved specification debt:
+ * - SD-001: Feature-map virtual spec placeholders use `specs/<slug>/` —
+ *   the canonical `YYYY-MM-DD-NNN-<slug>` prefix cannot be derived from
+ *   a feature row alone, so the slug is a best-effort placeholder.
+ * - SD-002: `parent_missing` is not populated in this slice — real
+ *   records never set `parent_path` to a non-existent file because
+ *   linkage is established exclusively from existing parents' dep-order
+ *   rows. The field remains available for future heuristics.
+ * - SD-003: Integration tests use real on-disk temp directories under
+ *   `os.tmpdir()` to exercise the recursive walk path.
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { classifyRecord } from './classifier.js';
+import { parseArtifact } from './parser.js';
+import type {
+  ArtifactRecord,
+  ArtifactType,
+  DependencyOrderTable,
+  DependencyRow,
+} from './types.js';
+
+const SCAN_ROOTS = ['specs', 'docs/rfcs', 'specs/strikes'] as const;
+
+const SUFFIX_TYPES: Array<readonly [string, ArtifactType]> = [
+  ['.rfc.md', 'rfc'],
+  ['.features.md', 'features'],
+  ['.spec.md', 'spec'],
+  ['.tasks.md', 'tasks'],
+];
+
+/**
+ * Walk the repo under `root`, build `ArtifactRecord` entries for every
+ * discovered Smithy artifact file, and return the fully-classified
+ * record set. See the module-level JSDoc for the three-phase flow.
+ */
+export function scan(root: string): ArtifactRecord[] {
+  let realRoot: string;
+  try {
+    realRoot = fs.realpathSync(root);
+  } catch {
+    return [];
+  }
+
+  const records = new Map<string, ArtifactRecord>();
+
+  // Phase 1: discover + parse.
+  for (const scanRoot of SCAN_ROOTS) {
+    const startDir = path.join(realRoot, scanRoot);
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(startDir);
+    } catch {
+      continue;
+    }
+    if (!stat.isDirectory()) continue;
+    walkDir(startDir, realRoot, records);
+  }
+
+  // Phase 2: resolve parent/child linkage and emit virtual records.
+  const childrenByParent = new Map<string, ArtifactRecord[]>();
+  const parentsSnapshot = Array.from(records.values()).filter(
+    (r) => r.type !== 'tasks' && r.virtual !== true,
+  );
+  for (const parent of parentsSnapshot) {
+    const kids: ArtifactRecord[] = [];
+    for (const row of parent.dependency_order.rows) {
+      const resolution = resolveChildForRow(parent, row, records);
+      if (resolution === null) continue;
+
+      let child = records.get(resolution.path);
+      if (child !== undefined) {
+        // Real or previously-emitted virtual already occupies this path —
+        // real records always win because Phase 1 populated them before
+        // any virtual could be inserted.
+        child.parent_path = parent.path;
+      } else {
+        child = makeVirtualRecord(resolution.path, resolution.type, row, parent);
+        records.set(resolution.path, child);
+      }
+      kids.push(child);
+    }
+    childrenByParent.set(parent.path, kids);
+  }
+
+  // Phase 3: classify leaf-to-root. `classifyRecord` is pure; all we do
+  // here is order the calls so every parent sees its already-finalized
+  // children.
+  const classificationOrder: ArtifactType[] = ['tasks', 'spec', 'features', 'rfc'];
+  for (const type of classificationOrder) {
+    for (const record of records.values()) {
+      if (record.type !== type) continue;
+      if (hasReadError(record)) continue;
+      const kids = childrenByParent.get(record.path) ?? [];
+      record.status = classifyRecord(record, kids);
+    }
+  }
+
+  return Array.from(records.values());
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1 helpers: walk + parse
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursively walk `dir`, resolving each entry through `realpath` and
+ * skipping anything whose real path escapes `realRoot`. Parses every
+ * discovered artifact file into `records`.
+ */
+function walkDir(
+  dir: string,
+  realRoot: string,
+  records: Map<string, ArtifactRecord>,
+): void {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return;
+  }
+
+  for (const name of entries) {
+    const abs = path.join(dir, name);
+    let realAbs: string;
+    try {
+      realAbs = fs.realpathSync(abs);
+    } catch {
+      continue;
+    }
+    if (!isWithinRoot(realAbs, realRoot)) continue;
+
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(realAbs);
+    } catch {
+      continue;
+    }
+
+    if (stat.isDirectory()) {
+      walkDir(abs, realRoot, records);
+    } else if (stat.isFile()) {
+      handleFile(abs, realRoot, records);
+    }
+  }
+}
+
+function isWithinRoot(candidate: string, realRoot: string): boolean {
+  if (candidate === realRoot) return true;
+  return candidate.startsWith(realRoot + path.sep);
+}
+
+/**
+ * Parse a single discovered file into an `ArtifactRecord` and insert it
+ * into `records` keyed by repo-relative path. Read errors produce an
+ * `unknown`-status record with a `read_error:` warning so the scan can
+ * continue.
+ */
+function handleFile(
+  abs: string,
+  realRoot: string,
+  records: Map<string, ArtifactRecord>,
+): void {
+  const rel = toRepoRelative(abs, realRoot);
+  const type = detectTypeFromSuffix(rel);
+  if (type === null) return;
+
+  // Same file visited via two scan roots (e.g., `specs/strikes/` lives
+  // inside `specs/`): the first insert wins and subsequent visits are
+  // no-ops. This keeps the returned record set free of duplicates.
+  if (records.has(rel)) return;
+
+  let content: string;
+  try {
+    content = fs.readFileSync(abs, 'utf8');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    records.set(rel, buildReadErrorRecord(rel, type, message));
+    return;
+  }
+
+  const record = parseArtifact(rel, content);
+  records.set(rel, record);
+}
+
+function detectTypeFromSuffix(relPath: string): ArtifactType | null {
+  for (const [suffix, type] of SUFFIX_TYPES) {
+    if (relPath.endsWith(suffix)) return type;
+  }
+  return null;
+}
+
+function buildReadErrorRecord(
+  relPath: string,
+  type: ArtifactType,
+  message: string,
+): ArtifactRecord {
+  return {
+    type,
+    path: relPath,
+    title: filenameStem(relPath),
+    status: 'unknown',
+    dependency_order: {
+      rows: [],
+      id_prefix: idPrefixForType(type),
+      format: 'missing',
+    },
+    warnings: [`read_error: ${message}`],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 helpers: parent/child resolution + virtual emission
+// ---------------------------------------------------------------------------
+
+interface ChildResolution {
+  /** Repo-relative path where the child (real or virtual) lives. */
+  path: string;
+  /** Expected artifact type for the child row. */
+  type: ArtifactType;
+}
+
+/**
+ * Resolve a single dep-order row on `parent` to the repo-relative path
+ * where its child record should live, per the data-model lineage rules.
+ *
+ * - RFC rows (`M`): child is a `.features.md` file — direct path match
+ *   or a slug placeholder when the cell is `—`.
+ * - Feature-map rows (`F`): child is a `.spec.md` file. The cell may
+ *   point at either a spec folder or a spec file; folder cells are
+ *   resolved by scanning the already-discovered record set for a
+ *   `.spec.md` under the folder prefix.
+ * - Spec rows (`US`): child is a `.tasks.md` file — direct path match
+ *   or a naming-convention placeholder when the cell is `—`.
+ * - Tasks rows (`S`): never reached because tasks records are filtered
+ *   out of the parent set.
+ */
+function resolveChildForRow(
+  parent: ArtifactRecord,
+  row: DependencyRow,
+  records: Map<string, ArtifactRecord>,
+): ChildResolution | null {
+  switch (parent.type) {
+    case 'rfc': {
+      const type: ArtifactType = 'features';
+      if (row.artifact_path !== null) {
+        return { path: normalizePath(row.artifact_path), type };
+      }
+      const parentDir = repoDirname(parent.path);
+      const placeholder = repoJoin(
+        parentDir,
+        `${slugify(row.title)}.features.md`,
+      );
+      return { path: placeholder, type };
+    }
+    case 'features': {
+      const type: ArtifactType = 'spec';
+      if (row.artifact_path !== null) {
+        const raw = normalizePath(row.artifact_path);
+        if (raw.endsWith('.spec.md')) {
+          return { path: raw, type };
+        }
+        // Treat as a spec folder — search the record set for a
+        // `.spec.md` that lives inside that folder.
+        const folder = raw.endsWith('/') ? raw : `${raw}/`;
+        const match = findSpecInFolder(folder, records);
+        if (match !== null) {
+          return { path: match, type };
+        }
+        // No discovered spec in the folder — emit a virtual record
+        // keyed by the folder path itself. This matches the feature
+        // row's declared intent without inventing a canonical file
+        // name that does not yet exist.
+        return { path: folder, type };
+      }
+      // SD-001 placeholder for a feature-map `—` row: `specs/<slug>/`.
+      return { path: `specs/${slugify(row.title)}/`, type };
+    }
+    case 'spec': {
+      const type: ArtifactType = 'tasks';
+      if (row.artifact_path !== null) {
+        return { path: normalizePath(row.artifact_path), type };
+      }
+      // Placeholder for a spec `—` row. Smithy tasks files use the
+      // convention `NN-<slug>.tasks.md` inside the spec folder, but we
+      // only have the row ID (`US1`, `US2`, ...) so we lower-case that
+      // as the numeric substitute.
+      const parentDir = repoDirname(parent.path);
+      const idLower = row.id.toLowerCase();
+      return {
+        path: repoJoin(parentDir, `${idLower}-${slugify(row.title)}.tasks.md`),
+        type,
+      };
+    }
+    case 'tasks':
+      return null;
+  }
+}
+
+function findSpecInFolder(
+  folder: string,
+  records: Map<string, ArtifactRecord>,
+): string | null {
+  const folderLeaf = folder.replace(/\/+$/, '').split('/').pop() ?? '';
+  let fallback: string | null = null;
+  let canonical: string | null = null;
+  for (const [p, rec] of records) {
+    if (rec.type !== 'spec') continue;
+    if (!p.startsWith(folder)) continue;
+    if (!p.endsWith('.spec.md')) continue;
+    // Reject nested sub-folder matches: only direct children of the
+    // folder are considered. A spec at `specs/a/b.spec.md` must not
+    // match a folder query for `specs/`.
+    const tail = p.slice(folder.length);
+    if (tail.includes('/')) continue;
+    if (fallback === null) fallback = p;
+    const base = tail;
+    if (base === `${folderLeaf}.spec.md`) {
+      canonical = p;
+    }
+  }
+  return canonical ?? fallback;
+}
+
+function makeVirtualRecord(
+  p: string,
+  type: ArtifactType,
+  row: DependencyRow,
+  parent: ArtifactRecord,
+): ArtifactRecord {
+  return {
+    type,
+    path: p,
+    title: row.title,
+    status: 'not-started',
+    parent_path: parent.path,
+    virtual: true,
+    dependency_order: {
+      rows: [],
+      id_prefix: idPrefixForType(type),
+      format: 'missing',
+    },
+    warnings: [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 helpers
+// ---------------------------------------------------------------------------
+
+function hasReadError(record: ArtifactRecord): boolean {
+  return record.warnings.some((w) => w.startsWith('read_error:'));
+}
+
+// ---------------------------------------------------------------------------
+// Path + string helpers
+// ---------------------------------------------------------------------------
+
+function toRepoRelative(abs: string, realRoot: string): string {
+  const rel = path.relative(realRoot, abs);
+  return rel.split(path.sep).join('/');
+}
+
+function normalizePath(value: string): string {
+  return value.replace(/\\/g, '/');
+}
+
+function repoDirname(relPath: string): string {
+  const idx = relPath.lastIndexOf('/');
+  if (idx < 0) return '';
+  return relPath.slice(0, idx);
+}
+
+function repoJoin(dir: string, name: string): string {
+  if (dir === '') return name;
+  return `${dir}/${name}`;
+}
+
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function idPrefixForType(type: ArtifactType): DependencyOrderTable['id_prefix'] {
+  switch (type) {
+    case 'rfc':
+      return 'M';
+    case 'features':
+      return 'F';
+    case 'spec':
+      return 'US';
+    case 'tasks':
+      return 'S';
+  }
+}
+
+function filenameStem(relPath: string): string {
+  const base = relPath.split('/').pop() ?? relPath;
+  for (const [suffix] of SUFFIX_TYPES) {
+    if (base.endsWith(suffix)) {
+      return base.slice(0, base.length - suffix.length);
+    }
+  }
+  if (base.endsWith('.md')) return base.slice(0, -3);
+  return base;
+}
