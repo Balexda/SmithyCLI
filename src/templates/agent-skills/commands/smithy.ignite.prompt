@@ -272,7 +272,20 @@ This sub-phase is orchestrator-inline — no sub-agent dispatch.
    - Fix cross-references between sections (e.g., a Milestone referencing a Goal
      by name, a Proposal referencing a Persona).
    - Verify that every expected RFC template section is present and non-empty.
-3. Rewrite the file in place with the harmonized content.
+   - **`## Personas` is a mandatory verified section.** Explicitly check that
+     the harmonized RFC contains a non-empty `## Personas` section positioned
+     after `## Out of Scope` and before `## Proposal`, and that it lists at
+     least one named persona with a description (not placeholder text such as
+     the template's `<Persona 1 ...>` literal).
+3. **Personas repair.** If the `## Personas` section is missing, empty, or
+   contains only placeholder content after the coherence pass, re-dispatch
+   **smithy-prose** with `section_assignment` = "Personas", the accumulating
+   RFC content, and the Phase 2 `clarify_output`, then re-append (or splice)
+   the returned Personas section at the canonical position (after Out of Scope,
+   before Proposal) before finalizing the file. Re-run the mandatory-section
+   verification after repair; if Personas is still missing or empty, halt the
+   pipeline with a diagnostic pointing at the Phase 2 clarification record.
+4. Rewrite the file in place with the harmonized content.
 
 Confirm the harmonize step completed before proceeding to Phase 4.
 
