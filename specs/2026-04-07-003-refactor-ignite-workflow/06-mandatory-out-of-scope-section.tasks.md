@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Mandate non-empty Out of Scope in sub-phase 3c directive**
+- [x] **Mandate non-empty Out of Scope in sub-phase 3c directive**
 
   Strengthen the `Additional planning directives` field in sub-phase 3c (Goals + Out of Scope) inside the `{{#ifAgent}}` block of `src/templates/agent-skills/commands/smithy.ignite.prompt`. The directive must require smithy-plan to always emit a `## Out of Scope` section in its returned content — pulling exclusions from the clarification record when present, and using an explicit placeholder ("None identified at this time" or equivalent) when no exclusions were identified. References AS US6-2, US6-3, US6-4.
 

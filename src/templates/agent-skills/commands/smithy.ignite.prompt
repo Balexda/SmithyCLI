@@ -211,7 +211,7 @@ Dispatch **smithy-plan** with:
 - **Planning context**: "Draft the Goals and Out of Scope sections for this RFC"
 - **Feature/problem description**: the user's idea description plus the full clarification output from Phase 2
 - **Codebase file paths**: the path to the accumulating `<slug>.rfc.md` (which by this point contains Summary, Motivation, and Personas from earlier sub-phases)
-- **Additional planning directives**: constrain smithy-plan to produce only the Goals and Out of Scope sections in the RFC template format — not a full planning document
+- **Additional planning directives**: constrain smithy-plan to produce only the Goals and Out of Scope sections in the RFC template format — not a full planning document. The returned content **must** include a `## Out of Scope` section; it is a required section, never omitted. Source the exclusions from the clarification output when that record identifies items explicitly called out as out of scope. If no exclusions were identified during clarification, smithy-plan must still emit the `## Out of Scope` section with the single placeholder entry `None identified at this time` so the section is never left empty.
 
 Append the returned content to the RFC file.
 
