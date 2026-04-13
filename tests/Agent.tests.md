@@ -163,10 +163,10 @@ ls /tmp/smithy-test/.claude/commands/smithy.oldname.md 2>/dev/null && echo "FAIL
 3. Inspect the returned output.
 
 **Expected**:
-- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not in the questions list
+- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**
 - [ ] That assumption carries a `[Critical Assumption]` annotation in the format `[Impact: Critical · Confidence: High]`
-- [ ] No Critical+High item appears as an interactive question
-- [ ] Non-High-confidence items (if any) remain in the questions section
+- [ ] No Critical+High item is surfaced as an interactive question
+- [ ] Non-High-confidence items (if any) appear in the returned `debt_items` list, not as a Questions category (clarify's two-category triage produces only assumptions and debt items)
 
 ---
 

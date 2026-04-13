@@ -61,9 +61,9 @@ the updated file at its path and let you know if further changes are needed.
 
 **Debt resolution**: When the refine sub-agent identifies debt items that can
 now be resolved, update those items in the tasks file's `## Specification Debt`
-table: change status from `open` to `resolved` and populate the Resolution
-column with a note describing how and when the item was addressed (e.g.,
-"Resolved 2026-04-10 — user confirmed webhooks are HTTP-only").
+table: change status from `open` or `inherited` to `resolved` and populate the
+Resolution column with a note describing how and when the item was addressed
+(e.g., "Resolved 2026-04-10 — user confirmed webhooks are HTTP-only").
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through
