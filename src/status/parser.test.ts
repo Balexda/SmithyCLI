@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseArtifact, parseDependencyTable } from './parser.js';
+// Import through the `./index.js` barrel — that is the stable public
+// surface downstream modules consume, and these tests double as an
+// assertion that the barrel re-exports the parser correctly.
+import { parseArtifact, parseDependencyTable } from './index.js';
 
 describe('parseDependencyTable', () => {
   it('parses a well-formed 4-column table preserving source order', () => {
@@ -211,6 +214,80 @@ body
     expect(result.table.format).toBe('table');
     expect(result.table.rows).toEqual([]);
     expect(result.warnings).toEqual([]);
+  });
+
+  it('drops duplicate IDs with a warning and keeps only the first occurrence', () => {
+    const markdown = `## Dependency Order
+
+| ID  | Title    | Depends On | Artifact |
+|-----|----------|------------|----------|
+| US1 | First    | —          | —        |
+| US1 | Second   | —          | —        |
+| US2 | Keeper   | US1        | —        |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.format).toBe('table');
+    expect(result.table.rows).toHaveLength(2);
+    expect(result.table.rows[0]?.title).toBe('First');
+    expect(result.table.rows[1]?.id).toBe('US2');
+    const dupWarnings = result.warnings.filter((w) => /duplicate ID/.test(w));
+    expect(dupWarnings).toHaveLength(1);
+    expect(dupWarnings[0]).toMatch(/US1/);
+    // The surviving US2 row can still reference US1 — the duplicate
+    // drop happens after the first valid US1 is already recorded.
+    expect(result.table.rows[1]?.depends_on).toEqual(['US1']);
+  });
+
+  it('parses headers whose columns are in a non-canonical order', () => {
+    const markdown = `## Dependency Order
+
+| Title | Depends On | ID  | Artifact |
+|-------|------------|-----|----------|
+| Foo   | —          | US1 | —        |
+| Bar   | US1        | US2 | specs/foo/02-bar.tasks.md |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.format).toBe('table');
+    expect(result.table.rows).toEqual([
+      { id: 'US1', title: 'Foo', depends_on: [], artifact_path: null },
+      {
+        id: 'US2',
+        title: 'Bar',
+        depends_on: ['US1'],
+        artifact_path: 'specs/foo/02-bar.tasks.md',
+      },
+    ]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('reports format: missing with a warning when the section has no recognizable table header', () => {
+    const markdown = `## Dependency Order
+
+Some prose here that is neither a table nor a checkbox list.
+
+Another paragraph.
+
+## Next
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.format).toBe('missing');
+    expect(result.table.rows).toEqual([]);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/no 4-column table header/);
+  });
+
+  it('rejects headers that are missing one of the canonical column labels', () => {
+    // "Owner" is not a canonical label, so the header fails to match
+    // and the section is treated as structurally missing.
+    const markdown = `## Dependency Order
+
+| ID  | Title | Owner | Artifact |
+|-----|-------|-------|----------|
+| US1 | Foo   | Alice | —        |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.format).toBe('missing');
+    expect(result.warnings).toHaveLength(1);
   });
 });
 

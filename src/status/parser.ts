@@ -37,7 +37,9 @@ const ID_PREFIX_BY_TYPE: Record<ArtifactType, IdPrefix> = {
 const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
-const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'];
+const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
+type ColumnName = (typeof EXPECTED_HEADERS)[number];
+type ColumnIndex = Record<ColumnName, number>;
 
 /**
  * Parse the `## Dependency Order` section of a Smithy artifact.
@@ -75,17 +77,26 @@ export function parseDependencyTable(
         warnings,
       };
     }
-    // Neither header nor checkboxes — empty table.
+    // Section exists but has no recognizable table header and no
+    // legacy checkbox rows — the required structure is missing.
+    // Emit a warning and report format as 'missing' so downstream
+    // classification treats it as a parse failure rather than an
+    // empty-but-valid table.
+    warnings.push(
+      'dependency_order: `## Dependency Order` section has no 4-column table header (expected: ID | Title | Depends On | Artifact)',
+    );
     return {
-      table: { rows: [], id_prefix, format: 'table' },
+      table: { rows: [], id_prefix, format: 'missing' },
       warnings,
     };
   }
 
+  const { dataStart, columnIndex } = headerInfo;
+
   // Parse data rows beginning after the separator line.
   const rows: DependencyRow[] = [];
   const rawRows: Array<{ cells: string[]; sourceIndex: number }> = [];
-  for (let i = headerInfo.dataStart; i < lines.length; i++) {
+  for (let i = dataStart; i < lines.length; i++) {
     const line = lines[i] ?? '';
     if (line.trim() === '') break;
     if (/^\s*##\s/.test(line)) break;
@@ -95,17 +106,22 @@ export function parseDependencyTable(
     rawRows.push({ cells, sourceIndex: rawRows.length + 1 });
   }
 
-  // First pass: validate IDs and build rows with raw depends_on lists.
+  // First pass: validate IDs, detect duplicates, and build rows with
+  // raw depends_on lists. Read cells by their header-resolved column
+  // index so tables whose columns are in the canonical order and
+  // tables whose columns are in an unusual-but-labelled order both
+  // parse correctly.
   interface PartialRow {
     row: DependencyRow;
     rawDependsOn: string[];
   }
   const partials: PartialRow[] = [];
+  const seenIds = new Set<string>();
   for (const { cells, sourceIndex } of rawRows) {
-    const id = (cells[0] ?? '').trim();
-    const title = (cells[1] ?? '').trim();
-    const dependsOnCell = (cells[2] ?? '').trim();
-    const artifactCell = (cells[3] ?? '').trim();
+    const id = (cells[columnIndex.id] ?? '').trim();
+    const title = (cells[columnIndex.title] ?? '').trim();
+    const dependsOnCell = (cells[columnIndex['depends on']] ?? '').trim();
+    const artifactCell = (cells[columnIndex.artifact] ?? '').trim();
 
     if (!ID_REGEX.test(id)) {
       warnings.push(
@@ -113,6 +129,14 @@ export function parseDependencyTable(
       );
       continue;
     }
+
+    if (seenIds.has(id)) {
+      warnings.push(
+        `dependency_order: row ${sourceIndex} has duplicate ID '${id}' — dropped`,
+      );
+      continue;
+    }
+    seenIds.add(id);
 
     const rowPrefix = id.startsWith('US') ? 'US' : (id[0] as IdPrefix);
     if (rowPrefix !== id_prefix) {
@@ -349,29 +373,56 @@ function extractDependencyOrderSection(markdown: string): string | null {
 
 /**
  * Locate a 4-column Markdown table header (ID | Title | Depends On |
- * Artifact) followed by a separator row. Returns the index of the first
- * data row, or `null` if no recognizable header/separator pair is found.
+ * Artifact) followed immediately by a separator row. Returns the
+ * index of the first data row plus a resolved {@link ColumnIndex}
+ * mapping canonical column names to the positions they occupy in the
+ * header row, or `null` if no recognizable header/separator pair is
+ * found.
+ *
+ * Header columns are matched by label name, not by position, so
+ * tables whose columns happen to be in a different order still parse
+ * correctly. A header that is missing any of the four canonical
+ * labels, or that contains duplicate labels, fails the match and the
+ * section is treated as unparseable.
  */
 function findTableHeader(
   lines: string[],
-): { dataStart: number } | null {
+): { dataStart: number; columnIndex: ColumnIndex } | null {
   for (let i = 0; i < lines.length - 1; i++) {
     const line = lines[i];
     if (line === undefined) continue;
     if (!line.includes('|')) continue;
     const cells = splitTableRow(line).map((c) => c.trim().toLowerCase());
     if (cells.length < 4) continue;
-    const matchesHeader = EXPECTED_HEADERS.every((label) =>
-      cells.includes(label),
-    );
-    if (!matchesHeader) continue;
-    // Look for the separator row on the next non-empty line.
+
+    // Resolve each canonical label to the index of the cell that
+    // contains it. A label that is missing or appears more than once
+    // causes the match to fail.
+    const resolved: Partial<ColumnIndex> = {};
+    let valid = true;
+    for (const label of EXPECTED_HEADERS) {
+      const first = cells.indexOf(label);
+      if (first === -1) {
+        valid = false;
+        break;
+      }
+      if (cells.indexOf(label, first + 1) !== -1) {
+        valid = false;
+        break;
+      }
+      resolved[label] = first;
+    }
+    if (!valid) continue;
+
     const sepIndex = i + 1;
     if (sepIndex >= lines.length) continue;
     const sepLine = lines[sepIndex];
     if (sepLine === undefined) continue;
     if (!isSeparatorRow(sepLine)) continue;
-    return { dataStart: sepIndex + 1 };
+    return {
+      dataStart: sepIndex + 1,
+      columnIndex: resolved as ColumnIndex,
+    };
   }
   return null;
 }
