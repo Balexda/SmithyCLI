@@ -574,6 +574,26 @@ describe('getComposedTemplates', () => {
     // later RFC template code fence.
     const subPhase3gBody = ignite.slice(subphase3gIdx, phase4Idx);
     expect(subPhase3gBody).toContain('None identified at this time');
+
+    // Story 8: Phase 2 must contain both a clarify-log read step and a
+    // clarify-log write step. Bound assertions to the Phase 2 body (between
+    // `## Phase 2` and `## Phase 3`) so these never accidentally match other
+    // phases or the RFC template code fence.
+    const phase2Idx = ignite.indexOf('## Phase 2');
+    const phase3Idx = ignite.indexOf('## Phase 3', phase2Idx);
+    expect(phase2Idx).toBeGreaterThan(-1);
+    expect(phase3Idx).toBeGreaterThan(phase2Idx);
+    const phase2Block = ignite.slice(phase2Idx, phase3Idx);
+    // Filename appears at least twice — once for the read step, once for
+    // the write step.
+    const clarifyLogOccurrences = phase2Block.split('.clarify-log.md').length - 1;
+    expect(clarifyLogOccurrences).toBeGreaterThanOrEqual(2);
+    // Read-step marker: the no-re-ask instruction quoted from the Clarify
+    // Log Read Protocol. This phrase is unique to the read step.
+    expect(phase2Block).toContain('Do not re-ask questions already answered in this log.');
+    // Write-step marker: language about appending a new session entry.
+    // Distinct from any read-step phrasing.
+    expect(phase2Block.toLowerCase()).toMatch(/append[^.]*new session/);
   });
 
   it('ignite default does not contain competing plan dispatch', () => {

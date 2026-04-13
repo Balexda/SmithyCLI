@@ -133,6 +133,29 @@ Present the reconciled plan to the user as:
 
 ## Phase 2: Clarify
 
+### Read Prior Clarify Log
+
+Before dispatching smithy-clarify, check whether a `.clarify-log.md` file
+already exists at the RFC folder derived in Phase 1 — i.e.
+`docs/rfcs/<YYYY>-<NNN>-<slug>/.clarify-log.md`, using the exact folder path
+resolved during intake (never a hard-coded path).
+
+- If the file does not exist, **skip this step silently** and proceed to the
+  dispatch below. This is the first-session case — there is nothing to read
+  and no warning or error should be produced.
+- If the file exists, read it and extract only the **last two**
+  `### Session YYYY-MM-DD` entries (not the full history). This follows the
+  Clarify Log **Read Protocol** defined in the contracts file
+  (`refactor-ignite-workflow.contracts.md`, "Clarify Log Contract"), which
+  caps the log slice at two sessions to limit context usage.
+- When dispatching smithy-clarify in the next step, pass the extracted
+  sessions as additional context alongside the existing criteria, context,
+  and special instructions — do not drop or replace any of the existing
+  inputs — and include the quoted instruction from the Read Protocol:
+  *"Do not re-ask questions already answered in this log."*
+
+### Dispatch smithy-clarify
+
 Use the **smithy-clarify** sub-agent. Pass it:
 
 - **Criteria**:
@@ -146,6 +169,28 @@ Use the **smithy-clarify** sub-agent. Pass it:
 - **Special instructions**: if the idea is already well-specified (e.g., from a
   detailed PRD), expect more assumptions and fewer questions. Never skip
   clarification entirely.
+
+### Append New Clarify Log Session
+
+After smithy-clarify returns its summary of assumptions and Q&A, and before
+Phase 3 begins, persist the results to `.clarify-log.md` so future sessions
+on this RFC folder can deduplicate against them:
+
+1. Ensure the RFC folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` exists. If it does
+   not yet exist, **create it now** so the write succeeds even on the first
+   session — sub-phase 3a may not have run yet, so the orchestrator cannot
+   assume the folder is already on disk.
+2. Format the returned assumptions and Q&A as a new
+   `### Session YYYY-MM-DD` entry using today's date, conforming to the
+   Clarify Log **Write Format** defined in the contracts file
+   (`refactor-ignite-workflow.contracts.md`, "Clarify Log Contract"). Do not
+   restate the format here — follow the contract. Pull the assumptions and
+   Q&A from smithy-clarify's return summary, not from any other source.
+3. **Append** the new session entry to
+   `docs/rfcs/<YYYY>-<NNN>-<slug>/.clarify-log.md`. The log is append-only
+   per the data model's validation rule — never overwrite prior sessions,
+   and never modify existing `### Session YYYY-MM-DD` entries. If the file
+   does not yet exist, create it with the new entry as its first session.
 
 ---
 
