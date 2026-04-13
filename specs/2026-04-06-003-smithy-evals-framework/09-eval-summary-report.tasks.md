@@ -103,10 +103,10 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [ ] **Slice 1: Report Library — Types, Status Derivation, Aggregation, Formatting** — pure module with no runtime dependencies; exports the `EvalReport` type and three functions that Slice 2 imports.
-- [ ] **Slice 2: Wire `EvalReport` Summary into the Orchestrator** — depends on Slice 1 exports; narrow orchestrator change that delivers the user-visible outcome.
+| ID | Title                                                                  | Depends On | Artifact |
+|----|------------------------------------------------------------------------|------------|----------|
+| S1 | Report Library — Types, Status Derivation, Aggregation, Formatting     | —          | —        |
+| S2 | Wire `EvalReport` Summary into the Orchestrator                        | S1         | —        |
 
 ### Cross-Story Dependencies
 
