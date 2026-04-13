@@ -61,6 +61,8 @@ Use the **smithy-refine** sub-agent. Pass it:
   |----------|---------------|
   | **Problem Statement** | Problem clarity, solution outline, compelling motivation |
   | **Goals** | Concrete, achievable, non-overlapping |
+  | **Out of Scope Completeness** | Are explicit exclusions documented, not just implied? Are scope boundaries drawn tightly enough that adjacent concerns can't creep in? A section that exists but only vaguely gestures at exclusions fails this check. |
+  | **Persona Coverage** | Are personas identified with enough description to explain who they are and how this RFC benefits them? Are they relevant to the stated goals? A section that lists a persona by name without describing their role or benefit fails this check. |
   | **Milestones** | Well-defined scope, clear boundaries, success criteria |
   | **Feasibility** | Technical risks, dependency concerns, resource assumptions |
   | **Scope** | Drift from stated goals, feature creep indicators |

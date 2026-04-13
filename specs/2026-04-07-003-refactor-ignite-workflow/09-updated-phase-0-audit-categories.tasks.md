@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add Persona Coverage and Out of Scope Completeness to Phase 0 audit table**
+- [x] **Add Persona Coverage and Out of Scope Completeness to Phase 0 audit table**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, extend the Phase 0a–0b audit categories table so it matches the category set defined in the `Updated Phase 0 Audit Categories` contract. Existing categories remain; the two new rows are inserted in the order and positions specified by the contract table. Satisfies AS US9-1.
 
@@ -27,7 +27,7 @@
   - Row ordering matches the contract's category table
   - Check descriptions convey substantive coverage, not mere presence (supports AS US9-3)
 
-- [ ] **Rename snippet rows to match the new category names**
+- [x] **Rename snippet rows to match the new category names**
 
   In `src/templates/agent-skills/snippets/audit-checklist-rfc.md`, update the existing `Persona Clarity` and `Scope Boundaries` rows to the contract-aligned names `Persona Coverage` and `Out of Scope Completeness`, and strengthen their check descriptions so an RFC with only vague persona references or implicit scope boundaries is flagged. Other rows in the snippet are left unchanged. Satisfies FR-012 and AS US9-2, US9-3.
 
@@ -37,7 +37,7 @@
   - Check descriptions prompt reviewers to assess substantive content, not just section presence
   - Unrelated rows (Ambiguity, Milestone Completeness, Feasibility, Decisions vs Open Questions) are unchanged
 
-- [ ] **Assert new audit categories render in both surfaces**
+- [x] **Assert new audit categories render in both surfaces**
 
   Extend `src/templates.test.ts` with assertions that the composed ignite command and composed audit command each expose the new category names. The ignite assertions target the Phase 0 audit table; the audit assertions target the rendered `audit-checklist-rfc` partial inside `smithy.audit.md`.
 
