@@ -175,10 +175,11 @@ export function parseDependencyTable(
  * Parse a Smithy artifact Markdown file into an {@link ArtifactRecord}.
  *
  * Pure function — does not touch the filesystem and never throws. The
- * `filePath` argument is used only to derive the {@link ArtifactType}
- * and to compute a fallback title from the filename stem. Any non-fatal
- * issue (malformed dependency-order rows, unknown filename suffix) is
- * appended to the record's `warnings` list.
+ * `filePath` argument is used to derive the {@link ArtifactType}, to set
+ * the `path` field on the returned record, and to compute a fallback
+ * title from the filename stem. Any non-fatal issue (malformed
+ * dependency-order rows, unknown filename suffix) is appended to the
+ * record's `warnings` list.
  *
  * Status classification is deferred to Slice 2 — every record returned
  * here carries `status: 'unknown'` as a placeholder.

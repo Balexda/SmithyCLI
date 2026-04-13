@@ -156,7 +156,7 @@
 
 Recommended implementation sequence:
 
-1. [ ] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
+1. [x] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
 2. [ ] **Slice 2** — the scanner consumes the parser from Slice 1 to produce a fully-classified record set; this is the first slice whose output matches the US1 acceptance contract end-to-end.
 3. [ ] **Slice 3** — the CLI subcommand composes the finished scanner, exposing US1 to end users and matching the contracts file's JSON shape.
 
