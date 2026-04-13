@@ -523,11 +523,27 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('Out of Scope safety net');
     // Shared canonical placeholder phrase introduced by tasks 1 and 2 — distinct
     // from the RFC template's `<Explicitly excluded capability ...>` placeholder.
-    // Must appear in both the sub-phase 3c directive and the sub-phase 3g safety
-    // net (so both enforcement layers use identical placeholder text); we assert
-    // at least two occurrences to lock both layers in place.
-    const placeholderMatches = ignite.match(/None identified at this time/g) ?? [];
-    expect(placeholderMatches.length).toBeGreaterThanOrEqual(2);
+    // Must appear in BOTH the sub-phase 3c directive and the sub-phase 3g safety
+    // net. A total-occurrences count is not enough because 3g references the
+    // phrase more than once on its own, which could mask a regression in 3c.
+    // Extract each sub-phase's block independently and assert the placeholder
+    // phrase is present in each, so both enforcement layers are locked in place.
+    const subPhase3cStart = ignite.indexOf('### Sub-phase 3c:');
+    const subPhase3dStart = ignite.indexOf('### Sub-phase 3d:');
+    expect(subPhase3cStart).toBeGreaterThan(-1);
+    expect(subPhase3dStart).toBeGreaterThan(subPhase3cStart);
+    const subPhase3c = ignite.slice(subPhase3cStart, subPhase3dStart);
+    expect(subPhase3c).toContain('None identified at this time');
+
+    const subPhase3gStart = ignite.indexOf('### Sub-phase 3g:');
+    const subPhase3gEnd = ignite.indexOf(
+      '**Important — Decisions vs Open Questions**',
+      subPhase3gStart,
+    );
+    expect(subPhase3gStart).toBeGreaterThan(-1);
+    expect(subPhase3gEnd).toBeGreaterThan(subPhase3gStart);
+    const subPhase3g = ignite.slice(subPhase3gStart, subPhase3gEnd);
+    expect(subPhase3g).toContain('None identified at this time');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
