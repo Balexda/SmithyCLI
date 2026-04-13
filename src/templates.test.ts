@@ -684,16 +684,15 @@ describe('getComposedTemplates', () => {
     // 4-column table header present
     expect(mark).toContain('| ID | Title | Depends On | Artifact |');
 
-    // Legacy heading must be absent (mark never mentions `## Story
-    // Dependency Order` even as a legacy fallback)
+    // Legacy headings must be absent from the whole prompt — mark emits the
+    // 4-column table format and never references the legacy checkbox
+    // sections, not even as a fallback.
     expect(mark).not.toContain('## Story Dependency Order');
+    expect(mark).not.toContain('## Feature Dependency Order');
 
     // The emitted spec template shape (the markdown code-fence block that
-    // mark tells the LLM to produce) must not contain the legacy
-    // `## Feature Dependency Order` heading either. Mark's prompt still
-    // mentions that heading elsewhere as a legacy fallback that the
-    // feature-map write-back tolerates, so we scope this assertion to the
-    // template shape block.
+    // mark tells the LLM to produce) must also not contain the legacy
+    // headings.
     const markMarkdownMatch = mark.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(markMarkdownMatch).not.toBeNull();
     const markMarkdownBlock = markMarkdownMatch![1]!;
@@ -732,11 +731,11 @@ describe('getComposedTemplates', () => {
     expect(render).toContain('| F1 | <Title> | — | — |');
     expect(render).toContain('| F2 | <Title> | — | — |');
 
-    // Legacy heading must be absent from the emitted feature map template
-    // shape (the markdown code-fence block that render tells the LLM to
-    // produce). The render prompt may still mention `## Feature Dependency
-    // Order` elsewhere as a legacy fallback the audit phase tolerates, so we
-    // scope this assertion to the template shape block.
+    // Legacy heading must be absent from the whole prompt — render never
+    // references `## Feature Dependency Order`, not even in the audit
+    // categories.
+    expect(render).not.toContain('## Feature Dependency Order');
+
     const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(renderMarkdownMatch).not.toBeNull();
     const renderMarkdownBlock = renderMarkdownMatch![1]!;
@@ -769,11 +768,11 @@ describe('getComposedTemplates', () => {
     expect(cut).toContain('| S1 | <Title> | — | — |');
     expect(cut).toContain('| S2 | <Title> | — | — |');
 
-    // Legacy heading must be absent from the emitted tasks template shape
-    // (the markdown code-fence block that cut tells the LLM to produce). The
-    // cut prompt still mentions `## Story Dependency Order` elsewhere as a
-    // legacy fallback the spec write-back tolerates, so we scope this
-    // assertion to the template shape block.
+    // Legacy heading must be absent from the whole prompt — cut never
+    // references `## Story Dependency Order`, not even as a write-back
+    // fallback.
+    expect(cut).not.toContain('## Story Dependency Order');
+
     const cutMarkdownMatch = cut.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(cutMarkdownMatch).not.toBeNull();
     const cutMarkdownBlock = cutMarkdownMatch![1]!;

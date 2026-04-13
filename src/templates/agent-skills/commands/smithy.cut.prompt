@@ -446,13 +446,12 @@ Write-back procedure:
    table: set `ID` to `US<N>`, `Title` to the user story title from the story
    list parsed in Phase 1, `Depends On` to `—`, and `Artifact` to the
    repo-relative tasks file path.
-6. **Table absent**: If the spec contains neither a `## Dependency Order`
-   table nor a legacy `## Story Dependency Order` section, create a new
-   `## Dependency Order` section at the end of the spec file. Seed the table
-   from the user story list parsed in Phase 1 — one `US<N>` row per story in
-   story-number order, with `Depends On` set to `—` for every row and
-   `Artifact` set to `—` for every row **except** the current story's row,
-   which gets the repo-relative tasks file path. Use this shape:
+6. **Table absent**: If the spec contains no `## Dependency Order` table,
+   create a new `## Dependency Order` section at the end of the spec file.
+   Seed the table from the user story list parsed in Phase 1 — one `US<N>`
+   row per story in story-number order, with `Depends On` set to `—` for
+   every row and `Artifact` set to `—` for every row **except** the current
+   story's row, which gets the repo-relative tasks file path. Use this shape:
 
    ```markdown
    ## Dependency Order
@@ -464,15 +463,8 @@ Write-back procedure:
    | US3 | <Story 3 title> | — | specs/<folder>/03-story-slug.tasks.md |
    ```
 
-7. **Legacy format present**: If the spec contains only the legacy
-   `## Story Dependency Order` checkbox section and NO `## Dependency Order`
-   table, **skip write-back silently**. Do not migrate, rewrite, or annotate
-   the legacy section. Do not flip any checkbox. The tasks file is still
-   written to disk; only the source spec is left untouched. Mention in the
-   summary that the legacy spec was not updated.
-
 The `Artifact` cell is the single source of truth for "does this user story
-have a tasks file yet" — it replaces the legacy checkbox signal entirely.
+have a tasks file yet".
 
 Then present a summary to the user:
 
@@ -521,9 +513,7 @@ ask again.
 - **DO** update the spec file's `## Dependency Order` table after writing the
   tasks file: set the matching `US<N>` row's `Artifact` cell to the
   repo-relative tasks file path. The `Artifact` cell tracks tasks-file
-  creation, not implementation completeness. If only the legacy
-  `## Story Dependency Order` checkbox section is present (and no table),
-  skip the write-back silently — do not migrate legacy files.
+  creation, not implementation completeness.
 - **DO** use the structured task format (bold title + behavioral description +
   acceptance criteria bullets). See "Guidelines for task authoring" above.
 - **DO** reference acceptance scenarios by ID (e.g., "AS 2.1") rather than
