@@ -512,6 +512,38 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('smithy-prose');
     // Phase 4 agent path must NOT contain the unconditional file-write instruction
     expect(ignite).not.toContain('Write the RFC to');
+
+    // Story 5: Sub-phase 3b enforces mandatory personas via tone_directives
+    // and halts on empty/placeholder sub-agent output.
+    const subphase3bIdx = ignite.indexOf('Sub-phase 3b');
+    const subphase3cIdx = ignite.indexOf('Sub-phase 3c');
+    expect(subphase3bIdx).toBeGreaterThan(-1);
+    expect(subphase3cIdx).toBeGreaterThan(subphase3bIdx);
+    const subphase3bBlock = ignite.slice(subphase3bIdx, subphase3cIdx);
+    expect(subphase3bBlock).toContain('tone_directives');
+    expect(subphase3bBlock.toLowerCase()).toContain('mandatory');
+    expect(subphase3bBlock.toLowerCase()).toContain('halt');
+    expect(subphase3bBlock).toContain('clarification');
+
+    // Story 5: Sub-phase 3g harmonize verifies `## Personas` as a mandatory
+    // section and repairs it via smithy-prose if missing, empty, or
+    // misplaced. Bound the slice to the `## Phase 4` heading so the
+    // assertions only match content inside the 3g block itself — not the
+    // later RFC template code fence which also mentions `## Personas`,
+    // `Out of Scope`, and `Proposal`.
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g');
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+    expect(subphase3gBlock).toContain('## Personas');
+    expect(subphase3gBlock.toLowerCase()).toContain('mandatory');
+    expect(subphase3gBlock).toContain('Out of Scope');
+    expect(subphase3gBlock).toContain('Proposal');
+    expect(subphase3gBlock).toContain('smithy-prose');
+    expect(subphase3gBlock.toLowerCase()).toMatch(/repair|re-dispatch/);
+    // Repair dispatch must include idea_description (smithy-prose contract)
+    expect(subphase3gBlock).toContain('idea_description');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
@@ -652,16 +684,15 @@ describe('getComposedTemplates', () => {
     // 4-column table header present
     expect(mark).toContain('| ID | Title | Depends On | Artifact |');
 
-    // Legacy heading must be absent (mark never mentions `## Story
-    // Dependency Order` even as a legacy fallback)
+    // Legacy headings must be absent from the whole prompt — mark emits the
+    // 4-column table format and never references the legacy checkbox
+    // sections, not even as a fallback.
     expect(mark).not.toContain('## Story Dependency Order');
+    expect(mark).not.toContain('## Feature Dependency Order');
 
     // The emitted spec template shape (the markdown code-fence block that
-    // mark tells the LLM to produce) must not contain the legacy
-    // `## Feature Dependency Order` heading either. Mark's prompt still
-    // mentions that heading elsewhere as a legacy fallback that the
-    // feature-map write-back tolerates, so we scope this assertion to the
-    // template shape block.
+    // mark tells the LLM to produce) must also not contain the legacy
+    // headings.
     const markMarkdownMatch = mark.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(markMarkdownMatch).not.toBeNull();
     const markMarkdownBlock = markMarkdownMatch![1]!;
@@ -700,11 +731,11 @@ describe('getComposedTemplates', () => {
     expect(render).toContain('| F1 | <Title> | — | — |');
     expect(render).toContain('| F2 | <Title> | — | — |');
 
-    // Legacy heading must be absent from the emitted feature map template
-    // shape (the markdown code-fence block that render tells the LLM to
-    // produce). The render prompt may still mention `## Feature Dependency
-    // Order` elsewhere as a legacy fallback the audit phase tolerates, so we
-    // scope this assertion to the template shape block.
+    // Legacy heading must be absent from the whole prompt — render never
+    // references `## Feature Dependency Order`, not even in the audit
+    // categories.
+    expect(render).not.toContain('## Feature Dependency Order');
+
     const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(renderMarkdownMatch).not.toBeNull();
     const renderMarkdownBlock = renderMarkdownMatch![1]!;
@@ -737,11 +768,11 @@ describe('getComposedTemplates', () => {
     expect(cut).toContain('| S1 | <Title> | — | — |');
     expect(cut).toContain('| S2 | <Title> | — | — |');
 
-    // Legacy heading must be absent from the emitted tasks template shape
-    // (the markdown code-fence block that cut tells the LLM to produce). The
-    // cut prompt still mentions `## Story Dependency Order` elsewhere as a
-    // legacy fallback the spec write-back tolerates, so we scope this
-    // assertion to the template shape block.
+    // Legacy heading must be absent from the whole prompt — cut never
+    // references `## Story Dependency Order`, not even as a write-back
+    // fallback.
+    expect(cut).not.toContain('## Story Dependency Order');
+
     const cutMarkdownMatch = cut.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
     expect(cutMarkdownMatch).not.toBeNull();
     const cutMarkdownBlock = cutMarkdownMatch![1]!;
