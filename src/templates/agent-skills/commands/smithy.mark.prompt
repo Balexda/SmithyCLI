@@ -44,15 +44,9 @@ Before starting, determine the mode:
       A feature is "unspecced" when its row's `Artifact` cell is `—` or when
       the row is missing from the table.
 
-      **Backward-compat clause**: If the file contains only the legacy
-      `## Feature Dependency Order` checkbox section and NO `## Dependency Order`
-      table, treat every feature as unspecced and do NOT modify the file during
-      routing. Mark will not migrate or write to legacy files in this phase.
-
-      If neither a `## Dependency Order` table nor a legacy
-      `## Feature Dependency Order` section exists, treat every feature as
-      unspecced. Do NOT create the section during routing — section creation
-      and write-back happen in Phase 6.
+      If the file has no `## Dependency Order` table, treat every feature
+      as unspecced. Do NOT create the section during routing — section
+      creation and write-back happen in Phase 6.
    d. **With feature number**: If the number is out of range, list available
       features with their numbers and titles, then stop. If the feature is
       already specc'd (per step c), extract the spec folder path from its
@@ -469,14 +463,13 @@ Write-back procedure:
    table: set `ID` to `F<N>`, `Title` to the feature title from the feature
    list parsed during Routing, `Depends On` to `—`, and `Artifact` to the
    spec folder path.
-6. **Table absent**: If the file contains neither a `## Dependency Order`
-   table nor a legacy `## Feature Dependency Order` section, create a new
-   `## Dependency Order` section just before `## Cross-Milestone Dependencies`
-   (or at the end of the file if that section is absent). Seed the table
-   from the feature list parsed during Routing — one `F<N>` row per feature
-   in feature-number order, with `Depends On` set to `—` for every row and
-   `Artifact` set to `—` for every row **except** the current feature's row,
-   which gets the spec folder path. Use this shape:
+6. **Table absent**: If the file has no `## Dependency Order` table, create
+   a new `## Dependency Order` section just before `## Cross-Milestone
+   Dependencies` (or at the end of the file if that section is absent).
+   Seed the table from the feature list parsed during Routing — one `F<N>`
+   row per feature in feature-number order, with `Depends On` set to `—`
+   for every row and `Artifact` set to `—` for every row **except** the
+   current feature's row, which gets the spec folder path. Use this shape:
 
    ```markdown
    ## Dependency Order
@@ -488,15 +481,8 @@ Write-back procedure:
    | F3 | Webhook Support | — | — |
    ```
 
-7. **Legacy format present**: If the file contains only the legacy
-   `## Feature Dependency Order` checkbox section and NO `## Dependency Order`
-   table, **skip write-back silently**. Do not migrate, rewrite, or annotate
-   the legacy section. Do not flip any checkbox. The spec folder is still
-   created on disk; only the feature map is left untouched. Mention in the
-   summary that the legacy feature map was not updated.
-
 The `Artifact` cell is the single source of truth for "does this feature
-have a spec yet" — it replaces the legacy checkbox signal entirely.
+have a spec yet".
 
 Then present a summary to the user:
 
