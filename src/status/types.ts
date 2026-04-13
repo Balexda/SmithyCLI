@@ -20,7 +20,11 @@ export type ArtifactType = 'rfc' | 'features' | 'spec' | 'tasks';
 
 /**
  * Rolled-up lifecycle status for an artifact record. Computed freshly on
- * each scan; `unknown` always implies at least one parse-failure warning.
+ * each scan. Under the final classifier (Slice 2+), `unknown` implies at
+ * least one parse-failure warning on the record. During Slice 1 the
+ * parser uses `unknown` as a placeholder on every record it returns
+ * because classification has not yet been wired; the Slice 2 classifier
+ * overwrites it.
  */
 export type Status = 'done' | 'in-progress' | 'not-started' | 'unknown';
 
@@ -117,8 +121,11 @@ export interface ArtifactRecord {
   /** Repo-relative path to the source file. */
   path: string;
   /**
-   * Extracted from the artifact's H1 or frontmatter. Falls back to the
-   * filename stem if no title is parseable.
+   * Extracted from the artifact's first H1, handling the canonical
+   * `# Feature Specification: <Title>` prefix. Falls back to the
+   * filename stem when no H1 exists. (Frontmatter-based title
+   * extraction is deliberately not implemented — Smithy planning
+   * artifacts use an H1 by convention.)
    */
   title: string;
   /** Rolled-up status per the data-model validation rules. */
