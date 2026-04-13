@@ -141,9 +141,9 @@ describe('loadSnippets', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(9);
+    expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(11);
+    expect(byCategory.agents).toHaveLength(12);
     expect(byCategory.skills).toHaveLength(1);
   });
 
@@ -163,6 +163,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.render.md');
     expect(commands).toContain('smithy.fix.md');
     expect(commands).toContain('smithy.orders.md');
+    expect(commands).toContain('smithy.spark.md');
   });
 
   it('prompts includes guidance and titles', () => {
@@ -171,7 +172,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, review, plan, reconcile, reconcile-slices, and slice', () => {
+  it('agents includes clarify, refine, implement, review, plan, reconcile, reconcile-slices, slice, prose, and survey', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
@@ -182,6 +183,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(agents).toContain('smithy.reconcile-slices.md');
     expect(agents).toContain('smithy.slice.md');
     expect(agents).toContain('smithy.prose.md');
+    expect(agents).toContain('smithy.survey.md');
   });
 
   it('smithy.slice.md is categorized as an agent', () => {

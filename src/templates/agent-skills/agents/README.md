@@ -19,7 +19,8 @@ Deployed to:
 | `smithy-review` | Code review with auto-fix capability | forge (after implementation) | opus |
 | `smithy-scout` | Pre-planning consistency scan (non-interactive) | render, mark, cut | sonnet |
 | `smithy-maid` | Post-implementation doc staleness scan (non-interactive) | forge (after review) | sonnet |
-| `smithy-prose` | Narrative/persuasive prose drafting for planning artifact sections | ignite (sub-phases 3a, 3b) | opus |
+| `smithy-prose` | Narrative/persuasive prose drafting for planning artifact sections | ignite (sub-phases 3a, 3b), spark (sub-phase 3a) | opus |
+| `smithy-survey` | Off-the-shelf landscape survey with WebFetch/WebSearch; returns alternatives comparison and build-vs-buy rationale | spark (Phase 2.5) | opus |
 
 ## Frontmatter Fields
 
@@ -37,7 +38,9 @@ model: opus  # or sonnet
 
 - **`tools`**: Which tools the sub-agent has access to. Read-only agents
   (clarify, refine, scout, maid) get `Read, Grep, Glob`. Implementation agents
-  (implement) also get `Edit, Write, Bash`.
+  (implement) also get `Edit, Write, Bash`. `smithy-survey` is the first
+  sub-agent to include `WebFetch` and `WebSearch` — reserved for the
+  landscape survey phase of `smithy.spark`.
 - **`model`**: Which model to use. Opus for complex reasoning (clarify, refine,
   implement, review). Sonnet for pattern-matching tasks (scout, maid).
 
