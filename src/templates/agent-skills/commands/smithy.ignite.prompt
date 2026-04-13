@@ -265,6 +265,14 @@ This sub-phase is orchestrator-inline — no sub-agent dispatch.
    - Fix cross-references between sections (e.g., a Milestone referencing a Goal
      by name, a Proposal referencing a Persona).
    - Verify that every expected RFC template section is present and non-empty.
+   - **Out of Scope safety net**: explicitly verify that the `## Out of Scope`
+     section exists and contains substantive content. If the section is missing
+     entirely, insert it in the correct template position (immediately after
+     `## Goals`) with the single placeholder entry `None identified at this
+     time`. If the section is present but empty or contains no substantive
+     content, fill it in place with the same placeholder phrasing `None
+     identified at this time`. This safety net mirrors the sub-phase 3c
+     directive so both enforcement layers use identical placeholder text.
 3. Rewrite the file in place with the harmonized content.
 
 Confirm the harmonize step completed before proceeding to Phase 4.

@@ -28,7 +28,7 @@
   - The existing constraint that smithy-plan produces only the Goals + Out of Scope sections (not a full planning document) is preserved
   - The Goals half of the dispatch directive remains unchanged in scope
 
-- [ ] **Add Out of Scope safety net to sub-phase 3g harmonize pass**
+- [x] **Add Out of Scope safety net to sub-phase 3g harmonize pass**
 
   In the same prompt file, extend sub-phase 3g (Harmonize) so the orchestrator's coherence pass includes an explicit Out of Scope check: if the section is missing or contains no substantive content after all sub-phases have run, the orchestrator inserts the placeholder text in place rather than leaving the section blank or absent. References AS US6-1, US6-4.
 
