@@ -189,7 +189,7 @@ As a developer reviewing an existing RFC via `smithy.ignite` Phase 0, I want the
 | US4 | Piecewise RFC Generation                       | US1, US2, US3 | `specs/2026-04-07-003-refactor-ignite-workflow/04-piecewise-rfc-generation.tasks.md`              |
 | US5 | Mandatory Personas Section                     | US1, US2, US4 | `specs/2026-04-07-003-refactor-ignite-workflow/05-mandatory-personas-section.tasks.md`            |
 | US6 | Mandatory Out of Scope Section                 | US1, US3, US4 | `specs/2026-04-07-003-refactor-ignite-workflow/06-mandatory-out-of-scope-section.tasks.md`        |
-| US7 | Session Resume from Partial State              | US4          | —                                                                                                 |
+| US7 | Session Resume from Partial State              | US4          | `specs/2026-04-07-003-refactor-ignite-workflow/07-session-resume-from-partial-state.tasks.md`     |
 | US8 | Cross-Session Question Deduplication           | US4          | —                                                                                                 |
 | US9 | Updated Phase 0 Audit Categories               | US1          | `specs/2026-04-07-003-refactor-ignite-workflow/09-updated-phase-0-audit-categories.tasks.md`      |
 
