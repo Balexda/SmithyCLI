@@ -131,12 +131,10 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Core triage logic must exist before parent commands can render
-   the annotation. This is the foundational behavioral change.
-- [x] **Slice 2** — Depends on Slice 1's annotation format being defined. Ensures
-   annotation visibility in downstream artifacts and provides verification.
+| ID | Title                                                        | Depends On | Artifact |
+|----|--------------------------------------------------------------|------------|----------|
+| S1 | Update Triage Rules and Critical Assumption Annotation      | —          | —        |
+| S2 | Annotation Visibility in Parent Command Artifacts           | S1         | —        |
 
 ### Cross-Story Dependencies
 

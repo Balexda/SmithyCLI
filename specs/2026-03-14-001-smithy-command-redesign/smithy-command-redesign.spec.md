@@ -217,18 +217,18 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 - Running `cut` with a user story number that doesn't exist in the spec — should error listing available user stories.
 - A feature spec with more than 99 user stories — should error indicating the feature needs to be split.
 
-## Story Dependency Order
+## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **User Story 6 — Strike: Fast Track Idea to Implementation** — Foundational entry point; the most-used command and standalone. No pipeline dependencies. → `specs/2026-03-14-001-smithy-command-redesign/06-fast-track-idea-to-implementation.tasks.md`
-- [x] **User Story 3 — Mark: Specify a Feature** — Core artifact producer; second entry point into the system. Required before cut and forge can be tested end-to-end. → `specs/2026-03-14-001-smithy-command-redesign/03-specify-a-feature.tasks.md`
-- [x] **User Story 4 — Cut: Slice a User Story into Tasks** — Depends on mark output (`.spec.md`). Bridges spec to implementation. → `specs/2026-03-14-001-smithy-command-redesign/04-slice-story-into-tasks.tasks.md`
-- [x] **User Story 5 — Forge: Implement a Slice as a PR** — Terminal pipeline step; depends on cut output (`.tasks.md`). → `specs/2026-03-14-001-smithy-command-redesign/05-implement-slice-as-pr.tasks.md`
-- [x] **User Story 7 — Audit: Context-Aware Artifact Review** — Quality gate; independent of pipeline order but benefits from stable artifact conventions. Can parallelize with mark/cut/forge. → `specs/2026-03-14-001-smithy-command-redesign/07-context-aware-artifact-review.tasks.md`
-- [x] **User Story 1 — Ignite: Workshop Broad Idea into RFC** — Upper-pipeline extension; depends on core loop (mark/cut/forge) being solid first. → `specs/2026-03-14-001-smithy-command-redesign/01-workshop-idea-into-rfc.tasks.md`
-- [x] **User Story 2 — Render: Break Milestone into Features** — Depends on ignite output (`.rfc.md`). → `specs/2026-03-14-001-smithy-command-redesign/02-break-milestone-into-features.tasks.md`
-- [x] **User Story 8 — Orders: Create Tickets from Artifacts** — Productivity accelerator; depends on stable artifact conventions across all other stories. Implement last. → `specs/2026-03-14-001-smithy-command-redesign/08-create-tickets-from-artifacts.tasks.md`
+| ID  | Title                                            | Depends On         | Artifact                                                                                 |
+|-----|--------------------------------------------------|--------------------|------------------------------------------------------------------------------------------|
+| US1 | Ignite: Workshop Broad Idea into RFC             | US3, US4, US5      | `specs/2026-03-14-001-smithy-command-redesign/01-workshop-idea-into-rfc.tasks.md`        |
+| US2 | Render: Break Milestone into Features            | US1                | `specs/2026-03-14-001-smithy-command-redesign/02-break-milestone-into-features.tasks.md` |
+| US3 | Mark: Specify a Feature                          | —                  | `specs/2026-03-14-001-smithy-command-redesign/03-specify-a-feature.tasks.md`             |
+| US4 | Cut: Slice a User Story into Tasks               | US3                | `specs/2026-03-14-001-smithy-command-redesign/04-slice-story-into-tasks.tasks.md`        |
+| US5 | Forge: Implement a Slice as a PR                 | US4                | `specs/2026-03-14-001-smithy-command-redesign/05-implement-slice-as-pr.tasks.md`         |
+| US6 | Strike: Fast Track Idea to Implementation        | —                  | `specs/2026-03-14-001-smithy-command-redesign/06-fast-track-idea-to-implementation.tasks.md` |
+| US7 | Audit: Context-Aware Artifact Review             | —                  | `specs/2026-03-14-001-smithy-command-redesign/07-context-aware-artifact-review.tasks.md` |
+| US8 | Orders: Create Tickets from Artifacts            | US1, US2, US3, US4, US5, US6, US7 | `specs/2026-03-14-001-smithy-command-redesign/08-create-tickets-from-artifacts.tasks.md` |
 
 ## Requirements
 

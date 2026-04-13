@@ -46,6 +46,6 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Single slice; self-contained template rewrite.
+| ID | Title                                                      | Depends On | Artifact |
+|----|------------------------------------------------------------|------------|----------|
+| S1 | Rewrite strike document structure and fix file extension  | —          | —        |

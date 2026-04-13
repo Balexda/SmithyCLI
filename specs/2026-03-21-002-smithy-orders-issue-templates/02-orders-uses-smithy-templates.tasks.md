@@ -62,7 +62,7 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [ ] **Slice 1** — establishes the template resolution algorithm, variable context definitions, and built-in default templates. Must come first because Slice 2 references these sections.
-- [ ] **Slice 2** — restructures the body construction to use the pipeline and adds tests. Depends on Slice 1's resolution phase and context tables being in place.
+| ID | Title                                                              | Depends On | Artifact |
+|----|--------------------------------------------------------------------|------------|----------|
+| S1 | Template resolution and interpolation context                     | —          | —        |
+| S2 | Restructure ticket body construction to use template pipeline     | S1         | —        |

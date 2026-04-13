@@ -84,8 +84,8 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Checklists must exist in source templates before they can be extracted
-- [x] **Slice 2** — Composition logic must exist before init can use it
-- [x] **Slice 3** — Connects everything: rewritten audit template + init wiring
+| ID | Title                                                         | Depends On | Artifact |
+|----|---------------------------------------------------------------|------------|----------|
+| S1 | Add audit checklist markers to producing command templates    | —          | —        |
+| S2 | Add audit template composition to templates.ts                | —          | —        |
+| S3 | Rewrite audit template and wire composition into init         | S1, S2     | —        |

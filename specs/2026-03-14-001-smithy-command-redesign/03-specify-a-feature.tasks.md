@@ -60,7 +60,7 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Must come first because Slice 2 deletes the source file that Slice 1 copies from.
-- [x] **Slice 2** — Safe to do after Slice 1 since the new template is in place.
+| ID | Title                                               | Depends On | Artifact |
+|----|-----------------------------------------------------|------------|----------|
+| S1 | Create smithy.mark template from smithy.design     | —          | —        |
+| S2 | Remove legacy smithy.design and update references  | S1         | —        |

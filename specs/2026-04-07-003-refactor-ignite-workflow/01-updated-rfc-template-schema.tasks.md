@@ -33,6 +33,6 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Only slice. Insert Out of Scope and Personas sections into the Phase 3 RFC template.
+| ID | Title                                                          | Depends On | Artifact |
+|----|----------------------------------------------------------------|------------|----------|
+| S1 | Insert Out of Scope and Personas into Phase 3 RFC Template    | —          | —        |

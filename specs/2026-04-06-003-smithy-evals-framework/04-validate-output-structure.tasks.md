@@ -51,10 +51,10 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1: StructuralValidator and SubAgentVerifier Library** — pure module with no runtime dependencies; establishes the vitest config for all evals tests; Slice 2 imports from it.
-- [x] **Slice 2: Wire Validator into the Orchestrator** — depends on Slice 1 exports; narrow orchestrator change that delivers the user-visible outcome.
+| ID | Title                                             | Depends On | Artifact |
+|----|---------------------------------------------------|------------|----------|
+| S1 | StructuralValidator and SubAgentVerifier Library  | —          | —        |
+| S2 | Wire Validator into the Orchestrator              | S1         | —        |
 
 ### Cross-Story Dependencies
 
