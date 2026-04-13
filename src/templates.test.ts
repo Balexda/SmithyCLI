@@ -526,16 +526,24 @@ describe('getComposedTemplates', () => {
     expect(subphase3bBlock).toContain('clarification');
 
     // Story 5: Sub-phase 3g harmonize verifies `## Personas` as a mandatory
-    // section and repairs it via smithy-prose if missing or empty.
+    // section and repairs it via smithy-prose if missing, empty, or
+    // misplaced. Bound the slice to the `## Phase 4` heading so the
+    // assertions only match content inside the 3g block itself — not the
+    // later RFC template code fence which also mentions `## Personas`,
+    // `Out of Scope`, and `Proposal`.
     const subphase3gIdx = ignite.indexOf('Sub-phase 3g');
     expect(subphase3gIdx).toBeGreaterThan(-1);
-    const subphase3gBlock = ignite.slice(subphase3gIdx);
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
     expect(subphase3gBlock).toContain('## Personas');
     expect(subphase3gBlock.toLowerCase()).toContain('mandatory');
     expect(subphase3gBlock).toContain('Out of Scope');
     expect(subphase3gBlock).toContain('Proposal');
     expect(subphase3gBlock).toContain('smithy-prose');
     expect(subphase3gBlock.toLowerCase()).toMatch(/repair|re-dispatch/);
+    // Repair dispatch must include idea_description (smithy-prose contract)
+    expect(subphase3gBlock).toContain('idea_description');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
