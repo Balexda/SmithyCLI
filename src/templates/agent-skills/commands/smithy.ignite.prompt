@@ -201,8 +201,15 @@ Dispatch **smithy-prose** with:
 - **idea_description**: the user's idea description or PRD content from intake
 - **clarify_output**: the Q&A and assumptions from Phase 2 clarification
 - **rfc_file_path**: the path to the accumulating `<slug>.rfc.md` (which at this point contains the header plus Summary and Motivation)
+- **tone_directives**: "Personas named or described during Phase 2 clarification are mandatory — every persona surfaced there MUST appear in the drafted `## Personas` section with a role and a description of how this RFC benefits them. Do not return placeholder or empty content."
 
-After smithy-prose returns, append the returned content to the RFC file.
+After smithy-prose returns, verify that the returned content contains a
+non-empty `## Personas` section with at least one named persona. If the
+sub-agent returns empty output, placeholder content (e.g., the template's
+`<Persona 1 ...>` literal), or a response missing the `## Personas` heading,
+**halt the pipeline** with a diagnostic that points at the Phase 2
+clarification record so the user can confirm which personas were identified
+before retrying. Otherwise, append the returned content to the RFC file.
 
 ### Sub-phase 3c: Goals + Out of Scope
 
@@ -257,15 +264,56 @@ Append the returned content to the RFC file.
 
 ### Sub-phase 3g: Harmonize
 
-This sub-phase is orchestrator-inline — no sub-agent dispatch.
+This sub-phase is primarily orchestrator-inline. The only exception is the
+Personas repair branch in step 3 below, which may conditionally re-dispatch
+**smithy-prose** when the coherence pass detects that the `## Personas`
+section is missing, empty, or placeholder-only. No other sub-agents are
+dispatched in 3g.
 
 1. Read the complete `<slug>.rfc.md` from disk.
 2. Perform a coherence pass:
    - Smooth tone across sections written by different sub-agents.
    - Fix cross-references between sections (e.g., a Milestone referencing a Goal
      by name, a Proposal referencing a Persona).
+   - **Reorder sections to match the RFC template structure** (Summary →
+     Motivation / Problem Statement → Goals → Out of Scope → Personas →
+     Proposal → Design Considerations → Decisions → Open Questions →
+     Specification Debt → Milestones → Dependency Order). This reordering is
+     required because sub-phase 3b appends Personas before sub-phase 3c
+     appends Out of Scope, so a correctly drafted Personas section will be
+     misplaced in the accumulating file and MUST be moved into canonical
+     position here.
    - Verify that every expected RFC template section is present and non-empty.
-3. Rewrite the file in place with the harmonized content.
+   - **`## Personas` is a mandatory verified section.** Explicitly check that
+     the harmonized RFC contains a non-empty `## Personas` section positioned
+     after `## Out of Scope` and before `## Proposal`, and that it lists at
+     least one named persona with a description (not placeholder text such as
+     the template's `<Persona 1 ...>` literal). Treat any of the following as
+     a failure that triggers the Personas repair branch in step 3: missing
+     section, empty section, placeholder-only content, or a non-empty
+     Personas section that remains outside the canonical position after the
+     reorder step above.
+3. **Personas repair.** If the Personas verification above fails for any
+   reason (missing, empty, placeholder-only, or still misplaced after
+   reorder), re-dispatch **smithy-prose** with:
+   - `section_assignment` = "Personas"
+   - `idea_description` = the user's original idea description or PRD content
+     from intake (same value passed to sub-phase 3b; required by the
+     smithy-prose contract)
+   - `clarify_output` = the Phase 2 clarification Q&A and assumptions
+   - `rfc_file_path` = the path to the accumulating `<slug>.rfc.md`
+   - `tone_directives` = "Personas named or described during Phase 2
+     clarification are mandatory. Do not return placeholder or empty content."
+
+   When smithy-prose returns, **replace** any existing `## Personas` section
+   in the RFC file with the returned content in place — do not append a
+   second Personas section. If no `## Personas` heading exists, splice the
+   returned section in at the canonical position (after `## Out of Scope`
+   and before `## Proposal`). Re-run the mandatory-section verification from
+   step 2 after repair; if Personas is still missing, empty, or misplaced,
+   halt the pipeline with a diagnostic pointing at the Phase 2 clarification
+   record.
+4. Rewrite the file in place with the harmonized content.
 
 Confirm the harmonize step completed before proceeding to Phase 4.
 
