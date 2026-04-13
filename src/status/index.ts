@@ -12,3 +12,4 @@ export {
   parseDependencyTable,
   type ParsedDependencyTable,
 } from './parser.js';
+export { classifyRecord } from './classifier.js';
