@@ -130,7 +130,7 @@
 
 ### Tasks
 
-- [ ] **Update all four audit-checklist snippets to check the 4-column Dependency Order table**
+- [x] **Update all four audit-checklist snippets to check the 4-column Dependency Order table**
 
   Update `src/templates/agent-skills/snippets/audit-checklist-spec.md`, `audit-checklist-features.md`, `audit-checklist-tasks.md`, and `audit-checklist-rfc.md`. Replace checkbox-format descriptions with 4-column table descriptions. The rfc snippet gains a new `Dependency Order` row (currently absent). No snippet should retain `[ ]`/`[x]` references for dependency ordering. Satisfies FR-029; AS 8.1–8.4.
 
@@ -142,7 +142,7 @@
   - The tasks snippet notes every `S<N>` row's `Artifact` cell should be `—`
   - The rfc snippet has a new `Dependency Order` row asserting the table appears after `## Milestones`
 
-- [ ] **Add templates.test.ts regression tests for 4-column Dependency Order format**
+- [x] **Add templates.test.ts regression tests for 4-column Dependency Order format**
 
   Add four test cases to `src/templates.test.ts` — one per authoring command (mark, render, cut, ignite) — that compose each template and assert the new format is present and the old format is absent. These are pattern-based assertions against the rendered template text. Satisfies FR-029; AS 8.1–8.4.
 

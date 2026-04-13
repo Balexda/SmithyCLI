@@ -607,6 +607,182 @@ describe('getComposedTemplates', () => {
     expect(cut).not.toContain('Competing Slice Lenses');
   });
 
+  it('mark template uses 4-column Dependency Order table with US<N> IDs', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+
+    // New unified heading present
+    expect(mark).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(mark).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Legacy heading must be absent (mark never mentions `## Story
+    // Dependency Order` even as a legacy fallback)
+    expect(mark).not.toContain('## Story Dependency Order');
+
+    // The emitted spec template shape (the markdown code-fence block that
+    // mark tells the LLM to produce) must not contain the legacy
+    // `## Feature Dependency Order` heading either. Mark's prompt still
+    // mentions that heading elsewhere as a legacy fallback that the
+    // feature-map write-back tolerates, so we scope this assertion to the
+    // template shape block.
+    const markMarkdownMatch = mark.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markMarkdownMatch).not.toBeNull();
+    const markMarkdownBlock = markMarkdownMatch![1]!;
+    expect(markMarkdownBlock).not.toContain('## Story Dependency Order');
+    expect(markMarkdownBlock).not.toContain('## Feature Dependency Order');
+    expect(markMarkdownBlock).toContain('## Dependency Order');
+    expect(markMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+    // US<N> rows must be present — a table with only a header is not enough
+    expect(markMarkdownBlock).toContain('| US1 |');
+    expect(markMarkdownBlock).toContain('| US2 |');
+
+    // No checkbox dependency rows inside the Dependency Order section.
+    // Scope to the spec template shape block (markMarkdownBlock) to avoid
+    // matching earlier prose references to '## Dependency Order' in backticks.
+    const depIdx = markMarkdownBlock.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = markMarkdownBlock.slice(depIdx + '## Dependency Order'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('render template uses 4-column Dependency Order table with F<N> IDs', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+
+    // New unified heading present
+    expect(render).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(render).toContain('| ID | Title | Depends On | Artifact |');
+
+    // F1 and F2 rows present in the table shape
+    expect(render).toContain('| F1 | <Title> | — | — |');
+    expect(render).toContain('| F2 | <Title> | — | — |');
+
+    // Legacy heading must be absent from the emitted feature map template
+    // shape (the markdown code-fence block that render tells the LLM to
+    // produce). The render prompt may still mention `## Feature Dependency
+    // Order` elsewhere as a legacy fallback the audit phase tolerates, so we
+    // scope this assertion to the template shape block.
+    const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(renderMarkdownMatch).not.toBeNull();
+    const renderMarkdownBlock = renderMarkdownMatch![1]!;
+    expect(renderMarkdownBlock).not.toContain('## Feature Dependency Order');
+    expect(renderMarkdownBlock).toContain('## Dependency Order');
+    expect(renderMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+
+    // No checkbox dependency rows inside the Dependency Order section
+    const depIdx = render.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = render.slice(depIdx + '## Dependency Order'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('cut template uses 4-column Dependency Order table with S<N> IDs', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+
+    // New unified heading present
+    expect(cut).toContain('## Dependency Order');
+
+    // 4-column table header present
+    expect(cut).toContain('| ID | Title | Depends On | Artifact |');
+
+    // S<N> rows present in the table shape
+    expect(cut).toContain('| S1 | <Title> | — | — |');
+    expect(cut).toContain('| S2 | <Title> | — | — |');
+
+    // Legacy heading must be absent from the emitted tasks template shape
+    // (the markdown code-fence block that cut tells the LLM to produce). The
+    // cut prompt still mentions `## Story Dependency Order` elsewhere as a
+    // legacy fallback the spec write-back tolerates, so we scope this
+    // assertion to the template shape block.
+    const cutMarkdownMatch = cut.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(cutMarkdownMatch).not.toBeNull();
+    const cutMarkdownBlock = cutMarkdownMatch![1]!;
+    expect(cutMarkdownBlock).not.toContain('## Story Dependency Order');
+    expect(cutMarkdownBlock).toContain('## Dependency Order');
+    expect(cutMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Old numbered-checkbox format must be absent.
+    // NOTE: Per-task checkboxes inside `## Slice N:` bodies are intentionally
+    // still present (they track implementation progress); do NOT assert those
+    // are absent.
+    expect(cut).not.toContain('1. [ ] **Slice');
+    expect(cut).not.toContain('2. [ ] **Slice');
+
+    // No checkbox dependency rows inside the Dependency Order section.
+    // Scope narrowly: from `## Dependency Order` to the first subsequent
+    // `### ` subheading or end-of-code-fence marker — whichever comes first.
+    // This avoids matching the task-format example (which legitimately uses
+    // `- [ ] **<Title>**` markup) that appears later in the prompt under the
+    // task authoring guidelines.
+    const depIdx = cut.indexOf('## Dependency Order');
+    expect(depIdx).toBeGreaterThan(-1);
+    const afterDep = cut.slice(depIdx + '## Dependency Order'.length);
+    const endMatch = afterDep.search(/\n### |\n```|\n## /);
+    const depSection =
+      endMatch === -1 ? afterDep : afterDep.slice(0, endMatch);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+  });
+
+  it('ignite RFC template contains ## Dependency Order after ## Milestones with M<N> IDs', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+
+    // Scope assertions to the markdown code fence block (the RFC template
+    // shape), mirroring the pattern used by sibling ignite tests.
+    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markdownBlockMatch).not.toBeNull();
+    const markdownBlock = markdownBlockMatch![1]!;
+
+    const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
+    const depIdx = markdownBlock.indexOf('\n## Dependency Order\n');
+
+    expect(milestonesIdx).toBeGreaterThan(-1);
+    expect(depIdx).toBeGreaterThan(-1);
+    expect(depIdx).toBeGreaterThan(milestonesIdx);
+
+    // Dependency Order must be the immediately next top-level (##) section
+    // after Milestones — no other ## heading may appear between them.
+    const afterMilestones = markdownBlock.slice(milestonesIdx + '\n## Milestones\n'.length);
+    const nextH2Match = afterMilestones.match(/\n## ([^\n]+)/);
+    expect(nextH2Match).not.toBeNull();
+    expect(nextH2Match![1]).toBe('Dependency Order');
+
+    // 4-column table header present in the RFC template block
+    expect(markdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Legacy headings must be absent from the RFC template shape
+    expect(markdownBlock).not.toContain('## Story Dependency Order');
+    expect(markdownBlock).not.toContain('## Feature Dependency Order');
+
+    // M<N> ID format appears in the table
+    expect(markdownBlock).toMatch(/\|\s*M1\s*\|/);
+    expect(markdownBlock).toMatch(/\|\s*M2\s*\|/);
+
+    // No checkbox markup in the Dependency Order section of the RFC block
+    const afterDep = markdownBlock.slice(depIdx + '\n## Dependency Order\n'.length);
+    const nextHeadingIdx = afterDep.search(/\n## /);
+    const depSection =
+      nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
+    expect(depSection).not.toMatch(/^- \[[ x]\] \*\*/m);
+    expect(depSection).not.toMatch(/^\d+\. \[[ x]\] \*\*/m);
+    expect(depSection).not.toContain('- [ ]');
+    expect(depSection).not.toContain('- [x]');
+  });
+
   it('variant does not change the number of template keys', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
