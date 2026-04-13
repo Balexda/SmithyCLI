@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Mandate non-empty Out of Scope in sub-phase 3c directive**
+- [x] **Mandate non-empty Out of Scope in sub-phase 3c directive**
 
   Strengthen the `Additional planning directives` field in sub-phase 3c (Goals + Out of Scope) inside the `{{#ifAgent}}` block of `src/templates/agent-skills/commands/smithy.ignite.prompt`. The directive must require smithy-plan to always emit a `## Out of Scope` section in its returned content — pulling exclusions from the clarification record when present, and using an explicit placeholder ("None identified at this time" or equivalent) when no exclusions were identified. References AS US6-2, US6-3, US6-4.
 
@@ -28,7 +28,7 @@
   - The existing constraint that smithy-plan produces only the Goals + Out of Scope sections (not a full planning document) is preserved
   - The Goals half of the dispatch directive remains unchanged in scope
 
-- [ ] **Add Out of Scope safety net to sub-phase 3g harmonize pass**
+- [x] **Add Out of Scope safety net to sub-phase 3g harmonize pass**
 
   In the same prompt file, extend sub-phase 3g (Harmonize) so the orchestrator's coherence pass includes an explicit Out of Scope check: if the section is missing or contains no substantive content after all sub-phases have run, the orchestrator inserts the placeholder text in place rather than leaving the section blank or absent. References AS US6-1, US6-4.
 
@@ -38,7 +38,7 @@
   - Safety-net language does not contradict 3c's directive — both point at the same placeholder phrasing
   - Existing 3g responsibilities (tone smoothing, cross-reference fixing, generic completeness verification, in-place rewrite) remain intact
 
-- [ ] **Assert ignite agent variant enforces Out of Scope mandate**
+- [x] **Assert ignite agent variant enforces Out of Scope mandate**
 
   In `src/templates.test.ts`, extend the existing `'ignite with claude variant renders competing plan dispatch'` test (the agent-variant rendering test that already covers Phase 3 sub-phases) to verify the strengthened 3c directive and the 3g safety net both render in the composed claude-variant ignite prompt. The new assertions must target distinctive phrases from the strengthened wording rather than substrings that could match the unrelated RFC template code fence.
 

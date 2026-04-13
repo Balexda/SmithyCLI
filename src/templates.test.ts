@@ -512,7 +512,6 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('smithy-prose');
     // Phase 4 agent path must NOT contain the unconditional file-write instruction
     expect(ignite).not.toContain('Write the RFC to');
-
     // Story 5: Sub-phase 3b enforces mandatory personas via tone_directives
     // and halts on empty/placeholder sub-agent output.
     const subphase3bIdx = ignite.indexOf('Sub-phase 3b');
@@ -544,6 +543,37 @@ describe('getComposedTemplates', () => {
     expect(subphase3gBlock.toLowerCase()).toMatch(/repair|re-dispatch/);
     // Repair dispatch must include idea_description (smithy-prose contract)
     expect(subphase3gBlock).toContain('idea_description');
+
+    // Story 6: Sub-phase 3c must mandate the Out of Scope section as a
+    // required, never-omitted output. "required section, never omitted" is
+    // introduced by the strengthened 3c directive and does not appear in the
+    // RFC template code fence, so it will regress if Story 6 task 1 is
+    // reverted.
+    expect(ignite).toContain('required section, never omitted');
+    // Story 6: Sub-phase 3g's coherence pass must contain the explicit
+    // safety-net bullet. "Out of Scope safety net" is introduced by Story 6
+    // task 2 and is absent from the RFC template code fence.
+    expect(ignite).toContain('Out of Scope safety net');
+    // Story 6: Shared canonical placeholder phrase — distinct from the RFC
+    // template's `<Explicitly excluded capability ...>` placeholder. Must
+    // appear in BOTH the sub-phase 3c directive and the sub-phase 3g safety
+    // net. A total-occurrences count is not enough because 3g references the
+    // phrase more than once on its own, which could mask a regression in 3c.
+    // Extract each sub-phase's block independently and assert the placeholder
+    // phrase is present in each, so both enforcement layers are locked in
+    // place.
+    const subPhase3cStart = ignite.indexOf('### Sub-phase 3c:');
+    const subPhase3dStart = ignite.indexOf('### Sub-phase 3d:');
+    expect(subPhase3cStart).toBeGreaterThan(-1);
+    expect(subPhase3dStart).toBeGreaterThan(subPhase3cStart);
+    const subPhase3cBlock = ignite.slice(subPhase3cStart, subPhase3dStart);
+    expect(subPhase3cBlock).toContain('None identified at this time');
+
+    // Use phase4Idx (already computed above) as the upper bound for the 3g
+    // block so the assertion is anchored to the sub-phase 3g body, not the
+    // later RFC template code fence.
+    const subPhase3gBody = ignite.slice(subphase3gIdx, phase4Idx);
+    expect(subPhase3gBody).toContain('None identified at this time');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
