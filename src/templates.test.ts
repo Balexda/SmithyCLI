@@ -634,13 +634,16 @@ describe('getComposedTemplates', () => {
     expect(markMarkdownBlock).not.toContain('## Feature Dependency Order');
     expect(markMarkdownBlock).toContain('## Dependency Order');
     expect(markMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+    // US<N> rows must be present — a table with only a header is not enough
+    expect(markMarkdownBlock).toContain('| US1 |');
+    expect(markMarkdownBlock).toContain('| US2 |');
 
     // No checkbox dependency rows inside the Dependency Order section.
-    // Slice from the first "## Dependency Order" heading to the next "## "
-    // heading and assert no checkbox list-item markup appears there.
-    const depIdx = mark.indexOf('## Dependency Order');
+    // Scope to the spec template shape block (markMarkdownBlock) to avoid
+    // matching earlier prose references to '## Dependency Order' in backticks.
+    const depIdx = markMarkdownBlock.indexOf('## Dependency Order');
     expect(depIdx).toBeGreaterThan(-1);
-    const afterDep = mark.slice(depIdx + '## Dependency Order'.length);
+    const afterDep = markMarkdownBlock.slice(depIdx + '## Dependency Order'.length);
     const nextHeadingIdx = afterDep.search(/\n## /);
     const depSection =
       nextHeadingIdx === -1 ? afterDep : afterDep.slice(0, nextHeadingIdx);
@@ -750,6 +753,13 @@ describe('getComposedTemplates', () => {
     expect(milestonesIdx).toBeGreaterThan(-1);
     expect(depIdx).toBeGreaterThan(-1);
     expect(depIdx).toBeGreaterThan(milestonesIdx);
+
+    // Dependency Order must be the immediately next top-level (##) section
+    // after Milestones — no other ## heading may appear between them.
+    const afterMilestones = markdownBlock.slice(milestonesIdx + '\n## Milestones\n'.length);
+    const nextH2Match = afterMilestones.match(/\n## ([^\n]+)/);
+    expect(nextH2Match).not.toBeNull();
+    expect(nextH2Match![1]).toBe('Dependency Order');
 
     // 4-column table header present in the RFC template block
     expect(markdownBlock).toContain('| ID | Title | Depends On | Artifact |');
