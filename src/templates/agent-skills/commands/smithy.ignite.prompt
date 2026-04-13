@@ -27,29 +27,115 @@ If no input is clear from the above, ask the user what idea they want to worksho
 
 Before starting, determine the mode:
 
-1. If the input points to an existing `.rfc.md` file, go to **Phase 0: Review Loop**.
-2. If the input is a file path (not `.rfc.md`), read the file and go to **Phase 1: Intake**.
-3. If the input is a description string, go to **Phase 1: Intake**.
+1. If the input points to an existing `.rfc.md` file, go to **Phase 0** —
+   Phase 0's state-detection step now classifies the file itself and decides
+   whether to review a complete RFC, resume a partial one from its first
+   missing sub-phase, or treat a header-only file as fresh.
+2. If the input is a file path (not `.rfc.md`), read the file and go to
+   **Phase 1: Intake**.
+3. If the input is a description string and no matching `docs/rfcs/` folder
+   is found during intake, go to **Phase 1: Intake** as normal — this is the
+   default new-idea path and Phase 1 proceeds unchanged for genuinely new
+   ideas.
 
 **Mid-intake redirect**: During Phase 1, step 2 scans `docs/rfcs/` for existing
-folders. If a folder's slug is a close match to the derived slug for the new idea
-(e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user asks to
-"build a plugin system"), **stop intake** and ask the user:
-
-> "An existing RFC was found at `docs/rfcs/<YYYY-NNN-slug>/<slug>.rfc.md`.
-> Would you like to **review and refine** the existing RFC, or **create a new one**?"
-
-- If the user chooses to review, go to **Phase 0: Review Loop** with that `.rfc.md`.
-- If the user chooses to create new, continue Phase 1 with the next available `NNN`.
+folders. If a folder's slug is a close match to the derived slug for the new
+idea (e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user
+asks to "build a plugin system"), **stop intake** and hand control to
+**Phase 0** with the matched `.rfc.md`. Do **not** ask the user "review or
+create new" inline here — that decision is delegated to Phase 0's
+state-detection step, which is now the single place that handles review,
+resume, and new-RFC branching. The option to **create a new RFC instead** of
+touching the existing file remains available to the user from inside Phase 0's
+`partial` and `complete` branches, so nothing is lost by deferring the
+decision.
 
 ---
 
+{{#ifAgent}}
+## Phase 0: State Detection and Review Loop
+{{else}}
 ## Phase 0: Review Loop
+{{/ifAgent}}
 
 Triggered when:
 - The input explicitly points to an existing `.rfc.md` file, **or**
 - Phase 1 detected a matching RFC folder during the `docs/rfcs/` scan and the
   user chose to review it (see Routing above).
+
+{{#ifAgent}}
+### Phase 0.0: State Detection
+
+Before running the review loop, classify the existing RFC file to decide
+whether this is a full review, a resume from partial state, or a fresh-start
+header-only file.
+
+1. Read the RFC file from disk and enumerate its `##` headings.
+2. Classify the file as exactly one of three states using the
+   section-to-sub-phase map below:
+   - **`fresh`** — only the RFC header is present; none of the mandatory
+     template `##` sections have been written yet.
+   - **`partial`** — at least one but not all of the mandatory template
+     sections are present.
+   - **`complete`** — every mandatory template section is present.
+3. Report to the user which sections are present, which are missing, and
+   which state was detected.
+
+The section-to-sub-phase map below pairs the RFC template's mandatory `##`
+section headings with the sub-phase that produces each section. Use the exact
+same section titles as the RFC template code fence later in this prompt.
+
+| RFC section(s)                                    | Sub-phase |
+|---------------------------------------------------|-----------|
+| `## Summary`, `## Motivation / Problem Statement` | 3a        |
+| `## Personas`                                     | 3b        |
+| `## Goals`, `## Out of Scope`                     | 3c        |
+| `## Proposal`, `## Design Considerations`         | 3d        |
+| `## Decisions`, `## Open Questions`               | 3e        |
+| `## Milestones`                                   | 3f        |
+
+### Phase 0.1: Branch on Detected State
+
+Route the pipeline based on the classification from Phase 0.0. Each state
+routes to a distinct next step:
+
+- **`complete`** → continue into `Phase 0a–0b: Audit & Refinement Questions`
+  below, exactly as before. The existing review-loop behavior for genuinely
+  complete RFCs is unchanged by this branching step.
+- **`partial`** → compute the **first missing sub-phase** as the lowest
+  sub-phase ID (3a → 3b → 3c → 3d → 3e → 3f) whose section(s) from the map
+  above are not yet present in the file. Tell the user which sections are
+  present, which sections are missing, and which sub-phase the pipeline will
+  resume from, then **ask the user to confirm** the resume. If the user
+  confirms, hand off to **Phase 3** beginning at that first missing
+  sub-phase (see the Phase 3 resume note for how the hand-off is honored).
+  Do **not** re-run any earlier sub-phase — the sections already on disk are
+  authoritative and must be preserved in place.
+- **`fresh`** → skip the review loop entirely. Leave the existing header-only
+  file on disk **untouched** (do not recreate it) and hand off to **Phase 3**
+  starting at sub-phase **3a**.
+
+From the `partial` or `complete` branch, the user may always choose to
+**create a new RFC instead** rather than touching the existing file; in that
+case, continue Phase 1 with the next available `NNN` so the existing file is
+preserved and a fresh RFC is drafted alongside it.
+
+**Partial RFC from a different idea.** Before resuming a `partial` file,
+verify that the existing `## Summary` and `## Motivation / Problem Statement`
+are contextually related to the current idea. If they are not a plausible
+match for the idea the user is now igniting, warn the user explicitly and
+offer exactly three options: **overwrite** the existing file (discard it and
+start a fresh draft in place), **create a new RFC** in a different folder
+with the next available `NNN`, or **proceed anyway** (treating the mismatch
+as intentional and resuming into the existing file as-is).
+
+**Session crash during harmonization (3g).** If the detection step classifies
+a file as `complete` but its enumerated headings are inconsistent, duplicated,
+or out of canonical template order — the symptom of a harmonization pass
+that crashed mid-rewrite — enter the `Phase 0a–0b` review loop below so that
+`smithy-refine` can identify and repair the inconsistencies.
+
+{{/ifAgent}}
 
 ### Phase 0a–0b: Audit & Refinement Questions
 
@@ -181,6 +267,32 @@ content to `<slug>.rfc.md` before dispatching the next sub-phase. This is the
 append-and-continue protocol for sub-phases 3a–3f. For inline sub-phase 3e, the
 orchestrator appends directly. Sub-phase 3g is an exception: it rewrites the
 entire file in place (harmonize pass) rather than appending.
+
+### Resume Hand-off from Phase 0
+
+If Phase 0's state-detection step (Phase 0.1) handed off to Phase 3 with a
+specific starting sub-phase (either a `partial` RFC resumed at its first
+missing sub-phase, or a `fresh` header-only RFC resumed at 3a), honor the
+hand-off with the following rules:
+
+1. **Skip** every sub-phase earlier than the designated starting sub-phase.
+   Those sections are already present on disk and MUST NOT be re-run — their
+   prior-session output is authoritative.
+2. **Leave the accumulating `<slug>.rfc.md` on disk untouched on entry.** The
+   `RFC File Creation` step above only runs in the fresh-pipeline case where
+   no file exists yet; on resume, the file Phase 0 classified is already on
+   disk (either a header-only `fresh` file or a `partial` file with some
+   sections already written) and is preserved as-is.
+3. **Begin dispatch** from the designated starting sub-phase and continue
+   through sub-phase 3g normally, using the append-and-continue protocol
+   above for each remaining sub-phase.
+
+No extra context bridging is required for resumed sub-phases. Each sub-phase
+below already passes `rfc_file_path` — the path to the accumulating
+`<slug>.rfc.md` — to its dispatched sub-agent, so every section written by an
+earlier sub-phase (whether in this session or in an interrupted prior
+session) flows into the current sub-agent via the existing disk-read
+contract.
 
 ### Sub-phase 3a: Summary + Motivation
 

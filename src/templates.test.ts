@@ -574,6 +574,49 @@ describe('getComposedTemplates', () => {
     // later RFC template code fence.
     const subPhase3gBody = ignite.slice(subphase3gIdx, phase4Idx);
     expect(subPhase3gBody).toContain('None identified at this time');
+
+    // Story 7: Phase 0 state detection and branch. The renamed Phase 0
+    // heading must cover both detection and the review loop in the agent
+    // variant, and the three classification states must appear verbatim in
+    // backticks so the detection vocabulary is locked in place.
+    expect(ignite).toContain('Phase 0: State Detection and Review Loop');
+    expect(ignite).toContain('`fresh`');
+    expect(ignite).toContain('`partial`');
+    expect(ignite).toContain('`complete`');
+    // The partial branch must wire the hand-off to the "first missing
+    // sub-phase" — a distinctive phrase introduced by Story 7 task 1/2 that
+    // does not collide with the RFC template code fence or the audit table.
+    expect(ignite).toContain('first missing sub-phase');
+    // The partial branch must require user confirmation before resuming
+    // (AS US7-1) and must explicitly forbid re-running completed sub-phases
+    // (AS US7-2).
+    const phase0DetectIdx = ignite.indexOf('Phase 0.0: State Detection');
+    const phase0ApplyIdx = ignite.indexOf('Phase 0c: Apply Refinements');
+    expect(phase0DetectIdx).toBeGreaterThan(-1);
+    expect(phase0ApplyIdx).toBeGreaterThan(phase0DetectIdx);
+    const phase0Block = ignite.slice(phase0DetectIdx, phase0ApplyIdx);
+    expect(phase0Block.toLowerCase()).toContain('confirm');
+    expect(phase0Block.toLowerCase()).toMatch(/re-run any earlier sub-phase/);
+    // Edge case: contextual mismatch offers overwrite / new RFC / proceed
+    // anyway as explicit options.
+    expect(phase0Block.toLowerCase()).toContain('overwrite');
+    expect(phase0Block.toLowerCase()).toContain('proceed anyway');
+    // Edge case: harmonize-crash note routes inconsistent "complete" files
+    // into the review loop.
+    expect(phase0Block.toLowerCase()).toContain('harmonization');
+
+    // Story 7: Phase 3 resume note lives in the Phase 3 preamble (alongside
+    // the append-and-continue protocol), not inside any individual sub-phase
+    // block. Slice from the start of Phase 3 to the first sub-phase to
+    // verify placement.
+    const phase3Idx = ignite.indexOf('## Phase 3');
+    const phase3aIdx = ignite.indexOf('### Sub-phase 3a');
+    expect(phase3Idx).toBeGreaterThan(-1);
+    expect(phase3aIdx).toBeGreaterThan(phase3Idx);
+    const phase3Preamble = ignite.slice(phase3Idx, phase3aIdx);
+    expect(phase3Preamble).toContain('Resume Hand-off');
+    expect(phase3Preamble.toLowerCase()).toContain('skip');
+    expect(phase3Preamble).toContain('rfc_file_path');
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
@@ -584,6 +627,13 @@ describe('getComposedTemplates', () => {
     expect(ignite).not.toContain('Competing Plan Lenses');
     // Default (non-agent) path retains the unconditional file-write instruction
     expect(ignite).toContain('Write the RFC to');
+    // Story 7: the new Phase 0 state-detection step lives only inside
+    // `{{#ifAgent}}`, so the default variant must not render its heading,
+    // classification states, or resume note.
+    expect(ignite).not.toContain('State Detection and Review Loop');
+    expect(ignite).not.toContain('Phase 0.0: State Detection');
+    expect(ignite).not.toContain('Resume Hand-off');
+    expect(ignite).not.toContain('first missing sub-phase');
   });
 
   it('ignite RFC template contains Out of Scope and Personas sections in correct order', () => {
