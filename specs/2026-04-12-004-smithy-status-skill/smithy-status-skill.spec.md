@@ -227,7 +227,7 @@ As a Smithy user with multiple in-progress artifacts, I want `smithy status` to 
 
 | ID   | Title                                                                      | Depends On     | Artifact |
 |------|----------------------------------------------------------------------------|----------------|----------|
-| US1  | Scan Artifacts and Classify Status                                         | —              | —        |
+| US1  | Scan Artifacts and Classify Status                                         | —              | `specs/2026-04-12-004-smithy-status-skill/01-scan-artifacts-and-classify-status.tasks.md` |
 | US2  | Render a Hierarchical Status View                                          | US1            | —        |
 | US3  | Collapse Completed Items                                                   | US2            | —        |
 | US4  | Suggest the Next Command                                                   | US1            | —        |
