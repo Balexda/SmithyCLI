@@ -163,10 +163,10 @@ ls /tmp/smithy-test/.claude/commands/smithy.oldname.md 2>/dev/null && echo "FAIL
 3. Inspect the returned output.
 
 **Expected**:
-- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not in the questions list
+- [ ] The item about PCI-DSS compliance or data storage (Critical impact, High confidence) appears in the **assumptions list**, not as a debt item
 - [ ] That assumption carries a `[Critical Assumption]` annotation in the format `[Impact: Critical · Confidence: High]`
-- [ ] No Critical+High item appears as an interactive question
-- [ ] Non-High-confidence items (if any) remain in the questions section
+- [ ] No Critical+High item appears in `debt_items`
+- [ ] Non-High-confidence items (if any) are routed to `debt_items`, not a questions section
 
 ---
 
@@ -198,7 +198,7 @@ rather than into an interactive Questions list.
 - [ ] High-confidence items appear in the assumptions list
 - [ ] Medium and Low-confidence items appear in a `debt_items` list with
       structured columns: ID (SD-NNN), Description, Source Category, Impact,
-      Confidence, Status (`open`)
+      Confidence, Status (`open`), Resolution (`—` for unresolved items)
 - [ ] Each debt item has a sequential SD-NNN identifier starting at SD-001
 - [ ] No `### Questions` section appears in the output
 - [ ] The return summary includes `bail_out` (boolean) and
