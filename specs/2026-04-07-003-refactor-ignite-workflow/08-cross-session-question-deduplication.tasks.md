@@ -23,14 +23,14 @@
 
   _Acceptance criteria:_
   - Step references the RFC folder path derived in Phase 1 (no hard-coded path)
-  - Step instructs the orchestrator to skip the read silently when no `.clarify-log.md` exists, satisfying AS 8.3
+  - Step instructs the orchestrator to skip the read silently when no `.clarify-log.md` exists, satisfying AS US8-3
   - Step instructs the orchestrator to extract only the last two sessions (per the Read Protocol), not the full history
-  - Step instructs the orchestrator to include the dedup instruction quoted in the Read Protocol ("Do not re-ask questions already answered in this log.") when passing the log content to smithy-clarify, satisfying AS 8.2
+  - Step instructs the orchestrator to include the dedup instruction quoted in the Read Protocol ("Do not re-ask questions already answered in this log.") when passing the log content to smithy-clarify, satisfying AS US8-2
   - Step is positioned so that smithy-clarify still receives all existing Phase 2 inputs (criteria, context, special instructions) unchanged
 
 - [ ] **Add clarify-log write step after Phase 2 completes**
 
-  In the same prompt file, append a step at the end of Phase 2 (after smithy-clarify returns its summary, before Phase 1.5 / Phase 3 begins) that tells the orchestrator to format the returned assumptions and Q&A as a new `### Session YYYY-MM-DD` entry per the Clarify Log Contract Write Format and append it to `.clarify-log.md` in the RFC folder. The step must ensure the RFC folder exists (creating it if needed) so the write succeeds even on the first session before sub-phase 3a runs, satisfying AS 8.1.
+  In the same prompt file, append a step at the end of Phase 2 (after smithy-clarify returns its summary, before Phase 3 begins) that tells the orchestrator to format the returned assumptions and Q&A as a new `### Session YYYY-MM-DD` entry per the Clarify Log Contract Write Format and append it to `.clarify-log.md` in the RFC folder. The step must ensure the RFC folder exists (creating it if needed) so the write succeeds even on the first session before sub-phase 3a runs, satisfying AS US8-1.
 
   _Acceptance criteria:_
   - Step references the Write Format defined in the contracts file rather than restating it
@@ -38,7 +38,7 @@
   - Step instructs the orchestrator to append (not overwrite) so prior sessions are preserved per the data model's append-only validation rule
   - Step uses the current date for the session heading
   - Step pulls assumptions and Q&A from the smithy-clarify return summary (not from a separate source)
-  - Step is positioned after the Phase 2 dispatch instructions and before any Phase 1.5 or Phase 3 content
+  - Step is positioned after the Phase 2 dispatch instructions and before any Phase 3 content
 
 - [ ] **Assert clarify-log read and write instructions render in the claude variant**
 
