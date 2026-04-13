@@ -45,6 +45,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
   | **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
   | **Task Scoping** | Do tasks follow the structured format (bold title + behavioral description + acceptance criteria bullets)? Are any tasks over 150 words? Do tasks reference acceptance scenarios by ID rather than restating their content? Are test mechanics absent (no stub configs, mock patterns, assertion structures)? Are there standalone test tasks, file-reading tasks, verification tasks, line-number references, exact code prescriptions, exact error strings, or exact function signatures that would break fresh-context dispatch or create brittleness? |
+  | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Spec Alignment** | Do the slices fully cover the user story's acceptance scenarios? Has the spec changed since the tasks file was written? |
 
 - **Target files**: the `.tasks.md` file alongside the source spec (`.spec.md`),
@@ -57,6 +58,12 @@ After the sub-agent returns its summary, update the existing tasks file on disk
 to incorporate the refinements. Present a summary of what changed — do not dump
 the full file contents into the terminal. **STOP and ask** the user to review
 the updated file at its path and let you know if further changes are needed.
+
+**Debt resolution**: When the refine sub-agent identifies debt items that can
+now be resolved, update those items in the tasks file's `## Specification Debt`
+table: change status from `open` to `resolved` and populate the Resolution
+column with a note describing how and when the item was addressed (e.g.,
+"Resolved 2026-04-10 — user confirmed webhooks are HTTP-only").
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through
