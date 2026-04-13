@@ -542,9 +542,9 @@ if further changes are needed.
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,
 update those items in the spec's `## Specification Debt` table: change status
-from `open` to `resolved` and populate the Resolution column with a note
-describing how and when the item was addressed (e.g., `Resolved 2026-04-10 —
-user confirmed webhooks are HTTP-only`).
+from `open` or `inherited` to `resolved` and populate the Resolution column
+with a note describing how and when the item was addressed (e.g., `Resolved
+2026-04-10 — user confirmed webhooks are HTTP-only`).
 
 **Priority re-ordering**: If any user story priorities changed during refinement,
 renumber and reorder the user stories so all P1 stories come first, then P2,
