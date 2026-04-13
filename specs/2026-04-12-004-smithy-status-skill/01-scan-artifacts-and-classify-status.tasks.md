@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Define status scanner types in `src/status/types.ts`**
+- [x] **Define status scanner types in `src/status/types.ts`**
 
   Create `src/status/types.ts` declaring the TypeScript entities specified in `smithy-status-skill.data-model.md`: `ArtifactType`, `Status`, `ArtifactRecord`, `DependencyRow`, `DependencyOrderTable`, `NextAction`, and `ScanSummary`. Re-export through `src/status/index.ts` so downstream modules and tests have a single import surface.
 
