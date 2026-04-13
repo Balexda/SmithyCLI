@@ -448,6 +448,19 @@ FR-006 of the reduce-interaction-friction spec. PRDs have no `## Out of
 Scope` section — scope edges are folded into the Problem Statement and debt
 table.
 
+**Dependency-order hierarchy note**: The PRD template deliberately contains
+**no** `## Dependency Order` section. The canonical 4-column Dependency
+Order table format — documented as the single source of truth in
+`src/templates/agent-skills/README.md` — applies only to artifacts that
+decompose in the strict parent/child lineage
+`RFC → Feature Map → Spec → Tasks` (milestones → features → stories →
+slices). PRDs sit **upstream** of that lineage as an optional entry point
+before `smithy.ignite`; they do not decompose into milestones or feature
+maps and therefore have nothing to order or track with an `Artifact`
+column. Do not retrofit a `## Dependency Order` section onto the PRD
+template in a future refactor — the RFC that `smithy.ignite` produces from
+this PRD is where the first Dependency Order table appears.
+
 **Forward compatibility**: Once FR-007 of the reduce-interaction-friction
 spec lands, `smithy.ignite` will automatically inherit spark's debt items
 when invoked on a `.prd.md` file (flagged as "inherited from PRD"). Spark
