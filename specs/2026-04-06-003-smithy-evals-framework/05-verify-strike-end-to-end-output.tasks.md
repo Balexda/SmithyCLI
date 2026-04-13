@@ -62,9 +62,9 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-1. [ ] **Slice 1: Strike Scenario with Structural Expectations** — single PR-sized slice delivering the end-to-end strike eval via the existing runner + validator stack.
+| ID | Title                                          | Depends On | Artifact |
+|----|------------------------------------------------|------------|----------|
+| S1 | Strike Scenario with Structural Expectations   | —          | —        |
 
 ### Cross-Story Dependencies
 

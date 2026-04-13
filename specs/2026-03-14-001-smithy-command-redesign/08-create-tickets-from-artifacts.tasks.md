@@ -60,7 +60,7 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Must come first because Slice 2 deletes the source file whose patterns Slice 1 draws from.
-- [x] **Slice 2** — Safe after Slice 1 since the new template is in place.
+| ID | Title                                                           | Depends On | Artifact |
+|----|-----------------------------------------------------------------|------------|----------|
+| S1 | Create smithy.orders template with per-extension ticket mapping | —          | —        |
+| S2 | Remove legacy smithy.load and update references                 | S1         | —        |

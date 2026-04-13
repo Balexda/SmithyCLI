@@ -43,6 +43,6 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Single slice; the rewrite is self-contained.
+| ID | Title                                                      | Depends On | Artifact |
+|----|------------------------------------------------------------|------------|----------|
+| S1 | Rewrite smithy.forge template for slice-based workflow     | —          | —        |

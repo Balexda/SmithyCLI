@@ -59,9 +59,9 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-1. [ ] **Slice 1** — Only slice. Tasks within the slice are ordered sequentially: update the ignite Phase 0 table first, then the shared snippet, then add the template-composition assertions that cover both surfaces.
+| ID | Title                                             | Depends On | Artifact |
+|----|---------------------------------------------------|------------|----------|
+| S1 | Align Audit Categories with New RFC Sections     | —          | —        |
 
 ### Cross-Story Dependencies
 

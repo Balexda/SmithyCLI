@@ -60,7 +60,7 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Core template must exist before the review loop can be added or tested.
-- [x] **Slice 2** — Adds review loop on top of the working template from Slice 1.
+| ID | Title                                      | Depends On | Artifact |
+|----|--------------------------------------------|------------|----------|
+| S1 | Core Ignite Template — New RFC Generation  | —          | —        |
+| S2 | Review Loop for Existing RFCs              | S1         | —        |

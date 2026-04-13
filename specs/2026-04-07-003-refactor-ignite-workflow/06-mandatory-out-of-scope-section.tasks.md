@@ -63,9 +63,9 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-1. [ ] **Slice 1** — Only slice. Tasks within the slice are ordered: the 3c directive (task 1) defines the placeholder phrasing that the 3g safety net (task 2) must mirror, and the test (task 3) asserts both render after they exist.
+| ID | Title                                                                   | Depends On | Artifact |
+|----|-------------------------------------------------------------------------|------------|----------|
+| S1 | Enforce Out of Scope in 3c Dispatch and 3g Harmonize Safety Net        | —          | —        |
 
 ### Cross-Story Dependencies
 

@@ -46,9 +46,9 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — This is the only slice. It is the prerequisite for all other stories in the spec.
+| ID | Title                                     | Depends On | Artifact |
+|----|-------------------------------------------|------------|----------|
+| S1 | Headless Execution Validation Spike       | —          | —        |
 
 ### Cross-Story Dependencies
 

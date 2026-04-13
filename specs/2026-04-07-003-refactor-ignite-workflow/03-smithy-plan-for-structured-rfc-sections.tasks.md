@@ -38,9 +38,9 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Only slice. The prompt change and test augmentation are tightly coupled (the test verifies the rendering of the prompt change) and belong in a single PR. Covers Acceptance Scenarios US3-1, US3-2, US3-3, US3-4.
+| ID | Title                                                                          | Depends On | Artifact |
+|----|--------------------------------------------------------------------------------|------------|----------|
+| S1 | Add smithy-plan Dispatch Instructions to Phase 3 (Agent-Mode Gated)           | —          | —        |
 
 ### Cross-Story Dependencies
 

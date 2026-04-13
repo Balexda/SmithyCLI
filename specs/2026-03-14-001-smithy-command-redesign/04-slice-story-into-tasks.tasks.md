@@ -37,6 +37,6 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [x] **Slice 1** — Single verification slice, no dependencies.
+| ID | Title                                      | Depends On | Artifact |
+|----|--------------------------------------------|------------|----------|
+| S1 | Verify smithy.cut template spec alignment  | —          | —        |

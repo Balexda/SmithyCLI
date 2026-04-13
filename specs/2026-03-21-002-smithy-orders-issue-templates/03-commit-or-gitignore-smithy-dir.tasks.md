@@ -40,6 +40,6 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [ ] **Slice 1** — This is the only slice. It depends on Story 1 (template creation) being implemented first, as the prompt is triggered by successful template creation.
+| ID | Title                                            | Depends On | Artifact |
+|----|--------------------------------------------------|------------|----------|
+| S1 | Add commit-or-gitignore prompt to init flow     | —          | —        |

@@ -59,7 +59,7 @@ _None — all ambiguities resolved._
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-- [ ] **Slice 1** — Templates and utility must exist before the init flow can call them
-- [ ] **Slice 2** — Wires everything together into the user-facing feature; depends on Slice 1's utility functions
+| ID | Title                                                                          | Depends On | Artifact |
+|----|--------------------------------------------------------------------------------|------------|----------|
+| S1 | Default template content and provisioning utility                              | —          | —        |
+| S2 | Init flow integration, CLI flag, interactive prompts, and uninit guard         | S1         | —        |
