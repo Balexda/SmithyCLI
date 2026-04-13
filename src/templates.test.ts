@@ -617,8 +617,23 @@ describe('getComposedTemplates', () => {
     // 4-column table header present
     expect(mark).toContain('| ID | Title | Depends On | Artifact |');
 
-    // Legacy heading must be absent
+    // Legacy heading must be absent (mark never mentions `## Story
+    // Dependency Order` even as a legacy fallback)
     expect(mark).not.toContain('## Story Dependency Order');
+
+    // The emitted spec template shape (the markdown code-fence block that
+    // mark tells the LLM to produce) must not contain the legacy
+    // `## Feature Dependency Order` heading either. Mark's prompt still
+    // mentions that heading elsewhere as a legacy fallback that the
+    // feature-map write-back tolerates, so we scope this assertion to the
+    // template shape block.
+    const markMarkdownMatch = mark.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(markMarkdownMatch).not.toBeNull();
+    const markMarkdownBlock = markMarkdownMatch![1]!;
+    expect(markMarkdownBlock).not.toContain('## Story Dependency Order');
+    expect(markMarkdownBlock).not.toContain('## Feature Dependency Order');
+    expect(markMarkdownBlock).toContain('## Dependency Order');
+    expect(markMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
 
     // No checkbox dependency rows inside the Dependency Order section.
     // Slice from the first "## Dependency Order" heading to the next "## "
@@ -643,12 +658,21 @@ describe('getComposedTemplates', () => {
     // 4-column table header present
     expect(render).toContain('| ID | Title | Depends On | Artifact |');
 
-    // Legacy heading must be absent in the emitted feature map template
-    // (the audit checklist still references `## Feature Dependency Order`
-    // as a legacy format, so scope this check to the feature map template
-    // shape section — verified by the presence of `F1` and `F2` rows).
+    // F1 and F2 rows present in the table shape
     expect(render).toContain('| F1 | <Title> | — | — |');
     expect(render).toContain('| F2 | <Title> | — | — |');
+
+    // Legacy heading must be absent from the emitted feature map template
+    // shape (the markdown code-fence block that render tells the LLM to
+    // produce). The render prompt may still mention `## Feature Dependency
+    // Order` elsewhere as a legacy fallback the audit phase tolerates, so we
+    // scope this assertion to the template shape block.
+    const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(renderMarkdownMatch).not.toBeNull();
+    const renderMarkdownBlock = renderMarkdownMatch![1]!;
+    expect(renderMarkdownBlock).not.toContain('## Feature Dependency Order');
+    expect(renderMarkdownBlock).toContain('## Dependency Order');
+    expect(renderMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
 
     // No checkbox dependency rows inside the Dependency Order section
     const depIdx = render.indexOf('## Dependency Order');
@@ -674,6 +698,18 @@ describe('getComposedTemplates', () => {
     // S<N> rows present in the table shape
     expect(cut).toContain('| S1 | <Title> | — | — |');
     expect(cut).toContain('| S2 | <Title> | — | — |');
+
+    // Legacy heading must be absent from the emitted tasks template shape
+    // (the markdown code-fence block that cut tells the LLM to produce). The
+    // cut prompt still mentions `## Story Dependency Order` elsewhere as a
+    // legacy fallback the spec write-back tolerates, so we scope this
+    // assertion to the template shape block.
+    const cutMarkdownMatch = cut.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    expect(cutMarkdownMatch).not.toBeNull();
+    const cutMarkdownBlock = cutMarkdownMatch![1]!;
+    expect(cutMarkdownBlock).not.toContain('## Story Dependency Order');
+    expect(cutMarkdownBlock).toContain('## Dependency Order');
+    expect(cutMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');
 
     // Old numbered-checkbox format must be absent.
     // NOTE: Per-task checkboxes inside `## Slice N:` bodies are intentionally
@@ -717,6 +753,10 @@ describe('getComposedTemplates', () => {
 
     // 4-column table header present in the RFC template block
     expect(markdownBlock).toContain('| ID | Title | Depends On | Artifact |');
+
+    // Legacy headings must be absent from the RFC template shape
+    expect(markdownBlock).not.toContain('## Story Dependency Order');
+    expect(markdownBlock).not.toContain('## Feature Dependency Order');
 
     // M<N> ID format appears in the table
     expect(markdownBlock).toMatch(/\|\s*M1\s*\|/);
