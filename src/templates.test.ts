@@ -523,7 +523,11 @@ describe('getComposedTemplates', () => {
     expect(ignite).toContain('Out of Scope safety net');
     // Shared canonical placeholder phrase introduced by tasks 1 and 2 — distinct
     // from the RFC template's `<Explicitly excluded capability ...>` placeholder.
-    expect(ignite).toContain('None identified at this time');
+    // Must appear in both the sub-phase 3c directive and the sub-phase 3g safety
+    // net (so both enforcement layers use identical placeholder text); we assert
+    // at least two occurrences to lock both layers in place.
+    const placeholderMatches = ignite.match(/None identified at this time/g) ?? [];
+    expect(placeholderMatches.length).toBeGreaterThanOrEqual(2);
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
