@@ -71,7 +71,7 @@
 
 ### Tasks
 
-- [ ] **Implement pure `classifyRecord` in `src/status/classifier.ts`**
+- [x] **Implement pure `classifyRecord` in `src/status/classifier.ts`**
 
   Add a pure function `classifyRecord(record, resolvedChildren)` that returns a `Status` derived from the record's type per the data-model validation rules. For `tasks` records, derive status from `completed` / `total`: `completed === total && total > 0` → `done`; `0 < completed < total` → `in-progress`; `total === 0` or `completed === 0` → `not-started`. For parent record types (`spec`, `features`, `rfc`), roll up the resolved children per the data model: every row `done` → `done`; any child `in-progress` or a mix of `done` and not-done rows → `in-progress`; every row `not-started` (or the row's `Artifact` is `—`) → `not-started`. A record carrying any parse-failure warning that prevents classification (missing required `## Dependency Order` section for a parent type, or `format: 'legacy'`) must resolve to `unknown`. Virtual records always resolve to `not-started`.
 
