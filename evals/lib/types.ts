@@ -141,3 +141,33 @@ export interface EvalResult {
   sub_agent_checks?: CheckResult[] | undefined;
   error?: string | undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Aggregate report (across all scenarios in a single run)
+// ---------------------------------------------------------------------------
+
+/**
+ * Aggregate summary across all scenarios in a single eval run.
+ *
+ * Mirrors the EvalReport entity in the data model (§4). Produced by
+ * `buildReport` in `evals/lib/report.ts` and rendered to stdout by
+ * `formatReport`. `overall_status` is `'pass'` only when every result in
+ * `results` has status `'pass'`; any `fail`/`timeout`/`error` case flips it
+ * to `'fail'`.
+ */
+export interface EvalReport {
+  /** ISO 8601 timestamp marking when the run started (or was reported). */
+  timestamp: string;
+  /** Number of scenarios executed in this run. */
+  total_cases: number;
+  /** Count of scenarios with status `pass`. */
+  passed: number;
+  /** Count of scenarios with status `fail`, `timeout`, or `error`. */
+  failed: number;
+  /** `pass` only if every result passed; `fail` if any case did not. */
+  overall_status: 'pass' | 'fail';
+  /** Per-case results, in execution order. */
+  results: EvalResult[];
+  /** Total wall-clock time for the entire run, in milliseconds. */
+  total_duration_ms: number;
+}

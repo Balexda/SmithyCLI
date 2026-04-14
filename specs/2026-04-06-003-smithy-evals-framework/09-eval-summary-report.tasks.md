@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Declare `EvalReport` aggregate type in `types.ts`**
+- [x] **Declare `EvalReport` aggregate type in `types.ts`**
 
   Add an `EvalReport` interface to `evals/lib/types.ts` matching the data model entity. It must expose enough shape for `buildReport` and `formatReport` to satisfy AS 9.1 and 9.2 — an ISO 8601 timestamp, total/passed/failed counts, overall status, the underlying `EvalResult[]`, and total wall-clock duration in milliseconds.
 
