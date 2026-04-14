@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(11);
+    expect(snippets.size).toBe(12);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -115,6 +115,7 @@ describe('loadSnippets', () => {
       'guidance-shell.md',
       'tdd-protocol.md',
       'review-protocol.md',
+      'one-shot-output.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -135,6 +136,76 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-decomposition.md')).toContain('Competing Slice Lenses');
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
+  });
+});
+
+describe('one-shot-output snippet', () => {
+  // Story 3 Slice 1: the shared one-shot output snippet is the single source
+  // of truth for the terminal output format every planning command must
+  // render when running one-shot. These assertions lock down the snippet's
+  // contract so any regression (deleted file, renamed file, dropped header,
+  // missing error fallback) fails the test suite immediately.
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has('one-shot-output.md')).toBe(true);
+    const content = snippets.get('one-shot-output.md')!;
+    expect(content.length).toBeGreaterThan(0);
+  });
+
+  it('snippet has no YAML frontmatter (raw Markdown per snippets README)', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('one-shot-output.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+  });
+
+  it('snippet contains the four required section headers in contract order', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('one-shot-output.md')!;
+
+    const summaryIdx = content.indexOf('## Summary');
+    const assumptionsIdx = content.indexOf('## Assumptions');
+    const debtIdx = content.indexOf('## Specification Debt');
+    const prIdx = content.indexOf('## PR');
+
+    expect(summaryIdx).toBeGreaterThan(-1);
+    expect(assumptionsIdx).toBeGreaterThan(summaryIdx);
+    expect(debtIdx).toBeGreaterThan(assumptionsIdx);
+    expect(prIdx).toBeGreaterThan(debtIdx);
+  });
+
+  it('snippet includes PR-creation-failure fallback guidance', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('one-shot-output.md')!;
+    expect(content).toMatch(/PR creation fail/i);
+    expect(content.toLowerCase()).toContain('artifacts are on disk');
+  });
+
+  it('snippet includes bail-out fallback guidance', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('one-shot-output.md')!;
+    expect(content).toMatch(/bail[- ]out/i);
+    expect(content).toContain('## Bail-Out');
+  });
+
+  it('snippet composes into any template via the {{>one-shot-output}} partial', async () => {
+    // Prove the snippet is resolvable by the same partial machinery that
+    // every planning command will use once subsequent slices wire it in.
+    // If the snippet is deleted or renamed, this fails because the renderer
+    // has no partial to substitute.
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content;
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>one-shot-output}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Summary');
+    expect(result).toContain('## Assumptions');
+    expect(result).toContain('## Specification Debt');
+    expect(result).toContain('## PR');
+    expect(result).not.toContain('{{>one-shot-output}}');
   });
 });
 

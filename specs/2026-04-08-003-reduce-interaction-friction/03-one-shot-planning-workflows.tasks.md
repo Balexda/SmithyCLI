@@ -24,7 +24,7 @@ depends on snippet rendering, so this PR delivers visible content (the snippet
 
 ### Tasks
 
-- [ ] **Create the `one-shot-output` snippet file**
+- [x] **Create the `one-shot-output` snippet file**
 
   Add `src/templates/agent-skills/snippets/one-shot-output.md` containing the
   Markdown block defined in the contracts (`## Summary`, `## Assumptions`,
@@ -39,7 +39,7 @@ depends on snippet rendering, so this PR delivers visible content (the snippet
   - Includes a bail-out fallback note (contracts Error Conditions)
   - File has no YAML frontmatter (snippets are raw Markdown per snippets README)
 
-- [ ] **Register the snippet in the snippets README table**
+- [x] **Register the snippet in the snippets README table**
 
   Add a row to `src/templates/agent-skills/snippets/README.md` documenting
   the new snippet and listing the consumers the remaining slices will wire it
@@ -50,7 +50,7 @@ depends on snippet rendering, so this PR delivers visible content (the snippet
   - Alphabetical or logical placement within the existing table
   - No deployment metadata changes (snippet is not deployed standalone)
 
-- [ ] **Assert the snippet composes into every planning command**
+- [x] **Assert the snippet composes into every planning command**
 
   Add Tier 2 assertions in `src/templates.test.ts` that verify the snippet
   is resolvable and that it will be referenced from each planning command
