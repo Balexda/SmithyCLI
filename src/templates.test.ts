@@ -980,8 +980,17 @@ describe('getComposedTemplates', () => {
     // fallback.
     expect(cut).not.toContain('## Story Dependency Order');
 
-    const cutMarkdownMatch = cut.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
-    expect(cutMarkdownMatch).not.toBeNull();
+    // Cut contains more than one ```markdown fence now: Phase 0c and Phase 5
+    // render the shared one-shot-output snippet, which itself embeds a
+    // markdown fence. Pick the fence that actually defines the tasks file
+    // structure — i.e. the one containing `## Dependency Order`.
+    const cutMarkdownBlocks = [
+      ...cut.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g),
+    ];
+    const cutMarkdownMatch = cutMarkdownBlocks.find((m) =>
+      m[1]!.includes('## Dependency Order'),
+    );
+    expect(cutMarkdownMatch).toBeDefined();
     const cutMarkdownBlock = cutMarkdownMatch![1]!;
     expect(cutMarkdownBlock).not.toContain('## Story Dependency Order');
     expect(cutMarkdownBlock).toContain('## Dependency Order');

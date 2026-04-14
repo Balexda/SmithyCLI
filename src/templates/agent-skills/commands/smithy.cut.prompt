@@ -55,9 +55,34 @@ Use the **smithy-refine** sub-agent. Pass it:
 ### 0c. Apply Refinements
 
 After the sub-agent returns its summary, update the existing tasks file on disk
-to incorporate the refinements. Present a summary of what changed — do not dump
-the full file contents into the terminal. **STOP and ask** the user to review
-the updated file at its path and let you know if further changes are needed.
+to incorporate the refinements. Do not dump the full file contents into the
+terminal.
+
+One-shot mode: do **not** stop to ask the user to review or approve the
+refinements. The refinement diff is the review surface and the one-shot PR
+below is how the user sees it.
+
+1. Stage and commit the refinement diff on the current branch. The commit
+   message should describe the refinements applied (e.g.,
+   `cut refine: split Slice 2; resolve SD-001`).
+2. Push the branch to `origin`.
+3. Create a pull request using the same `gh pr create` pattern that
+   `smithy.forge` uses:
+   - **Title**: `Refine <user story title> tasks` — under 70 characters.
+   - **Body**: the refine summary, a list of refinements applied, and any
+     debt items resolved or introduced by this pass.
+4. Capture the resulting PR URL for the one-shot output snippet.
+
+If `gh pr create` fails, fall through to the PR-creation-failure branch of
+the one-shot output snippet so the user sees exactly what changed and what
+went wrong.
+
+Render the shared one-shot output snippet as the terminal output, populating
+Summary (the refined tasks file and its slice count), Assumptions (from
+refine's findings), Specification Debt (from refine's `debt_items`, including
+inherited debt carried forward from the spec), and PR (the captured URL).
+
+{{>one-shot-output}}
 
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,
@@ -415,7 +440,7 @@ existing code to find the right implementation pattern.
 
 ---
 
-## Phase 5: Write & Review
+## Phase 5: Write & PR
 
 Write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md` (where `<NN>` is
 the zero-padded user story number).
@@ -466,21 +491,44 @@ Write-back procedure:
 The `Artifact` cell is the single source of truth for "does this user story
 have a tasks file yet".
 
-Then present a summary to the user:
+### Commit and create the PR
 
-1. Show a summary:
-   - Number of slices with their titles.
-   - Which FRs and acceptance scenarios each slice addresses.
-   - The recommended implementation order.
-   - Estimated complexity per slice (small / medium / large).
-2. Highlight any risks, open questions, or tradeoffs in the slicing.
-3. **Do NOT dump the full file contents into the terminal.** The file is on
-   disk — the user can review it in their editor.
-4. **STOP and ask**: "Review the tasks at `<path>` and let me know if you'd
-   like changes, or approve to finalize."
+One-shot mode: do **not** stop to ask the user to review or approve the tasks
+file. The file is on disk and the PR is the review surface.
 
-If the user requests changes, incorporate them, update the file on disk, and
-ask again.
+1. Stage and commit both the new `.tasks.md` file and the spec's
+   `## Dependency Order` write-back on the current branch.
+2. Push the branch to `origin`.
+3. Create a pull request using the same `gh pr create` pattern that
+   `smithy.forge` uses:
+   - **Title**: the user story title, under 70 characters, plain descriptive
+     text (no FR numbers, no bracketed tags).
+   - **Body**: a short summary with the tasks file path, the slice count and
+     titles, the FRs and acceptance scenarios each slice addresses, the
+     recommended implementation order, any tradeoffs noted, and a one-line
+     pointer to `smithy.forge` as the next step.
+4. Capture the resulting PR URL for the one-shot output snippet.
+
+If `gh pr create` fails (network error, auth failure, missing upstream,
+etc.), do **not** roll back the written files — they stay on disk. Fall
+through to the PR-creation-failure branch of the one-shot output snippet
+below so the user sees exactly what was produced and what went wrong.
+
+The bail-out behavior from Phase 3 is preserved: if clarify returned
+`bail_out: true`, the pipeline short-circuits before writing the tasks file
+and before this commit-and-PR step. The one-shot output snippet renders its
+Bail-Out branch instead of the full contract.
+
+### Render the one-shot output contract
+
+Render the shared one-shot output snippet as the terminal output for this
+run. Populate every placeholder from captured run data — the tasks file
+path, the branch name, the slice count, the full `assumptions` and
+`debt_items` arrays returned by clarify (including debt inherited from the
+spec), and the PR URL from the previous step. Do NOT dump the full file
+contents into the terminal; the snippet is the contract.
+
+{{>one-shot-output}}
 
 ---
 

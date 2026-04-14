@@ -180,7 +180,7 @@ non-interactive sub-agents.
   - Phase 0 review loop ends by committing refinements, creating a PR, and
     rendering one-shot output
 
-- [ ] **Remove cut's intermediate STOP gates and add PR creation**
+- [x] **Remove cut's intermediate STOP gates and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.cut.prompt`, delete the
   Phase 5 "Review tasks" STOP and the Phase 0c refinement STOP. Add a PR
