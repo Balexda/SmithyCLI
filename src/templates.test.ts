@@ -196,7 +196,10 @@ describe('one-shot-output snippet', () => {
     const snippets = loadSnippets();
     const partials: Record<string, string> = {};
     for (const [filename, content] of snippets) {
-      partials[filename.replace(/\.md$/, '')] = content;
+      // Mirror the trailing-whitespace normalization applied by
+      // buildPartialsMap in templates.ts so this test reflects runtime
+      // partial-composition behavior rather than diverging from it.
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
     }
     const renderer = new Dotprompt({ partials });
     const host = '# Host Template\n\n{{>one-shot-output}}\n';
