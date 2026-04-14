@@ -162,7 +162,7 @@ non-interactive sub-agents.
 
 ### Tasks
 
-- [ ] **Remove mark's intermediate STOP gates and add PR creation**
+- [x] **Remove mark's intermediate STOP gates and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.mark.prompt`, delete the
   Phase 6 "Review & approve" STOP and the Phase 0c refinement STOP. After
