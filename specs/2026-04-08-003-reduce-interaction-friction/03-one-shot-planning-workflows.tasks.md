@@ -87,7 +87,7 @@ keeps the "sub-agent interaction removal" change atomic.
 
 ### Tasks
 
-- [ ] **Remove the clarify assumption-presentation STOP gate**
+- [x] **Remove the clarify assumption-presentation STOP gate**
 
   Delete Step 4 (Present Assumptions) from
   `src/templates/agent-skills/agents/smithy.clarify.prompt` and remove the
