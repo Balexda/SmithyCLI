@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add Phase 0 state-detection step and section-to-sub-phase map**
+- [x] **Add Phase 0 state-detection step and section-to-sub-phase map**
 
   Rename the existing `## Phase 0: Review Loop` heading in the `{{#ifAgent}}` branch of `src/templates/agent-skills/commands/smithy.ignite.prompt` to `## Phase 0: State Detection and Review Loop`, and insert a new initial sub-step before the current `Phase 0a–0b` audit block. The new sub-step must instruct the orchestrator to read the RFC file, enumerate its `##` headings, and classify the file as `fresh` (header only), `partial` (some but not all mandatory template sections), or `complete` (all mandatory sections present) using an explicit section-to-sub-phase mapping covering Summary/Motivation → 3a, Personas → 3b, Goals/Out of Scope → 3c, Proposal/Design Considerations → 3d, Decisions/Open Questions → 3e, Milestones → 3f.
 
@@ -29,7 +29,7 @@
   - Detection step instructs the orchestrator to report which sections are present to the user (AS US7-1)
   - Existing `Phase 0a–0b` audit block and `Phase 0c` apply-refinements block remain intact below the new detection step
 
-- [ ] **Branch Phase 0 on detected state**
+- [x] **Branch Phase 0 on detected state**
 
   Immediately after the detection step introduced in task 1, add a branch block that routes the orchestrator based on the classification: `complete` → continue into the existing audit/review loop; `partial` → compute the first missing sub-phase from the section map, inform the user which sections are present and which sub-phase will run next, confirm resume with the user, and hand off to Phase 3 starting at that sub-phase; `fresh` → skip the review loop and hand off to Phase 3 at sub-phase 3a with the existing header-only file left in place. Add an explicit note covering the "partial RFC from a different idea" edge case: before resuming, the orchestrator must verify that the existing Summary/Motivation is contextually related to the current idea and, if not, warn the user and offer to overwrite, create a new RFC, or proceed anyway. Add a second note covering the "session crash during harmonization" edge case: if the file is classified `complete` but the detection step sees inconsistent or duplicated headings, enter the review loop so smithy-refine can repair it. References AS US7-1, US7-2, and the two edge cases from the spec.
 
@@ -43,7 +43,7 @@
   - Harmonize-crash note routes inconsistent "complete" files into the existing review loop
   - Existing review-loop behavior for genuinely complete RFCs is unchanged
 
-- [ ] **Teach Phase 3 to honor the resume hand-off**
+- [x] **Teach Phase 3 to honor the resume hand-off**
 
   In the same prompt file, extend the preamble of the Phase 3 `{{#ifAgent}}` block (the append-and-continue protocol note added by US4) with an explicit resume note: when Phase 0 hands off with a specific starting sub-phase, the orchestrator must skip all earlier sub-phases, leave the accumulating `<slug>.rfc.md` untouched on entry, and begin dispatching from the designated sub-phase. Clarify that each sub-phase's existing `rfc_file_path` context already gives the dispatched sub-agent access to every previously written section via disk read, so no additional context bridging is required. Do not modify the per-sub-phase dispatch blocks themselves. References AS US7-2.
 
@@ -54,7 +54,7 @@
   - RFC file creation step still runs only in the fresh-pipeline case, not on resume
   - Sub-phases 3a–3g keep their current dispatch directives from US3 and US4 unchanged
 
-- [ ] **Handle the no-RFC-file case in Routing**
+- [x] **Handle the no-RFC-file case in Routing**
 
   Update the `## Routing` section of the prompt so it cleanly covers the US7-3 case where no RFC file exists. The routing must still send explicit `.rfc.md` inputs into Phase 0 (which now classifies state itself) and still send description/PRD inputs into Phase 1. Also update the mid-intake redirect inside Phase 1 so that, when it finds a close-matching `docs/rfcs/` folder, it hands control to Phase 0 rather than asking the user to choose "review or create new" inline — Phase 0's state detection is now the single place that handles that decision. The option to create a new RFC instead of touching the existing one must still be available to the user from within Phase 0. References AS US7-3 and the existing mid-intake redirect behavior the spec preserves.
 
@@ -65,7 +65,7 @@
   - Routing does not duplicate the section-to-sub-phase map (that lives only in Phase 0)
   - Phase 1 intake for genuinely new ideas is otherwise unchanged
 
-- [ ] **Assert ignite agent variant renders state detection and resume branch**
+- [x] **Assert ignite agent variant renders state detection and resume branch**
 
   In `src/templates.test.ts`, extend the existing `'ignite with claude variant renders competing plan dispatch'` test to verify the new Phase 0 detection step, the three-way branch, and the Phase 3 resume note all render in the composed claude-variant ignite prompt. Target distinctive phrases from the new wording rather than substrings that could collide with the RFC template code fence or the existing audit table. Confirm the default (non-agent) variant remains free of the detection step so the new logic is scoped to the agent path.
 

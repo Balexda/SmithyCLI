@@ -205,8 +205,9 @@ export function parseDependencyTable(
  * dependency-order rows, unknown filename suffix) is appended to the
  * record's `warnings` list.
  *
- * Status classification is deferred to Slice 2 — every record returned
- * here carries `status: 'unknown'` as a placeholder.
+ * Status classification is performed by `classifyRecord` in the scanner
+ * (`src/status/scanner.ts`). Every record returned here carries
+ * `status: 'unknown'` as a placeholder until the scanner resolves it.
  */
 export function parseArtifact(
   filePath: string,
