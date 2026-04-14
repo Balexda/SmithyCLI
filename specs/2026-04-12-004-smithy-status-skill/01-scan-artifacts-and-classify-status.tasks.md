@@ -71,7 +71,7 @@
 
 ### Tasks
 
-- [ ] **Implement pure `classifyRecord` in `src/status/classifier.ts`**
+- [x] **Implement pure `classifyRecord` in `src/status/classifier.ts`**
 
   Add a pure function `classifyRecord(record, resolvedChildren)` that returns a `Status` derived from the record's type per the data-model validation rules. For `tasks` records, derive status from `completed` / `total`: `completed === total && total > 0` → `done`; `0 < completed < total` → `in-progress`; `total === 0` or `completed === 0` → `not-started`. For parent record types (`spec`, `features`, `rfc`), roll up the resolved children per the data model: every row `done` → `done`; any child `in-progress` or a mix of `done` and not-done rows → `in-progress`; every row `not-started` (or the row's `Artifact` is `—`) → `not-started`. A record carrying any parse-failure warning that prevents classification (missing required `## Dependency Order` section for a parent type, or `format: 'legacy'`) must resolve to `unknown`. Virtual records always resolve to `not-started`.
 
@@ -85,7 +85,7 @@
   - Implementation is a pure function: same input always produces same output, no filesystem access, no I/O.
   - Unit tests exercise every branch with synthetic `ArtifactRecord` inputs in memory.
 
-- [ ] **Implement `scan(root)` in `src/status/scanner.ts` with discovery, parent resolution, virtual emission, and leaf-to-root classification**
+- [x] **Implement `scan(root)` in `src/status/scanner.ts` with discovery, parent resolution, virtual emission, and leaf-to-root classification**
 
   Add `scan(root)` that walks `specs/`, `docs/rfcs/`, and `specs/strikes/` under `root` using `node:fs` (no new dependencies; mirror the recursive-walk pattern already in `src/utils.ts`). Discover files by extension suffix (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`). Do not follow symlinks that resolve outside `root`. For each discovered file, call `parseArtifact` to build a partial record. Then, in a second pass, resolve `parent_path` for every record by scanning each candidate parent's `dependency_order.rows` for a row whose `artifact_path` resolves to the child's repo-relative `path` after normalization. Resolution rules match the data model's lineage: an RFC milestone row points at a `.features.md` file (exact match); a feature-map feature row points at a **spec folder**, and resolution locates the `.spec.md` file inside that folder by the naming convention (`<folder>/<slug>.spec.md`); a spec user-story row points at a `.tasks.md` file (exact match). Exact matches and folder-to-spec matches are both valid — no directory-structure heuristics beyond the documented lineage are permitted. Set `parent_missing: true` on records whose declared parent path cannot be resolved to an existing file. For every parent row whose `artifact_path` is `null` or resolves to a file that does not exist on disk, emit a virtual `ArtifactRecord` with `virtual: true`, `status: 'not-started'`, and the row's declared or naming-convention-expected path. On a virtual / real collision at the same path, the real record wins and the virtual is discarded. Finally, classify records leaf-to-root (tasks first, then spec, then features, then rfc) so every parent sees already-classified children when `classifyRecord` runs. Individual file read or parse failures produce a record with `status: 'unknown'` and a descriptive warning — scanning continues without aborting.
 
@@ -157,7 +157,7 @@
 Recommended implementation sequence:
 
 1. [x] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
-2. [ ] **Slice 2** — the scanner consumes the parser from Slice 1 to produce a fully-classified record set; this is the first slice whose output matches the US1 acceptance contract end-to-end.
+2. [x] **Slice 2** — the scanner consumes the parser from Slice 1 to produce a fully-classified record set; this is the first slice whose output matches the US1 acceptance contract end-to-end.
 3. [ ] **Slice 3** — the CLI subcommand composes the finished scanner, exposing US1 to end users and matching the contracts file's JSON shape.
 
 ### Cross-Story Dependencies
