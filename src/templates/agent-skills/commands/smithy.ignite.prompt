@@ -1,6 +1,6 @@
 ---
 name: smithy-ignite
-description: "Ignite a broad idea into a structured RFC with milestones. Workshop through clarifying questions, then produce a reviewable RFC in docs/rfcs/."
+description: "Ignite a broad idea into a structured RFC with milestones one-shot. Runs clarify, drafts the RFC, creates a PR, and renders a standardized terminal summary without intermediate approval gates."
 ---
 # smithy-ignite
 
@@ -178,9 +178,19 @@ Use the **smithy-refine** sub-agent. Pass it:
 ### Phase 0c: Apply Refinements
 
 After the sub-agent returns its summary:
-1. Update the existing RFC to incorporate the refinements.
-2. Present the changes for user approval before writing.
-3. If approved, write the updated RFC to the same file path.
+1. Apply the refinements from smithy-refine directly to the RFC file in place
+   — refine is non-interactive and returns high-confidence refinements ready
+   to apply. Do not pause for user approval before writing.
+2. Route any low-confidence findings returned in `debt_items` into the RFC's
+   `## Specification Debt` section.
+3. Commit the refinement diff and create a PR for the refinement using the
+   forge `gh pr create` pattern (the same pattern Phase 4 uses below).
+4. Render the one-shot output block (the format defined in the
+   `one-shot-output` shared snippet, inlined into Phase 4 below) as the
+   terminal contract for the refinement pass, treating the refinement diff
+   as the artifact produced. Do **not** pause for user approval of the
+   refinement diff before creating the PR — Phase 0 is non-interactive like
+   the first-pass flow.
 
 ---
 
@@ -626,52 +636,64 @@ Recommended implementation sequence:
 | M2 | <Title> | — | — |
 ```
 
-## Phase 4: Write & Review
+## Phase 4: Write & Create PR
+
+Ignite runs one-shot: after the RFC is on disk, commit it, create a PR for
+the RFC artifact, and render the one-shot output snippet as the terminal
+contract. Do **not** pause for user approval of the RFC before creating the
+PR — the snippet's PR link is the handoff point, not an interactive gate.
 
 {{#ifAgent}}
 Phase 3 already created the RFC folder, wrote the file piecewise through
 sub-phases 3a–3f, and harmonized it in sub-phase 3g. Skip folder creation
-and file write — proceed directly to review:
+and file write — proceed directly to commit and PR:
 
-1. Present a **summary** of the harmonized RFC — title, milestone count and
-   titles, key decisions.
-2. Point the user to the file on disk:
-   `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
-3. **Do NOT dump the full RFC contents into the terminal.** The file is on
-   disk — the user can review it in their editor.
-4. **STOP and ask**: "Review the RFC at `<path>` and let me know if you'd like
-   changes, or approve to move on."
-
-If the user wants changes, incorporate them by updating the existing file in
-place (do not rewrite from scratch). Ask again after each round of changes.
-Once approved, suggest the next step: "Ready for `smithy.render` to break a
-milestone into features."
+1. Commit the RFC file on the feature branch.
+2. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
+   - **Title**: the RFC title, under 70 characters, descriptive text only.
+   - **Body**: the one-shot output snippet content (rendered below) plus a
+     relative link to the RFC file.
+3. Render the one-shot output snippet as the terminal contract. For an
+   RFC-only run, use the RFC folder as the spec folder, substitute milestone
+   counts where the snippet asks for user stories / functional requirements,
+   and copy the clarify return's `assumptions` and `debt_items` into the
+   Assumptions and Specification Debt sections.
 
 {{else}}
 1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
 2. Write the RFC to `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
-3. Present a **summary** of the draft — title, problem statement, milestone
-   count and titles, key decisions.
-4. **Do NOT dump the full RFC contents into the terminal.** The file is on
-   disk — the user can review it in their editor.
-5. **STOP and ask**: "Review the RFC at `<path>` and let me know if you'd like
-   changes, or approve to move on."
-
-If the user wants changes, incorporate them, update the file on disk, and ask
-again. Once approved, suggest the next step: "Ready for `smithy.render` to
-break a milestone into features."
+3. Commit the RFC file on the feature branch.
+4. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
+   - **Title**: the RFC title, under 70 characters, descriptive text only.
+   - **Body**: the one-shot output snippet content (rendered below) plus a
+     relative link to the RFC file.
+5. Render the one-shot output snippet as the terminal contract. For an
+   RFC-only run, use the RFC folder as the spec folder, substitute milestone
+   counts where the snippet asks for user stories / functional requirements,
+   and copy the clarify return's `assumptions` and `debt_items` into the
+   Assumptions and Specification Debt sections.
 
 {{/ifAgent}}
+
+{{>one-shot-output}}
+
+After the snippet is rendered, suggest the next step as a non-interactive
+hint in the terminal output: "Ready for `smithy.render` to break a milestone
+into features." Do not block on confirmation.
 
 ---
 
 ## Rules
 
 - **DO NOT** write code or implementation details. RFCs are "WHAT not HOW".
-- **DO NOT** skip clarification. Always ask at least one question, even for well-specified ideas.
-- **DO** write the RFC file to disk before asking for review — do not dump
+- **DO NOT** skip clarification. Always run smithy-clarify — it is
+  non-interactive and returns assumptions and debt items directly.
+- **DO NOT** stop for user approval before creating the RFC PR. Ignite is
+  one-shot: Phase 4 writes the RFC, creates the PR, and renders the one-shot
+  output snippet without an intermediate approval gate.
+- **DO** write the RFC file to disk before creating the PR — do not dump
   the full contents into the terminal.
 - **DO** maintain a "WHAT not HOW" tone throughout.
 - **DO** ensure milestones are clearly delineated with distinct scope and success criteria.
-- **DO** challenge assumptions and surface risks during clarification.
+- **DO** surface risks during clarification via the clarify return.
 - **DO** keep the RFC concise — a good RFC is a starting point, not a final design.

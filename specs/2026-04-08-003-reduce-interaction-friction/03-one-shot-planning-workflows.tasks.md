@@ -302,7 +302,7 @@ commands), SC-001
 
 ### Tasks
 
-- [ ] **Remove ignite's Phase 4 STOPs and add PR creation**
+- [x] **Remove ignite's Phase 4 STOPs and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, delete
   both Phase 4 "Review RFC" STOPs (agent and non-agent branches). After
@@ -317,7 +317,7 @@ commands), SC-001
   - Phase 0 Review Loop ends non-interactively and creates a PR with the
     refinement diff
 
-- [ ] **Remove render's STOP gates and add PR creation**
+- [x] **Remove render's STOP gates and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.render.prompt`, delete the
   Phase 0c refinement STOP, the Phase 1 target-confirmation STOP, and the
@@ -332,7 +332,7 @@ commands), SC-001
   - Phase 0 Review Loop ends non-interactively and creates a PR with the
     refinement diff
 
-- [ ] **Assert ignite and render render the one-shot output contract**
+- [x] **Assert ignite and render render the one-shot output contract**
 
   Add Tier 2 assertions in `src/templates.test.ts` verifying that the
   composed `smithy.ignite.md` and `smithy.render.md` templates contain the
