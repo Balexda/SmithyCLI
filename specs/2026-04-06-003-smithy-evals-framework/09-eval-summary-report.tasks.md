@@ -40,7 +40,7 @@
   - `error` field is populated with a descriptive message on `timeout`/`error` status and absent on `pass`/`fail`
   - All imports (`EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`) come from `./types.js`
 
-- [ ] **Implement `buildReport` aggregator over `EvalResult[]`**
+- [x] **Implement `buildReport` aggregator over `EvalResult[]`**
 
   Add a pure `buildReport(results: EvalResult[], totalDurationMs: number): EvalReport` function to `evals/lib/report.ts` that tallies per-status counts and assembles a complete `EvalReport`. Accepting an array today — even a one-element one — preserves the US7 contract where YAML loading will pass N scenarios without further changes to the report API (AS 9.1, 9.2).
 

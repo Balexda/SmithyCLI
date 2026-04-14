@@ -14,6 +14,7 @@
 
 import type {
   CheckResult,
+  EvalReport,
   EvalResult,
   EvalScenario,
   RunOutput,
@@ -74,4 +75,43 @@ export function scenarioRunToResult(
   }
 
   return result;
+}
+
+/**
+ * Aggregate an array of `EvalResult`s into a single `EvalReport`.
+ *
+ * Tallies `passed` as `status === 'pass'` and `failed` as every non-`pass`
+ * status (including `fail`, `timeout`, and `error`). `overall_status` is
+ * `'pass'` only when every result passed; an empty `results` array yields a
+ * well-formed empty report with `overall_status: 'pass'` and zero counts.
+ *
+ * The function is pure: it does not mutate `results` and performs no I/O.
+ * `timestamp` is set to the current wall-clock time (ISO 8601) at call time;
+ * `total_duration_ms` is passed through unchanged from the caller.
+ *
+ * Backs Acceptance Scenarios 9.1 and 9.2.
+ */
+export function buildReport(
+  results: EvalResult[],
+  totalDurationMs: number,
+): EvalReport {
+  let passed = 0;
+  for (const result of results) {
+    if (result.status === 'pass') {
+      passed += 1;
+    }
+  }
+  const failed = results.length - passed;
+  const overall_status: EvalReport['overall_status'] =
+    failed === 0 ? 'pass' : 'fail';
+
+  return {
+    timestamp: new Date().toISOString(),
+    total_cases: results.length,
+    passed,
+    failed,
+    overall_status,
+    results: results.slice(),
+    total_duration_ms: totalDurationMs,
+  };
 }

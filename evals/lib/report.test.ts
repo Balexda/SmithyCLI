@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { scenarioRunToResult } from './report.js';
+import { scenarioRunToResult, buildReport } from './report.js';
 import type {
   CheckResult,
+  EvalResult,
   EvalScenario,
   RunOutput,
 } from './types.js';
@@ -268,6 +269,167 @@ describe('scenarioRunToResult', () => {
       scenarioRunToResult(scenario, output, [passingCheck]);
       expect(JSON.stringify(scenario)).toBe(scenarioBefore);
       expect(JSON.stringify(output)).toBe(outputBefore);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildReport
+// ---------------------------------------------------------------------------
+
+function makeResult(overrides: Partial<EvalResult> = {}): EvalResult {
+  return {
+    scenario_name: 'sample',
+    status: 'pass',
+    extracted_text: '## Plan\n\nDetails.',
+    duration_ms: 100,
+    structural_checks: [passingCheck],
+    ...overrides,
+  };
+}
+
+describe('buildReport', () => {
+  // -----------------------------------------------------------------------
+  // Aggregate counts and overall status
+  // -----------------------------------------------------------------------
+  describe('aggregate counts and overall status', () => {
+    it('returns overall_status pass with all-pass results (3 cases)', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'a' }),
+        makeResult({ scenario_name: 'b' }),
+        makeResult({ scenario_name: 'c' }),
+      ];
+      const report = buildReport(results, 5000);
+
+      expect(report.overall_status).toBe('pass');
+      expect(report.total_cases).toBe(3);
+      expect(report.passed).toBe(3);
+      expect(report.failed).toBe(0);
+    });
+
+    it('returns overall_status fail with 2 pass + 1 fail', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'a', status: 'pass' }),
+        makeResult({ scenario_name: 'b', status: 'pass' }),
+        makeResult({ scenario_name: 'c', status: 'fail' }),
+      ];
+      const report = buildReport(results, 7500);
+
+      expect(report.overall_status).toBe('fail');
+      expect(report.total_cases).toBe(3);
+      expect(report.passed).toBe(2);
+      expect(report.failed).toBe(1);
+    });
+
+    it('counts timeout and error as failed (1 pass + 1 timeout + 1 error)', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'a', status: 'pass' }),
+        makeResult({
+          scenario_name: 'b',
+          status: 'timeout',
+          error: 'timed out',
+        }),
+        makeResult({
+          scenario_name: 'c',
+          status: 'error',
+          error: 'exit 1',
+        }),
+      ];
+      const report = buildReport(results, 12000);
+
+      expect(report.overall_status).toBe('fail');
+      expect(report.total_cases).toBe(3);
+      expect(report.passed).toBe(1);
+      expect(report.failed).toBe(2);
+    });
+
+    it('returns a well-formed empty report for zero-length results', () => {
+      const report = buildReport([], 0);
+
+      expect(report.overall_status).toBe('pass');
+      expect(report.total_cases).toBe(0);
+      expect(report.passed).toBe(0);
+      expect(report.failed).toBe(0);
+      expect(report.results).toEqual([]);
+      expect(report.total_duration_ms).toBe(0);
+      expect(typeof report.timestamp).toBe('string');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Field passthrough and shape
+  // -----------------------------------------------------------------------
+  describe('field passthrough', () => {
+    it('total_duration_ms equals the passed-in argument', () => {
+      const report = buildReport([makeResult()], 9876);
+      expect(report.total_duration_ms).toBe(9876);
+    });
+
+    it('results field contains every input result in order', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'first' }),
+        makeResult({ scenario_name: 'second' }),
+        makeResult({ scenario_name: 'third' }),
+      ];
+      const report = buildReport(results, 100);
+
+      expect(report.results).toHaveLength(3);
+      expect(report.results[0]?.scenario_name).toBe('first');
+      expect(report.results[1]?.scenario_name).toBe('second');
+      expect(report.results[2]?.scenario_name).toBe('third');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Timestamp
+  // -----------------------------------------------------------------------
+  describe('timestamp', () => {
+    it('returns a valid ISO 8601 timestamp string', () => {
+      const report = buildReport([makeResult()], 100);
+
+      expect(typeof report.timestamp).toBe('string');
+      // ISO 8601 with milliseconds and Z suffix, as produced by toISOString()
+      expect(report.timestamp).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+      expect(Number.isNaN(Date.parse(report.timestamp))).toBe(false);
+    });
+
+    it('sets timestamp at call time (within a small window of now)', () => {
+      const before = Date.now();
+      const report = buildReport([makeResult()], 100);
+      const after = Date.now();
+
+      const ts = Date.parse(report.timestamp);
+      expect(ts).toBeGreaterThanOrEqual(before);
+      expect(ts).toBeLessThanOrEqual(after);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Purity
+  // -----------------------------------------------------------------------
+  describe('purity', () => {
+    it('does not mutate the input results array', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'a' }),
+        makeResult({ scenario_name: 'b', status: 'fail' }),
+      ];
+      const before = JSON.stringify(results);
+      buildReport(results, 1000);
+      expect(JSON.stringify(results)).toBe(before);
+    });
+
+    it('does not throw when called with a frozen results array', () => {
+      const results: EvalResult[] = Object.freeze([
+        makeResult({ scenario_name: 'a' }),
+        makeResult({ scenario_name: 'b' }),
+      ]) as EvalResult[];
+
+      expect(() => buildReport(results, 500)).not.toThrow();
+      const report = buildReport(results, 500);
+      expect(report.total_cases).toBe(2);
+      expect(report.passed).toBe(2);
     });
   });
 });
