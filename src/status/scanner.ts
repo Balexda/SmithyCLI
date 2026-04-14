@@ -304,10 +304,16 @@ function resolveChildForRow(
       if (row.artifact_path !== null) {
         return { path: normalizePath(row.artifact_path), type };
       }
+      // Repo convention: `<NN>-<milestone-slug>.features.md` (see
+      // existing render output examples like `01-milestone-1.features.md`).
+      // Derive the NN from the row id (M1 → 01) so virtual placeholder
+      // paths collide with real `smithy.render` output and the real
+      // record wins on the next scan.
       const parentDir = repoDirname(parent.path);
+      const nn = paddedNumberFromId(row.id);
       const placeholder = repoJoin(
         parentDir,
-        `${slugify(row.title)}.features.md`,
+        `${nn}-${slugify(row.title)}.features.md`,
       );
       return { path: placeholder, type };
     }
@@ -340,13 +346,14 @@ function resolveChildForRow(
         return { path: normalizePath(row.artifact_path), type };
       }
       // Placeholder for a spec `—` row. Smithy tasks files use the
-      // convention `NN-<slug>.tasks.md` inside the spec folder, but we
-      // only have the row ID (`US1`, `US2`, ...) so we lower-case that
-      // as the numeric substitute.
+      // convention `<NN>-<story-slug>.tasks.md` inside the spec folder
+      // (see `smithy.cut` output). Derive NN from the row id (US1 → 01)
+      // so virtual placeholders match the eventual real path and the
+      // real record wins on the next scan.
       const parentDir = repoDirname(parent.path);
-      const idLower = row.id.toLowerCase();
+      const nn = paddedNumberFromId(row.id);
       return {
-        path: repoJoin(parentDir, `${idLower}-${slugify(row.title)}.tasks.md`),
+        path: repoJoin(parentDir, `${nn}-${slugify(row.title)}.tasks.md`),
         type,
       };
     }
@@ -439,6 +446,20 @@ function slugify(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Extract the numeric portion of a canonical row id (`M1`, `F2`, `US3`,
+ * `S10`) and zero-pad it to two digits. Used to build placeholder
+ * virtual paths that match the `<NN>-<slug>` filename convention emitted
+ * by `smithy.render` and `smithy.cut`. Falls back to the lower-cased id
+ * itself if the id has no trailing digits, so malformed ids never
+ * crash placeholder generation.
+ */
+function paddedNumberFromId(id: string): string {
+  const digits = id.match(/[0-9]+$/)?.[0];
+  if (digits === undefined) return id.toLowerCase();
+  return digits.padStart(2, '0');
 }
 
 function idPrefixForType(type: ArtifactType): DependencyOrderTable['id_prefix'] {

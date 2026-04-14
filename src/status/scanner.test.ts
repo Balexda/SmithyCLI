@@ -164,6 +164,32 @@ ${TABLE_HEADER}
     expect(virt?.parent_path).toBe('specs/feature-a/feature-a.spec.md');
   });
 
+  it('spec — row virtual placeholder uses zero-padded NN-<slug>.tasks.md convention', () => {
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US3 | Third story | — | — |\n`,
+    );
+    const records = scan(root);
+    const virt = records.find(
+      (r) => r.type === 'tasks' && r.virtual === true,
+    );
+    expect(virt).toBeDefined();
+    expect(virt?.path).toBe('specs/feature-a/03-third-story.tasks.md');
+  });
+
+  it('rfc — row virtual placeholder uses zero-padded NN-<slug>.features.md convention', () => {
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M2 | Second milestone | — | — |\n`,
+    );
+    const records = scan(root);
+    const virt = records.find(
+      (r) => r.type === 'features' && r.virtual === true,
+    );
+    expect(virt).toBeDefined();
+    expect(virt?.path).toBe('docs/rfcs/02-second-milestone.features.md');
+  });
+
   it('AS 1.5: feature-map row with — yields a virtual spec record at the slug placeholder path', () => {
     write(
       'specs/feature-a/feature-a.features.md',
