@@ -702,7 +702,7 @@ describe('writeSessionTitleHook', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates settings.json with a UserPromptSubmit hook entry', () => {
+  it('creates settings.json with a UserPromptSubmit hook entry for repo level', () => {
     writeSessionTitleHook(tmpDir, 'repo');
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     expect(fs.existsSync(settingsPath)).toBe(true);
@@ -714,6 +714,24 @@ describe('writeSessionTitleHook', () => {
     expect(ups[0].hooks[0].type).toBe('command');
     expect(ups[0].hooks[0].command).toContain(SESSION_TITLE_HOOK_FILENAME);
     expect(ups[0].hooks[0].command).toContain('$CLAUDE_PROJECT_DIR');
+  });
+
+  it('writes an absolute homedir path for user level (not $CLAUDE_PROJECT_DIR)', () => {
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    writeSessionTitleHook(tmpDir, 'user');
+
+    const settingsPath = path.join(fakeHome, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const cmd = config.hooks.UserPromptSubmit[0].hooks[0].command;
+    // Must not rely on $CLAUDE_PROJECT_DIR — user-level settings apply across
+    // projects and must point at the real installed script location.
+    expect(cmd).not.toContain('$CLAUDE_PROJECT_DIR');
+    expect(cmd).toContain(path.join(fakeHome, '.claude', 'hooks', SESSION_TITLE_HOOK_FILENAME));
   });
 
   it('preserves existing permissions and unrelated keys', () => {

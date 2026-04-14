@@ -11,9 +11,21 @@ import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from 
 export const SESSION_TITLE_HOOK_FILENAME = 'smithy-session-title.mjs';
 /** Relative deploy path under the Claude base directory. */
 export const SESSION_TITLE_HOOK_RELPATH = `.claude/hooks/${SESSION_TITLE_HOOK_FILENAME}`;
-/** The shell command registered in settings.json to invoke the hook. */
-export const SESSION_TITLE_HOOK_COMMAND =
-  `node "$CLAUDE_PROJECT_DIR/.claude/hooks/${SESSION_TITLE_HOOK_FILENAME}"`;
+
+/**
+ * Build the shell command registered in settings.json to invoke the hook.
+ * Repo deployments resolve the script via `$CLAUDE_PROJECT_DIR` so it follows
+ * the project checkout; user deployments use an absolute path under the real
+ * home directory since `$CLAUDE_PROJECT_DIR` points at each project's root,
+ * not at `~/.claude/hooks/` where the user-level script actually lives.
+ */
+export function buildSessionTitleHookCommand(level: DeployablePermissionLevel): string {
+  if (level === 'user') {
+    const abs = path.join(os.homedir(), SESSION_TITLE_HOOK_RELPATH);
+    return `node "${abs}"`;
+  }
+  return `node "$CLAUDE_PROJECT_DIR/${SESSION_TITLE_HOOK_RELPATH}"`;
+}
 
 /**
  * Deploy Claude templates. Returns the list of deployed file paths (relative to baseDir).
@@ -246,7 +258,7 @@ export function writeSessionTitleHook(targetDir: string, level: DeployablePermis
 
   if (!alreadyRegistered) {
     ups.push({
-      hooks: [{ type: 'command', command: SESSION_TITLE_HOOK_COMMAND }],
+      hooks: [{ type: 'command', command: buildSessionTitleHookCommand(level) }],
     });
   }
 
