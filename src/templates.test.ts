@@ -639,6 +639,47 @@ describe('getComposedTemplates', () => {
     expect(strike).not.toContain('{{');
   });
 
+  // Story 3 Slice 4: the claude variant of strike renders the {{#ifAgent}}
+  // branch, which is the code path actually deployed to Claude Code. The
+  // default-variant assertions above are not enough to catch a regression
+  // that reintroduces interactivity, drops PR creation, or breaks the
+  // one-shot output snippet only inside the agent branch.
+  it('strike claude variant has no Phase 3 Refine heading and no STOP-gate language', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const strike = claudeComposed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).not.toMatch(/##\s+Phase\s+3:\s*Refine/i);
+    expect(strike).not.toMatch(/Keep iterating until the user gives explicit approval/i);
+    expect(strike).not.toMatch(/STOP and ask/i);
+    expect(strike).not.toMatch(/STOP and wait/i);
+    expect(strike).not.toMatch(/Ready to forge, or want to refine the plan\?/i);
+    // The {{#ifAgent}} branch previously asked the agent to "Let the
+    // user decide" on unresolved conflicts. Slice 4 removed that gate.
+    expect(strike).not.toMatch(/Let the user decide/i);
+  });
+
+  it('strike claude variant references PR creation after the strike document phase', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const strike = claudeComposed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).toMatch(/gh pr create/i);
+    const strikeDocIdx = strike.indexOf('## Phase 3: Strike Document');
+    const prIdx = strike.search(/gh pr create/i);
+    expect(strikeDocIdx).toBeGreaterThan(-1);
+    expect(prIdx).toBeGreaterThan(strikeDocIdx);
+  });
+
+  it('strike claude variant includes all four one-shot output headers', async () => {
+    const claudeComposed = await getComposedTemplates('claude');
+    const strike = claudeComposed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).toContain('## Summary');
+    expect(strike).toContain('## Assumptions');
+    expect(strike).toContain('## Specification Debt');
+    expect(strike).toContain('## PR');
+    expect(strike).not.toContain('{{>one-shot-output}}');
+  });
+
   it('strike default does not contain competing plan dispatch', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
