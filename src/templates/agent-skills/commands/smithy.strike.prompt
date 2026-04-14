@@ -78,9 +78,10 @@ paths you discovered flow directly into Phase 3 as the approved inputs for
 writing the strike document — there is no separate approval step.
 
 **Bail-out check**: if clarify returns `bail_out: true`, skip Phase 3 and
-Phase 4 entirely. Render only the `## Bail-Out` fallback from the
-`{{>one-shot-output}}` snippet using clarify's `bail_out_summary` and debt
-summary, and stop. No strike document is written and no PR is created.
+Phase 4 entirely. Render only the `## Bail-Out` fallback from the shared
+one-shot output snippet (see Phase 4) using clarify's `bail_out_summary`
+and debt summary, and stop. No strike document is written and no PR is
+created.
 
 ---
 

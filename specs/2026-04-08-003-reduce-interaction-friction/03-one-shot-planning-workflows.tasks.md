@@ -234,7 +234,7 @@ and 2.
 
 ### Tasks
 
-- [ ] **Remove strike's Phase 3 Refine iteration**
+- [x] **Remove strike's Phase 3 Refine iteration**
 
   In `src/templates/agent-skills/commands/smithy.strike.prompt`, delete
   Phase 3 (Refine) in its entirety. Phase 2's reconciled plan and clarify
@@ -249,7 +249,7 @@ and 2.
     remains in the strike prompt
   - Subsequent phase numbering or references are updated for consistency
 
-- [ ] **Remove strike's Phase 5 STOP and add one-shot PR creation**
+- [x] **Remove strike's Phase 5 STOP and add one-shot PR creation**
 
   Replace the Phase 5 "Ready to forge, or want to refine the plan?" STOP
   with a non-interactive sequence: write the strike document, create a PR
@@ -264,7 +264,7 @@ and 2.
   - The "forge handoff" is reduced to a suggestion in the terminal output,
     not an interactive branching gate
 
-- [ ] **Assert strike runs one-shot with no Refine phase**
+- [x] **Assert strike runs one-shot with no Refine phase**
 
   Add Tier 2 assertions in `src/templates.test.ts` verifying that the
   composed `smithy.strike.md` template has no Phase 3 Refine section, no

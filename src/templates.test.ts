@@ -450,6 +450,57 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(singleSliceIdx);
   });
 
+  // Story 3 Slice 4: strike runs one-shot — no Phase 3 Refine iteration,
+  // no Phase 5 STOP gate, creates a PR after writing the strike document,
+  // and renders the shared one-shot output snippet as the terminal contract.
+  it('strike template has no Phase 3 Refine heading', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    // The old Phase 3 was "## Phase 3: Refine" — Slice 4 removed it. The
+    // renumbered Phase 3 is now "Strike Document". Assert the Refine
+    // heading is gone and that the stale "keep iterating until the user
+    // gives explicit approval" language is gone with it.
+    expect(strike).not.toMatch(/##\s+Phase\s+3:\s*Refine/i);
+    expect(strike).not.toMatch(/Keep iterating until the user gives explicit approval/i);
+  });
+
+  it('strike template contains no STOP-gate language', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    // The old Phase 5 STOP ("Ready to forge, or want to refine the plan?")
+    // is replaced with non-interactive PR creation.
+    expect(strike).not.toMatch(/STOP and ask/i);
+    expect(strike).not.toMatch(/STOP and wait/i);
+    expect(strike).not.toMatch(/Ready to forge, or want to refine the plan\?/i);
+  });
+
+  it('strike template references PR creation after artifact write', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    expect(strike).toMatch(/gh pr create/i);
+    // PR creation must come after the Strike Document phase so the
+    // artifact is on disk before the PR is opened.
+    const strikeDocIdx = strike.indexOf('## Phase 3: Strike Document');
+    const prIdx = strike.search(/gh pr create/i);
+    expect(strikeDocIdx).toBeGreaterThan(-1);
+    expect(prIdx).toBeGreaterThan(strikeDocIdx);
+  });
+
+  it('strike template includes all four one-shot output headers', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+    // These headers come from the {{>one-shot-output}} partial. ## Summary
+    // and ## Specification Debt also appear in the strike document
+    // markdown template, but ## Assumptions and ## PR are unique to the
+    // snippet, so their presence proves the partial composed in.
+    expect(strike).toContain('## Summary');
+    expect(strike).toContain('## Assumptions');
+    expect(strike).toContain('## Specification Debt');
+    expect(strike).toContain('## PR');
+    // Partials must be resolved — no leftover Handlebars syntax.
+    expect(strike).not.toContain('{{>one-shot-output}}');
+  });
+
   it('ignite template contains ## Specification Debt between ## Open Questions and ## Milestones', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
@@ -485,7 +536,7 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(crossMilestoneIdx);
   });
 
-  it('command templates without partials are returned as-is', () => {
+  it('strike template has all partial references resolved', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
     expect(strike.length).toBeGreaterThan(0);
