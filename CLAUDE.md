@@ -32,7 +32,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 Smithy provides a collection of workflow prompts, each for a different stage/style of development:
 
-- **smithy.strike** — The lightweight "just do it" command. Interactive planning + implementation in one session. This is the starting point we're actively developing. Has `command: true` so it deploys as a Claude Code slash command (`/smithy.strike`).
+- **smithy.strike** — The lightweight "just do it" command. One-shot: explore, plan, write a `.strike.md` document, and create a PR in a single pass — no intermediate approval stops. This is the starting point we're actively developing. Has `command: true` so it deploys as a Claude Code slash command (`/smithy.strike`).
 - **smithy.spark** — Optional upstream entry point. Turns a raw idea into a ~1 page PRD (problem statement, proposed solution, alternatives / build-vs-buy) at `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`. One-shot by default. The PRD can then feed `smithy.ignite`.
 - **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.). Accepts a PRD file path as input to workshop into an RFC.
 - **smithy.forge** — Implementation executor that works from task specs
