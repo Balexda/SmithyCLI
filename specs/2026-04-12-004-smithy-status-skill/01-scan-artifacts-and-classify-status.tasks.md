@@ -118,7 +118,7 @@
 
 ### Tasks
 
-- [ ] **Create `src/commands/status.ts`, register `smithy status` in `src/cli.ts`, and add an integration test**
+- [x] **Create `src/commands/status.ts`, register `smithy status` in `src/cli.ts`, and add an integration test**
 
   Create `src/commands/status.ts` exporting a `statusAction(opts)` function that composes the scanner: call `scan(opts.root ?? process.cwd())`, derive a `ScanSummary` from the returned records, and emit either (a) a contract-shaped JSON object with `summary`, `records`, and empty-stub `tree` / `graph` keys when `--format json` is passed, or (b) a minimal flat text listing (one line per record showing type, path, title, status) otherwise. Handle the three error conditions from the contracts table: `--root` pointing at a nonexistent path exits with code 2 and a stderr message; an empty repo (no discovered artifacts) exits 0 with the friendly hint pointing at `smithy.ignite` / `smithy.mark`; individual artifact parse failures are surfaced in the record set with `status: 'unknown'` without aborting. Register the subcommand in `src/cli.ts` using Commander, mirroring the existing `init` / `update` registration pattern. Declare option stubs for `--status`, `--type`, `--all`, `--graph`, and `--no-color` so downstream stories can wire them without re-touching the entry file — this slice does not need to make them functional beyond Commander parsing. Add an integration test in `src/cli.test.ts` that drives the built CLI against a synthetic temp-dir fixture and asserts (at minimum) the JSON output shape, the empty-repo hint exit path, and the nonexistent-`--root` error exit.
 
@@ -158,7 +158,7 @@ Recommended implementation sequence:
 
 1. [x] **Slice 1** — the pure parser and its type surface have no runtime prerequisites and are the import foundation every downstream slice needs.
 2. [x] **Slice 2** — the scanner consumes the parser from Slice 1 to produce a fully-classified record set; this is the first slice whose output matches the US1 acceptance contract end-to-end.
-3. [ ] **Slice 3** — the CLI subcommand composes the finished scanner, exposing US1 to end users and matching the contracts file's JSON shape.
+3. [x] **Slice 3** — the CLI subcommand composes the finished scanner, exposing US1 to end users and matching the contracts file's JSON shape.
 
 ### Cross-Story Dependencies
 

@@ -5,6 +5,7 @@ import { initAction, type InitOptions } from './commands/init.js';
 import { toolchains, type LanguageToolchain } from './permissions.js';
 import { uninitAction } from './commands/uninit.js';
 import { updateAction } from './commands/update.js';
+import { statusAction, type StatusOptions } from './commands/status.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -66,5 +67,33 @@ program
   .option('-d, --target-dir <path>', 'Target directory')
   .option('-y, --yes', 'Accept defaults (non-interactive)')
   .action(updateAction);
+
+program
+  .command('status')
+  .description('Scan the repository and report the status of Smithy artifacts')
+  .option('--root <path>', 'Directory to scan (defaults to current working directory)')
+  .addOption(
+    new Option('--format <format>', 'Output format')
+      .choices(['text', 'json'])
+      .default('text'),
+  )
+  // Option stubs wired for downstream stories (US2, US3, US6). Commander
+  // parses them so `smithy status --help` advertises the full surface,
+  // but their behavioral effect is out of scope for US1 Slice 3.
+  //
+  // `--status` and `--type` deliberately do NOT use Commander
+  // `.choices()` because Commander's invalid-choice handler exits with
+  // code 1, while the contracts mandate exit code 2 for invalid values
+  // on these two flags. `statusAction` validates them manually and
+  // sets `process.exitCode = 2`.
+  .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown (stub — wired in US6)')
+  .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks (stub — wired in US6)')
+  .option('--all', 'Disable collapsing of done subtrees (stub — wired in US3)')
+  .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
+  .option('--no-color', 'Suppress ANSI color output (stub — no colored text yet)')
+  .action((opts: Record<string, unknown>) => {
+    const statusOpts: StatusOptions = { ...opts } as StatusOptions;
+    return statusAction(statusOpts);
+  });
 
 program.parse(process.argv);
