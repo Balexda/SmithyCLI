@@ -104,7 +104,7 @@ keeps the "sub-agent interaction removal" change atomic.
     `debt_items`, `bail_out`, `bail_out_summary` per the contracts file
   - Frontmatter description updated to reflect non-interactive behavior
 
-- [ ] **Convert refine to apply refinements directly or record as debt**
+- [x] **Convert refine to apply refinements directly or record as debt**
 
   In `src/templates/agent-skills/agents/smithy.refine.prompt`, remove the
   audit-scan STOP (end of Step 1) and the per-question STOP (Step 3).
