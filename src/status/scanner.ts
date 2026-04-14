@@ -79,6 +79,12 @@ export function scan(root: string): ArtifactRecord[] {
   }
 
   const records = new Map<string, ArtifactRecord>();
+  // Canonical real paths of every directory the walker has descended
+  // into. Used to break symlink cycles (e.g., `specs/a/link -> ..`)
+  // and to avoid revisiting the same physical directory reached via
+  // two different scan roots (e.g., `specs/strikes/` reached via both
+  // `specs/` and `specs/strikes/`).
+  const visitedDirs = new Set<string>();
 
   // Phase 1: discover + parse.
   for (const scanRoot of SCAN_ROOTS) {
@@ -90,7 +96,16 @@ export function scan(root: string): ArtifactRecord[] {
       continue;
     }
     if (!stat.isDirectory()) continue;
-    walkDir(startDir, realRoot, records);
+    let realStart: string;
+    try {
+      realStart = fs.realpathSync(startDir);
+    } catch {
+      continue;
+    }
+    if (!isWithinRoot(realStart, realRoot)) continue;
+    if (visitedDirs.has(realStart)) continue;
+    visitedDirs.add(realStart);
+    walkDir(startDir, realRoot, records, visitedDirs);
   }
 
   // Phase 2: resolve parent/child linkage and emit virtual records.
@@ -141,13 +156,15 @@ export function scan(root: string): ArtifactRecord[] {
 
 /**
  * Recursively walk `dir`, resolving each entry through `realpath` and
- * skipping anything whose real path escapes `realRoot`. Parses every
+ * skipping anything whose real path escapes `realRoot` or that has
+ * already been visited (which breaks symlink cycles). Parses every
  * discovered artifact file into `records`.
  */
 function walkDir(
   dir: string,
   realRoot: string,
   records: Map<string, ArtifactRecord>,
+  visitedDirs: Set<string>,
 ): void {
   let entries: string[];
   try {
@@ -174,7 +191,12 @@ function walkDir(
     }
 
     if (stat.isDirectory()) {
-      walkDir(abs, realRoot, records);
+      // Guard against directory cycles introduced by symlinks (and
+      // duplicate descents from overlapping scan roots) by tracking
+      // canonical real paths we have already walked.
+      if (visitedDirs.has(realAbs)) continue;
+      visitedDirs.add(realAbs);
+      walkDir(abs, realRoot, records, visitedDirs);
     } else if (stat.isFile()) {
       handleFile(abs, realRoot, records);
     }

@@ -201,6 +201,35 @@ ${TABLE_HEADER}
     expect(good?.status).not.toBe('unknown');
   });
 
+  it('terminates on a symlink directory cycle inside root', () => {
+    // A symlink that points back at one of its ancestors inside `root`
+    // would cause an unbounded recursive walk if the walker did not
+    // track visited canonical directories. The scan must terminate
+    // and still discover the real artifact alongside the cycle.
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | One | — | — |\n`,
+    );
+    try {
+      // `specs/feature-a/loop` -> `specs/feature-a` (parent dir).
+      symlinkSync(
+        join(root, 'specs', 'feature-a'),
+        join(root, 'specs', 'feature-a', 'loop'),
+        'dir',
+      );
+    } catch {
+      return; // Platform without symlink support — skip.
+    }
+    const records = scan(root);
+    expect(
+      records.some((r) => r.path === 'specs/feature-a/feature-a.spec.md'),
+    ).toBe(true);
+    // No record should be discovered under the looping symlink path.
+    expect(
+      records.some((r) => r.path.startsWith('specs/feature-a/loop/')),
+    ).toBe(false);
+  });
+
   it('does not follow symlinks whose real path escapes root', () => {
     // Create an external directory with an artifact and symlink it
     // inside root. The symlink target is outside root, so the walker
