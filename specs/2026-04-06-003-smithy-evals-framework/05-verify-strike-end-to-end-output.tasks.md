@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Define the strike scenario module**
+- [x] **Define the strike scenario module**
 
   Create `evals/lib/strike-scenario.ts` exporting a typed `strikeScenario: EvalScenario` constant (type imported from `./types.js`). Populate `structural_expectations` so the scenario captures the strike-specific markers locked in the spec's US5 Clarifications and FR-012.
 
@@ -29,7 +29,7 @@
   - No `# Strike:` heading is asserted — the spec explicitly notes this heading does not appear in actual strike output
   - `timeout` is unset (or left to the orchestrator default) so the framework default applies and the `--timeout` CLI override still takes effect
 
-- [ ] **Validate the strike scenario against captured spike output**
+- [x] **Validate the strike scenario against captured spike output**
 
   Add `evals/lib/strike-scenario.test.ts` that reads `evals/spike/output-strike.txt` and runs `validateStructure` from `./structural.js` against the exported scenario. This pins the scenario to a real-world strike capture so drift in either the expectations or the sample surfaces immediately under `npm run test:evals`.
 
@@ -39,7 +39,7 @@
   - A negative case demonstrates FR-012 by verifying the scenario flags a failure when the sample is replaced with a synthetic generic-refusal string
   - The test imports `strikeScenario` by name rather than redefining expectations inline, preserving a single source of truth
 
-- [ ] **Wire the strike scenario into the orchestrator**
+- [x] **Wire the strike scenario into the orchestrator**
 
   Replace the hardcoded smoke-test scenario in `evals/run-evals.ts` with `strikeScenario` imported from `./lib/strike-scenario.js`. The orchestrator's existing structural and sub-agent validation pipeline (from US4 Slice 2) must continue to operate unchanged — only the scenario source changes.
 

@@ -2,15 +2,15 @@
  * Minimal orchestrator entry point for the Smithy evals framework.
  *
  * Accepts --fixture and --timeout CLI flags; calls preflight() on startup;
- * runs a single hardcoded smoke-test scenario, validates output structure,
- * prints per-check pass/fail results to stdout, and exits with code 1 if
- * any check fails or the process exits non-zero or times out.
+ * runs the imported `strikeScenario`, validates output structure, prints
+ * per-check pass/fail results to stdout, and exits with code 1 if any check
+ * fails or the process exits non-zero or times out.
  *
- * US7 will replace the hardcoded scenario with YAML loading.
+ * US7 will replace the imported scenario with YAML loading.
  * US9 will extend the result summary into a full EvalReport.
  *
- * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-010;
- * Acceptance Scenarios 3.3, 4.1, 4.2, 4.3
+ * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-010, FR-012;
+ * Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
  */
 
 import { parseArgs } from 'node:util';
@@ -20,6 +20,7 @@ import path from 'node:path';
 import { preflight, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import { strikeScenario } from './lib/strike-scenario.js';
 import type { CheckResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
@@ -68,17 +69,16 @@ if (!fixtureStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
-// Smoke-test scenario (US7 will replace this with YAML loading)
+// Scenario (US7 will replace this with YAML loading)
 // ---------------------------------------------------------------------------
-
+//
+// The scenario definition lives in `./lib/strike-scenario.ts` as a single
+// source of truth shared with `strike-scenario.test.ts`. We layer the
+// `--timeout` CLI override on top of the imported constant so the framework
+// default still applies when the flag is omitted.
 const scenario: EvalScenario = {
-  name: 'strike-health-check',
-  skill: '/smithy.strike',
-  prompt: 'add a health check endpoint',
+  ...strikeScenario,
   timeout: timeoutSec,
-  structural_expectations: {
-    required_headings: ['## Plan'],
-  },
 };
 
 console.log(`Running scenario: ${scenario.name}`);
