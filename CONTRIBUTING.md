@@ -53,10 +53,12 @@ The evals framework (under `evals/`) — implemented:
 - Runs locally on demand (`npm run eval`), not in CI, due to LLM cost
 - Structural output validation (`validateStructure` — required headings, patterns, tables, forbidden patterns)
 - Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)
+- Eval summary report library (`scenarioRunToResult`, `buildReport`, `formatReport`, `EvalReport` — pure, fully unit-tested)
 - Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
 
 Pending:
 - YAML-defined scenario loading (`evals/cases/`)
+- Orchestrator wiring of the report library into `run-evals.ts` (US9 Slice 2)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 
