@@ -68,8 +68,13 @@ Then capture for the strike document:
 
 After capturing the plan, use the **smithy-clarify** sub-agent. Pass it:
    - **Criteria**: Scope, Edge Cases, Preferences, Architecture Fit, Testing Strategy
-   - **Context**: this is a strike document; include the feature description and
-     the relevant file paths you discovered during exploration.
+   - **Context**: this is a strike document; include the feature description,
+     the relevant file paths you discovered during exploration, and the
+     captured plan: summary, approach, and risks. If the reconciled plan
+     contains conflicts, include both the conflicting options and the
+     reconciler's recommended resolution as part of the context so clarify
+     can evaluate Architecture Fit and Testing Strategy against the
+     proposed approach.
 
 Clarify is non-interactive and returns `assumptions`, `debt_items`,
 `bail_out`, and `bail_out_summary` directly. Do not ask the user any
