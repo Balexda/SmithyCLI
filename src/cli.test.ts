@@ -446,3 +446,177 @@ describe('CLI init lifecycle and idempotency', () => {
     expect(fs.existsSync(customFile)).toBe(true);
   });
 });
+
+describe('CLI status', () => {
+  let tmpDir: string;
+
+  const TABLE_HEADER =
+    '| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|';
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-status-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function write(relPath: string, contents: string): void {
+    const abs = path.join(tmpDir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, contents);
+  }
+
+  it('shows the subcommand and all options in --help', () => {
+    const output = execFileSync('node', [CLI, 'status', '--help'], {
+      encoding: 'utf-8',
+    });
+    expect(output).toContain('status');
+    expect(output).toContain('--root');
+    expect(output).toContain('--format');
+    expect(output).toContain('--status');
+    expect(output).toContain('--type');
+    expect(output).toContain('--all');
+    expect(output).toContain('--graph');
+    expect(output).toContain('--no-color');
+  });
+
+  it('emits contract-shaped JSON with records, summary, tree, graph', () => {
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story One | — | specs/feature-a/01-first.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-a/01-first.tasks.md',
+      `# Tasks\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+
+    const output = execFileSync('node', [CLI, 'status', '--format', 'json', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    const payload = JSON.parse(output) as {
+      summary: {
+        counts: Record<'rfc' | 'features' | 'spec' | 'tasks', Record<string, number>>;
+        orphan_count: number;
+        broken_link_count: number;
+        parse_error_count: number;
+      };
+      records: Array<{
+        type: string;
+        path: string;
+        title: string;
+        status: string;
+        dependency_order: { rows: unknown[]; id_prefix: string; format: string };
+      }>;
+      tree: { roots: unknown[] };
+      graph: { nodes: unknown; layers: unknown[]; cycles: unknown[]; dangling_refs: unknown[] };
+    };
+
+    // Top-level shape matches the contracts.
+    expect(payload).toHaveProperty('summary');
+    expect(payload).toHaveProperty('records');
+    expect(payload).toHaveProperty('tree');
+    expect(payload).toHaveProperty('graph');
+
+    // Records embed the parsed dependency_order sub-object.
+    const specRecord = payload.records.find((r) => r.type === 'spec');
+    expect(specRecord).toBeDefined();
+    expect(specRecord?.dependency_order.format).toBe('table');
+    expect(specRecord?.dependency_order.id_prefix).toBe('US');
+
+    // Tasks record classifies as done (2/2 checkboxes in slice body).
+    const tasksRecord = payload.records.find((r) => r.type === 'tasks');
+    expect(tasksRecord).toBeDefined();
+    expect(tasksRecord?.status).toBe('done');
+
+    // Spec rolls up to done because its only child is done.
+    expect(specRecord?.status).toBe('done');
+
+    // Summary counts match the records.
+    expect(payload.summary.counts.spec.done).toBe(1);
+    expect(payload.summary.counts.tasks.done).toBe(1);
+    expect(payload.summary.parse_error_count).toBe(0);
+  });
+
+  it('exits 0 with a friendly hint on an empty repo', () => {
+    const result = spawnSync('node', [CLI, 'status', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(0);
+    const output = result.stdout + result.stderr;
+    expect(output).toMatch(/smithy\.ignite|smithy\.mark/);
+  });
+
+  it('exits 2 with a stderr message when --root points to a nonexistent path', () => {
+    const missing = path.join(tmpDir, 'does-not-exist');
+    const result = spawnSync('node', [CLI, 'status', '--root', missing], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('does not exist');
+  });
+
+  it('emits a minimal flat text listing by default', () => {
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+
+    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    // Flat listing: one line per record mentioning the path.
+    expect(output).toContain('specs/feature-a/feature-a.spec.md');
+    expect(output).toContain('spec');
+  });
+
+  it('surfaces individual parse failures as records with status unknown and exits 0', () => {
+    // A parent-type artifact whose `## Dependency Order` section uses
+    // the legacy checkbox format triggers the `unknown` classifier
+    // branch AND emits a `format_legacy` warning (SD-002 rule).
+    write(
+      'specs/broken/broken.spec.md',
+      '# Broken\n\n## Dependency Order\n\n- [ ] US1 Story One → specs/broken/01-story.tasks.md\n- [ ] US2 Story Two → specs/broken/02-story.tasks.md\n',
+    );
+
+    const result = spawnSync('node', [CLI, 'status', '--format', 'json', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+    expect(result.status).toBe(0);
+
+    const payload = JSON.parse(result.stdout) as {
+      records: Array<{ status: string; warnings: string[] }>;
+      summary: { parse_error_count: number };
+    };
+    const unknownRecord = payload.records.find((r) => r.status === 'unknown');
+    expect(unknownRecord).toBeDefined();
+    expect(unknownRecord?.warnings.length).toBeGreaterThan(0);
+    expect(payload.summary.parse_error_count).toBeGreaterThan(0);
+  });
+
+  it('accepts all downstream option stubs without error', () => {
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+
+    const result = spawnSync(
+      'node',
+      [
+        CLI,
+        'status',
+        '--root', tmpDir,
+        '--status', 'in-progress',
+        '--type', 'spec',
+        '--all',
+        '--graph',
+        '--no-color',
+      ],
+      { encoding: 'utf-8' },
+    );
+    // Commander should not reject any of these stubs.
+    expect(result.status).toBe(0);
+  });
+});
