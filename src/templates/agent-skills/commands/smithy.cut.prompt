@@ -62,6 +62,14 @@ One-shot mode: do **not** stop to ask the user to review or approve the
 refinements. The refinement diff is the review surface and the one-shot PR
 below is how the user sees it.
 
+**No-op check**: if refine returned an empty `refinements` list and no new
+`debt_items`, and `git status --porcelain` reports a clean worktree, this
+pass had nothing to change. Skip the commit, push, and PR-creation steps
+below. Render the one-shot output snippet with an explicit "no-op" note in
+`## Summary` ("Artifacts produced: 0 files — refine found no changes") and
+reuse the branch's existing PR URL if one exists (fall back to "No PR —
+nothing to change" otherwise). Do not fail with "nothing to commit".
+
 1. Stage and commit the refinement diff on the current branch. The commit
    message should describe the refinements applied (e.g.,
    `cut refine: split Slice 2; resolve SD-001`).
