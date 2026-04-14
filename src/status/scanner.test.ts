@@ -6,7 +6,7 @@ import {
   writeFileSync,
   symlinkSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { scan } from './index.js';
@@ -34,7 +34,7 @@ afterEach(() => {
 
 function write(relPath: string, contents: string): void {
   const abs = join(root, relPath);
-  mkdirSync(abs.substring(0, abs.lastIndexOf('/')), { recursive: true });
+  mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, contents);
 }
 
