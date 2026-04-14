@@ -10,11 +10,10 @@
  *   3. Call {@link scan} to build the fully-classified `ArtifactRecord[]`.
  *   4. Derive a {@link ScanSummary} from the records.
  *   5. Emit either contract-shaped JSON (`--format json`) or a minimal
- *      flat text listing (default). Rendering the hierarchical tree and
- *      the graph is owned by downstream stories (US2, US10); this slice
- *      ships stub values (`tree: { roots: [] }`, `graph: { ... }`) in
- *      the JSON payload so consumers can depend on the top-level shape
- *      today.
+ *      flat text listing (default). The JSON `tree` field is populated
+ *      via {@link buildTree} (US2 Slice 1); the `graph` field is still
+ *      stubbed and owned by US10. The top-level JSON shape is stable
+ *      from US1 onward so consumers can depend on it today.
  *   6. On an empty repo (no discovered artifacts), print a friendly hint
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error".
@@ -27,12 +26,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { scan } from '../status/index.js';
+import { buildTree, scan } from '../status/index.js';
 import type {
   ArtifactRecord,
   ArtifactType,
   ScanSummary,
   Status,
+  StatusTree,
 } from '../status/index.js';
 
 /**
@@ -64,16 +64,15 @@ export interface StatusOptions {
 }
 
 /**
- * Contract-shaped JSON payload emitted by `--format json`. `tree` and
- * `graph` are stubbed with empty containers in this slice; their real
- * population is owned by US2 (tree) and US10 (graph). The stub keys are
- * emitted unconditionally so consumers can depend on the top-level shape
- * from US1 onward.
+ * Contract-shaped JSON payload emitted by `--format json`. `tree` is
+ * now populated by {@link buildTree} (US2 Slice 1); `graph` is still a
+ * stub owned by US10. The keys are emitted unconditionally so machine
+ * consumers can depend on the top-level shape.
  */
 interface StatusJsonPayload {
   summary: ScanSummary;
   records: ArtifactRecord[];
-  tree: { roots: [] };
+  tree: StatusTree;
   graph: {
     nodes: Record<string, never>;
     layers: [];
@@ -171,7 +170,7 @@ export function statusAction(opts: StatusOptions = {}): void {
     const payload: StatusJsonPayload = {
       summary,
       records,
-      tree: { roots: [] },
+      tree: buildTree(records),
       graph: {
         nodes: {},
         layers: [],
