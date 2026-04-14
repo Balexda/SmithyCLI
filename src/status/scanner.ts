@@ -121,10 +121,24 @@ export function scan(root: string): ArtifactRecord[] {
 
       let child = records.get(resolution.path);
       if (child !== undefined) {
-        // Real or previously-emitted virtual already occupies this path —
-        // real records always win because Phase 1 populated them before
-        // any virtual could be inserted.
-        child.parent_path = parent.path;
+        // Real or previously-emitted virtual already occupies this
+        // path — real records always win because Phase 1 populated
+        // them before any virtual could be inserted.
+        if (
+          child.parent_path !== undefined &&
+          child.parent_path !== null &&
+          child.parent_path !== parent.path
+        ) {
+          // Another parent already claimed this child. Keep the
+          // first parent (deterministic: parents are iterated in
+          // discovery order) and surface a warning on the child so
+          // downstream renderers can flag the conflict.
+          child.warnings.push(
+            `parent_collision: also referenced by ${parent.path}`,
+          );
+        } else {
+          child.parent_path = parent.path;
+        }
       } else {
         child = makeVirtualRecord(resolution.path, resolution.type, row, parent);
         records.set(resolution.path, child);

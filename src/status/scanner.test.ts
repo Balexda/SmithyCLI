@@ -398,6 +398,35 @@ ${TABLE_HEADER}
     expect(virt?.parent_path).toBe('specs/feature-a/feature-a.features.md');
   });
 
+  it('parent_path collision: a child claimed by two parents keeps the first and warns', () => {
+    // Two specs both list the same tasks file in their dep-order
+    // tables. The child must keep the first parent_path and append a
+    // warning naming the second parent.
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | One | — | specs/shared/01-only.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-b/feature-b.spec.md',
+      `# Spec B\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | One | — | specs/shared/01-only.tasks.md |\n`,
+    );
+    write(
+      'specs/shared/01-only.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const child = byPath(records, 'specs/shared/01-only.tasks.md');
+    expect(child).toBeDefined();
+    // Whichever spec was iterated first wins; both specs are valid
+    // first-parents so accept either.
+    expect(child?.parent_path === 'specs/feature-a/feature-a.spec.md' ||
+      child?.parent_path === 'specs/feature-b/feature-b.spec.md').toBe(true);
+    const collisionWarnings = child?.warnings.filter((w) =>
+      w.startsWith('parent_collision:'),
+    );
+    expect(collisionWarnings).toHaveLength(1);
+  });
+
   it('legacy-format artifact yields a spec record with status=unknown', () => {
     write(
       'specs/feature-a/feature-a.spec.md',
