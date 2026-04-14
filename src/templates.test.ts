@@ -298,6 +298,39 @@ describe('getComposedTemplates', () => {
     expect(clarify).toContain('debt_items');
   });
 
+  it('clarify agent is non-interactive: no STOP-gate language', () => {
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    expect(clarify).toBeDefined();
+    expect(clarify).not.toMatch(/STOP and wait/i);
+    expect(clarify).not.toMatch(/STOP and ask/i);
+    expect(clarify).not.toMatch(/STOP after/i);
+    expect(clarify).not.toMatch(/wait for the user to respond/i);
+  });
+
+  it('clarify agent return contract includes required ClarifyResult fields', () => {
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    expect(clarify).toContain('assumptions');
+    expect(clarify).toContain('debt_items');
+    expect(clarify).toContain('bail_out');
+    expect(clarify).toContain('bail_out_summary');
+  });
+
+  it('refine agent is non-interactive: no STOP-gate language', () => {
+    const refine = composed.agents.get('smithy.refine.md')!;
+    expect(refine).toBeDefined();
+    expect(refine).not.toMatch(/STOP and wait/i);
+    expect(refine).not.toMatch(/STOP and ask/i);
+    expect(refine).not.toMatch(/STOP after/i);
+    expect(refine).not.toMatch(/wait for the user to respond/i);
+  });
+
+  it('refine agent return contract includes required RefineResult fields', () => {
+    const refine = composed.agents.get('smithy.refine.md')!;
+    expect(refine).toContain('refinements');
+    expect(refine).toContain('debt_items');
+    expect(refine).toContain('summary');
+  });
+
   it('mark template contains ## Specification Debt between ## Assumptions and ## Out of Scope', () => {
     const mark = composed.commands.get('smithy.mark.md')!;
     expect(mark).toBeDefined();

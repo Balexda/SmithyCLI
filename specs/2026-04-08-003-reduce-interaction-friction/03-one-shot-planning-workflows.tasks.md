@@ -122,7 +122,7 @@ keeps the "sub-agent interaction removal" change atomic.
     `RefineResult` return shape
   - Frontmatter description updated to reflect non-interactive behavior
 
-- [ ] **Add Tier 2 assertions covering the non-interactive contracts**
+- [x] **Add Tier 2 assertions covering the non-interactive contracts**
 
   Extend `src/templates.test.ts` with assertions that the composed
   `smithy.clarify.md` and `smithy.refine.md` templates no longer contain
