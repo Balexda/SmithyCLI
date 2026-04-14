@@ -557,7 +557,7 @@ describe('CLI status', () => {
     expect(result.stderr).toContain('does not exist');
   });
 
-  it('emits a minimal flat text listing by default', () => {
+  it('emits a minimal flat text listing in type/path/title/status column order', () => {
     write(
       'specs/feature-a/feature-a.spec.md',
       `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
@@ -567,9 +567,57 @@ describe('CLI status', () => {
       encoding: 'utf-8',
     });
 
-    // Flat listing: one line per record mentioning the path.
-    expect(output).toContain('specs/feature-a/feature-a.spec.md');
-    expect(output).toContain('spec');
+    // Flat listing: one line per record. Column order is type, path,
+    // title, status per the Slice 3 task spec.
+    const line = output
+      .split('\n')
+      .find((l) => l.includes('specs/feature-a/feature-a.spec.md'));
+    expect(line).toBeDefined();
+    const cols = (line ?? '').split('\t');
+    expect(cols[0]).toBe('spec');
+    expect(cols[1]).toBe('specs/feature-a/feature-a.spec.md');
+    expect(cols[2]).toBe('Feature A');
+    expect(cols[3]).toBe('not-started');
+  });
+
+  it('emits a valid (empty) JSON payload for an empty repo in --format json mode', () => {
+    const output = execFileSync('node', [CLI, 'status', '--format', 'json', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+    // Must be parseable as JSON — machine consumers parse stdout
+    // unconditionally in JSON mode.
+    const payload = JSON.parse(output) as {
+      summary: { parse_error_count: number };
+      records: unknown[];
+      tree: { roots: unknown[] };
+      graph: { nodes: unknown; layers: unknown[] };
+    };
+    expect(payload.records).toEqual([]);
+    expect(payload.summary.parse_error_count).toBe(0);
+    expect(payload.tree.roots).toEqual([]);
+    expect(payload.graph.layers).toEqual([]);
+  });
+
+  it('exits 2 with a stderr message on an invalid --status value', () => {
+    const result = spawnSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--status', 'bogus'],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('invalid --status');
+    expect(result.stderr).toContain('done');
+  });
+
+  it('exits 2 with a stderr message on an invalid --type value', () => {
+    const result = spawnSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--type', 'bogus'],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('invalid --type');
+    expect(result.stderr).toContain('rfc');
   });
 
   it('surfaces individual parse failures as records with status unknown and exits 0', () => {

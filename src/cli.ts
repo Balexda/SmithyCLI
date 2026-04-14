@@ -80,14 +80,14 @@ program
   // Option stubs wired for downstream stories (US2, US3, US6). Commander
   // parses them so `smithy status --help` advertises the full surface,
   // but their behavioral effect is out of scope for US1 Slice 3.
-  .addOption(
-    new Option('--status <state>', 'Filter by status (stub — wired in US6)')
-      .choices(['done', 'in-progress', 'not-started', 'unknown']),
-  )
-  .addOption(
-    new Option('--type <artifact-type>', 'Filter by artifact type (stub — wired in US6)')
-      .choices(['rfc', 'features', 'spec', 'tasks']),
-  )
+  //
+  // `--status` and `--type` deliberately do NOT use Commander
+  // `.choices()` because Commander's invalid-choice handler exits with
+  // code 1, while the contracts mandate exit code 2 for invalid values
+  // on these two flags. `statusAction` validates them manually and
+  // sets `process.exitCode = 2`.
+  .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown (stub — wired in US6)')
+  .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks (stub — wired in US6)')
   .option('--all', 'Disable collapsing of done subtrees (stub — wired in US3)')
   .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
   .option('--no-color', 'Suppress ANSI color output (stub — no colored text yet)')

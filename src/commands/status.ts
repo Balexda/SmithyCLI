@@ -37,8 +37,11 @@ import type {
 
 /**
  * CLI options accepted by `smithy status`. Fields map 1:1 to the
- * Commander options registered in `src/cli.ts`. All fields are optional
- * because Commander omits unspecified flags entirely.
+ * Commander options registered in `src/cli.ts`. Properties are marked
+ * optional because this action accepts partially populated option
+ * objects; when invoked via Commander, some options may still be
+ * present with default values (e.g. `--format` defaults to `'text'`,
+ * `--no-color` produces `color: true`) rather than being omitted.
  */
 export interface StatusOptions {
   /** Directory to scan. Defaults to `process.cwd()`. */
@@ -85,19 +88,67 @@ interface StatusJsonPayload {
  * text listing. Sets `process.exitCode` on error conditions so Commander
  * does not have to know about them.
  */
+const VALID_STATUSES: readonly Status[] = [
+  'done',
+  'in-progress',
+  'not-started',
+  'unknown',
+];
+
+const VALID_TYPES: readonly ArtifactType[] = [
+  'rfc',
+  'features',
+  'spec',
+  'tasks',
+];
+
 export function statusAction(opts: StatusOptions = {}): void {
+  // Error condition: invalid `--status` or `--type` value.
+  // Validated here (not via Commander `.choices()`) because the
+  // contracts mandate exit code 2 for these errors, while Commander's
+  // built-in invalid-choice handler exits with code 1.
+  if (opts.status !== undefined && !VALID_STATUSES.includes(opts.status)) {
+    process.stderr.write(
+      `smithy status: invalid --status value '${opts.status}'. Valid values: ${VALID_STATUSES.join(', ')}\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+  if (opts.type !== undefined && !VALID_TYPES.includes(opts.type)) {
+    process.stderr.write(
+      `smithy status: invalid --type value '${opts.type}'. Valid values: ${VALID_TYPES.join(', ')}\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+
   const rawRoot = opts.root ?? process.cwd();
   const resolvedRoot = path.resolve(rawRoot);
 
-  // Error condition: `--root` points to a nonexistent path.
+  // Error condition: `--root` cannot be inspected.
   // Hard fail with exit 2 and a stderr message per the contracts.
+  // Distinguish ENOENT (the contract's "non-existent path" case) from
+  // permission and other I/O failures so the message stays accurate.
   let stat: fs.Stats;
   try {
     stat = fs.statSync(resolvedRoot);
-  } catch {
-    process.stderr.write(
-      `smithy status: --root path does not exist: ${rawRoot}\n`,
-    );
+  } catch (error: unknown) {
+    const errorCode =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : undefined;
+
+    const message =
+      errorCode === 'ENOENT'
+        ? `smithy status: --root path does not exist: ${rawRoot}\n`
+        : errorCode === 'EACCES' || errorCode === 'EPERM'
+          ? `smithy status: cannot access --root path: ${rawRoot}\n`
+          : `smithy status: failed to inspect --root path: ${rawRoot}\n`;
+
+    process.stderr.write(message);
     process.exitCode = 2;
     return;
   }
@@ -110,17 +161,12 @@ export function statusAction(opts: StatusOptions = {}): void {
   }
 
   const records = scan(resolvedRoot);
-
-  // Empty repo: friendly hint, exit 0. Not an error.
-  if (records.length === 0) {
-    console.log(
-      'No Smithy artifacts found. Run `smithy.ignite` or `smithy.mark` to create one.',
-    );
-    return;
-  }
-
   const summary = summarize(records);
 
+  // JSON mode: always emit a valid JSON payload, even on an empty
+  // repo. Machine consumers (CI, the smithy.status agent skill) parse
+  // stdout as JSON unconditionally, so a plain-text empty-repo hint
+  // would break them.
   if (opts.format === 'json') {
     const payload: StatusJsonPayload = {
       summary,
@@ -137,12 +183,21 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
+  // Text mode, empty repo: friendly hint, exit 0. Not an error.
+  if (records.length === 0) {
+    console.log(
+      'No Smithy artifacts found. Run `smithy.ignite` or `smithy.mark` to create one.',
+    );
+    return;
+  }
+
   // Default text output: minimal flat listing. Hierarchical rendering
   // is owned by US2; this slice ships a placeholder so humans get
-  // something legible and CI can parse it line-by-line.
+  // something legible and CI can parse it line-by-line. Column order
+  // matches the Slice 3 task spec: type, path, title, status.
   for (const record of records) {
     console.log(
-      `${record.type}\t${record.status}\t${record.path}\t${record.title}`,
+      `${record.type}\t${record.path}\t${record.title}\t${record.status}`,
     );
   }
 }
