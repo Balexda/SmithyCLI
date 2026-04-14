@@ -565,12 +565,17 @@ below is how the user sees it.
    applied (e.g., `mark refine: resolve SD-003; add US4 priority
    justification`).
 2. Push the branch to `origin`.
-3. Create a pull request using the same `gh pr create` pattern that
-   `smithy.forge` uses:
-   - **Title**: `Refine <feature title>` — under 70 characters, plain text.
-   - **Body**: the refine summary, a list of refinements applied, and any
-     debt items resolved or introduced by this pass.
-4. Capture the resulting PR URL for the one-shot output snippet.
+3. Check whether the current branch already has an open pull request (for
+   example with `gh pr view --json url` or by querying by head branch).
+   - If a PR already exists for this branch, capture and reuse that PR URL
+     for the one-shot output snippet — do **not** run `gh pr create`
+     again, and do **not** treat the existing PR as a failure.
+   - If no PR exists, create one using the same `gh pr create` pattern
+     that `smithy.forge` uses:
+     - **Title**: `Refine <feature title>` — under 70 characters, plain text.
+     - **Body**: the refine summary, a list of refinements applied, and any
+       debt items resolved or introduced by this pass.
+4. Capture the resulting or existing PR URL for the one-shot output snippet.
 
 If `gh pr create` fails, fall through to the PR-creation-failure branch of
 the one-shot output snippet so the user sees exactly what changed and what
