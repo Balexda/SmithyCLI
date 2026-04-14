@@ -1,7 +1,7 @@
 /**
  * `smithy status` subcommand — thin CLI wiring around the status scanner.
  *
- * This module composes the pieces already built in Slices 1 and 2:
+ * This module composes the pieces already built in US1 and US2 Slice 1:
  *
  *   1. Resolve `--root` (defaults to `process.cwd()`).
  *   2. Hard-fail with exit 2 if the resolved path does not exist or is not
@@ -20,7 +20,8 @@
  *
  * Option stubs for `--status`, `--type`, `--all`, `--graph`, and
  * `--no-color` are accepted but intentionally have no behavioral effect
- * in this slice. Downstream stories (US2, US3, US6) wire them.
+ * yet. Downstream stories (US3, US6) wire the filter flags; US10 wires
+ * `--graph`.
  */
 
 import fs from 'node:fs';
@@ -190,10 +191,10 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  // Default text output: minimal flat listing. Hierarchical rendering
-  // is owned by US2; this slice ships a placeholder so humans get
-  // something legible and CI can parse it line-by-line. Column order
-  // matches the Slice 3 task spec: type, path, title, status.
+  // Default text output: minimal flat listing. Hierarchical text
+  // rendering is owned by US2 Slice 2 (renderTree); this placeholder
+  // remains until that slice lands. Column order: type, path, title,
+  // status.
   for (const record of records) {
     console.log(
       `${record.type}\t${record.path}\t${record.title}\t${record.status}`,
