@@ -2,11 +2,12 @@
  * Minimal orchestrator entry point for the Smithy evals framework.
  *
  * Accepts --fixture and --timeout CLI flags; calls preflight() on startup;
- * runs a single hardcoded smoke-test scenario, validates output structure,
- * prints per-check pass/fail results to stdout, and exits with code 1 if
- * any check fails or the process exits non-zero or times out.
+ * runs the strike end-to-end scenario imported from `lib/strike-scenario.ts`,
+ * validates output structure, prints per-check pass/fail results to stdout,
+ * and exits with code 1 if any check fails or the process exits non-zero or
+ * times out.
  *
- * US7 will replace the hardcoded scenario with YAML loading.
+ * US7 will replace the imported scenario constant with YAML loading.
  * US9 will extend the result summary into a full EvalReport.
  *
  * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-010;
@@ -20,6 +21,7 @@ import path from 'node:path';
 import { preflight, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import { strikeScenario } from './lib/strike-scenario.js';
 import type { CheckResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
@@ -68,17 +70,12 @@ if (!fixtureStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
-// Smoke-test scenario (US7 will replace this with YAML loading)
+// Strike end-to-end scenario (US7 will replace this with YAML loading)
 // ---------------------------------------------------------------------------
 
 const scenario: EvalScenario = {
-  name: 'strike-health-check',
-  skill: '/smithy.strike',
-  prompt: 'add a health check endpoint',
+  ...strikeScenario,
   timeout: timeoutSec,
-  structural_expectations: {
-    required_headings: ['## Plan'],
-  },
 };
 
 console.log(`Running scenario: ${scenario.name}`);
