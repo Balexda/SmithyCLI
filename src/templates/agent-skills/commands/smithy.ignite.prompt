@@ -654,10 +654,15 @@ and file write — proceed directly to commit and PR:
    - **Body**: the one-shot output snippet content (rendered below) plus a
      relative link to the RFC file.
 3. Render the one-shot output snippet as the terminal contract. For an
-   RFC-only run, use the RFC folder as the spec folder, substitute milestone
-   counts where the snippet asks for user stories / functional requirements,
-   and copy the clarify return's `assumptions` and `debt_items` into the
-   Assumptions and Specification Debt sections.
+   RFC-only run, use the RFC folder as the spec folder and substitute
+   milestone counts where the snippet asks for user stories / functional
+   requirements. Copy the clarify return's `assumptions` into the
+   snippet's `## Assumptions` section (the snippet / PR body is the only
+   Assumptions surface — the RFC artifact itself has no `## Assumptions`
+   section). Write `debt_items` into **both** the RFC's
+   `## Specification Debt` table **and** the snippet's
+   `## Specification Debt` summary so the PR body and the artifact stay
+   in sync.
 
 {{else}}
 1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
@@ -668,18 +673,19 @@ and file write — proceed directly to commit and PR:
    - **Body**: the one-shot output snippet content (rendered below) plus a
      relative link to the RFC file.
 5. Render the one-shot output snippet as the terminal contract. For an
-   RFC-only run, use the RFC folder as the spec folder, substitute milestone
-   counts where the snippet asks for user stories / functional requirements,
-   and copy the clarify return's `assumptions` and `debt_items` into the
-   Assumptions and Specification Debt sections.
+   RFC-only run, use the RFC folder as the spec folder and substitute
+   milestone counts where the snippet asks for user stories / functional
+   requirements. Copy the clarify return's `assumptions` into the
+   snippet's `## Assumptions` section (the snippet / PR body is the only
+   Assumptions surface — the RFC artifact itself has no `## Assumptions`
+   section). Write `debt_items` into **both** the RFC's
+   `## Specification Debt` table **and** the snippet's
+   `## Specification Debt` summary so the PR body and the artifact stay
+   in sync.
 
 {{/ifAgent}}
 
 {{>one-shot-output}}
-
-After the snippet is rendered, suggest the next step as a non-interactive
-hint in the terminal output: "Ready for `smithy.render` to break a milestone
-into features." Do not block on confirmation.
 
 ---
 

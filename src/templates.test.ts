@@ -1067,11 +1067,14 @@ describe('getComposedTemplates', () => {
   it('ignite template renders the one-shot output headers after conversion', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
-    // The one-shot-output snippet drops `## Summary`, `## Assumptions`,
-    // `## Specification Debt`, and `## PR` sections into the composed
-    // template. `## Summary` already appears in the RFC template code
-    // fence, so assert on the three unique headers plus the bail-out
-    // fallback that only the snippet produces.
+    // The one-shot-output snippet adds `## Summary`, `## Assumptions`,
+    // `## Specification Debt`, and `## PR` sections to the composed
+    // template. `## Summary` and `## Specification Debt` already appear
+    // elsewhere in the ignite template (in the RFC template code fence),
+    // so their presence here does not prove the snippet was inlined.
+    // The unique indicators of the inlined snippet are `## PR` and
+    // `## Bail-Out` (only the snippet produces those); the other two
+    // assertions guard against accidental removal of either copy.
     expect(ignite).toContain('## Assumptions');
     expect(ignite).toContain('## Specification Debt');
     expect(ignite).toContain('## PR');

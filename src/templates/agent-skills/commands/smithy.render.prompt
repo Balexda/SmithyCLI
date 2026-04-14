@@ -118,8 +118,10 @@ Parse the input and prepare the target:
 
 1. **Read the RFC file.** Parse the Milestones section to extract all milestones
    (each `### Milestone N: <Title>` heading).
-2. **Validate the target milestone.** If a milestone number was specified, confirm
-   it exists. If auto-selected, proceed with that choice (step 5 will confirm).
+2. **Validate the target milestone.** If a milestone number was specified,
+   verify it exists in the RFC and abort with a clear error if it does not.
+   If auto-selected, proceed with that choice without asking — render is
+   one-shot and Step 5 only reports the target, it does not re-confirm it.
 3. **Derive the slug.** Create a kebab-case slug from the milestone title
    (e.g., "Core Pipeline Commands" → `core-pipeline-commands`).
 4. **Derive the filename.** `<NN>-<milestone-slug>.features.md` where `<NN>` is the
@@ -294,16 +296,17 @@ the PR.
    - **Body**: the one-shot output snippet content (rendered below) plus a
      relative link to the feature map file.
 4. Render the one-shot output snippet as the terminal contract. For a
-   feature-map run, use the RFC folder as the spec folder, substitute
+   feature-map run, use the RFC folder as the spec folder and substitute
    feature counts where the snippet asks for user stories / functional
-   requirements, and copy the clarify return's `assumptions` and
-   `debt_items` into the Assumptions and Specification Debt sections.
+   requirements. Copy the clarify return's `assumptions` into the
+   snippet's `## Assumptions` section (the snippet / PR body is the only
+   Assumptions surface — the feature map artifact has no `## Assumptions`
+   section). Write `debt_items` into **both** the feature map's
+   `## Specification Debt` table **and** the snippet's
+   `## Specification Debt` summary so the PR body and the artifact stay
+   in sync.
 
 {{>one-shot-output}}
-
-After the snippet is rendered, suggest the next step as a non-interactive
-hint in the terminal output: "Ready for `smithy.mark` to specify each
-feature." Do not block on confirmation.
 
 ---
 
