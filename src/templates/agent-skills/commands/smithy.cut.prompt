@@ -507,6 +507,14 @@ have a tasks file yet".
 One-shot mode: do **not** stop to ask the user to review or approve the tasks
 file. The file is on disk and the PR is the review surface.
 
+**Branch check**: before committing, verify the current branch is NOT the
+repository's default branch. Discover the default branch dynamically (e.g.
+`git symbolic-ref refs/remotes/origin/HEAD`) rather than assuming `main`.
+If HEAD is on the default branch, stop with an error telling the user to
+re-run cut from the spec folder's feature branch (the one `smithy.mark`
+created) — pushing planning commits to the default branch and calling
+`gh pr create` with `head == base` will fail and pollute history.
+
 1. Stage and commit both the new `.tasks.md` file and the spec's
    `## Dependency Order` write-back on the current branch.
 2. Push the branch to `origin`.
