@@ -25,6 +25,7 @@ its contents. The snippet file itself is never deployed.
 | `competing-lenses-decomposition.md` | Competing slice lenses for decomposition planning | smithy.cut |
 | `competing-lenses-implementation.md` | Competing plan lenses for implementation planning | smithy.strike, smithy.ignite, smithy.render, smithy.mark |
 | `competing-lenses-scoping.md` | Competing plan lenses for scoping | smithy.strike, smithy.ignite, smithy.render, smithy.mark |
+| `one-shot-output.md` | Standardized terminal output format for one-shot planning runs (Summary → Assumptions → Specification Debt → PR), with PR-failure and bail-out fallbacks | smithy.strike, smithy.ignite, smithy.mark, smithy.render, smithy.cut |
 
 ## Conventions
 
