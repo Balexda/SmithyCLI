@@ -193,17 +193,24 @@ suggestion in the terminal output, not an interactive branching gate.
    `smithy-forge`:
    - **Title**: the strike goal, concise and under 70 characters.
    - **Body**: include the strike summary, goal, link to the
-     `.strike.md` file, and the one-shot output content produced below.
-4. **Render the one-shot output** as the terminal output of this run using
-   the shared snippet below. Populate the placeholders from the strike run
-   data: `Spec folder` = `specs/strikes/`, `Branch` = `strike/<slug>`,
-   `Artifacts produced` = the single `.strike.md` file, and substitute
-   `User stories` / `Functional requirements` with the strike's requirement
-   and task counts per the snippet's placeholder guidance. Copy
-   `assumptions` and `debt_items` from clarify's return.
-5. **Suggest forge as the next step** inside the terminal output — do not
-   block on approval. A developer can invoke `smithy-forge` with the
-   strike file path when they are ready.
+     `.strike.md` file, and the one-shot output content produced below
+     **excluding the `## PR` section**, since the PR URL is only known
+     after `gh pr create` succeeds. Populate the other sections
+     (`## Summary`, `## Assumptions`, `## Specification Debt`) from the
+     run data captured during Phase 2 and Phase 3.
+4. **Capture the PR URL** returned by `gh pr create`.
+5. **Render the full one-shot output** as the terminal output of this
+   run using the shared snippet below. Populate the placeholders from
+   the strike run data: `Spec folder` = `specs/strikes/`, `Branch` =
+   `strike/<slug>`, `Artifacts produced` = the single `.strike.md`
+   file, and substitute `User stories` / `Functional requirements`
+   with the strike's requirement and task counts per the snippet's
+   placeholder guidance. Populate the `## PR` section with the URL
+   captured in the previous step, and copy `assumptions` and
+   `debt_items` from clarify's return.
+6. **Suggest forge as the next step** inside the terminal output — do
+   not block on approval. A developer can invoke `smithy-forge` with
+   the strike file path when they are ready.
 
 If `gh pr create` fails, follow the snippet's PR-creation-failure fallback:
 still render the Summary, Assumptions, and Specification Debt sections, and
