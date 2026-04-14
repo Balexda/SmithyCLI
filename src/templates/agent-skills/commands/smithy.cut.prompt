@@ -82,10 +82,16 @@ If `gh pr create` fails, fall through to the PR-creation-failure branch of
 the one-shot output snippet so the user sees exactly what changed and what
 went wrong.
 
-Render the shared one-shot output snippet as the terminal output, populating
-Summary (the refined tasks file and its slice count), Assumptions (from
-refine's findings), Specification Debt (from refine's `debt_items`, including
-inherited debt carried forward from the spec), and PR (the captured URL).
+Render the shared one-shot output snippet as the terminal output, mapping
+refine-run data onto the snippet's canonical sections: in `## Summary`, use
+the spec folder for `<path>`, the current branch for `<branch>`, and list
+the refined tasks file (plus any spec write-back) under "Artifacts
+produced". Follow the snippet's relabeling guidance to report the slice
+count in place of the default "User stories" bullet. Populate Assumptions
+(from refine's findings), Specification Debt (from refine's `debt_items`,
+including inherited debt carried forward from the spec), and PR (the
+captured URL). Do not invent new placeholders or reinterpret existing
+ones.
 
 {{>one-shot-output}}
 
@@ -527,11 +533,17 @@ Bail-Out branch instead of the full contract.
 ### Render the one-shot output contract
 
 Render the shared one-shot output snippet as the terminal output for this
-run. Populate every placeholder from captured run data — the tasks file
-path, the branch name, the slice count, the full `assumptions` and
-`debt_items` arrays returned by clarify (including debt inherited from the
-spec), and the PR URL from the previous step. Do NOT dump the full file
-contents into the terminal; the snippet is the contract.
+run. Map captured run data onto the snippet's canonical sections: in
+`## Summary`, use the spec folder for `<path>`, the current branch name
+for `<branch>`, and list the tasks file (plus the spec write-back) under
+"Artifacts produced". Follow the snippet's relabeling guidance to report
+the slice count in place of the default "User stories" bullet. Populate
+Assumptions and Specification Debt from the full `assumptions` and
+`debt_items` arrays returned by clarify (including debt inherited from
+the spec), and substitute the PR URL from the previous step into the
+`## PR` section. Do not invent new placeholders or reinterpret existing
+ones. Do NOT dump the full file contents into the terminal; the snippet
+is the contract.
 
 {{>one-shot-output}}
 
