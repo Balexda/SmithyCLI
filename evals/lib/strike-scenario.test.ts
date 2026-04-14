@@ -14,8 +14,8 @@ const spikeOutput = fs.readFileSync(
 );
 
 const forbiddenPatterns = strikeScenario.structural_expectations.forbidden_patterns!;
-const FRONTMATTER_PATTERN = forbiddenPatterns[0]!;
-const REFUSAL_PATTERN = forbiddenPatterns[1]!;
+const FRONTMATTER_PATTERN = forbiddenPatterns.find((p) => p.startsWith('^---'))!;
+const REFUSAL_PATTERN = forbiddenPatterns.find((p) => p.includes('happy to help'))!;
 
 function findForbiddenCheck(results: CheckResult[], pattern: string): CheckResult | undefined {
   return results.find((r) => r.expected === pattern && r.check_name.startsWith('forbidden pattern'));
