@@ -362,13 +362,21 @@ function resolveChildForRow(
   }
 }
 
+/**
+ * Look up the canonical `<folder-leaf>.spec.md` file inside `folder`
+ * within the already-discovered record set. Only the canonical filename
+ * is accepted; if the folder contains a non-canonical `.spec.md` (or
+ * several), this returns `null` and the scanner emits a virtual record
+ * at the folder path instead. Falling back to "first .spec.md found"
+ * would make parent linkage depend on `readdirSync` order, which is not
+ * stable across filesystems.
+ */
 function findSpecInFolder(
   folder: string,
   records: Map<string, ArtifactRecord>,
 ): string | null {
   const folderLeaf = folder.replace(/\/+$/, '').split('/').pop() ?? '';
-  let fallback: string | null = null;
-  let canonical: string | null = null;
+  const canonicalBase = `${folderLeaf}.spec.md`;
   for (const [p, rec] of records) {
     if (rec.type !== 'spec') continue;
     if (!p.startsWith(folder)) continue;
@@ -378,13 +386,11 @@ function findSpecInFolder(
     // match a folder query for `specs/`.
     const tail = p.slice(folder.length);
     if (tail.includes('/')) continue;
-    if (fallback === null) fallback = p;
-    const base = tail;
-    if (base === `${folderLeaf}.spec.md`) {
-      canonical = p;
+    if (tail === canonicalBase) {
+      return p;
     }
   }
-  return canonical ?? fallback;
+  return null;
 }
 
 function makeVirtualRecord(

@@ -371,6 +371,33 @@ ${TABLE_HEADER}
     expect(withThatPath[0]?.status).toBe('done');
   });
 
+  it('feature-map folder match requires the canonical <leaf>.spec.md filename', () => {
+    // The feature map points at `specs/feature-a/`. Inside that folder
+    // there is a non-canonical `notes.spec.md`. The scanner must NOT
+    // bind the feature row to it (binding would depend on readdirSync
+    // order). Instead it emits a virtual record at the folder path.
+    write(
+      'specs/feature-a/feature-a.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | First | — | specs/feature-a/ |\n`,
+    );
+    write(
+      'specs/feature-a/notes.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | One | — | — |\n`,
+    );
+    const records = scan(root);
+    const notes = byPath(records, 'specs/feature-a/notes.spec.md');
+    expect(notes).toBeDefined();
+    // notes.spec.md was discovered as a real record but NOT linked to
+    // the feature map (its parent_path stays unset).
+    expect(notes?.parent_path).toBeUndefined();
+    // A virtual spec record for the folder placeholder is emitted.
+    const virt = records.find(
+      (r) => r.type === 'spec' && r.virtual === true && r.path === 'specs/feature-a/',
+    );
+    expect(virt).toBeDefined();
+    expect(virt?.parent_path).toBe('specs/feature-a/feature-a.features.md');
+  });
+
   it('legacy-format artifact yields a spec record with status=unknown', () => {
     write(
       'specs/feature-a/feature-a.spec.md',
