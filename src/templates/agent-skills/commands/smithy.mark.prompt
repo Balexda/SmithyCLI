@@ -434,7 +434,7 @@ Existing contracts remain unchanged.
 
 ---
 
-## Phase 6: Write & Review
+## Phase 6: Write & PR
 
 Create the spec folder and write all three files to disk first.
 
@@ -484,21 +484,40 @@ Write-back procedure:
 The `Artifact` cell is the single source of truth for "does this feature
 have a spec yet".
 
-Then present a summary to the user:
+### Commit and create the PR
 
-1. Show a summary of what was produced:
-   - Spec folder path and branch name.
-   - Number of user stories with their titles and priorities.
-   - Key entities from the data model (if any).
-   - Contracts/interfaces identified (if any).
-2. Highlight any remaining risks or open questions.
-3. **Do NOT dump the full file contents into the terminal.** The files are on
-   disk — the user can review them in their editor.
-4. **STOP and ask**: "Review the files at `<path>` and let me know if you'd like
-   changes, or approve to finalize."
+One-shot mode: do **not** stop to ask the user to review or approve the
+artifacts. The files are on disk and the PR is the review surface.
 
-If the user requests changes, incorporate them, update the files on disk, and
-ask again.
+1. Stage and commit all written files on the current branch:
+   - the three spec artifacts in the new spec folder
+   - the updated `.features.md` (if this run performed a feature-map
+     write-back)
+2. Push the branch to `origin`.
+3. Create a pull request using the same `gh pr create` pattern that
+   `smithy.forge` uses:
+   - **Title**: the feature title, under 70 characters, plain descriptive text
+     (no FR numbers, no bracketed tags).
+   - **Body**: a short summary with the spec folder path, the user story list
+     with priorities, key entities (if any), contracts/interfaces identified
+     (if any), and a one-line pointer to `smithy.cut` as the next step.
+4. Capture the resulting PR URL for the one-shot output snippet.
+
+If `gh pr create` fails (network error, auth failure, missing upstream,
+etc.), do **not** roll back the written files — they stay on disk. Fall
+through to the PR-creation-failure branch of the one-shot output snippet
+below so the user sees exactly what was produced and what went wrong.
+
+### Render the one-shot output contract
+
+Render the shared one-shot output snippet as the terminal output for this
+run. Populate every placeholder from captured run data — the spec folder
+path, the branch name, the artifact list, the user story / FR counts, the
+full `assumptions` and `debt_items` arrays returned by clarify, and the PR
+URL from the previous step. Do NOT dump the full file contents into the
+terminal; the snippet is the contract.
+
+{{>one-shot-output}}
 
 ---
 
@@ -534,10 +553,48 @@ Use the **smithy-refine** sub-agent. Pass it:
 ### 0c. Apply Refinements
 
 After the sub-agent returns its summary, update the existing spec, data-model,
-and/or contracts files on disk to incorporate the refinements. Present a summary
-of what changed — do not dump the full file contents into the terminal. **STOP
-and ask** the user to review the updated files at their paths and let you know
-if further changes are needed.
+and/or contracts files on disk to incorporate the refinements. Do not dump the
+full file contents into the terminal.
+
+One-shot mode: do **not** stop to ask the user to review or approve the
+refinements. The refinement diff is the review surface, and the one-shot PR
+below is how the user sees it.
+
+**No-op check**: if refine returned an empty `refinements` list and no new
+`debt_items`, and `git status --porcelain` reports a clean worktree, this
+pass had nothing to change. Skip the commit, push, and PR-creation steps
+below. Render the one-shot output snippet with an explicit "no-op" note in
+`## Summary` ("Artifacts produced: 0 files — refine found no changes") and
+reuse the branch's existing PR URL if one exists (fall back to "No PR —
+nothing to change" otherwise). Do not fail with "nothing to commit".
+
+1. Stage and commit the refinement diff on the current branch (the spec
+   folder's branch). The commit message should describe the refinements
+   applied (e.g., `mark refine: resolve SD-003; add US4 priority
+   justification`).
+2. Push the branch to `origin`.
+3. Check whether the current branch already has an open pull request (for
+   example with `gh pr view --json url` or by querying by head branch).
+   - If a PR already exists for this branch, capture and reuse that PR URL
+     for the one-shot output snippet — do **not** run `gh pr create`
+     again, and do **not** treat the existing PR as a failure.
+   - If no PR exists, create one using the same `gh pr create` pattern
+     that `smithy.forge` uses:
+     - **Title**: `Refine <feature title>` — under 70 characters, plain text.
+     - **Body**: the refine summary, a list of refinements applied, and any
+       debt items resolved or introduced by this pass.
+4. Capture the resulting or existing PR URL for the one-shot output snippet.
+
+If `gh pr create` fails, fall through to the PR-creation-failure branch of
+the one-shot output snippet so the user sees exactly what changed and what
+went wrong.
+
+Render the shared one-shot output snippet as the terminal output, populating
+Summary (note that "Artifacts produced" describes the refinement diff, not a
+first-pass run), Assumptions (from refine's returned findings), Specification
+Debt (from refine's `debt_items`), and PR (the captured URL).
+
+{{>one-shot-output}}
 
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,

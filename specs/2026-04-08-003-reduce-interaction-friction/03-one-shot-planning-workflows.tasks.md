@@ -162,7 +162,7 @@ non-interactive sub-agents.
 
 ### Tasks
 
-- [ ] **Remove mark's intermediate STOP gates and add PR creation**
+- [x] **Remove mark's intermediate STOP gates and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.mark.prompt`, delete the
   Phase 6 "Review & approve" STOP and the Phase 0c refinement STOP. After
@@ -180,7 +180,7 @@ non-interactive sub-agents.
   - Phase 0 review loop ends by committing refinements, creating a PR, and
     rendering one-shot output
 
-- [ ] **Remove cut's intermediate STOP gates and add PR creation**
+- [x] **Remove cut's intermediate STOP gates and add PR creation**
 
   In `src/templates/agent-skills/commands/smithy.cut.prompt`, delete the
   Phase 5 "Review tasks" STOP and the Phase 0c refinement STOP. Add a PR
@@ -197,7 +197,7 @@ non-interactive sub-agents.
   - Existing bail-out behavior from Story 2 is preserved (clarify bail-out
     still short-circuits before PR creation)
 
-- [ ] **Assert mark and cut render the one-shot output contract**
+- [x] **Assert mark and cut render the one-shot output contract**
 
   Add Tier 2 assertions in `src/templates.test.ts` verifying that the
   composed `smithy.mark.md` and `smithy.cut.md` templates contain the
