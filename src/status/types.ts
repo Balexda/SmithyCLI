@@ -7,9 +7,11 @@
  * evolution — the records exist only for the lifetime of one `smithy status`
  * invocation.
  *
- * This module intentionally contains only the entities needed by User Story 1
- * (Slice 1). Later stories (US2, US10) introduce `DependencyGraph`,
- * `DependencyNode`, `StatusTree`, and `TreeNode`.
+ * The type surface grows incrementally story-by-story. User Story 1 shipped
+ * `ArtifactRecord`, `NextAction`, `DependencyRow`, `DependencyOrderTable`,
+ * and `ScanSummary`; User Story 2 Slice 1 adds `TreeNode` and `StatusTree`
+ * alongside them. `DependencyGraph` / `DependencyNode` are still owned by
+ * User Story 10.
  */
 
 /**
