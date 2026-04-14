@@ -438,4 +438,59 @@ ${TABLE_HEADER}
     expect(spec?.status).toBe('unknown');
     expect(spec?.dependency_order.format).toBe('legacy');
   });
+
+  it('broken-link detection: tasks **Source** header points at a missing spec → parent_missing=true, parent_path=declared path', () => {
+    // A tasks file declares a `**Source**:` header referencing a spec
+    // file that does not exist on disk, and no parent spec claims it
+    // via a dep-order row. The scanner must flag it as a broken link.
+    write(
+      'specs/feature-a/01-orphan.tasks.md',
+      `# Tasks\n\n**Source**: \`specs/feature-a/missing.spec.md\` — User Story 4\n\n## Slice 1: Only\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(records, 'specs/feature-a/01-orphan.tasks.md');
+    expect(tasks).toBeDefined();
+    expect(tasks?.virtual).toBeUndefined();
+    expect(tasks?.parent_missing).toBe(true);
+    expect(tasks?.parent_path).toBe('specs/feature-a/missing.spec.md');
+  });
+
+  it('broken-link detection: tasks **Source** header points at an existing spec (no dep-order row) → orphan with parent_path=null', () => {
+    // The declared source exists on disk but does not reference this
+    // tasks file from its dep-order table. Per AC, the probe leaves
+    // the record alone; the final orphan normalization sets
+    // parent_path to `null` and parent_missing stays unset.
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Other | — | — |\n`,
+    );
+    write(
+      'specs/feature-a/01-declared.tasks.md',
+      `# Tasks\n\n**Source**: \`specs/feature-a/feature-a.spec.md\` — User Story 7\n\n## Slice 1: Only\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(records, 'specs/feature-a/01-declared.tasks.md');
+    expect(tasks).toBeDefined();
+    expect(tasks?.parent_missing).toBeUndefined();
+    expect(tasks?.parent_path).toBeNull();
+  });
+
+  it('broken-link detection: tasks file without a **Source** header and no resolved parent → orphan with parent_path=null', () => {
+    // No `**Source**:` header to parse and no parent dep-order row
+    // that references this file. The record must stay a plain orphan
+    // with parent_path explicitly set to `null`, not omitted, and no
+    // parent_missing flag.
+    write(
+      'specs/strikes/2026-04-12-999-loose/loose.tasks.md',
+      `# Loose tasks\n\n## Slice 1: Only\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(
+      records,
+      'specs/strikes/2026-04-12-999-loose/loose.tasks.md',
+    );
+    expect(tasks).toBeDefined();
+    expect(tasks?.parent_missing).toBeUndefined();
+    expect(tasks?.parent_path).toBeNull();
+  });
 });

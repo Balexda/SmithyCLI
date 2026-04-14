@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Detect broken tasks-file parent links in `scan()`**
+- [x] **Detect broken tasks-file parent links in `scan()`**
 
   Extend `src/status/scanner.ts` (and, if needed, `src/status/parser.ts`) so that after the existing parent-resolution pass, any tasks record whose `parent_path` is still unresolved has its own `**Source**:` header inspected for a repo-relative spec path. When the declared path points at a file missing from disk, set `parent_missing: true` and populate `parent_path` with the declared path so downstream consumers can surface the dangling reference. Records with a normally-resolved parent remain untouched. Satisfies AS 2.3.
 
