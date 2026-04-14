@@ -27,6 +27,7 @@ If no input is clear from the above, ask the user what idea they want to worksho
 
 Before starting, determine the mode:
 
+{{#ifAgent}}
 1. If the input points to an existing `.rfc.md` file, go to **Phase 0** —
    Phase 0's state-detection step now classifies the file itself and decides
    whether to review a complete RFC, resume a partial one from its first
@@ -49,6 +50,22 @@ resume, and new-RFC branching. The option to **create a new RFC instead** of
 touching the existing file remains available to the user from inside Phase 0's
 `partial` and `complete` branches, so nothing is lost by deferring the
 decision.
+{{else}}
+1. If the input points to an existing `.rfc.md` file, go to **Phase 0: Review Loop**.
+2. If the input is a file path (not `.rfc.md`), read the file and go to **Phase 1: Intake**.
+3. If the input is a description string, go to **Phase 1: Intake**.
+
+**Mid-intake redirect**: During Phase 1, step 2 scans `docs/rfcs/` for existing
+folders. If a folder's slug is a close match to the derived slug for the new idea
+(e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user asks to
+"build a plugin system"), **stop intake** and ask the user:
+
+> "An existing RFC was found at `docs/rfcs/<YYYY-NNN-slug>/<slug>.rfc.md`.
+> Would you like to **review and refine** the existing RFC, or **create a new one**?"
+
+- If the user chooses to review, go to **Phase 0: Review Loop** with that `.rfc.md`.
+- If the user chooses to create new, continue Phase 1 with the next available `NNN`.
+{{/ifAgent}}
 
 ---
 
@@ -60,8 +77,9 @@ decision.
 
 Triggered when:
 - The input explicitly points to an existing `.rfc.md` file, **or**
-- Phase 1 detected a matching RFC folder during the `docs/rfcs/` scan and the
-  user chose to review it (see Routing above).
+- Phase 1 detected a close-matching RFC folder during the `docs/rfcs/` scan
+  and handed control to Phase 0 with the matched `.rfc.md` (see Routing
+  above).
 
 {{#ifAgent}}
 ### Phase 0.0: State Detection
@@ -283,16 +301,41 @@ hand-off with the following rules:
    no file exists yet; on resume, the file Phase 0 classified is already on
    disk (either a header-only `fresh` file or a `partial` file with some
    sections already written) and is preserved as-is.
-3. **Begin dispatch** from the designated starting sub-phase and continue
+3. **Reconstruct the missing intake and clarify context** before dispatching
+   the resumed sub-phase. The sub-agents below all expect
+   `idea_description` (normally produced by Phase 1 intake) and
+   `clarify_output` (normally produced by Phase 2 clarification), and the
+   inline sub-phase 3e synthesizes Decisions/Open Questions directly from
+   the clarification record. When Phase 0 hands off into a resume, those
+   in-session artifacts may not exist, so the orchestrator MUST rebuild
+   them before continuing:
+   - **`idea_description`**: re-derive from the existing `## Summary` and
+     `## Motivation / Problem Statement` sections of the on-disk RFC. If
+     those sections do not yet exist (e.g., 3a is the first missing
+     sub-phase), fall back to the user's current invocation arguments or
+     ask the user to restate the idea in one or two sentences.
+   - **`clarify_output`**: prefer loading the RFC folder's
+     `.clarify-log.md` if it exists. If no log is present, run **Phase 2
+     (Clarify)** before dispatching the first resumed sub-phase so the
+     downstream sub-agents receive grounded clarification context rather
+     than fabricated answers. Do not silently dispatch with empty
+     clarification.
+4. **Begin dispatch** from the designated starting sub-phase and continue
    through sub-phase 3g normally, using the append-and-continue protocol
    above for each remaining sub-phase.
 
-No extra context bridging is required for resumed sub-phases. Each sub-phase
-below already passes `rfc_file_path` — the path to the accumulating
-`<slug>.rfc.md` — to its dispatched sub-agent, so every section written by an
-earlier sub-phase (whether in this session or in an interrupted prior
-session) flows into the current sub-agent via the existing disk-read
-contract.
+For the disk-read context bridging itself, sub-phases **3b–3g** already pass
+`rfc_file_path` — the path to the accumulating `<slug>.rfc.md` — to their
+dispatched sub-agent, so every section written by an earlier sub-phase
+(whether in this session or in an interrupted prior session) flows into the
+current sub-agent via the existing disk-read contract. **Exception:**
+sub-phase 3a normally does **not** pass `rfc_file_path` because in the
+fresh pipeline the file contains only the header at that point. If Phase 0
+hands off into 3a (either a `fresh` header-only file or a `partial` file
+where 3a is somehow the first missing sub-phase), the orchestrator MUST
+pass `rfc_file_path` to smithy-prose for the resumed 3a dispatch so the
+sub-agent can see whatever is already on disk before writing the Summary
+and Motivation sections.
 
 ### Sub-phase 3a: Summary + Motivation
 
