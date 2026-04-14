@@ -87,7 +87,7 @@ keeps the "sub-agent interaction removal" change atomic.
 
 ### Tasks
 
-- [ ] **Remove the clarify assumption-presentation STOP gate**
+- [x] **Remove the clarify assumption-presentation STOP gate**
 
   Delete Step 4 (Present Assumptions) from
   `src/templates/agent-skills/agents/smithy.clarify.prompt` and remove the
@@ -104,7 +104,7 @@ keeps the "sub-agent interaction removal" change atomic.
     `debt_items`, `bail_out`, `bail_out_summary` per the contracts file
   - Frontmatter description updated to reflect non-interactive behavior
 
-- [ ] **Convert refine to apply refinements directly or record as debt**
+- [x] **Convert refine to apply refinements directly or record as debt**
 
   In `src/templates/agent-skills/agents/smithy.refine.prompt`, remove the
   audit-scan STOP (end of Step 1) and the per-question STOP (Step 3).
@@ -122,7 +122,7 @@ keeps the "sub-agent interaction removal" change atomic.
     `RefineResult` return shape
   - Frontmatter description updated to reflect non-interactive behavior
 
-- [ ] **Add Tier 2 assertions covering the non-interactive contracts**
+- [x] **Add Tier 2 assertions covering the non-interactive contracts**
 
   Extend `src/templates.test.ts` with assertions that the composed
   `smithy.clarify.md` and `smithy.refine.md` templates no longer contain
