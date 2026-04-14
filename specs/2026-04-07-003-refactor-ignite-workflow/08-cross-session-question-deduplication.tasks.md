@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add clarify-log read step at the start of Phase 2**
+- [x] **Add clarify-log read step at the start of Phase 2**
 
   In `src/templates/agent-skills/commands/smithy.ignite.prompt`, insert a step at the top of Phase 2 (before the existing "Use the **smithy-clarify** sub-agent" instruction) that tells the orchestrator to look for an existing `.clarify-log.md` in the RFC folder derived in Phase 1, and if present, extract the last two `### Session YYYY-MM-DD` entries and pass them to smithy-clarify as additional context per the Clarify Log Contract Read Protocol in the contracts file.
 
@@ -28,7 +28,7 @@
   - Step instructs the orchestrator to include the dedup instruction quoted in the Read Protocol ("Do not re-ask questions already answered in this log.") when passing the log content to smithy-clarify, satisfying AS US8-2
   - Step is positioned so that smithy-clarify still receives all existing Phase 2 inputs (criteria, context, special instructions) unchanged
 
-- [ ] **Add clarify-log write step after Phase 2 completes**
+- [x] **Add clarify-log write step after Phase 2 completes**
 
   In the same prompt file, append a step at the end of Phase 2 (after smithy-clarify returns its summary, before Phase 3 begins) that tells the orchestrator to format the returned assumptions and Q&A as a new `### Session YYYY-MM-DD` entry per the Clarify Log Contract Write Format and append it to `.clarify-log.md` in the RFC folder. The step must ensure the RFC folder exists (creating it if needed) so the write succeeds even on the first session before sub-phase 3a runs, satisfying AS US8-1.
 
@@ -40,7 +40,7 @@
   - Step pulls assumptions and Q&A from the smithy-clarify return summary (not from a separate source)
   - Step is positioned after the Phase 2 dispatch instructions and before any Phase 3 content
 
-- [ ] **Assert clarify-log read and write instructions render in the claude variant**
+- [x] **Assert clarify-log read and write instructions render in the claude variant**
 
   In `src/templates.test.ts`, augment the existing `'ignite with claude variant renders competing plan dispatch'` test to add assertions that the rendered claude-variant ignite template contains identifiable markers for both the new clarify-log read step and the new clarify-log write step. Use stable phrase fragments (e.g., `.clarify-log.md`, plus a phrase distinguishing the read step from the write step) rather than exact long sentences that will drift. Confirm the existing assertions in the same test continue to pass.
 
