@@ -28,7 +28,7 @@
   - No runtime logic introduced; existing exports unchanged
   - Type is importable from `./types.js` by both `report.ts` and `run-evals.ts`
 
-- [ ] **Implement `scenarioRunToResult` status-derivation helper**
+- [x] **Implement `scenarioRunToResult` status-derivation helper**
 
   Create `evals/lib/report.ts` and export a pure function that assembles an `EvalResult` from a `RunOutput`, the scenario, and the computed check arrays. Status precedence (required by AS 9.3): `timed_out` → `timeout`; otherwise non-zero `exit_code` → `error`; otherwise any failing check → `fail`; otherwise `pass`.
 
