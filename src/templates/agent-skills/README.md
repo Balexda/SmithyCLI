@@ -36,8 +36,10 @@ the next:
 ignite (RFC) → render (feature map) → mark (spec) → cut (tasks) → forge (implementation)
 ```
 
-`strike` is a lightweight shortcut that combines planning + implementation in
-one session, bypassing the full pipeline.
+`strike` is a lightweight one-shot shortcut that goes from feature description
+to a `.strike.md` document and PR in a single pass, bypassing the full pipeline.
+Implementation still happens in forge — strike produces the planning document
+and the PR that forge then consumes.
 
 ## Artifact Hierarchy and Dependency Order Format
 
