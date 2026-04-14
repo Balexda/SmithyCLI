@@ -2,7 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { buildClaudeAllowList, buildClaudeDenyList, deploy, removeLegacy, writePermissions, resolveSettingsPath } from './claude.js';
+import {
+  buildClaudeAllowList,
+  buildClaudeDenyList,
+  deploy,
+  deploySessionTitleHookScript,
+  removeLegacy,
+  removeSessionTitleHook,
+  resolveSettingsPath,
+  SESSION_TITLE_HOOK_FILENAME,
+  writePermissions,
+  writeSessionTitleHook,
+} from './claude.js';
 import { getComposedTemplates, getTemplateFilesByCategory } from '../templates.js';
 import { writeManifest, readManifest, removeStaleFiles } from '../manifest.js';
 
@@ -639,5 +650,200 @@ describe('writePermissions', () => {
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Custom key should be preserved
     expect(config.permissions.someCustomFlag).toBe(true);
+  });
+});
+
+describe('deploySessionTitleHookScript', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('copies the hook script to .claude/hooks/ and makes it executable', () => {
+    const rel = deploySessionTitleHookScript(tmpDir);
+    const dest = path.join(tmpDir, rel);
+    expect(fs.existsSync(dest)).toBe(true);
+    expect(rel).toBe(path.join('.claude', 'hooks', SESSION_TITLE_HOOK_FILENAME));
+    const stat = fs.statSync(dest);
+    expect(stat.mode & 0o111).toBeGreaterThan(0);
+    // Script content must include the deriveTitle export so the hook actually works
+    const body = fs.readFileSync(dest, 'utf8');
+    expect(body).toContain('export function deriveTitle');
+  });
+
+  it('writes to homedir when location is "user"', () => {
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    const rel = deploySessionTitleHookScript(tmpDir, 'user');
+    expect(fs.existsSync(path.join(fakeHome, rel))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'hooks'))).toBe(false);
+  });
+});
+
+describe('writeSessionTitleHook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates settings.json with a UserPromptSubmit hook entry', () => {
+    writeSessionTitleHook(tmpDir, 'repo');
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const ups = config.hooks.UserPromptSubmit;
+    expect(Array.isArray(ups)).toBe(true);
+    expect(ups.length).toBe(1);
+    expect(ups[0].hooks[0].type).toBe('command');
+    expect(ups[0].hooks[0].command).toContain(SESSION_TITLE_HOOK_FILENAME);
+    expect(ups[0].hooks[0].command).toContain('$CLAUDE_PROJECT_DIR');
+  });
+
+  it('preserves existing permissions and unrelated keys', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      permissions: { allow: ['Bash(echo)'], deny: [] },
+    }));
+
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.model).toBe('claude-sonnet-4-6');
+    expect(config.permissions.allow).toContain('Bash(echo)');
+    expect(config.hooks.UserPromptSubmit).toBeDefined();
+  });
+
+  it('preserves unrelated UserPromptSubmit hooks from other tools', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: '/path/to/other-tool.sh' }] },
+        ],
+      },
+    }));
+
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const ups = config.hooks.UserPromptSubmit;
+    expect(ups.length).toBe(2);
+    expect(ups[0].hooks[0].command).toBe('/path/to/other-tool.sh');
+    expect(ups[1].hooks[0].command).toContain(SESSION_TITLE_HOOK_FILENAME);
+  });
+
+  it('is idempotent — second call does not duplicate the entry', () => {
+    writeSessionTitleHook(tmpDir, 'repo');
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const ups = config.hooks.UserPromptSubmit;
+    const smithyEntries = ups.filter((e: { hooks?: { command?: string }[] }) =>
+      e.hooks?.some(h => h.command?.includes(SESSION_TITLE_HOOK_FILENAME)),
+    );
+    expect(smithyEntries.length).toBe(1);
+  });
+
+  it('handles malformed existing settings.json gracefully', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), 'not valid json{{{');
+
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
+    expect(config.hooks.UserPromptSubmit[0].hooks[0].command).toContain(SESSION_TITLE_HOOK_FILENAME);
+  });
+});
+
+describe('removeSessionTitleHook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('removes the smithy hook entry while leaving permissions intact', () => {
+    writePermissions(tmpDir, 'repo');
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    removeSessionTitleHook(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(git status)');
+    expect(config.hooks).toBeUndefined();
+  });
+
+  it('preserves unrelated UserPromptSubmit hooks from other tools', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: '/path/to/other-tool.sh' }] },
+        ],
+      },
+    }));
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    removeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
+    expect(config.hooks.UserPromptSubmit).toBeDefined();
+    expect(config.hooks.UserPromptSubmit.length).toBe(1);
+    expect(config.hooks.UserPromptSubmit[0].hooks[0].command).toBe('/path/to/other-tool.sh');
+  });
+
+  it('deletes settings.json when nothing else remains', () => {
+    writeSessionTitleHook(tmpDir, 'repo');
+    removeSessionTitleHook(tmpDir, 'repo');
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('is a no-op when settings.json does not exist', () => {
+    expect(() => removeSessionTitleHook(tmpDir, 'repo')).not.toThrow();
+  });
+
+  it('is a no-op when there is no UserPromptSubmit section', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({
+      permissions: { allow: ['Bash(echo)'], deny: [] },
+    }));
+
+    removeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
+    expect(config.permissions.allow).toContain('Bash(echo)');
   });
 });

@@ -4,8 +4,16 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, denyPermissions, type LanguageToolchain } from '../permissions.js';
-import { removeIfExists } from '../utils.js';
+import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
+
+/** Filename of the deployed Claude Code session-title hook script. */
+export const SESSION_TITLE_HOOK_FILENAME = 'smithy-session-title.mjs';
+/** Relative deploy path under the Claude base directory. */
+export const SESSION_TITLE_HOOK_RELPATH = `.claude/hooks/${SESSION_TITLE_HOOK_FILENAME}`;
+/** The shell command registered in settings.json to invoke the hook. */
+export const SESSION_TITLE_HOOK_COMMAND =
+  `node "$CLAUDE_PROJECT_DIR/.claude/hooks/${SESSION_TITLE_HOOK_FILENAME}"`;
 
 /**
  * Deploy Claude templates. Returns the list of deployed file paths (relative to baseDir).
@@ -77,6 +85,21 @@ export async function deploy(targetDir: string, permissionLevel: PermissionLevel
   }
 
   return deployedFiles;
+}
+
+/**
+ * Copy the session-title hook script into `<baseDir>/.claude/hooks/` and return
+ * the relative path so the manifest can track it like any other artifact.
+ */
+export function deploySessionTitleHookScript(targetDir: string, location: DeployLocation = 'repo'): string {
+  const baseDir = location === 'user' ? os.homedir() : targetDir;
+  const hooksDir = path.join(baseDir, '.claude', 'hooks');
+  if (!fs.existsSync(hooksDir)) fs.mkdirSync(hooksDir, { recursive: true });
+  const src = path.join(hooksTemplateDir, SESSION_TITLE_HOOK_FILENAME);
+  const dest = path.join(hooksDir, SESSION_TITLE_HOOK_FILENAME);
+  fs.copyFileSync(src, dest);
+  fs.chmodSync(dest, 0o755);
+  return path.relative(baseDir, dest);
 }
 
 /**
@@ -167,4 +190,118 @@ export function writePermissions(targetDir: string, level: DeployablePermissionL
 
   fs.writeFileSync(settingsPath, JSON.stringify(config, null, 2));
   console.log(picocolors.blue(`  Added default permissions to ${settingsPath}`));
+}
+
+// ----- Session-title hook -----
+
+interface HookCommand {
+  type?: string;
+  command?: string;
+}
+
+interface HookEntry {
+  matcher?: string;
+  hooks?: HookCommand[];
+}
+
+interface SettingsWithHooks {
+  hooks?: Record<string, HookEntry[]>;
+  [key: string]: unknown;
+}
+
+/**
+ * Read settings.json (or return an empty object). Tolerant of malformed JSON —
+ * mirrors the behavior of `writePermissions`.
+ */
+function readSettings(settingsPath: string): SettingsWithHooks {
+  if (!fs.existsSync(settingsPath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as SettingsWithHooks;
+  } catch {
+    return {};
+  }
+}
+
+function isSessionTitleHookCommand(cmd: HookCommand | undefined): boolean {
+  return !!cmd && typeof cmd.command === 'string' && cmd.command.includes(SESSION_TITLE_HOOK_FILENAME);
+}
+
+/**
+ * Merge the smithy session-title UserPromptSubmit hook into settings.json.
+ * Idempotent: a second call leaves the file unchanged.
+ */
+export function writeSessionTitleHook(targetDir: string, level: DeployablePermissionLevel): void {
+  const settingsPath = resolveSettingsPath(targetDir, level);
+  const settingsDir = path.dirname(settingsPath);
+  if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
+
+  const settings = readSettings(settingsPath);
+  const hooks = (settings.hooks ?? {}) as Record<string, HookEntry[]>;
+  const ups = Array.isArray(hooks.UserPromptSubmit) ? hooks.UserPromptSubmit : [];
+
+  // Idempotent: bail if our hook command is already registered anywhere in UserPromptSubmit
+  const alreadyRegistered = ups.some(entry =>
+    Array.isArray(entry.hooks) && entry.hooks.some(isSessionTitleHookCommand),
+  );
+
+  if (!alreadyRegistered) {
+    ups.push({
+      hooks: [{ type: 'command', command: SESSION_TITLE_HOOK_COMMAND }],
+    });
+  }
+
+  const next: SettingsWithHooks = {
+    ...settings,
+    hooks: { ...hooks, UserPromptSubmit: ups },
+  };
+
+  fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
+  if (!alreadyRegistered) {
+    console.log(picocolors.blue(`  Added session-title hook to ${settingsPath}`));
+  }
+}
+
+/**
+ * Remove the smithy session-title UserPromptSubmit hook entry from settings.json.
+ * Preserves any unrelated hooks. If settings.json ends up empty, deletes it.
+ */
+export function removeSessionTitleHook(targetDir: string, level: DeployablePermissionLevel): void {
+  const settingsPath = resolveSettingsPath(targetDir, level);
+  if (!fs.existsSync(settingsPath)) return;
+
+  const settings = readSettings(settingsPath);
+  const hooks = settings.hooks;
+  if (!hooks || !Array.isArray(hooks.UserPromptSubmit)) {
+    return;
+  }
+
+  const filteredEntries: HookEntry[] = [];
+  for (const entry of hooks.UserPromptSubmit) {
+    const cmds = Array.isArray(entry.hooks) ? entry.hooks.filter(c => !isSessionTitleHookCommand(c)) : [];
+    if (cmds.length > 0) {
+      filteredEntries.push({ ...entry, hooks: cmds });
+    }
+  }
+
+  const nextHooks: Record<string, HookEntry[]> = { ...hooks };
+  if (filteredEntries.length > 0) {
+    nextHooks.UserPromptSubmit = filteredEntries;
+  } else {
+    delete nextHooks.UserPromptSubmit;
+  }
+
+  const next: SettingsWithHooks = { ...settings };
+  if (Object.keys(nextHooks).length > 0) {
+    next.hooks = nextHooks;
+  } else {
+    delete next.hooks;
+  }
+
+  // If nothing is left, remove the settings file entirely.
+  if (Object.keys(next).length === 0) {
+    removeIfExists(settingsPath);
+    return;
+  }
+
+  fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
 }

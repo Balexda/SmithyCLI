@@ -86,6 +86,7 @@ async function redeployFromManifest(
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     issueTemplates: manifest.issueTemplates,
+    sessionTitles: manifest.sessionTitles ?? true,
     languages: validatedLanguages(manifest.languages),
     targetDir,
     yes: true,
