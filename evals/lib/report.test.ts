@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { scenarioRunToResult, buildReport } from './report.js';
+import { describe, it, expect, vi } from 'vitest';
+import { scenarioRunToResult, buildReport, formatReport } from './report.js';
 import type {
   CheckResult,
   EvalResult,
@@ -430,6 +430,209 @@ describe('buildReport', () => {
       const report = buildReport(results, 500);
       expect(report.total_cases).toBe(2);
       expect(report.passed).toBe(2);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatReport
+// ---------------------------------------------------------------------------
+
+describe('formatReport', () => {
+  // -----------------------------------------------------------------------
+  // Return type and side effects
+  // -----------------------------------------------------------------------
+  describe('return type and side effects', () => {
+    it('returns a string', () => {
+      const report = buildReport([makeResult()], 100);
+      const out = formatReport(report);
+
+      expect(typeof out).toBe('string');
+    });
+
+    it('does not call console.log', () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      try {
+        const report = buildReport(
+          [
+            makeResult({ scenario_name: 'a' }),
+            makeResult({ scenario_name: 'b', status: 'fail' }),
+          ],
+          200,
+        );
+        formatReport(report);
+        expect(spy).not.toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // All-pass report (AS 9.1)
+  // -----------------------------------------------------------------------
+  describe('all-pass report', () => {
+    it('renders each scenario_name with a PASS token and final PASS line with total count', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'alpha' }),
+        makeResult({ scenario_name: 'beta' }),
+        makeResult({ scenario_name: 'gamma' }),
+      ];
+      const report = buildReport(results, 1500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      // Each scenario has a line with its name and a PASS token
+      for (const name of ['alpha', 'beta', 'gamma']) {
+        const line = lines.find((l) => l.includes(name));
+        expect(line, `expected line for ${name}`).toBeDefined();
+        expect(line!).toMatch(/\bPASS\b/);
+        expect(line!).not.toMatch(/\b(FAIL|TIMEOUT|ERROR)\b/);
+      }
+
+      // Final aggregate line carries PASS and total count
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toMatch(/\bPASS\b/);
+      expect(finalLine).toContain('3');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Mixed pass/fail report (AS 9.2)
+  // -----------------------------------------------------------------------
+  describe('mixed 2-pass / 1-fail report', () => {
+    it('renders each scenario_name; both PASS and FAIL tokens appear; final line is FAIL', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'alpha', status: 'pass' }),
+        makeResult({ scenario_name: 'beta', status: 'pass' }),
+        makeResult({ scenario_name: 'gamma', status: 'fail' }),
+      ];
+      const report = buildReport(results, 2500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      const betaLine = lines.find((l) => l.includes('beta'));
+      const gammaLine = lines.find((l) => l.includes('gamma'));
+
+      expect(alphaLine).toBeDefined();
+      expect(betaLine).toBeDefined();
+      expect(gammaLine).toBeDefined();
+
+      expect(alphaLine!).toMatch(/\bPASS\b/);
+      expect(betaLine!).toMatch(/\bPASS\b/);
+      expect(gammaLine!).toMatch(/\bFAIL\b/);
+      expect(gammaLine!).not.toMatch(/\b(PASS|TIMEOUT|ERROR)\b/);
+
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toMatch(/\bFAIL\b/);
+      expect(finalLine).toContain('3');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Timeout-included report (AS 9.3)
+  // -----------------------------------------------------------------------
+  describe('timeout-included report', () => {
+    it('renders TIMEOUT as a distinct token, not FAIL or ERROR', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'happy', status: 'pass' }),
+        makeResult({
+          scenario_name: 'slow-poke',
+          status: 'timeout',
+          error: 'timed out after 60000ms',
+        }),
+      ];
+      const report = buildReport(results, 60500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const timeoutLine = lines.find((l) => l.includes('slow-poke'));
+      expect(timeoutLine).toBeDefined();
+      expect(timeoutLine!).toMatch(/\bTIMEOUT\b/);
+      expect(timeoutLine!).not.toMatch(/\b(FAIL|ERROR|PASS)\b/);
+
+      const happyLine = lines.find((l) => l.includes('happy'));
+      expect(happyLine).toBeDefined();
+      expect(happyLine!).toMatch(/\bPASS\b/);
+
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toMatch(/\bFAIL\b/);
+      expect(finalLine).toContain('2');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Error-included report
+  // -----------------------------------------------------------------------
+  describe('error-included report', () => {
+    it('renders ERROR as a distinct token, not FAIL or TIMEOUT', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'ok', status: 'pass' }),
+        makeResult({
+          scenario_name: 'crashy',
+          status: 'error',
+          error: 'claude CLI exited with non-zero status code 1',
+        }),
+      ];
+      const report = buildReport(results, 1200);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const errorLine = lines.find((l) => l.includes('crashy'));
+      expect(errorLine).toBeDefined();
+      expect(errorLine!).toMatch(/\bERROR\b/);
+      expect(errorLine!).not.toMatch(/\b(FAIL|TIMEOUT|PASS)\b/);
+
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toMatch(/\bFAIL\b/);
+      expect(finalLine).toContain('2');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Determinism
+  // -----------------------------------------------------------------------
+  describe('determinism', () => {
+    it('returns the identical string when called twice on the same report', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'a', status: 'pass' }),
+        makeResult({ scenario_name: 'b', status: 'fail' }),
+        makeResult({
+          scenario_name: 'c',
+          status: 'timeout',
+          error: 'timed out',
+        }),
+        makeResult({
+          scenario_name: 'd',
+          status: 'error',
+          error: 'exit 1',
+        }),
+      ];
+      const report = buildReport(results, 9000);
+
+      const first = formatReport(report);
+      const second = formatReport(report);
+
+      expect(first).toBe(second);
+    });
+
+    it('renders results in input order', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'first-name' }),
+        makeResult({ scenario_name: 'second-name' }),
+        makeResult({ scenario_name: 'third-name' }),
+      ];
+      const report = buildReport(results, 300);
+      const out = formatReport(report);
+
+      const firstIdx = out.indexOf('first-name');
+      const secondIdx = out.indexOf('second-name');
+      const thirdIdx = out.indexOf('third-name');
+
+      expect(firstIdx).toBeGreaterThanOrEqual(0);
+      expect(secondIdx).toBeGreaterThan(firstIdx);
+      expect(thirdIdx).toBeGreaterThan(secondIdx);
     });
   });
 });

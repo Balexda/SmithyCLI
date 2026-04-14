@@ -115,3 +115,62 @@ export function buildReport(
     total_duration_ms: totalDurationMs,
   };
 }
+
+/**
+ * Map an `EvalResult` status to its uppercase display token.
+ *
+ * The four tokens are intentionally distinct strings so that callers can
+ * use word-boundary matching to tell `TIMEOUT` and `ERROR` apart from
+ * `FAIL` (AS 9.3).
+ */
+function statusToken(status: EvalResult['status']): string {
+  switch (status) {
+    case 'pass':
+      return 'PASS';
+    case 'fail':
+      return 'FAIL';
+    case 'timeout':
+      return 'TIMEOUT';
+    case 'error':
+      return 'ERROR';
+  }
+}
+
+/**
+ * Render an `EvalReport` to a deterministic, multi-line, stdout-ready
+ * string.
+ *
+ * Output shape:
+ *
+ *     Eval Summary
+ *       [PASS] strike-health-check
+ *       [FAIL] plan-standalone
+ *       [TIMEOUT] scout-standalone
+ *       [ERROR] clarify-standalone
+ *
+ *     Result: FAIL (1/4 passed, 4 total)
+ *
+ * The function is pure: no I/O, no `console.log`, no mutation of `report`.
+ * Per-case lines are emitted in `report.results` order so the output is
+ * stable across calls — making snapshot-style assertions feasible. The four
+ * status tokens (`PASS`, `FAIL`, `TIMEOUT`, `ERROR`) are distinct strings,
+ * so word-boundary matchers can distinguish a timeout case from a fail
+ * case (AS 9.3). The final aggregate line carries the overall result
+ * (`PASS` or `FAIL`) plus the total case count (AS 9.1, 9.2).
+ */
+export function formatReport(report: EvalReport): string {
+  const lines: string[] = ['Eval Summary'];
+
+  for (const result of report.results) {
+    const token = statusToken(result.status);
+    lines.push(`  [${token}] ${result.scenario_name}`);
+  }
+
+  const overallToken = report.overall_status === 'pass' ? 'PASS' : 'FAIL';
+  lines.push('');
+  lines.push(
+    `Result: ${overallToken} (${report.passed}/${report.total_cases} passed, ${report.total_cases} total)`,
+  );
+
+  return lines.join('\n');
+}

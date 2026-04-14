@@ -52,7 +52,7 @@
   - `total_duration_ms` equals the passed-in argument
   - Zero-length `results` input returns a well-formed empty report with `overall_status: 'pass'` and zero counts
 
-- [ ] **Implement `formatReport` pure string formatter**
+- [x] **Implement `formatReport` pure string formatter**
 
   Add a pure `formatReport(report: EvalReport): string` function to `evals/lib/report.ts` returning a multi-line stdout-ready summary. Each per-case line carries the scenario name and a status label; timeout cases display a distinct `TIMEOUT` token (AS 9.3), error cases a distinct `ERROR` token, and the final aggregate line shows `PASS` or `FAIL` with the total case count (AS 9.1, 9.2).
 
