@@ -47,16 +47,20 @@ Pass each smithy-plan sub-agent:
 - **Codebase file paths**: the relevant files you discovered during exploration
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
-Present the reconciled plan to the user as:
+Capture the reconciled plan as:
 
 1. **Summary** — What you understand the feature to be.
 2. **Approach** — The reconciled approach (file changes, rationale). Note any
    items annotated with `[via <lens>]` — these are unique perspectives from
    individual focus lenses.
 3. **Risks** — The reconciled risk assessment.
-4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
-   approaches, present them with both options and the reconciler's
-   recommendation. Let the user decide.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts
+   between approaches, adopt the reconciler's recommendation as the
+   chosen path. Do not stop to ask the user. Record the rejected
+   alternative and the tradeoff in the strike document's `## Decisions`
+   section, and if the conflict cannot be confidently resolved, route it
+   into the `## Specification Debt` table instead. Strike is one-shot —
+   there is no interactive decision point.
 
 {{else}}
 Then capture for the strike document:
