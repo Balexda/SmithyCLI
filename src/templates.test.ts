@@ -1056,6 +1056,94 @@ describe('getComposedTemplates', () => {
     expect(depSection).not.toContain('- [x]');
   });
 
+  // Story 3 Slice 5: ignite and smithy.render are now one-shot. Each must
+  // include the shared one-shot-output snippet content, reference PR
+  // creation after writing the artifact, and carry no STOP-gate language.
+  // The cross-command assertion below iterates over the set of planning
+  // commands that have been converted to one-shot so a regression
+  // reintroducing a STOP in any of them fails the test suite. The list will
+  // grow as slices 3 (mark, cut) and 4 (strike) land.
+
+  it('ignite template renders the one-shot output headers after conversion', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+    // The one-shot-output snippet adds `## Summary`, `## Assumptions`,
+    // `## Specification Debt`, and `## PR` sections to the composed
+    // template. `## Summary` and `## Specification Debt` already appear
+    // elsewhere in the ignite template (in the RFC template code fence),
+    // so their presence here does not prove the snippet was inlined.
+    // The unique indicators of the inlined snippet are `## PR` and
+    // `## Bail-Out` (only the snippet produces those); the other two
+    // assertions guard against accidental removal of either copy.
+    expect(ignite).toContain('## Assumptions');
+    expect(ignite).toContain('## Specification Debt');
+    expect(ignite).toContain('## PR');
+    expect(ignite).toContain('## Bail-Out');
+  });
+
+  it('ignite template references PR creation after artifact write-out', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+    expect(ignite).toMatch(/gh pr create/);
+    // Phase 4 is the write-and-create-PR phase after the conversion.
+    expect(ignite).toContain('Phase 4: Write & Create PR');
+    // The legacy review-loop heading is gone.
+    expect(ignite).not.toContain('## Phase 4: Write & Review');
+  });
+
+  it('ignite template is non-interactive: no STOP-gate language', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toBeDefined();
+    expect(ignite).not.toMatch(/STOP and wait/i);
+    expect(ignite).not.toMatch(/STOP and ask/i);
+  });
+
+  it('render template renders the one-shot output headers after conversion', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    // `## Summary` does not appear in render's feature-map template code
+    // fence, so the snippet's `## Summary` header is the only source.
+    expect(render).toContain('## Summary');
+    expect(render).toContain('## Assumptions');
+    expect(render).toContain('## Specification Debt');
+    expect(render).toContain('## PR');
+    expect(render).toContain('## Bail-Out');
+  });
+
+  it('render template references PR creation after artifact write-out', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    expect(render).toMatch(/gh pr create/);
+    // Phase 4 is the write-and-create-PR phase after the conversion.
+    expect(render).toContain('Phase 4: Write & Create PR');
+    // The legacy review-loop heading is gone.
+    expect(render).not.toContain('## Phase 4: Write & Review');
+  });
+
+  it('render template is non-interactive: no STOP-gate language', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    expect(render).not.toMatch(/STOP and wait/i);
+    expect(render).not.toMatch(/STOP and ask/i);
+  });
+
+  it('converted planning commands have no STOP-gate language', () => {
+    // Cross-command invariant for the planning commands already converted
+    // to one-shot in story 03. The list grows as slices 3 and 4 land
+    // (strike, mark, cut). A regression reintroducing "STOP and ask" or
+    // "STOP and wait" in any converted planning command fails here.
+    const convertedPlanningCommands = [
+      'smithy.ignite.md',
+      'smithy.render.md',
+    ];
+    for (const name of convertedPlanningCommands) {
+      const tpl = composed.commands.get(name);
+      expect(tpl, `${name} should be in the composed commands map`).toBeDefined();
+      expect(tpl!, `${name} should not contain "STOP and ask"`).not.toMatch(/STOP and ask/i);
+      expect(tpl!, `${name} should not contain "STOP and wait"`).not.toMatch(/STOP and wait/i);
+    }
+  });
+
   it('variant does not change the number of template keys', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
