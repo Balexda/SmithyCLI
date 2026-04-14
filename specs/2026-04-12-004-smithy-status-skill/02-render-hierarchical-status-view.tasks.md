@@ -22,10 +22,10 @@
   Extend `src/status/scanner.ts` (and, if needed, `src/status/parser.ts`) so that after the existing parent-resolution pass, any tasks record whose `parent_path` is still unresolved has its own `**Source**:` header inspected for a repo-relative spec path. When the declared path points at a file missing from disk, set `parent_missing: true` and populate `parent_path` with the declared path so downstream consumers can surface the dangling reference. Records with a normally-resolved parent remain untouched. Satisfies AS 2.3.
 
   _Acceptance criteria:_
-  - Source-header parsing is limited to the canonical `**Source**: <path>` line written by `smithy.cut` and is tolerant of surrounding whitespace and trailing narrative (e.g. `— User Story 4`).
+  - Source-header parsing is limited to the canonical ``**Source**: `<path>` `` line emitted by `smithy.cut` (path wrapped in backticks) and is tolerant of surrounding whitespace and trailing narrative (e.g. `— User Story 4`).
   - A tasks file whose declared source resolves to an existing spec file is unaffected — no `parent_missing` flag, no `parent_path` override.
   - A tasks file whose declared source resolves to a path not present on disk produces a real (non-virtual) record with `parent_missing === true` and `parent_path` set to the declared repo-relative path.
-  - A tasks file with no parseable `**Source**:` header and no resolved parent keeps `parent_path` null/absent (it stays an orphan rather than being misreported as a broken link).
+  - A tasks file with no parseable `**Source**:` header and no resolved parent remains an orphan and sets `parent_path` to `null` (rather than omitting it or misreporting it as a broken link); per the data model, `null` means "no parent" while an omitted field means "unknown".
   - Scanner-level unit or fixture tests in `src/status/scanner.test.ts` cover: resolved-parent (untouched), missing-declared-source (broken link), and absent-source-header (orphan) cases.
   - The change remains additive — every pre-existing `scan()` test continues to pass without modification.
 
