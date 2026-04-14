@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Declare `EvalReport` aggregate type in `types.ts`**
+- [x] **Declare `EvalReport` aggregate type in `types.ts`**
 
   Add an `EvalReport` interface to `evals/lib/types.ts` matching the data model entity. It must expose enough shape for `buildReport` and `formatReport` to satisfy AS 9.1 and 9.2 — an ISO 8601 timestamp, total/passed/failed counts, overall status, the underlying `EvalResult[]`, and total wall-clock duration in milliseconds.
 
@@ -28,7 +28,7 @@
   - No runtime logic introduced; existing exports unchanged
   - Type is importable from `./types.js` by both `report.ts` and `run-evals.ts`
 
-- [ ] **Implement `scenarioRunToResult` status-derivation helper**
+- [x] **Implement `scenarioRunToResult` status-derivation helper**
 
   Create `evals/lib/report.ts` and export a pure function that assembles an `EvalResult` from a `RunOutput`, the scenario, and the computed check arrays. Status precedence (required by AS 9.3): `timed_out` → `timeout`; otherwise non-zero `exit_code` → `error`; otherwise any failing check → `fail`; otherwise `pass`.
 
@@ -40,7 +40,7 @@
   - `error` field is populated with a descriptive message on `timeout`/`error` status and absent on `pass`/`fail`
   - All imports (`EvalScenario`, `RunOutput`, `CheckResult`, `EvalResult`) come from `./types.js`
 
-- [ ] **Implement `buildReport` aggregator over `EvalResult[]`**
+- [x] **Implement `buildReport` aggregator over `EvalResult[]`**
 
   Add a pure `buildReport(results: EvalResult[], totalDurationMs: number): EvalReport` function to `evals/lib/report.ts` that tallies per-status counts and assembles a complete `EvalReport`. Accepting an array today — even a one-element one — preserves the US7 contract where YAML loading will pass N scenarios without further changes to the report API (AS 9.1, 9.2).
 
@@ -52,7 +52,7 @@
   - `total_duration_ms` equals the passed-in argument
   - Zero-length `results` input returns a well-formed empty report with `overall_status: 'pass'` and zero counts
 
-- [ ] **Implement `formatReport` pure string formatter**
+- [x] **Implement `formatReport` pure string formatter**
 
   Add a pure `formatReport(report: EvalReport): string` function to `evals/lib/report.ts` returning a multi-line stdout-ready summary. Each per-case line carries the scenario name and a status label; timeout cases display a distinct `TIMEOUT` token (AS 9.3), error cases a distinct `ERROR` token, and the final aggregate line shows `PASS` or `FAIL` with the total case count (AS 9.1, 9.2).
 
