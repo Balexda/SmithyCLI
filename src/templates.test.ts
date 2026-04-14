@@ -405,6 +405,99 @@ describe('getComposedTemplates', () => {
     expect(refine).toContain('summary');
   });
 
+  // Story 3 Slice 3: mark and cut must render the shared one-shot output
+  // snippet as their terminal contract, reference the forge `gh pr create`
+  // pattern after artifact write-out, and carry no STOP-gate language from
+  // the removed intermediate approval stops.
+
+  it('mark template resolves the one-shot-output partial', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toBeDefined();
+    // Unresolved partial references must not leak through composition.
+    expect(mark).not.toContain('{{>one-shot-output}}');
+    // The snippet's H2 title is unique — if present, the partial resolved.
+    expect(mark).toContain('## One-Shot Output');
+  });
+
+  it('mark template contains all four one-shot output section headers', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('## Summary');
+    expect(mark).toContain('## Assumptions');
+    expect(mark).toContain('## Specification Debt');
+    expect(mark).toContain('## PR');
+  });
+
+  it('mark template references PR creation after artifact write in Phase 6', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('gh pr create');
+    // Scope to Phase 6 so we measure the write → PR ordering inside the
+    // Write & PR phase, not across the file (Phase 0c also references
+    // `gh pr create` for the refinement-diff PR path).
+    const phase6Idx = mark.indexOf('## Phase 6:');
+    expect(phase6Idx).toBeGreaterThan(-1);
+    const phase6 =
+      mark.slice(phase6Idx, mark.indexOf('## Phase 0:', phase6Idx));
+    const writeIdx = phase6.indexOf('Create the spec folder and write');
+    const prIdx = phase6.indexOf('gh pr create');
+    expect(writeIdx).toBeGreaterThan(-1);
+    expect(prIdx).toBeGreaterThan(writeIdx);
+  });
+
+  it('mark template contains no intermediate STOP-gate language', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    // Intermediate approval STOPs must be gone. The Phase 2 clarify bail-out
+    // path (`Stop and wait for the user to provide expanded information`)
+    // is intentional and preserved from Story 2 — it only runs when clarify
+    // returns `bail_out: true` and the pipeline short-circuits before any
+    // files are written.
+    expect(mark).not.toMatch(/STOP and ask/i);
+    expect(mark).not.toMatch(/STOP after/i);
+  });
+
+  it('cut template resolves the one-shot-output partial', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    expect(cut).not.toContain('{{>one-shot-output}}');
+    expect(cut).toContain('## One-Shot Output');
+  });
+
+  it('cut template contains all four one-shot output section headers', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('## Summary');
+    expect(cut).toContain('## Assumptions');
+    expect(cut).toContain('## Specification Debt');
+    expect(cut).toContain('## PR');
+  });
+
+  it('cut template references PR creation after artifact write in Phase 5', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('gh pr create');
+    // Scope to Phase 5 so we measure the write → PR ordering inside the
+    // Write & PR phase, not across the file (Phase 0c is earlier in the
+    // file and also references `gh pr create` for the refinement-diff PR
+    // path).
+    const phase5Idx = cut.indexOf('## Phase 5:');
+    expect(phase5Idx).toBeGreaterThan(-1);
+    const phase5 = cut.slice(phase5Idx);
+    const writeIdx = phase5.indexOf(
+      'Write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md`',
+    );
+    const prIdx = phase5.indexOf('gh pr create');
+    expect(writeIdx).toBeGreaterThan(-1);
+    expect(prIdx).toBeGreaterThan(writeIdx);
+  });
+
+  it('cut template contains no intermediate STOP-gate language', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    // Intermediate approval STOPs must be gone. The Phase 3 clarify bail-out
+    // path (`Stop and wait for the user to provide expanded information`)
+    // is intentional and preserved from Story 2 — it only runs when clarify
+    // returns `bail_out: true` and the pipeline short-circuits before the
+    // tasks file is written.
+    expect(cut).not.toMatch(/STOP and ask/i);
+    expect(cut).not.toMatch(/STOP after/i);
+  });
+
   it('mark template contains ## Specification Debt between ## Assumptions and ## Out of Scope', () => {
     const mark = composed.commands.get('smithy.mark.md')!;
     expect(mark).toBeDefined();

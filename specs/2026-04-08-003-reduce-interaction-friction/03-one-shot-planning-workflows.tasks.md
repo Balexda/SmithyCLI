@@ -197,7 +197,7 @@ non-interactive sub-agents.
   - Existing bail-out behavior from Story 2 is preserved (clarify bail-out
     still short-circuits before PR creation)
 
-- [ ] **Assert mark and cut render the one-shot output contract**
+- [x] **Assert mark and cut render the one-shot output contract**
 
   Add Tier 2 assertions in `src/templates.test.ts` verifying that the
   composed `smithy.mark.md` and `smithy.cut.md` templates contain the
