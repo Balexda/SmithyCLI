@@ -87,13 +87,38 @@ describe('CLI init --yes (non-interactive)', () => {
   });
 
   it('skips permissions with --no-permissions', () => {
-    execFileSync('node', [CLI, 'init', '-a', 'claude', '--no-permissions', '-y'], {
+    // Also pass --no-session-titles so settings.json is not created at all.
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '--no-permissions', '--no-session-titles', '-y'], {
       encoding: 'utf-8',
       cwd: tmpDir,
     });
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
-    // No permissions file when --no-permissions
+    // No settings file when both permissions and session-titles are disabled
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(false);
+  });
+
+  it('deploys session-title hook by default', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'hooks', 'smithy-session-title.mjs'))).toBe(true);
+    const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'));
+    expect(config.hooks.UserPromptSubmit[0].hooks[0].command).toContain('smithy-session-title.mjs');
+  });
+
+  it('skips session-title hook with --no-session-titles', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '--no-session-titles', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'hooks'))).toBe(false);
+    // settings.json may exist for permissions, but it must not contain our hook
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      expect(config.hooks).toBeUndefined();
+    }
   });
 
   it('rejects invalid agent names', () => {
@@ -187,6 +212,26 @@ describe('CLI uninit --yes (non-interactive)', () => {
 
     // settings.json should still exist after uninit
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);
+  });
+
+  it('removes the session-title hook script and its settings.json entry on uninit', () => {
+    // beforeEach already ran `init -y` which deploys the hook by default
+    const hookScript = path.join(tmpDir, '.claude', 'hooks', 'smithy-session-title.mjs');
+    expect(fs.existsSync(hookScript)).toBe(true);
+    const beforeConfig = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'),
+    );
+    expect(beforeConfig.hooks?.UserPromptSubmit).toBeDefined();
+
+    execFileSync('node', [CLI, 'uninit', '-y'], { encoding: 'utf-8', cwd: tmpDir });
+
+    expect(fs.existsSync(hookScript)).toBe(false);
+    // settings.json is preserved (still has permissions) but hook entry is gone
+    const afterConfig = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'),
+    );
+    expect(afterConfig.hooks).toBeUndefined();
+    expect(afterConfig.permissions).toBeDefined();
   });
 
   it('preserves user-created files in .claude/prompts/', () => {

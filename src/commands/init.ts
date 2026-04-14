@@ -28,6 +28,12 @@ export interface InitOptions {
   location?: DeployLocation;
   permissions?: boolean;
   issueTemplates?: boolean;
+  /**
+   * When true (default), deploys the Claude Code session-title UserPromptSubmit
+   * hook so `/smithy.<cmd>` invocations get a meaningful session title.
+   * Set to false (via `--no-session-titles`) to skip.
+   */
+  sessionTitles?: boolean;
   languages?: LanguageToolchain[] | undefined;
   targetDir?: string;
   yes?: boolean;
@@ -87,6 +93,9 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     }
   }
 
+  // 5b. Session-title hook (Claude only). Default on; opt out via --no-session-titles.
+  const deploySessionTitles = opts.sessionTitles ?? true;
+
   // 6. Issue templates — y/n at the selected deploy location
   let deployIssueTemplates: boolean;
   if (opts.issueTemplates !== undefined) {
@@ -121,6 +130,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
       if (deployPermissions) {
         claude.writePermissions(targetDir, deployLocation, languages);
       }
+      if (deploySessionTitles) {
+        const hookRel = claude.deploySessionTitleHookScript(targetDir, deployLocation);
+        deployedFiles['claude'].push(hookRel);
+        claude.writeSessionTitleHook(targetDir, deployLocation);
+      }
     } else if (a === 'codex') {
       deployedFiles['codex'] = await codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
     }
@@ -140,6 +154,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     agents: [...agentsToSetup],
     permissions: deployPermissions,
     issueTemplates: deployIssueTemplates,
+    sessionTitles: deploySessionTitles,
     languages,
     files: deployedFiles,
   });

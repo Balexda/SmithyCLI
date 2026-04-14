@@ -74,6 +74,13 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   // Step 1: Remove manifest-tracked files for each selected location
   for (const { location, hasManifest } of targets) {
     if (hasManifest) {
+      // If a session-title hook was deployed, strip its entry from settings.json
+      // before removing the manifest. The hook script file itself is removed by
+      // removeManifestFiles since it's tracked in `files['claude']`.
+      const manifest = location === 'repo' ? repoManifest : userManifest;
+      if (manifest?.sessionTitles) {
+        claude.removeSessionTitleHook(targetDir, location);
+      }
       removedCount += removeManifestFiles(targetDir, location);
     }
   }
