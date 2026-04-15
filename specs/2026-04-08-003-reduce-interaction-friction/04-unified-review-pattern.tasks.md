@@ -12,7 +12,7 @@
 **Goal**: Replace the current `review-protocol.md` snippet with a
 read-only, findings-based protocol that both review sub-agents can
 compose. The snippet documents the shared `Finding` structure from
-the contracts (category/severity/confidence/description/proposed_fix),
+the contracts (category/severity/confidence/description/artifact_path/proposed_fix),
 the severity × confidence triage table, and the "parent command
 applies fixes" invariant.
 
@@ -199,15 +199,18 @@ atomic for the entire review pipeline.
   to dispatch `smithy-implementation-review` (not `smithy-review`)
   and to process the returned findings per the contracts' triage
   table: apply High-confidence proposed fixes on disk, commit them
-  as `review: <description>`, note Minor findings in the PR body, and
-  flag Low-confidence Critical findings to the user. Keep forge's
-  existing error-handling STOP gates unchanged (FR-015).
+  as `review: <description>`, record Low-confidence Important
+  findings as specification debt, note Minor findings in the PR
+  body, and flag Low-confidence Critical findings to the user. Keep
+  forge's existing error-handling STOP gates unchanged (FR-015).
 
   _Acceptance criteria:_
   - Forge references `smithy-implementation-review` (agent mode)
   - Forge references the new `Finding` structure from contracts
   - Forge applies proposed fixes before committing (not the review agent)
   - Forge commits review-applied fixes with the `review:` prefix
+  - Forge covers every row of the contracts triage table, including
+    the Low-confidence Important → specification debt path
   - Forge retains the existing test-failure and blocked-task STOP gates
   - Default (non-agent) forge branch still composes the inline
     review-protocol content for the direct-agent case
