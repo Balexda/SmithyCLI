@@ -19,7 +19,7 @@ What US6 actually delivers is the **scenario data** that exercises this machiner
 
 Patterns used below are grounded in `evals/spike/FINDINGS.md` — not speculative:
 
-- `smithy-plan` — lens labels `Simplification`, `Separation of Concerns`, `Robustness` appear in strike's reconciled plan output (4 spike matches).
+- `smithy-plan` — lens labels `Separation of Concerns` and `Robustness` appear in strike's reconciled plan output (4 spike matches, including `[via Robustness]` attribution markers in `evals/spike/output-strike.txt`). `Simplification` is not present in the spike artifacts and must not appear in the pattern.
 - `smithy-reconcile` — phrases like `reconciled plan` and `smithy-reconcile` appear in output (7 spike matches).
 - `smithy-clarify` — strike emits a dispatch line such as `"Now dispatching the **smithy-clarify** agent"` in assistant text (1 spike match); per FR-016, the pattern should target that dispatch phrasing rather than relying on agent-name detection.
 
@@ -35,7 +35,7 @@ Patterns used below are grounded in `evals/spike/FINDINGS.md` — not speculativ
 
 ### Tasks
 
-- [ ] Extend `strikeScenario` in `evals/lib/strike-scenario.ts` with a `sub_agent_evidence` field containing three entries — one each for `smithy-plan`, `smithy-reconcile`, and `smithy-clarify` — using patterns grounded in the spike findings (`evals/spike/FINDINGS.md`): a plan lens-label alternation (`Simplification|Separation of Concerns|Robustness`), a reconcile evidence pattern such as `reconciled plan|smithy-reconcile`, and a clarify dispatch pattern such as `dispatching the.*smithy-clarify` that matches the assistant-text dispatch message per FR-016's guidance for clarify.
+- [ ] Extend `strikeScenario` in `evals/lib/strike-scenario.ts` with a `sub_agent_evidence` field containing three entries — one each for `smithy-plan`, `smithy-reconcile`, and `smithy-clarify` — using patterns grounded in the spike findings (`evals/spike/FINDINGS.md`): a plan lens-label alternation (`Separation of Concerns|Robustness`), a reconcile evidence pattern such as `reconciled plan|smithy-reconcile`, and a clarify dispatch pattern such as `dispatching the.*smithy-clarify` that matches the assistant-text dispatch message per FR-016's guidance for clarify.
 - [ ] Update the `strikeScenario` module docstring to remove the "US6 will extend this scenario with `sub_agent_evidence`" forward reference and document the FR-012/FR-016 coverage now in place.
 - [ ] Extend `evals/lib/strike-scenario.test.ts` so the unit test asserts the new `sub_agent_evidence` shape — presence of all three agents, valid regex patterns, and that each pattern compiles without throwing. Follow the existing test file's conventions for structural assertions on the scenario constant.
 
