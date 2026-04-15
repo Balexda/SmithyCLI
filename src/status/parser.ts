@@ -45,7 +45,7 @@ const EM_DASH = '—';
  * reference. The `format_legacy: ` prefix is load-bearing — downstream
  * consumers key off it — so do not alter it.
  */
-export const FORMAT_LEGACY_WARNING =
+const FORMAT_LEGACY_WARNING =
   'format_legacy: `## Dependency Order` uses checkbox list; expected 4-column table (ID | Title | Depends On | Artifact). ' +
   'Migrate this section to the canonical 4-column schema — see `src/templates/agent-skills/README.md`.';
 
