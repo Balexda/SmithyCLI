@@ -526,7 +526,21 @@ describe('CLI status', () => {
     expect(output).toContain('--no-color');
   });
 
-  it('emits contract-shaped JSON with records, summary, tree, graph', () => {
+  it('emits contract-shaped JSON with records, summary, tree, graph, and full per-type counts (AS 7.2)', () => {
+    // Fixture stitches one record of every artifact type — rfc,
+    // features, spec, tasks — through the canonical lineage so every
+    // `counts[type][status]` slot in `payload.summary.counts` is
+    // observable. AS 7.2 guards the JSON `summary` key: this slice
+    // does not change its shape, only locks it down with a full
+    // per-type regression assertion.
+    write(
+      'docs/rfcs/example.rfc.md',
+      `# RFC: Example\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/01-milestone-one.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/01-milestone-one.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Feature A | — | specs/feature-a |\n`,
+    );
     write(
       'specs/feature-a/feature-a.spec.md',
       `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story One | — | specs/feature-a/01-first.tasks.md |\n`,
@@ -542,7 +556,10 @@ describe('CLI status', () => {
 
     const payload = JSON.parse(output) as {
       summary: {
-        counts: Record<'rfc' | 'features' | 'spec' | 'tasks', Record<string, number>>;
+        counts: Record<
+          'rfc' | 'features' | 'spec' | 'tasks',
+          Record<'done' | 'in-progress' | 'not-started' | 'unknown', number>
+        >;
         orphan_count: number;
         broken_link_count: number;
         parse_error_count: number;
@@ -578,10 +595,76 @@ describe('CLI status', () => {
     // Spec rolls up to done because its only child is done.
     expect(specRecord?.status).toBe('done');
 
-    // Summary counts match the records.
+    // AS 7.2: `summary.counts` exposes every artifact type key, and
+    // each per-type object carries the four status fields defined on
+    // the data-model `ScanSummary` entity (done, in-progress,
+    // not-started, unknown). Every record of the fixture rolls up to
+    // `done`, so the other slots assert zero — locking down the
+    // shape, not just the two types spot-checked previously.
+    const STATUS_KEYS: Array<'done' | 'in-progress' | 'not-started' | 'unknown'> = [
+      'done',
+      'in-progress',
+      'not-started',
+      'unknown',
+    ];
+    for (const type of ['rfc', 'features', 'spec', 'tasks'] as const) {
+      expect(payload.summary.counts).toHaveProperty(type);
+      for (const status of STATUS_KEYS) {
+        expect(payload.summary.counts[type]).toHaveProperty(status);
+        expect(typeof payload.summary.counts[type][status]).toBe('number');
+      }
+    }
+    expect(payload.summary.counts.rfc.done).toBe(1);
+    expect(payload.summary.counts.features.done).toBe(1);
     expect(payload.summary.counts.spec.done).toBe(1);
     expect(payload.summary.counts.tasks.done).toBe(1);
     expect(payload.summary.parse_error_count).toBe(0);
+  });
+
+  it('text mode prints a per-type summary header above the flat listing (AS 7.1)', () => {
+    // Fixture exercises multiple artifact types so the header has real
+    // counts to render: one RFC, one features file, one spec, and one
+    // tasks file stitched through the canonical lineage. AS 7.1 is the
+    // header-format acceptance scenario from US7 of the spec.
+    write(
+      'docs/rfcs/example.rfc.md',
+      `# RFC: Example\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/01-milestone-one.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/01-milestone-one.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Feature A | — | specs/feature-a |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story One | — | specs/feature-a/01-first.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-a/01-first.tasks.md',
+      `# Tasks\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+
+    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    const lines = output.split('\n');
+    const headerLine = lines[0] ?? '';
+    // All four plural type labels appear in the canonical order.
+    expect(headerLine).toMatch(
+      /RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/,
+    );
+    // Header precedes the flat listing. The first record line comes
+    // after the header line (AS 7.1: header "above" the listing).
+    const firstRecordLineIndex = lines.findIndex((l) =>
+      l.includes('specs/feature-a/feature-a.spec.md'),
+    );
+    expect(firstRecordLineIndex).toBeGreaterThan(0);
+    // Header segments use the stable "N done / N in-progress / N not-started"
+    // shape — status segments whose count is zero are suppressed, and a
+    // type with every count zero still renders with a "0 done" placeholder
+    // (SD-011). Only done / in-progress / not-started appear — `unknown`
+    // is intentionally omitted per FR-016 / SD-012.
+    expect(headerLine).not.toMatch(/unknown/);
   });
 
   it('exits 0 with a friendly hint on an empty repo', () => {

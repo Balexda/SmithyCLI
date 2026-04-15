@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Render per-type summary header above text-mode listing**
+- [x] **Render per-type summary header above text-mode listing**
 
   Add a pure `formatSummaryHeader(summary: ScanSummary): string` helper co-located with `summarize()` in `src/commands/status.ts`, and invoke it from the text-mode path of `statusAction` after the empty-repo early-return and before the flat records loop. The header must render AS 7.1 verbatim from `ScanSummary.counts` without touching `ArtifactRecord[]` or coupling to any future tree renderer.
 
@@ -31,7 +31,7 @@
   - An integration test under the `CLI status` describe block in `src/cli.test.ts` exercises a fixture containing records of multiple types and asserts the header appears above the flat listing with the four type labels present (references AS 7.1 by ID).
   - The existing empty-repo integration test remains green without modification.
 
-- [ ] **Guard AS 7.2 with a full per-type JSON counts assertion**
+- [x] **Guard AS 7.2 with a full per-type JSON counts assertion**
 
   Extend the existing `--format json` integration test in `src/cli.test.ts` so its fixture contains at least one record of each artifact type and the assertions cover every key under `payload.summary.counts`. This task touches no production source — it locks down AS 7.2's current (already-correct) behavior as US7's acceptance boundary.
 
