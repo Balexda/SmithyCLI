@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add migration-pointer text to the `format_legacy` warning**
+- [x] **Add migration-pointer text to the `format_legacy` warning**
 
   Define a module-level string constant in `src/status/parser.ts` holding the `format_legacy` warning and reference it from the legacy-detection branch of `parseDependencyTable`. The constant's body must satisfy FR-028 by pointing authors at the canonical 4-column schema documentation so a user encountering a legacy section has a concrete migration reference.
 

@@ -37,6 +37,18 @@ const ID_PREFIX_BY_TYPE: Record<ArtifactType, IdPrefix> = {
 const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
+/**
+ * Warning emitted when a `## Dependency Order` section uses the legacy
+ * checkbox-list format instead of the canonical 4-column table. FR-028
+ * requires this text to point authors at the canonical schema
+ * documentation so encountering the warning gives a concrete migration
+ * reference. The `format_legacy: ` prefix is load-bearing — downstream
+ * consumers key off it — so do not alter it.
+ */
+export const FORMAT_LEGACY_WARNING =
+  'format_legacy: `## Dependency Order` uses checkbox list; expected 4-column table (ID | Title | Depends On | Artifact). ' +
+  'Migrate this section to the canonical 4-column schema — see `src/templates/agent-skills/README.md` for the canonical 4-column schema.';
+
 const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
 type ColumnName = (typeof EXPECTED_HEADERS)[number];
 type ColumnIndex = Record<ColumnName, number>;
@@ -69,9 +81,7 @@ export function parseDependencyTable(
     // No 4-column header — check for legacy checkbox format.
     const hasCheckbox = lines.some((line) => /^\s*-\s*\[[ xX]\]/.test(line));
     if (hasCheckbox) {
-      warnings.push(
-        'format_legacy: `## Dependency Order` uses checkbox list; expected 4-column table (ID | Title | Depends On | Artifact)',
-      );
+      warnings.push(FORMAT_LEGACY_WARNING);
       return {
         table: { rows: [], id_prefix, format: 'legacy' },
         warnings,

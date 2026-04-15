@@ -79,6 +79,10 @@ body
     expect(result.table.rows).toEqual([]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/^format_legacy:/);
+    // FR-028: warning body must point at the canonical 4-column schema doc.
+    expect(result.warnings[0]).toContain(
+      'src/templates/agent-skills/README.md',
+    );
   });
 
   it('parses as table when checkboxes appear inside the Title column of a 4-column table', () => {
