@@ -47,7 +47,7 @@ const EM_DASH = '—';
  */
 export const FORMAT_LEGACY_WARNING =
   'format_legacy: `## Dependency Order` uses checkbox list; expected 4-column table (ID | Title | Depends On | Artifact). ' +
-  'Migrate this section to the canonical 4-column schema — see `src/templates/agent-skills/README.md` for the canonical 4-column schema.';
+  'Migrate this section to the canonical 4-column schema — see `src/templates/agent-skills/README.md`.';
 
 const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
 type ColumnName = (typeof EXPECTED_HEADERS)[number];
