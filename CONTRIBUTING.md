@@ -58,7 +58,6 @@ The evals framework (under `evals/`) — implemented:
 
 Pending:
 - YAML-defined scenario loading (`evals/cases/`)
-- Orchestrator wiring of the report library into `run-evals.ts` (US9 Slice 2)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 

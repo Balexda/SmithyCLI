@@ -3,14 +3,17 @@
  *
  * Accepts --fixture and --timeout CLI flags; calls preflight() on startup;
  * runs the imported `strikeScenario`, validates output structure, prints
- * per-check pass/fail results to stdout, and exits with code 1 if any check
- * fails or the process exits non-zero or times out.
+ * per-check pass/fail results to stdout, assembles a full `EvalReport` via
+ * the report library, prints the formatted summary, and exits with code 1
+ * if the report's `overall_status` is `'fail'`.
  *
- * US7 will replace the imported scenario with YAML loading.
- * US9 will extend the result summary into a full EvalReport.
+ * US7 will replace the imported scenario with YAML loading — the
+ * one-element `results` array passed to `buildReport` becomes N-element
+ * without changes to the summary code path.
  *
- * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-010, FR-012;
- * Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
+ * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-009, FR-010,
+ * FR-012; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 9.1, 9.2,
+ * 9.3
  */
 
 import { parseArgs } from 'node:util';
@@ -20,8 +23,19 @@ import path from 'node:path';
 import { preflight, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
 import { strikeScenario } from './lib/strike-scenario.js';
 import type { CheckResult, EvalScenario } from './lib/types.js';
+
+// ---------------------------------------------------------------------------
+// Run-wide wall-clock timer — started before any orchestrator work (preflight,
+// fixture validation, scenario execution) and stopped immediately before
+// `buildReport`. `performance.now()` is a monotonic clock, so the measurement
+// survives system clock adjustments. Matches the convention used by
+// `runner.ts` for per-scenario durations.
+// ---------------------------------------------------------------------------
+
+const runStartPerf = performance.now();
 
 // ---------------------------------------------------------------------------
 // CLI flags
@@ -120,14 +134,14 @@ console.log(`  Stream events: ${output.stream_events.length}`);
 // Structural validation (FR-005, FR-006)
 // ---------------------------------------------------------------------------
 
-let allChecks: CheckResult[];
+let structuralChecks: CheckResult[];
+let subAgentChecks: CheckResult[] = [];
 try {
-  const structuralChecks = validateStructure(
+  structuralChecks = validateStructure(
     output.extracted_text,
     scenario.structural_expectations,
   );
 
-  let subAgentChecks: CheckResult[] = [];
   if (scenario.sub_agent_evidence && scenario.sub_agent_evidence.length > 0) {
     const dispatches = extractSubAgentDispatches(output.stream_events);
     subAgentChecks = verifySubAgents(
@@ -136,8 +150,6 @@ try {
       scenario.sub_agent_evidence,
     );
   }
-
-  allChecks = [...structuralChecks, ...subAgentChecks];
 } catch (err) {
   console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
@@ -145,7 +157,7 @@ try {
 
 console.log('');
 console.log('Checks:');
-for (const check of allChecks) {
+for (const check of [...structuralChecks, ...subAgentChecks]) {
   if (check.passed) {
     console.log(`  [PASS] ${check.check_name}`);
   } else {
@@ -155,11 +167,20 @@ for (const check of allChecks) {
   }
 }
 
-const anyCheckFailed = allChecks.some((c) => !c.passed);
-const exitCode =
-  output.exit_code !== 0 || output.timed_out || anyCheckFailed ? 1 : 0;
+// ---------------------------------------------------------------------------
+// Aggregate summary (FR-009; AS 9.1, 9.2, 9.3)
+// ---------------------------------------------------------------------------
+
+const evalResult = scenarioRunToResult(
+  scenario,
+  output,
+  structuralChecks,
+  subAgentChecks,
+);
+const totalDurationMs = Math.round(performance.now() - runStartPerf);
+const report = buildReport([evalResult], totalDurationMs);
 
 console.log('');
-console.log(`Result: ${exitCode === 0 ? 'PASS' : 'FAIL'}`);
+console.log(formatReport(report));
 
-process.exit(exitCode);
+process.exit(report.overall_status === 'pass' ? 0 : 1);

@@ -78,7 +78,7 @@
 
 ### Tasks
 
-- [ ] **Wire `scenarioRunToResult`, `buildReport`, and `formatReport` into `run-evals.ts`**
+- [x] **Wire `scenarioRunToResult`, `buildReport`, and `formatReport` into `run-evals.ts`**
 
   Import the three functions and the `EvalReport` type from `./lib/report.js` and `./lib/types.js`. Capture a start timestamp before calling `runScenario`, compute `totalDurationMs` after it returns, then call `scenarioRunToResult` with the scenario, `output`, structural checks, and sub-agent checks to produce one `EvalResult`. Pass a one-element array plus `totalDurationMs` to `buildReport` and print the result of `formatReport` in place of the current `Result: PASS/FAIL` line. Exit code is `0` when `report.overall_status === 'pass'`, otherwise `1`.
 
