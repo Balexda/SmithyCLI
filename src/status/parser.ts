@@ -347,6 +347,29 @@ function countSliceBodyCheckboxes(content: string): {
 }
 
 /**
+ * Extract the repo-relative path declared by the canonical `**Source**:`
+ * header that `smithy.cut` emits at the top of tasks files. The header
+ * shape is:
+ *
+ * ```
+ * **Source**: `specs/.../foo.spec.md` — User Story 4
+ * ```
+ *
+ * The path is always wrapped in backticks. Optional leading whitespace
+ * and trailing narrative after the closing backtick are tolerated.
+ * Returns the declared path verbatim (caller is responsible for path
+ * normalization) or `null` if no canonical header is present. Never
+ * throws — always returns either a string or `null`.
+ */
+export function extractSourceHeader(content: string): string | null {
+  const match = /^\s*\*\*Source\*\*:\s*`([^`]+)`/m.exec(content);
+  if (match === null) return null;
+  const declared = match[1]?.trim() ?? '';
+  if (declared.length === 0) return null;
+  return declared;
+}
+
+/**
  * Return the body of the `## Dependency Order` H2 section, or `null` if
  * no such section exists. The body is everything after the heading line
  * until the next H2 or end of file.

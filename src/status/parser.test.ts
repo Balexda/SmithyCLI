@@ -420,9 +420,9 @@ Just prose.
     expect(record.warnings.some((w) => /invalid ID/.test(w))).toBe(true);
   });
 
-  // Slice 1 intentionally leaves status classification to Slice 2; every
-  // record returned here must therefore carry the `unknown` placeholder.
-  it('sets status to "unknown" as a Slice 1 placeholder (classification is Slice 2)', () => {
+  // parseArtifact deliberately returns status: 'unknown' as a placeholder
+  // on every record; the scanner's classifyRecord pass overwrites it.
+  it('sets status to "unknown" as a placeholder — classifyRecord in the scanner overwrites it', () => {
     const markdown = `# A Spec
 
 ## Dependency Order

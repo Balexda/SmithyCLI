@@ -36,10 +36,11 @@
  * - SD-001: Feature-map virtual spec placeholders use `specs/<slug>/` —
  *   the canonical `YYYY-MM-DD-NNN-<slug>` prefix cannot be derived from
  *   a feature row alone, so the slug is a best-effort placeholder.
- * - SD-002: `parent_missing` is not populated in this slice — real
- *   records never set `parent_path` to a non-existent file because
- *   linkage is established exclusively from existing parents' dep-order
- *   rows. The field remains available for future heuristics.
+ * - SD-002: `parent_missing` is populated only for orphaned tasks
+ *   records whose `**Source**:` header (emitted by `smithy.cut`)
+ *   declares a repo-relative spec path missing from disk. Spec,
+ *   features, and rfc artifacts do not carry an analogous self-declared
+ *   parent reference today, so the field stays unset for them.
  * - SD-003: Integration tests use real on-disk temp directories under
  *   `os.tmpdir()` to exercise the recursive walk path.
  */
@@ -48,7 +49,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { classifyRecord } from './classifier.js';
-import { parseArtifact } from './parser.js';
+import { extractSourceHeader, parseArtifact } from './parser.js';
 import type {
   ArtifactRecord,
   ArtifactType,
@@ -148,6 +149,89 @@ export function scan(root: string): ArtifactRecord[] {
     childrenByParent.set(parent.path, kids);
   }
 
+  // Phase 2b: broken-link probe for orphaned tasks records.
+  //
+  // Any real (non-virtual) tasks record whose `parent_path` was never
+  // populated in Phase 2 is a candidate for the narrow `**Source**:`
+  // header probe. If the header declares a repo-relative spec path that
+  // is missing from disk, the record is flagged as a broken link so the
+  // downstream "Broken Links" grouping has data to group on. Tasks
+  // files whose declared source exists on disk, or whose `**Source**:`
+  // header is absent / unparseable, are left alone and fall through to
+  // the orphan normalization below.
+  //
+  // Scoped strictly to tasks records: spec/features/rfc orphan handling
+  // is unchanged by this pass.
+  for (const record of records.values()) {
+    if (record.type !== 'tasks') continue;
+    if (record.virtual === true) continue;
+    if (record.parent_path !== undefined) continue;
+    // A record whose file could not be read in Phase 1 carries a
+    // `read_error:` warning and genuinely unknown parent state — we
+    // cannot inspect its `**Source**:` header. Leave `parent_path`
+    // omitted (= "unknown" per the data model) rather than
+    // misrepresenting a transient I/O failure as either a broken
+    // link or an orphan.
+    if (hasReadError(record)) continue;
+
+    const abs = path.join(realRoot, record.path);
+    let content: string;
+    try {
+      content = fs.readFileSync(abs, 'utf8');
+    } catch {
+      continue;
+    }
+
+    const declared = extractSourceHeader(content);
+    if (declared === null) continue;
+
+    // Security: the `**Source**:` header is untrusted text from disk,
+    // so validate that the declared path is genuinely repo-relative
+    // before we probe it on the filesystem or record it on the record.
+    // Absolute paths (POSIX `/etc/passwd` or Windows `C:\...`) would
+    // bypass `path.join(realRoot, ...)` — `path.join` drops earlier
+    // segments when a later one is absolute — and `..` traversal
+    // could escape `realRoot` entirely. Reject both up front; if the
+    // declared path is malformed we simply treat it like an unparseable
+    // header and fall through to the orphan normalization below.
+    if (isAbsolutePath(declared)) continue;
+    const declaredRel = normalizePath(declared);
+    const declaredAbs = path.resolve(realRoot, declaredRel);
+    if (!isWithinRoot(declaredAbs, realRoot)) continue;
+
+    let declaredExists = false;
+    try {
+      declaredExists = fs.statSync(declaredAbs).isFile();
+    } catch {
+      declaredExists = false;
+    }
+    if (declaredExists) continue;
+
+    record.parent_path = declaredRel;
+    record.parent_missing = true;
+  }
+
+  // Phase 2c: orphan normalization for tasks records.
+  //
+  // Per the data model, `parent_path: null` means "no parent" while an
+  // omitted field means "unknown". Tasks records that reached this
+  // point with `parent_path` still undefined are definitively orphans
+  // (no parent dep-order row claimed them, and either no `**Source**:`
+  // header was present or it pointed at an existing file the scanner
+  // could not link automatically). Set their `parent_path` to `null`
+  // so downstream consumers get the explicit "no parent" signal.
+  //
+  // Records with a `read_error:` warning are skipped: we could not
+  // read the file, so its parent state is genuinely unknown and the
+  // omitted-field semantics must be preserved.
+  for (const record of records.values()) {
+    if (record.type !== 'tasks') continue;
+    if (record.virtual === true) continue;
+    if (record.parent_path !== undefined) continue;
+    if (hasReadError(record)) continue;
+    record.parent_path = null;
+  }
+
   // Phase 3: classify leaf-to-root. `classifyRecord` is pure; all we do
   // here is order the calls so every parent sees its already-finalized
   // children.
@@ -220,6 +304,16 @@ function walkDir(
 function isWithinRoot(candidate: string, realRoot: string): boolean {
   if (candidate === realRoot) return true;
   return candidate.startsWith(realRoot + path.sep);
+}
+
+/**
+ * True for POSIX absolute paths (`/foo`) and Windows drive-letter
+ * paths (`C:\foo` or `C:/foo`). Platform-independent so the check
+ * runs the same on every host — a Windows-style path pasted into a
+ * `**Source**:` header on a Linux machine is still rejected.
+ */
+function isAbsolutePath(value: string): boolean {
+  return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
 }
 
 /**

@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Detect broken tasks-file parent links in `scan()`**
+- [x] **Detect broken tasks-file parent links in `scan()`**
 
   Extend `src/status/scanner.ts` (and, if needed, `src/status/parser.ts`) so that after the existing parent-resolution pass, any tasks record whose `parent_path` is still unresolved has its own `**Source**:` header inspected for a repo-relative spec path. When the declared path points at a file missing from disk, set `parent_missing: true` and populate `parent_path` with the declared path so downstream consumers can surface the dangling reference. Records with a normally-resolved parent remain untouched. Satisfies AS 2.3.
 
@@ -29,7 +29,7 @@
   - Scanner-level unit or fixture tests in `src/status/scanner.test.ts` cover: resolved-parent (untouched), missing-declared-source (broken link), and absent-source-header (orphan) cases.
   - The change remains additive — every pre-existing `scan()` test continues to pass without modification.
 
-- [ ] **Add `StatusTree` types, implement `buildTree()`, and populate the JSON tree output**
+- [x] **Add `StatusTree` types, implement `buildTree()`, and populate the JSON tree output**
 
   Define `TreeNode` and `StatusTree` in `src/status/types.ts` per the data model (recursive `children: TreeNode[]`, `roots` on `StatusTree`, no duplicated summary). Implement a pure `buildTree(records: ArtifactRecord[]): StatusTree` in a new `src/status/tree.ts` that groups records under their ancestors using each record's `parent_path`, preserves input order, and emits synthetic top-level group nodes for "Orphaned Specs" and "Broken Links" when populated. Re-export the new types and `buildTree` from `src/status/index.ts`, and update `statusAction` in `src/commands/status.ts` so `--format json` emits `tree: buildTree(records)` in place of the current `{ roots: [] }` stub. Satisfies AS 2.1, 2.2, 2.3.
 

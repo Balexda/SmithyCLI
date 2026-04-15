@@ -772,6 +772,109 @@ describe('CLI status', () => {
     expect(payload.summary.parse_error_count).toBeGreaterThan(0);
   });
 
+  it('populates tree.roots via buildTree against a full-chain + orphan + broken-link fixture', async () => {
+    // US2 Slice 1: verify the JSON payload's `tree` field is populated
+    // by `buildTree(records)` and matches byte-for-byte a tree built
+    // from the same records in-process. Fixture intentionally mixes
+    // three shapes: one full RFC→features→spec→tasks chain, one
+    // orphaned spec, and one broken-link tasks file whose declared
+    // `**Source**:` header points at a missing spec.
+    const FEATURE_TABLE = `${TABLE_HEADER}\n| F1 | Chain Feature | — | specs/chain-feature/ |\n`;
+    const CHAIN_SPEC_TABLE = `${TABLE_HEADER}\n| US1 | Chain Story | — | specs/chain-feature/01-chain-story.tasks.md |\n`;
+
+    // Full chain: RFC → features → spec → tasks
+    write(
+      'docs/rfcs/0001-demo.rfc.md',
+      `# Demo RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/0001-demo.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/0001-demo.features.md',
+      `# Demo Features\n\n## Dependency Order\n\n${FEATURE_TABLE}`,
+    );
+    write(
+      'specs/chain-feature/chain-feature.spec.md',
+      `# Feature Specification: Chain Feature\n\n## Dependency Order\n\n${CHAIN_SPEC_TABLE}`,
+    );
+    write(
+      'specs/chain-feature/01-chain-story.tasks.md',
+      `# Tasks\n\n**Source**: \`specs/chain-feature/chain-feature.spec.md\` — User Story 1\n\n## Slice 1: First\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+
+    // Orphaned spec: not referenced by any feature map.
+    write(
+      'specs/orphan-feature/orphan-feature.spec.md',
+      `# Feature Specification: Orphan Feature\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Lone Story | — | — |\n`,
+    );
+
+    // Broken-link tasks: declares a **Source** that does not exist.
+    write(
+      'specs/lost/01-dangling.tasks.md',
+      '# Tasks\n\n**Source**: `specs/deleted/deleted.spec.md` — User Story 1\n\n## Slice 1: Lost\n\n- [ ] Task\n',
+    );
+
+    const output = execFileSync(
+      'node',
+      [CLI, 'status', '--format', 'json', '--root', tmpDir],
+      { encoding: 'utf-8' },
+    );
+    const payload = JSON.parse(output) as {
+      records: unknown[];
+      tree: { roots: Array<{ record: { path: string; title: string }; children: unknown[] }> };
+    };
+
+    // Import `buildTree` from the status module so we can compute an
+    // expected tree from the records the CLI produced, and assert
+    // byte-for-byte equality against the tree the CLI emitted.
+    const { buildTree } = await import('./status/tree.js');
+    // Import the types via the records payload; we cast here because
+    // JSON.parse loses the ArtifactRecord type branding.
+    const expectedTree = buildTree(payload.records as Parameters<typeof buildTree>[0]);
+
+    // Byte-for-byte match: serialize both sides and compare strings.
+    expect(JSON.stringify(payload.tree)).toBe(JSON.stringify(expectedTree));
+
+    // Structural sanity: the tree should contain the Orphaned Specs
+    // group, the Broken Links group, and a real chain root.
+    const rootPaths = payload.tree.roots.map((r) => r.record.path);
+    expect(rootPaths).toContain('__orphaned_specs__');
+    expect(rootPaths).toContain('__broken_links__');
+
+    // The Orphaned Specs group has exactly one child (our orphan spec).
+    const orphanGroup = payload.tree.roots.find(
+      (r) => r.record.path === '__orphaned_specs__',
+    );
+    expect(orphanGroup).toBeDefined();
+    expect(orphanGroup?.children).toHaveLength(1);
+
+    // The Broken Links group has exactly one child (our dangling tasks).
+    const brokenGroup = payload.tree.roots.find(
+      (r) => r.record.path === '__broken_links__',
+    );
+    expect(brokenGroup).toBeDefined();
+    expect(brokenGroup?.children).toHaveLength(1);
+
+    // A full-chain root (the RFC) also lives in roots, somewhere
+    // below the group sentinels.
+    const realRoots = payload.tree.roots.filter(
+      (r) => !r.record.path.startsWith('__'),
+    );
+    expect(realRoots.length).toBeGreaterThanOrEqual(1);
+    // Walk from the RFC down four levels to confirm the tasks record
+    // is reachable at the deepest position (AS 2.1).
+    const rfcRoot = realRoots.find((r) => r.record.path.endsWith('.rfc.md'));
+    expect(rfcRoot).toBeDefined();
+    const features = rfcRoot?.children as
+      | Array<{ record: { path: string }; children: Array<{ record: { path: string }; children: Array<{ record: { path: string } }> }> }>
+      | undefined;
+    expect(features?.[0]?.record.path).toBe('docs/rfcs/0001-demo.features.md');
+    expect(features?.[0]?.children[0]?.record.path).toBe(
+      'specs/chain-feature/chain-feature.spec.md',
+    );
+    expect(features?.[0]?.children[0]?.children[0]?.record.path).toBe(
+      'specs/chain-feature/01-chain-story.tasks.md',
+    );
+  });
+
   it('accepts all downstream option stubs without error', () => {
     write(
       'specs/feature-a/feature-a.spec.md',

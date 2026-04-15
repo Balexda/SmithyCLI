@@ -7,9 +7,11 @@
  * evolution — the records exist only for the lifetime of one `smithy status`
  * invocation.
  *
- * This module intentionally contains only the entities needed by User Story 1
- * (Slice 1). Later stories (US2, US10) introduce `DependencyGraph`,
- * `DependencyNode`, `StatusTree`, and `TreeNode`.
+ * The type surface grows incrementally story-by-story. User Story 1 shipped
+ * `ArtifactRecord`, `NextAction`, `DependencyRow`, `DependencyOrderTable`,
+ * and `ScanSummary`; User Story 2 Slice 1 adds `TreeNode` and `StatusTree`
+ * alongside them. `DependencyGraph` / `DependencyNode` are still owned by
+ * User Story 10.
  */
 
 /**
@@ -169,6 +171,42 @@ export interface ArtifactRecord {
    * array when clean.
    */
   warnings: string[];
+}
+
+/**
+ * Recursive wrapper around an {@link ArtifactRecord} that encodes the
+ * parent/child relationships flattened in the records array. Mirrors
+ * `smithy-status-skill.data-model.md` §7: a `TreeNode` carries no
+ * additional data beyond its wrapped record and a `children` field — no
+ * duplicated counts, no embedded summary, no extra metadata.
+ *
+ * Synthetic group nodes ("Orphaned Specs", "Broken Links") are encoded
+ * as real `TreeNode` values whose wrapped `ArtifactRecord` is a
+ * synthesized sentinel (see {@link StatusTree} and the JSDoc on
+ * `buildTree`). Consumers detect group nodes by the sentinel `path`
+ * prefix `__` on the wrapped record.
+ */
+export interface TreeNode {
+  /** The underlying artifact record (real or a synthesized group sentinel). */
+  record: ArtifactRecord;
+  /** Children in input (scan) order; empty array for leaf nodes. */
+  children: TreeNode[];
+}
+
+/**
+ * The hierarchical projection of `ArtifactRecord[]` consumed by the
+ * terminal renderer and the JSON emitter. Per
+ * `smithy-status-skill.data-model.md` §7, `StatusTree` contains only the
+ * tree itself — the aggregate {@link ScanSummary} is NOT duplicated here;
+ * it lives alongside the tree at the top level of the JSON response.
+ *
+ * `roots` holds the top-level nodes (typically RFCs), plus an implicit
+ * "Orphaned Specs" group and a "Broken Links" group when either is
+ * populated. Empty groups are omitted.
+ */
+export interface StatusTree {
+  /** Top-level nodes in the tree. See {@link TreeNode}. */
+  roots: TreeNode[];
 }
 
 /**

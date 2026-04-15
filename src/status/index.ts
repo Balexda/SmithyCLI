@@ -8,9 +8,11 @@
 
 export * from './types.js';
 export {
+  extractSourceHeader,
   parseArtifact,
   parseDependencyTable,
   type ParsedDependencyTable,
 } from './parser.js';
 export { classifyRecord } from './classifier.js';
 export { scan } from './scanner.js';
+export { buildTree, BROKEN_LINKS_PATH, ORPHANED_SPECS_PATH } from './tree.js';
