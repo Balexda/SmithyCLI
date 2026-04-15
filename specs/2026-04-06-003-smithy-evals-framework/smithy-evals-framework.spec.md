@@ -225,7 +225,7 @@ Plan and scout are tested **both** ways:
 | US3  | Execute a Skill Headlessly and Capture Output            | US1, US2        | `specs/2026-04-06-003-smithy-evals-framework/03-execute-skill-headlessly-and-capture-output.tasks.md` |
 | US4  | Validate Output Structure                                | US3             | `specs/2026-04-06-003-smithy-evals-framework/04-validate-output-structure.tasks.md`               |
 | US5  | Verify Strike End-to-End Output                          | US3, US4        | `specs/2026-04-06-003-smithy-evals-framework/05-verify-strike-end-to-end-output.tasks.md`         |
-| US6  | Verify Sub-Agent Invocation                              | US5             | —                                                                                                 |
+| US6  | Verify Sub-Agent Invocation                              | US5             | `specs/2026-04-06-003-smithy-evals-framework/06-verify-sub-agent-invocation.tasks.md`             |
 | US7  | Define Eval Scenarios Declaratively                      | US5             | —                                                                                                 |
 | US8  | Fixture Contains Deliberate Inconsistencies for Scout    | US2, US5        | —                                                                                                 |
 | US9  | Eval Summary Report                                      | US3, US4        | `specs/2026-04-06-003-smithy-evals-framework/09-eval-summary-report.tasks.md`                     |
