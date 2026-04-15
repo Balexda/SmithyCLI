@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  chmodSync,
   mkdtempSync,
   mkdirSync,
   rmSync,
@@ -492,5 +493,83 @@ ${TABLE_HEADER}
     expect(tasks).toBeDefined();
     expect(tasks?.parent_missing).toBeUndefined();
     expect(tasks?.parent_path).toBeNull();
+  });
+
+  it('broken-link detection: absolute **Source** path is rejected as malformed and falls through to orphan', () => {
+    // A malicious or malformed `**Source**:` header declaring an
+    // absolute path (`/etc/passwd`, `C:\\Windows\\...`) must not
+    // cause the probe to call `statSync` outside the repo root. The
+    // scanner rejects the header up front and the record falls
+    // through to the orphan-normalization branch with
+    // `parent_path: null` and no `parent_missing` flag.
+    write(
+      'specs/feature-a/01-abs.tasks.md',
+      `# Tasks\n\n**Source**: \`/etc/passwd\` — User Story 1\n\n## Slice 1: Only\n\n- [ ] Task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(records, 'specs/feature-a/01-abs.tasks.md');
+    expect(tasks).toBeDefined();
+    expect(tasks?.parent_missing).toBeUndefined();
+    expect(tasks?.parent_path).toBeNull();
+  });
+
+  it('broken-link detection: **Source** path that resolves outside the repo root is rejected', () => {
+    // A `..`-traversal `**Source**:` header that would escape the
+    // scan root must be rejected, even if the traversal target is a
+    // real file. The scanner treats the header as unparseable and
+    // falls through to orphan normalization rather than recording
+    // an out-of-repo `parent_path`.
+    write(
+      'specs/feature-a/01-escape.tasks.md',
+      `# Tasks\n\n**Source**: \`../../../../etc/passwd\` — User Story 1\n\n## Slice 1: Only\n\n- [ ] Task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(records, 'specs/feature-a/01-escape.tasks.md');
+    expect(tasks).toBeDefined();
+    expect(tasks?.parent_missing).toBeUndefined();
+    expect(tasks?.parent_path).toBeNull();
+  });
+
+  it('broken-link detection: tasks record with a read_error preserves unknown parent state (parent_path omitted)', () => {
+    // A tasks file that could not be read in Phase 1 carries a
+    // `read_error:` warning. We cannot inspect its `**Source**:`
+    // header, so Phase 2b/2c must leave `parent_path` omitted
+    // (= "unknown") rather than collapsing it to `null` (which
+    // would misrepresent a transient I/O failure as "definitely
+    // no parent"). Simulate the read error by creating a file
+    // and stripping read permission — `readFileSync` raises
+    // EACCES, which the scanner surfaces as a `read_error:`
+    // warning. Skipped on platforms where chmod cannot produce
+    // an unreadable file (Windows, running as root).
+    const abs = join(root, 'specs', 'feature-a', '01-broken.tasks.md');
+    write(
+      'specs/feature-a/01-broken.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [ ] Task\n`,
+    );
+    try {
+      chmodSync(abs, 0o000);
+    } catch {
+      return; // Platform without chmod — skip.
+    }
+    let records: ReturnType<typeof scan>;
+    try {
+      records = scan(root);
+    } finally {
+      // Restore permission so rmSync in afterEach can clean up.
+      try {
+        chmodSync(abs, 0o644);
+      } catch {
+        /* ignore */
+      }
+    }
+    const tasks = byPath(records, 'specs/feature-a/01-broken.tasks.md');
+    if (tasks === undefined) {
+      return; // Running as root — chmod 000 did not block the read.
+    }
+    if (!tasks.warnings.some((w) => w.startsWith('read_error:'))) {
+      return; // Same — chmod did not produce a read error on this host.
+    }
+    expect(tasks.parent_path).toBeUndefined();
+    expect(tasks.parent_missing).toBeUndefined();
   });
 });

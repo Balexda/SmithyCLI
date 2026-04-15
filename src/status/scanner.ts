@@ -166,6 +166,13 @@ export function scan(root: string): ArtifactRecord[] {
     if (record.type !== 'tasks') continue;
     if (record.virtual === true) continue;
     if (record.parent_path !== undefined) continue;
+    // A record whose file could not be read in Phase 1 carries a
+    // `read_error:` warning and genuinely unknown parent state — we
+    // cannot inspect its `**Source**:` header. Leave `parent_path`
+    // omitted (= "unknown" per the data model) rather than
+    // misrepresenting a transient I/O failure as either a broken
+    // link or an orphan.
+    if (hasReadError(record)) continue;
 
     const abs = path.join(realRoot, record.path);
     let content: string;
@@ -178,8 +185,20 @@ export function scan(root: string): ArtifactRecord[] {
     const declared = extractSourceHeader(content);
     if (declared === null) continue;
 
+    // Security: the `**Source**:` header is untrusted text from disk,
+    // so validate that the declared path is genuinely repo-relative
+    // before we probe it on the filesystem or record it on the record.
+    // Absolute paths (POSIX `/etc/passwd` or Windows `C:\...`) would
+    // bypass `path.join(realRoot, ...)` — `path.join` drops earlier
+    // segments when a later one is absolute — and `..` traversal
+    // could escape `realRoot` entirely. Reject both up front; if the
+    // declared path is malformed we simply treat it like an unparseable
+    // header and fall through to the orphan normalization below.
+    if (isAbsolutePath(declared)) continue;
     const declaredRel = normalizePath(declared);
-    const declaredAbs = path.join(realRoot, declaredRel);
+    const declaredAbs = path.resolve(realRoot, declaredRel);
+    if (!isWithinRoot(declaredAbs, realRoot)) continue;
+
     let declaredExists = false;
     try {
       declaredExists = fs.statSync(declaredAbs).isFile();
@@ -201,10 +220,15 @@ export function scan(root: string): ArtifactRecord[] {
   // header was present or it pointed at an existing file the scanner
   // could not link automatically). Set their `parent_path` to `null`
   // so downstream consumers get the explicit "no parent" signal.
+  //
+  // Records with a `read_error:` warning are skipped: we could not
+  // read the file, so its parent state is genuinely unknown and the
+  // omitted-field semantics must be preserved.
   for (const record of records.values()) {
     if (record.type !== 'tasks') continue;
     if (record.virtual === true) continue;
     if (record.parent_path !== undefined) continue;
+    if (hasReadError(record)) continue;
     record.parent_path = null;
   }
 
@@ -280,6 +304,16 @@ function walkDir(
 function isWithinRoot(candidate: string, realRoot: string): boolean {
   if (candidate === realRoot) return true;
   return candidate.startsWith(realRoot + path.sep);
+}
+
+/**
+ * True for POSIX absolute paths (`/foo`) and Windows drive-letter
+ * paths (`C:\foo` or `C:/foo`). Platform-independent so the check
+ * runs the same on every host — a Windows-style path pasted into a
+ * `**Source**:` header on a Linux machine is still rejected.
+ */
+function isAbsolutePath(value: string): boolean {
+  return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
 }
 
 /**
