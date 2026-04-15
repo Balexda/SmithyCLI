@@ -46,13 +46,31 @@ describe('strikeScenario', () => {
 
   it('flags leading YAML frontmatter as a failure (AS 5.2)', () => {
     // Prefix the real spike capture with synthetic frontmatter. The scenario's
-    // `^---\n` forbidden pattern must catch this even though the unmodified
+    // `^---\r?\n` forbidden pattern must catch this even though the unmodified
     // capture also contains `---` as a mid-document separator.
     const withFrontmatter =
       '---\ntitle: Strike\nmodel: sonnet\n---\n\n' + spikeOutput;
 
     const results = validateStructure(
       withFrontmatter,
+      strikeScenario.structural_expectations,
+    );
+
+    const frontmatterCheck = results.find((r) =>
+      r.check_name.includes('forbidden pattern absent: ^---'),
+    );
+    expect(frontmatterCheck).toBeDefined();
+    expect(frontmatterCheck!.passed).toBe(false);
+  });
+
+  it('flags leading YAML frontmatter with CRLF line endings (AS 5.2)', () => {
+    // Windows-captured output may use CRLF. The `\r?\n` in the forbidden
+    // pattern keeps the check portable across platforms.
+    const withCrlfFrontmatter =
+      '---\r\ntitle: Strike\r\nmodel: sonnet\r\n---\r\n\r\n' + spikeOutput;
+
+    const results = validateStructure(
+      withCrlfFrontmatter,
       strikeScenario.structural_expectations,
     );
 

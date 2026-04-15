@@ -30,17 +30,24 @@ import type { CheckResult, EvalScenario } from './lib/types.js';
 const { values } = parseArgs({
   options: {
     fixture: { type: 'string', default: 'evals/fixture' },
-    timeout: { type: 'string', default: '120' },
+    timeout: { type: 'string' },
   },
   strict: false,
 });
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
-const timeoutSec = Number(values['timeout']);
 
-if (Number.isNaN(timeoutSec) || timeoutSec <= 0) {
-  console.error(`Error: Invalid timeout value: ${values['timeout']}`);
-  process.exit(1);
+// Only treat --timeout as an override when the user explicitly passed it.
+// When omitted, `scenario.timeout` stays undefined so the runner's
+// DEFAULT_TIMEOUT_MS applies (FR-004).
+let timeoutOverrideSec: number | undefined;
+if (values['timeout'] !== undefined) {
+  const parsed = Number(values['timeout']);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    console.error(`Error: Invalid timeout value: ${values['timeout']}`);
+    process.exit(1);
+  }
+  timeoutOverrideSec = parsed;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,19 +80,26 @@ if (!fixtureStat.isDirectory()) {
 // ---------------------------------------------------------------------------
 //
 // The scenario definition lives in `./lib/strike-scenario.ts` as a single
-// source of truth shared with `strike-scenario.test.ts`. We layer the
-// `--timeout` CLI override on top of the imported constant so the framework
-// default still applies when the flag is omitted.
-const scenario: EvalScenario = {
-  ...strikeScenario,
-  timeout: timeoutSec,
-};
+// source of truth shared with `strike-scenario.test.ts`. When the user
+// passes `--timeout`, layer it on top of the imported constant; otherwise
+// leave `scenario.timeout` undefined so the runner's DEFAULT_TIMEOUT_MS
+// applies (FR-004).
+const scenario: EvalScenario =
+  timeoutOverrideSec !== undefined
+    ? { ...strikeScenario, timeout: timeoutOverrideSec }
+    : { ...strikeScenario };
 
 console.log(`Running scenario: ${scenario.name}`);
 console.log(`  Skill:   ${scenario.skill}`);
 console.log(`  Prompt:  ${scenario.prompt}`);
 console.log(`  Fixture: ${fixtureDir}`);
-console.log(`  Timeout: ${timeoutSec}s`);
+console.log(
+  `  Timeout: ${
+    scenario.timeout !== undefined
+      ? `${scenario.timeout}s (--timeout override)`
+      : 'runner default'
+  }`,
+);
 console.log('');
 
 let output;

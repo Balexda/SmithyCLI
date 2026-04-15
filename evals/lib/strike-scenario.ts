@@ -52,9 +52,9 @@ export const strikeScenario: EvalScenario = {
     required_headings: ['## Summary', '## Approach', '## Risks'],
     required_patterns: [
       // `**Phase N: <Label>**` — bold workflow-stage markers.
-      // `\S` on each side of the colon keeps the phase number and label
-      // tight so prose like "Phase 1 of the rollout" can't accidentally
-      // satisfy the check.
+      // `\d+` locks the phase number to digits only, and `[^*]+` forbids
+      // nested asterisks in the label so prose like "Phase 1 of the rollout"
+      // can't accidentally satisfy the check.
       '\\*\\*Phase \\d+: [^*]+\\*\\*',
     ],
     forbidden_patterns: [
@@ -62,8 +62,9 @@ export const strikeScenario: EvalScenario = {
       "I'd be happy to help",
       "Sure, here's",
       // Leading YAML frontmatter (AS 5.2). Anchored to string start so a
-      // `---` separator mid-output does not false-trigger.
-      '^---\\n',
+      // `---` separator mid-output does not false-trigger. `\r?\n` tolerates
+      // CRLF line endings so Windows-captured output is also covered.
+      '^---\\r?\\n',
     ],
   },
 };
