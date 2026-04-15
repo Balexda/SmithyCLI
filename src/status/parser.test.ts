@@ -63,7 +63,11 @@ body
     expect(result.table.id_prefix).toBe('US');
   });
 
-  it('detects legacy format from checkbox list under Dependency Order', () => {
+  it('AS 9.5: detects legacy format from checkbox list under Dependency Order and emits migration-pointer warning', () => {
+    // AS 9.5 — legacy checkbox-based `## Dependency Order` sections
+    // must emit a `format_legacy` warning whose body points at the
+    // canonical 4-column schema documentation (FR-028). No tolerant
+    // parsing is performed: rows stay empty.
     const markdown = `# Old Spec
 
 ## Dependency Order
@@ -278,6 +282,50 @@ Another paragraph.
     expect(result.table.rows).toEqual([]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/no 4-column table header/);
+  });
+
+  it('AS 9.6: ignores trailing freestanding checkboxes inside a valid 4-column Dependency Order section', () => {
+    // AS 9.6 — under the new unified table format, checkboxes are
+    // semantically meaningless inside `## Dependency Order`. A valid
+    // 4-column table followed by trailing `- [ ]` / `- [x]` lines
+    // must still parse as `format: 'table'` with the valid rows
+    // preserved and no `format_legacy` warning.
+    //
+    // Note: interleaved-checkbox tolerance (a freestanding checkbox
+    // between two valid table rows) is out of scope and tracked as
+    // specification debt SD-010 in
+    // `09-scanner-classifies-without-checkboxes.tasks.md`.
+    const markdown = `## Dependency Order
+
+| ID  | Title | Depends On | Artifact              |
+|-----|-------|------------|-----------------------|
+| US1 | First | —          | specs/a/us1.tasks.md  |
+| US2 | Second| US1        | —                     |
+
+- [x] Stray legacy completion marker
+- [ ] Another stray checkbox
+
+## Next
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.format).toBe('table');
+    expect(result.table.rows).toEqual([
+      {
+        id: 'US1',
+        title: 'First',
+        depends_on: [],
+        artifact_path: 'specs/a/us1.tasks.md',
+      },
+      {
+        id: 'US2',
+        title: 'Second',
+        depends_on: ['US1'],
+        artifact_path: null,
+      },
+    ]);
+    expect(
+      result.warnings.some((w) => w.startsWith('format_legacy:')),
+    ).toBe(false);
   });
 
   it('rejects headers that are missing one of the canonical column labels', () => {

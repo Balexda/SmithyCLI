@@ -27,7 +27,7 @@
   - The warning body points at where the canonical 4-column schema is documented (the agent-skills template README).
   - The `format_legacy:` prefix is preserved so downstream consumers keyed off it continue to match.
 
-- [ ] **Lock AS 9.5 via tagged legacy-format assertions in parser and scanner tests**
+- [x] **Lock AS 9.5 via tagged legacy-format assertions in parser and scanner tests**
 
   Update the existing legacy-detection test in `src/status/parser.test.ts` and the legacy-format test in `src/status/scanner.test.ts` to reference AS 9.5 in their descriptions and assert both the `format_legacy:` prefix and the new migration-pointer body text propagate from the parser constant through to the scanner's `ArtifactRecord.warnings`.
 
@@ -37,7 +37,7 @@
   - The scanner-side test confirms the legacy spec record carries `status: 'unknown'` and the updated warning text flows through unchanged.
   - No tolerant parsing of the legacy format is introduced — the record's `rows` remain empty per FR-028.
 
-- [ ] **Add an AS 9.6 parser regression test for checkboxes inside `## Dependency Order`**
+- [x] **Add an AS 9.6 parser regression test for checkboxes inside `## Dependency Order`**
 
   Add a `parseDependencyTable` unit test in `src/status/parser.test.ts` that feeds the parser a valid 4-column table followed by freestanding `- [ ]` / `- [x]` lines inside the same `## Dependency Order` section. The test pins the invariant that such checkboxes are semantically meaningless for classification: the parsed result remains `format: 'table'` with the valid rows preserved, and no `format_legacy` warning is emitted.
 
