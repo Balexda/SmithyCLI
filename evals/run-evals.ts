@@ -26,6 +26,16 @@ import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js'
 import type { CheckResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
+// Run-wide wall-clock timer — started before any orchestrator work (preflight,
+// fixture validation, scenario execution) and stopped immediately before
+// `buildReport`. `performance.now()` is a monotonic clock, so the measurement
+// survives system clock adjustments. Matches the convention used by
+// `runner.ts` for per-scenario durations.
+// ---------------------------------------------------------------------------
+
+const runStartPerf = performance.now();
+
+// ---------------------------------------------------------------------------
 // CLI flags
 // ---------------------------------------------------------------------------
 
@@ -91,7 +101,6 @@ console.log(`  Fixture: ${fixtureDir}`);
 console.log(`  Timeout: ${timeoutSec}s`);
 console.log('');
 
-const runStartMs = Date.now();
 let output;
 try {
   output = await runScenario(scenario, fixtureDir);
@@ -99,7 +108,6 @@ try {
   console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 }
-const totalDurationMs = Date.now() - runStartMs;
 
 console.log(`  Duration:  ${output.duration_ms}ms`);
 if (output.timed_out) console.log('  Timed out: yes');
@@ -154,6 +162,7 @@ const evalResult = scenarioRunToResult(
   structuralChecks,
   subAgentChecks,
 );
+const totalDurationMs = Math.round(performance.now() - runStartPerf);
 const report = buildReport([evalResult], totalDurationMs);
 
 console.log('');
