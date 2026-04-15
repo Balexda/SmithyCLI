@@ -66,7 +66,8 @@ import type { ArtifactRecord, StatusTree, TreeNode } from './types.js';
  * Options accepted by {@link renderTree}. The `color` flag is reserved
  * so a future ANSI palette (SD-001) can slot in without changing the
  * call sites that already pass `{ color: true }`. It is a no-op today:
- * the renderer emits plain ASCII regardless.
+ * the renderer emits plain text with UTF-8 box-drawing connectors and
+ * no ANSI color.
  */
 export interface RenderTreeOptions {
   /** Reserved for ANSI color output (currently a no-op). */
