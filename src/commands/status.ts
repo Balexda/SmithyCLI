@@ -204,13 +204,34 @@ export function statusAction(opts: StatusOptions = {}): void {
   // from the same `ArtifactRecord[]` the JSON payload uses. Group
   // sentinels ("Orphaned Specs", "Broken Links") surface at the top
   // of `tree.roots` and render as their own headings above their
-  // grouped children. `color: !opts.color` reserves a wire into the
-  // `--no-color` stub once the palette lands (SD-001) — today the
-  // renderer emits plain ASCII unconditionally.
+  // grouped children. `color: opts.color !== false` preserves the
+  // future `--no-color` wire-up by disabling color only when
+  // Commander sets `opts.color` to `false`; today the renderer
+  // emits plain text with UTF-8 box-drawing connectors and no
+  // color regardless.
   const tree = buildTree(records);
   const rendered = renderTree(tree, { color: opts.color !== false });
   if (rendered.length > 0) {
     console.log(rendered);
+    return;
+  }
+
+  // Defensive fallback: the scanner found records but `buildTree`
+  // produced an empty `roots` array — the only realistic way this
+  // happens today is a pathological cycle where two records claim
+  // each other as parents, so neither reaches a root. The slice's
+  // acceptance criterion forbids silent drops ("every ArtifactRecord
+  // is represented by exactly one line"), so surface every record on
+  // its own line with a diagnostic header so operators can still see
+  // what the scanner found. Matches the spirit of the US1 flat
+  // listing this slice replaces.
+  console.log(
+    'warning: tree rendering produced no output — listing records flat to avoid silent drops.',
+  );
+  for (const record of records) {
+    console.log(
+      `${record.type}\t${record.path}\t${record.title}\t${record.status}`,
+    );
   }
 }
 
