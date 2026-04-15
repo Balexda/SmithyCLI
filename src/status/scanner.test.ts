@@ -428,7 +428,12 @@ ${TABLE_HEADER}
     expect(collisionWarnings).toHaveLength(1);
   });
 
-  it('legacy-format artifact yields a spec record with status=unknown', () => {
+  it('AS 9.5: legacy-format artifact yields a spec record with status=unknown and migration-pointer warning', () => {
+    // AS 9.5 — the scanner surfaces the parser's `format_legacy`
+    // warning verbatim on the record's `warnings` list, carries
+    // `status: 'unknown'`, and keeps `rows` empty (no tolerant
+    // parsing per FR-028). The warning body points at the canonical
+    // 4-column schema documentation.
     write(
       'specs/feature-a/feature-a.spec.md',
       `# Spec\n\n## Dependency Order\n\n- [x] US1: First story\n- [ ] US2: Second story\n`,
@@ -438,6 +443,14 @@ ${TABLE_HEADER}
     expect(spec).toBeDefined();
     expect(spec?.status).toBe('unknown');
     expect(spec?.dependency_order.format).toBe('legacy');
+    expect(spec?.dependency_order.rows).toEqual([]);
+    const legacyWarnings = spec?.warnings.filter((w) =>
+      w.startsWith('format_legacy:'),
+    );
+    expect(legacyWarnings).toHaveLength(1);
+    expect(legacyWarnings?.[0]).toContain(
+      'src/templates/agent-skills/README.md',
+    );
   });
 
   it('broken-link detection: tasks **Source** header points at a missing spec → parent_missing=true, parent_path=declared path', () => {
