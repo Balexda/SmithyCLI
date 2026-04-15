@@ -268,7 +268,7 @@ function summarize(records: ArtifactRecord[]): ScanSummary {
  *   `parse_error_count` summary fields are intentionally omitted —
  *   FR-016 enumerates only done / in-progress / not-started.
  */
-export function formatSummaryHeader(summary: ScanSummary): string {
+function formatSummaryHeader(summary: ScanSummary): string {
   const TYPE_ORDER: Array<{ type: ArtifactType; label: string }> = [
     { type: 'rfc', label: 'RFCs' },
     { type: 'features', label: 'Features' },
