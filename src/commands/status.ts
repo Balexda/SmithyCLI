@@ -9,8 +9,9 @@
  *      contracts error table.
  *   3. Call {@link scan} to build the fully-classified `ArtifactRecord[]`.
  *   4. Derive a {@link ScanSummary} from the records.
- *   5. Emit either contract-shaped JSON (`--format json`) or a minimal
- *      flat text listing (default). Rendering the hierarchical tree and
+ *   5. Emit either contract-shaped JSON (`--format json`) or a per-type
+ *      roll-up summary header followed by a flat text listing (default).
+ *      Rendering the hierarchical tree and
  *      the graph is owned by downstream stories (US2, US10); this slice
  *      ships stub values (`tree: { roots: [] }`, `graph: { ... }`) in
  *      the JSON payload so consumers can depend on the top-level shape
@@ -84,9 +85,10 @@ interface StatusJsonPayload {
 
 /**
  * Entry point for the `smithy status` subcommand. Delegates to
- * {@link scan} and emits either JSON (`--format json`) or a minimal flat
- * text listing. Sets `process.exitCode` on error conditions so Commander
- * does not have to know about them.
+ * {@link scan} and emits either JSON (`--format json`) or a per-type
+ * roll-up summary header followed by a flat text listing (text mode).
+ * Sets `process.exitCode` on error conditions so Commander does not
+ * have to know about them.
  */
 const VALID_STATUSES: readonly Status[] = [
   'done',
@@ -191,6 +193,13 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
+  // US7 Slice 1: per-type roll-up header printed above the flat
+  // listing whenever the scan finds at least one artifact. Kept pure
+  // and derived from the already-computed `ScanSummary` so the future
+  // US2 tree renderer can keep, move, or wrap the call site without
+  // touching the helper.
+  console.log(formatSummaryHeader(summary));
+
   // Default text output: minimal flat listing. Hierarchical rendering
   // is owned by US2; this slice ships a placeholder so humans get
   // something legible and CI can parse it line-by-line. Column order
@@ -237,6 +246,51 @@ function summarize(records: ArtifactRecord[]): ScanSummary {
     broken_link_count,
     parse_error_count,
   };
+}
+
+/**
+ * Render the per-type roll-up header printed above the text-mode flat
+ * listing (US7 Slice 1, AS 7.1). A pure function of {@link ScanSummary}
+ * so the caller can be moved or wrapped later (e.g., by the US2 tree
+ * renderer) without touching this helper.
+ *
+ * Format (SD-010 / SD-011 / SD-012):
+ * - Single line with plural type labels in the canonical order
+ *   `RFCs`, `Features`, `Specs`, `Tasks` regardless of count.
+ * - Types are joined by ` · ` (U+00B7, one space either side).
+ * - Within a type, status segments use ` / ` as the separator and
+ *   appear in the fixed order `done`, `in-progress`, `not-started`.
+ * - Segments whose count is zero are suppressed when at least one
+ *   sibling segment is non-zero, so sparse types stay compact.
+ * - A type whose counts are all zero still appears with a stable
+ *   `0 done` placeholder to preserve the four-type column structure.
+ * - `unknown` counts and the `orphan_count` / `broken_link_count` /
+ *   `parse_error_count` summary fields are intentionally omitted —
+ *   FR-016 enumerates only done / in-progress / not-started.
+ */
+function formatSummaryHeader(summary: ScanSummary): string {
+  const TYPE_ORDER: Array<{ type: ArtifactType; label: string }> = [
+    { type: 'rfc', label: 'RFCs' },
+    { type: 'features', label: 'Features' },
+    { type: 'spec', label: 'Specs' },
+    { type: 'tasks', label: 'Tasks' },
+  ];
+  const STATUS_ORDER: Array<Exclude<Status, 'unknown'>> = [
+    'done',
+    'in-progress',
+    'not-started',
+  ];
+
+  const segments = TYPE_ORDER.map(({ type, label }) => {
+    const counts = summary.counts[type];
+    const parts = STATUS_ORDER.filter((s) => counts[s] > 0).map(
+      (s) => `${counts[s]} ${s}`,
+    );
+    const body = parts.length > 0 ? parts.join(' / ') : '0 done';
+    return `${label}: ${body}`;
+  });
+
+  return segments.join(' · ');
 }
 
 function emptyCounts(): ScanSummary['counts'] {
