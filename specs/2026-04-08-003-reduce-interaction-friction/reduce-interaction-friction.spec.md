@@ -229,7 +229,7 @@ returned as a finding for the parent command to act on.
 | US1 | Relax Critical Decision Blocking    | —          | `specs/2026-04-08-003-reduce-interaction-friction/01-relax-critical-decision-blocking.tasks.md` |
 | US2 | Track Specification Debt            | US1        | `specs/2026-04-08-003-reduce-interaction-friction/02-track-specification-debt.tasks.md`   |
 | US3 | One-Shot Planning Workflows         | US1, US2   | `specs/2026-04-08-003-reduce-interaction-friction/03-one-shot-planning-workflows.tasks.md` |
-| US4 | Unified Review Pattern              | US3        | —                                                                                         |
+| US4 | Unified Review Pattern              | US3        | `specs/2026-04-08-003-reduce-interaction-friction/04-unified-review-pattern.tasks.md`     |
 
 ## Requirements
 
