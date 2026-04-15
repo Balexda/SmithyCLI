@@ -653,12 +653,13 @@ describe('CLI status', () => {
     expect(headerLine).toMatch(
       /RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/,
     );
-    // Header precedes the flat listing. The first record line comes
-    // after the header line (AS 7.1: header "above" the listing).
-    const firstRecordLineIndex = lines.findIndex((l) =>
-      l.includes('specs/feature-a/feature-a.spec.md'),
+    // Header precedes the tree body. The first rendered title (from
+    // US2 Slice 2 `renderTree`) comes after the header line (AS 7.1:
+    // header "above" the body).
+    const firstTreeLineIndex = lines.findIndex((l) =>
+      l.includes('Feature A'),
     );
-    expect(firstRecordLineIndex).toBeGreaterThan(0);
+    expect(firstTreeLineIndex).toBeGreaterThan(0);
     // Header segments use the stable "N done / N in-progress / N not-started"
     // shape — status segments whose count is zero are suppressed, and a
     // type with every count zero still renders with a "0 done" placeholder
@@ -685,27 +686,66 @@ describe('CLI status', () => {
     expect(result.stderr).toContain('does not exist');
   });
 
-  it('emits a minimal flat text listing in type/path/title/status column order', () => {
+  it('renders a hierarchical tree with box-drawing connectors and titles (AS 2.4)', () => {
+    // US2 Slice 2: the default text mode is a hierarchical tree built
+    // by `renderTree` over the same records the JSON payload uses.
+    // This test asserts the three observable properties of AS 2.4:
+    // tree-connector characters appear, artifact titles (not paths)
+    // are the primary label, and the deepest descendant is visibly
+    // nested under its ancestor. Group headings and broken-link
+    // formatting are covered in more depth by `render.test.ts`.
+    write(
+      'docs/rfcs/example.rfc.md',
+      `# RFC: Example\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/01-milestone-one.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/01-milestone-one.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Feature A | — | specs/feature-a |\n`,
+    );
     write(
       'specs/feature-a/feature-a.spec.md',
-      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story One | — | specs/feature-a/01-first.tasks.md |\n`,
+    );
+    // Distinct H1 title on the tasks file so the rendered line is
+    // unambiguous — the parser extracts the first H1 as the record
+    // title, and a generic `# Tasks` would collide with the word
+    // "Tasks" in the summary-header column label.
+    write(
+      'specs/feature-a/01-first.tasks.md',
+      `# Story One\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
     );
 
     const output = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
       encoding: 'utf-8',
     });
 
-    // Flat listing: one line per record. Column order is type, path,
-    // title, status per the Slice 3 task spec.
-    const line = output
+    // Body (everything below the US7 summary header) contains at
+    // least one tree-connector character.
+    expect(output).toMatch(/[├└]/);
+
+    // Titles are the primary label — file paths do not appear in the
+    // body. `docs/rfcs/example.rfc.md` and
+    // `specs/feature-a/01-first.tasks.md` must not leak into the
+    // rendered tree at all.
+    expect(output).not.toContain('docs/rfcs/example.rfc.md');
+    expect(output).not.toContain('specs/feature-a/01-first.tasks.md');
+    expect(output).toContain('Example');
+    expect(output).toContain('Feature A');
+    expect(output).toContain('Story One');
+
+    // The rendered tree nests Story One below Feature A via a `└─`
+    // connector. Locate the Story One line and assert it carries a
+    // connector prefix (i.e., it is not a top-level root).
+    const storyLine = output
       .split('\n')
-      .find((l) => l.includes('specs/feature-a/feature-a.spec.md'));
-    expect(line).toBeDefined();
-    const cols = (line ?? '').split('\t');
-    expect(cols[0]).toBe('spec');
-    expect(cols[1]).toBe('specs/feature-a/feature-a.spec.md');
-    expect(cols[2]).toBe('Feature A');
-    expect(cols[3]).toBe('not-started');
+      .find((l) => l.includes('Story One'));
+    expect(storyLine).toBeDefined();
+    expect(storyLine!).toMatch(/└─/);
+
+    // The DONE marker appears at least once — the fully-completed
+    // tasks record rolls up to DONE on every ancestor, and collapsing
+    // is deferred to US3, so every level shows the marker inline.
+    expect(output).toContain('DONE');
   });
 
   it('emits a valid (empty) JSON payload for an empty repo in --format json mode', () => {
