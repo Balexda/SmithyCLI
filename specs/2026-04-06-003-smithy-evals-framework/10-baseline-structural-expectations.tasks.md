@@ -13,7 +13,7 @@
 
 **Justification**: Baselines are additive, optional regression detection (AS 10.3 makes the feature explicitly opt-in per scenario). The loader and comparator have no I/O beyond a single readFileSync and no process exit, so every behavioral requirement of US10 is verifiable through unit tests over synthetic `Baseline` and output strings. Landing the library first — in the same shape as US4's `structural.ts` and US9's `report.ts` — gives Slice 2 a stable import surface and lets reviewers evaluate the comparator's semantics (what counts as "substantially matches" and what regressions look like) separately from orchestrator plumbing.
 
-**Addresses**: FR-005, FR-006; Acceptance Scenarios 10.1, 10.2, 10.3
+**Addresses**: Acceptance Scenarios 10.1, 10.2, 10.3
 
 ### Tasks
 
@@ -23,7 +23,7 @@
 
   _Acceptance criteria:_
   - `Baseline` interface exported from `evals/lib/types.ts` alongside existing `CheckResult`, `EvalResult`
-  - `EvalResult.baseline_checks` is declared `CheckResult[] | undefined`
+  - `EvalResult.baseline_checks` is declared `baseline_checks?: CheckResult[] | undefined` and omitted when empty, matching `sub_agent_checks`
   - Data model file updated so the data model remains the single source of truth
   - No runtime logic introduced; existing exports unchanged
   - `npm run typecheck` passes
@@ -35,7 +35,7 @@
   _Acceptance criteria:_
   - Missing file returns `null` (not throw, not `undefined`)
   - Malformed JSON throws with a message naming the file path
-  - Missing required fields (`scenario_name`, `headings`) throw with a clear validation message
+  - Missing required fields (`scenario_name`, `captured_at`, `headings`) throw with a clear validation message; `tables` is optional and defaults to `[]` when absent
   - Extra unknown fields are ignored (forward compatible)
   - Default directory is `evals/baselines` relative to the current working directory; caller can override for tests
   - Unit tests cover missing-file, malformed-JSON, missing-field, and happy-path cases
@@ -63,7 +63,7 @@
 
 **Justification**: Slice 1 delivers the pure library; this slice connects it to the execution pipeline. Baseline-check presence must be optional end-to-end (AS 10.3) so the orchestrator branch is a single `if (baseline)` guard and the report library only renders a baseline section when at least one baseline check exists. Seeding the strike baseline in the same PR prevents Slice 2 from landing as dormant code and gives the strike scenario immediate regression coverage — the most-used command is also the highest-risk for silent drift. The baseline file itself is data, not code, so it will not block the typecheck and can be regenerated manually without further code changes (manual regeneration is in-scope per Out of Scope §"Automatic baseline generation or updating").
 
-**Addresses**: FR-005, FR-006, FR-009; Acceptance Scenarios 10.1, 10.2, 10.3 (integration path)
+**Addresses**: FR-009; Acceptance Scenarios 10.1, 10.2, 10.3 (integration path)
 
 ### Tasks
 
@@ -80,7 +80,7 @@
 
 - [ ] **Invoke `loadBaseline` and `compareToBaseline` from `run-evals.ts`**
 
-  In `evals/run-evals.ts`, after the existing `validateStructure` / `verifySubAgents` block and before the `scenarioRunToResult` call, attempt `loadBaseline(scenario.name)`. When the loader returns `null`, set `baselineChecks = []` and proceed (AS 10.3). When it returns a `Baseline`, call `compareToBaseline(output.extracted_text, baseline)` and capture the resulting check array. Print the baseline results into the existing `Checks:` block using the same `[PASS]` / `[FAIL]` formatting and pass the array as the new fourth argument to `scenarioRunToResult`. Loader errors (malformed JSON, missing required fields) must surface through the existing "Validation error" exit path — they are a scenario authoring bug, not a runtime failure.
+  In `evals/run-evals.ts`, after the existing `validateStructure` / `verifySubAgents` block and before the `scenarioRunToResult` call, attempt `loadBaseline(scenario.name)`. When the loader returns `null`, set `baselineChecks = []` and proceed (AS 10.3). When it returns a `Baseline`, call `compareToBaseline(output.extracted_text, baseline)` and capture the resulting check array. Print the baseline results into the existing `Checks:` block using the same `[PASS]` / `[FAIL]` formatting and pass the array as the new fifth argument to `scenarioRunToResult`. Loader errors (malformed JSON, missing required fields) must surface through the existing "Validation error" exit path — they are a scenario authoring bug, not a runtime failure.
 
   _Acceptance criteria:_
   - When no baseline file exists for the active scenario, `npm run eval` produces byte-identical output to the pre-slice run for the pass case (AS 10.3)
