@@ -229,7 +229,7 @@ Plan and scout are tested **both** ways:
 | US7  | Define Eval Scenarios Declaratively                      | US5             | `specs/2026-04-06-003-smithy-evals-framework/07-define-eval-scenarios-declaratively.tasks.md`     |
 | US8  | Fixture Contains Deliberate Inconsistencies for Scout    | US2, US5        | `specs/2026-04-06-003-smithy-evals-framework/08-fixture-deliberate-inconsistencies-for-scout.tasks.md` |
 | US9  | Eval Summary Report                                      | US3, US4        | `specs/2026-04-06-003-smithy-evals-framework/09-eval-summary-report.tasks.md`                     |
-| US10 | Baseline Structural Expectations                         | US4, US5        | —                                                                                                 |
+| US10 | Baseline Structural Expectations                         | US4, US5        | `specs/2026-04-06-003-smithy-evals-framework/10-baseline-structural-expectations.tasks.md`        |
 | US11 | Cost and Time Transparency                               | US9             | —                                                                                                 |
 
 ## Requirements *(mandatory)*
