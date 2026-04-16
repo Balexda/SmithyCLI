@@ -58,7 +58,7 @@
 
 ### Tasks
 
-- [ ] **Implement `renderTree()` and replace the `statusAction` placeholder text output**
+- [x] **Implement `renderTree()` and replace the `statusAction` placeholder text output**
 
   Add `renderTree(tree: StatusTree, options?: { color?: boolean }): string` in a new `src/status/render.ts` that recursively walks `tree.roots` and emits a block of lines: each node contributes its indentation prefix, a tree connector (`├─` for any non-last child, `└─` for the last child of its parent), the record's `title`, and a status marker chosen from the record's `status` and (for tasks records) `completed` / `total` counts. Top-level group nodes ("Orphaned Specs", "Broken Links") render as their own headings above their grouped children. Update `statusAction` in `src/commands/status.ts` so the default text mode builds a `StatusTree` via `buildTree` and writes `renderTree(tree)` to stdout instead of the current `type\tpath\ttitle\tstatus` flat listing. Empty-repo, `--format json`, and error-exit paths remain unchanged. Satisfies AS 2.4 and the text-mode rows of the contracts `Outputs` table.
 

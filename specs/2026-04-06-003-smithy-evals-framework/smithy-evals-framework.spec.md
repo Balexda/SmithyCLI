@@ -226,7 +226,7 @@ Plan and scout are tested **both** ways:
 | US4  | Validate Output Structure                                | US3             | `specs/2026-04-06-003-smithy-evals-framework/04-validate-output-structure.tasks.md`               |
 | US5  | Verify Strike End-to-End Output                          | US3, US4        | `specs/2026-04-06-003-smithy-evals-framework/05-verify-strike-end-to-end-output.tasks.md`         |
 | US6  | Verify Sub-Agent Invocation                              | US5             | —                                                                                                 |
-| US7  | Define Eval Scenarios Declaratively                      | US5             | —                                                                                                 |
+| US7  | Define Eval Scenarios Declaratively                      | US5             | `specs/2026-04-06-003-smithy-evals-framework/07-define-eval-scenarios-declaratively.tasks.md`     |
 | US8  | Fixture Contains Deliberate Inconsistencies for Scout    | US2, US5        | `specs/2026-04-06-003-smithy-evals-framework/08-fixture-deliberate-inconsistencies-for-scout.tasks.md` |
 | US9  | Eval Summary Report                                      | US3, US4        | `specs/2026-04-06-003-smithy-evals-framework/09-eval-summary-report.tasks.md`                     |
 | US10 | Baseline Structural Expectations                         | US4, US5        | —                                                                                                 |
