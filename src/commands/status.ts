@@ -28,7 +28,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildTree, scan } from '../status/index.js';
+import { buildTree, renderTree, scan } from '../status/index.js';
 import type {
   ArtifactRecord,
   ArtifactType,
@@ -193,17 +193,41 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  // US7 Slice 1: per-type roll-up header printed above the flat
-  // listing whenever the scan finds at least one artifact. Kept pure
-  // and derived from the already-computed `ScanSummary` so the future
-  // US2 tree renderer can keep, move, or wrap the call site without
-  // touching the helper.
+  // US7 Slice 1: per-type roll-up header printed above the tree
+  // output whenever the scan finds at least one artifact. Kept pure
+  // and derived from the already-computed `ScanSummary` so the tree
+  // renderer can keep, move, or wrap the call site without touching
+  // the helper.
   console.log(formatSummaryHeader(summary));
 
-  // Default text output: minimal flat listing. Hierarchical text
-  // rendering is owned by US2 Slice 2 (renderTree); this placeholder
-  // remains until that slice lands. Column order: type, path, title,
-  // status.
+  // US2 Slice 2: default text output is a hierarchical tree built
+  // from the same `ArtifactRecord[]` the JSON payload uses. Group
+  // sentinels ("Orphaned Specs", "Broken Links") surface at the top
+  // of `tree.roots` and render as their own headings above their
+  // grouped children. `color: opts.color !== false` preserves the
+  // future `--no-color` wire-up by disabling color only when
+  // Commander sets `opts.color` to `false`; today the renderer
+  // emits plain text with UTF-8 box-drawing connectors and no
+  // color regardless.
+  const tree = buildTree(records);
+  const rendered = renderTree(tree, { color: opts.color !== false });
+  if (rendered.length > 0) {
+    console.log(rendered);
+    return;
+  }
+
+  // Defensive fallback: the scanner found records but `buildTree`
+  // produced an empty `roots` array — the only realistic way this
+  // happens today is a pathological cycle where two records claim
+  // each other as parents, so neither reaches a root. The slice's
+  // acceptance criterion forbids silent drops ("every ArtifactRecord
+  // is represented by exactly one line"), so surface every record on
+  // its own line with a diagnostic header so operators can still see
+  // what the scanner found. Matches the spirit of the US1 flat
+  // listing this slice replaces.
+  console.log(
+    'warning: tree rendering produced no output — listing records flat to avoid silent drops.',
+  );
   for (const record of records) {
     console.log(
       `${record.type}\t${record.path}\t${record.title}\t${record.status}`,

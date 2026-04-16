@@ -16,3 +16,4 @@ export {
 export { classifyRecord } from './classifier.js';
 export { scan } from './scanner.js';
 export { buildTree, BROKEN_LINKS_PATH, ORPHANED_SPECS_PATH } from './tree.js';
+export { renderTree, type RenderTreeOptions } from './render.js';
