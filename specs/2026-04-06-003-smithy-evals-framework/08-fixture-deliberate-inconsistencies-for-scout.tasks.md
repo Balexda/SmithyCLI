@@ -19,10 +19,10 @@
 
 - [ ] **Plant a deliberate scout-detectable inconsistency in the fixture**
 
-  Introduce at least one deliberate inconsistency in `evals/fixture/` that maps to a row in smithy-scout's Severity Guidelines table (see `src/templates/agent-skills/agents/smithy.scout.prompt` — e.g., a doc comment that contradicts a function signature, a TODO/FIXME marker, or an exported symbol with no importers). The plant must live in a file scout would scan at shallow depth (`src/routes/users.ts`, `src/types.ts`, or `src/index.ts`). The fixture must still type-check conceptually — do not break imports or introduce syntax errors, because other eval scenarios copy this fixture verbatim.
+  Introduce at least one deliberate inconsistency in `evals/fixture/` that maps to a row in smithy-scout's Severity Guidelines table (see `src/templates/agent-skills/agents/smithy.scout.prompt` — e.g., a doc comment that contradicts a function signature, or a TODO/FIXME marker). Only use plant types reliably detected at **shallow** depth — stale doc comments, signature mismatches, and TODO markers. Do NOT plant dead exports or other deep-scan-only inconsistencies, as the scout scenario runs at shallow depth. The plant must live in a file scout would scan at shallow depth (`src/routes/users.ts`, `src/types.ts`, or `src/index.ts`). The fixture must still type-check conceptually — do not break imports or introduce syntax errors, because other eval scenarios copy this fixture verbatim.
 
   _Acceptance criteria:_
-  - The plant is a real inconsistency scout can describe (stale doc / signature mismatch / TODO / dead export), not just a cosmetic comment
+  - The plant is a real inconsistency scout can describe at shallow depth (stale doc / signature mismatch / TODO), not just a cosmetic comment
   - The fixture remains syntactically valid TypeScript so existing fixture tests in `evals/fixture.test.ts` still pass
   - `npm test` continues to pass (the existing fixture deployment test re-hashes the directory, so any edits are implicitly covered)
   - No new runtime files are added — the plant is an edit inside existing fixture source files
