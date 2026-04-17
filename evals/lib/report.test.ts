@@ -591,6 +591,69 @@ describe('formatReport', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Duration rendering (US11 AS 11.2 / FR-009)
+  // -----------------------------------------------------------------------
+  describe('duration rendering', () => {
+    it('renders the per-case duration on a single passing case line', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'alpha', duration_ms: 1234 }),
+      ];
+      const report = buildReport(results, 1500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const caseLine = lines.find((l) => l.includes('alpha'));
+      expect(caseLine).toBeDefined();
+      expect(caseLine!).toContain('1234ms');
+    });
+
+    it('renders per-case durations and a total elapsed line on a mixed-status report', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'alpha', status: 'pass', duration_ms: 100 }),
+        makeResult({ scenario_name: 'beta', status: 'fail', duration_ms: 250 }),
+        makeResult({
+          scenario_name: 'gamma',
+          status: 'timeout',
+          duration_ms: 60000,
+          error: 'timed out',
+        }),
+      ];
+      const report = buildReport(results, 60500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      const betaLine = lines.find((l) => l.includes('beta'));
+      const gammaLine = lines.find((l) => l.includes('gamma'));
+      expect(alphaLine).toBeDefined();
+      expect(betaLine).toBeDefined();
+      expect(gammaLine).toBeDefined();
+      expect(alphaLine!).toContain('100ms');
+      expect(betaLine!).toContain('250ms');
+      expect(gammaLine!).toContain('60000ms');
+
+      const totalLine = lines.find((l) => l.startsWith('Total elapsed:'));
+      expect(totalLine).toBeDefined();
+      expect(totalLine!).toContain('60500ms');
+    });
+
+    it('renders a valid summary with a zero total for an empty results array', () => {
+      const report = buildReport([], 0);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      expect(lines[0]).toBe('Eval Summary');
+      const totalLine = lines.find((l) => l.startsWith('Total elapsed:'));
+      expect(totalLine).toBeDefined();
+      expect(totalLine!).toContain('0ms');
+
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toMatch(/\bPASS\b/);
+      expect(finalLine).toContain('0');
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Determinism
   // -----------------------------------------------------------------------
   describe('determinism', () => {

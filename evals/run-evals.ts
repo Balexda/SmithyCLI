@@ -90,18 +90,26 @@ if (!fixtureStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
-// Scenario (US7 will replace this with YAML loading)
+// Scenarios (US7 will replace this with YAML loading)
 // ---------------------------------------------------------------------------
 //
 // The scenario definition lives in `./lib/strike-scenario.ts` as a single
 // source of truth shared with `strike-scenario.test.ts`. When the user
 // passes `--timeout`, layer it on top of the imported constant; otherwise
 // leave `scenario.timeout` undefined so the runner's DEFAULT_TIMEOUT_MS
-// applies (FR-004).
-const scenario: EvalScenario =
+// applies (FR-004). The list is held as an array so the pre-execution case
+// count (US11 AS 11.1) sources its value from `scenarios.length` — US7 can
+// swap in an N-element YAML-loaded array without touching the count line.
+const scenarios: EvalScenario[] = [
   timeoutOverrideSec !== undefined
     ? { ...strikeScenario, timeout: timeoutOverrideSec }
-    : { ...strikeScenario };
+    : { ...strikeScenario },
+];
+
+console.log(`Running ${scenarios.length} case(s)`);
+console.log('');
+
+const scenario = scenarios[0]!;
 
 console.log(`Running scenario: ${scenario.name}`);
 console.log(`  Skill:   ${scenario.skill}`);

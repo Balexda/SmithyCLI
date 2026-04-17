@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Render per-case and total durations in `formatReport`**
+- [x] **Render per-case and total durations in `formatReport`**
 
   Extend the pure `formatReport` function in `evals/lib/report.ts` so the returned string exposes wall-clock timings the caller already provides on `EvalReport`. Each per-case line must include the result's `duration_ms`, and the aggregate section must include a total elapsed-time line sourced from `report.total_duration_ms`. Output must remain deterministic and stable — existing status-token placement (`PASS`/`FAIL`/`TIMEOUT`/`ERROR`) and the existing `Result: …` aggregate line must be preserved so that prior snapshot-style assertions in `report.test.ts` continue to locate their anchors. The function remains pure: no `console.log`, no mutation of `report`.
 
@@ -31,7 +31,7 @@
   - Unit tests cover: (a) single passing case duration rendering, (b) mixed-status report with total-duration rendering, (c) empty `results` array still renders a valid summary with a zero-or-placeholder total
   - Existing `report.test.ts` assertions for `PASS` / `FAIL` / `TIMEOUT` / `ERROR` token placement and the overall-result line continue to pass
 
-- [ ] **Print pre-execution case count in `run-evals.ts`**
+- [x] **Print pre-execution case count in `run-evals.ts`**
 
   Emit a "Running N case(s)" status line from `evals/run-evals.ts` before invoking `runScenario`, satisfying AS 11.1. The count must be derived from an explicit variable — not hardcoded to `1` — so that US7's YAML scenario loading can replace the single scenario with an N-element list and this line automatically reports the correct count with no further change. The existing per-scenario intro block (`Running scenario: …`, `Skill:`, `Prompt:`, `Fixture:`, `Timeout:`) remains unchanged below the new line. Preflight and fixture-validation failures must still short-circuit before the count is printed — the count line only appears after the runner has committed to executing at least one case.
 
