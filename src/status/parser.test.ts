@@ -397,7 +397,11 @@ Body text.
     expect(record.title).toBe('baz');
   });
 
-  it('counts slice-body checkboxes from well-formed tasks files and ignores checkboxes elsewhere', () => {
+  it('counts slices (not individual task checkboxes) and ignores checkboxes outside slice sections', () => {
+    // Slice 1 has an unchecked task — not done.
+    // Slice 2 has an unchecked task — not done.
+    // The appendix checkbox is ignored regardless.
+    // Expect 0 completed slices out of 2 total slices.
     const markdown = `# Tasks
 
 ## Slice 1: Foo
@@ -415,11 +419,33 @@ Body text.
 - [x] ignored-in-appendix
 `;
     const record = parseArtifact('specs/foo/tasks.tasks.md', markdown);
-    expect(record.completed).toBe(2);
-    expect(record.total).toBe(4);
+    expect(record.completed).toBe(0);
+    expect(record.total).toBe(2);
   });
 
-  it('ignores checkboxes inside a legacy Dependency Order section when counting slice body', () => {
+  it('marks a slice as done when every checkbox inside its `## Slice N:` section is ticked', () => {
+    // Slice 1: all checked → done.
+    // Slice 2: partially checked → not done.
+    // Expect 1 completed slice out of 2 total slices — this is the
+    // counter the user sees for `09-scanner-classifies-without-checkboxes.tasks.md`.
+    const markdown = `# Tasks
+
+## Slice 1: Foo
+
+- [x] a
+- [x] b
+
+## Slice 2: Bar
+
+- [x] c
+- [ ] d
+`;
+    const record = parseArtifact('specs/foo/tasks.tasks.md', markdown);
+    expect(record.completed).toBe(1);
+    expect(record.total).toBe(2);
+  });
+
+  it('ignores checkboxes inside a legacy Dependency Order section when resolving slice completion', () => {
     const markdown = `# Legacy Tasks
 
 ## Dependency Order

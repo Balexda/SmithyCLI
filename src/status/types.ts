@@ -134,10 +134,17 @@ export interface ArtifactRecord {
   status: Status;
   /**
    * Count of completed children. Omitted for records where counting is
-   * not meaningful.
+   * not meaningful. For `tasks` records this counts slices — a slice is
+   * "done" only when its `## Slice N:` section contains at least one
+   * checkbox and every checkbox in that section is ticked. Individual
+   * task checkboxes drive per-slice completion but are not themselves
+   * surfaced as the record's progress counter.
    */
   completed?: number;
-  /** Total count of children. Omitted alongside `completed`. */
+  /**
+   * Total count of children. For `tasks` records this is the number of
+   * `## Slice N:` sections in the file. Omitted alongside `completed`.
+   */
   total?: number;
   /**
    * Repo-relative path to the parent artifact. `null` means "no parent"

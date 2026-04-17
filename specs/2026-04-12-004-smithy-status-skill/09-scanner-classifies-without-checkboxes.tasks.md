@@ -61,7 +61,7 @@
 
 ### Tasks
 
-- [ ] **Add AS 9.1 and AS 9.2 spec→tasks rollup tests**
+- [x] **Add AS 9.1 and AS 9.2 spec→tasks rollup tests**
 
   Add two `it(...)` blocks in `src/status/scanner.test.ts`, each tagged with its AS ID. AS 9.1 covers a spec row whose `Artifact` column points at an existing tasks file and whose rolled-up classification must derive from that tasks file's slice-body state. AS 9.2 covers a spec row whose `Artifact` is `—` and whose scanner output must include a single virtual not-started tasks record at a naming-convention path.
 
@@ -72,7 +72,7 @@
   - Neither fixture places any checkbox lines inside `## Dependency Order` sections.
   - Tests pass against the current scanner without production code changes.
 
-- [ ] **Add AS 9.3 and AS 9.4 feature→spec and RFC→features rollup tests**
+- [x] **Add AS 9.3 and AS 9.4 feature→spec and RFC→features rollup tests**
 
   Add two `it(...)` blocks in `src/status/scanner.test.ts` covering the remaining rollup hops. AS 9.3 uses a feature map whose row points at an existing spec folder. AS 9.4 uses an RFC whose row points at an existing `.features.md`. Each test isolates a single rollup hop — not a full RFC→features→spec→tasks chain — so regressions can be localized to the exact hop under test.
 
