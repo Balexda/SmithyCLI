@@ -143,11 +143,12 @@ function statusToken(status: EvalResult['status']): string {
  * Output shape:
  *
  *     Eval Summary
- *       [PASS] strike-health-check
- *       [FAIL] plan-standalone
- *       [TIMEOUT] scout-standalone
- *       [ERROR] clarify-standalone
+ *       [PASS] strike-health-check (1234ms)
+ *       [FAIL] plan-standalone (5678ms)
+ *       [TIMEOUT] scout-standalone (120000ms)
+ *       [ERROR] clarify-standalone (42ms)
  *
+ *     Total elapsed: 127000ms
  *     Result: FAIL (1/4 passed, 4 total)
  *
  * The function is pure: no I/O, no `console.log`, no mutation of `report`.
@@ -156,18 +157,22 @@ function statusToken(status: EvalResult['status']): string {
  * status tokens (`PASS`, `FAIL`, `TIMEOUT`, `ERROR`) are distinct strings,
  * so word-boundary matchers can distinguish a timeout case from a fail
  * case (AS 9.3). The final aggregate line carries the overall result
- * (`PASS` or `FAIL`) plus the total case count (AS 9.1, 9.2).
+ * (`PASS` or `FAIL`) plus the total case count (AS 9.1, 9.2); the
+ * `Total elapsed:` line precedes it so the `Result:` line remains last
+ * (US11 AS 11.2, FR-009). Durations render as integer milliseconds with
+ * the `ms` suffix uniformly across per-case and total lines.
  */
 export function formatReport(report: EvalReport): string {
   const lines: string[] = ['Eval Summary'];
 
   for (const result of report.results) {
     const token = statusToken(result.status);
-    lines.push(`  [${token}] ${result.scenario_name}`);
+    lines.push(`  [${token}] ${result.scenario_name} (${result.duration_ms}ms)`);
   }
 
   const overallToken = report.overall_status === 'pass' ? 'PASS' : 'FAIL';
   lines.push('');
+  lines.push(`Total elapsed: ${report.total_duration_ms}ms`);
   lines.push(
     `Result: ${overallToken} (${report.passed}/${report.total_cases} passed, ${report.total_cases} total)`,
   );
