@@ -21,4 +21,5 @@ export {
   ORPHANED_SPECS_PATH,
   ORPHANED_TASKS_PATH,
 } from './tree.js';
+export { collapseTree, type CollapseTreeOptions } from './collapse.js';
 export { renderTree, type RenderTreeOptions } from './render.js';

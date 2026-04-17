@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add pure `collapseTree` transform to prune done subtrees**
+- [x] **Add pure `collapseTree` transform to prune done subtrees**
 
   Create `src/status/collapse.ts` exporting `collapseTree(tree: StatusTree, options?: { all?: boolean }): StatusTree`. The transform returns a new `StatusTree` in which any `TreeNode` whose `record.status === 'done'` is replaced by a copy with an empty `children` array — its descendants are not visited or emitted. When `options.all` is truthy the tree is returned structurally unchanged. Group sentinel nodes (detected via the reserved `ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, and `ORPHANED_TASKS_PATH` constants already exported from `src/status/tree.ts`) always retain their children regardless of their synthesized status. Re-export `collapseTree` from `src/status/index.ts` so `statusAction` and future pipeline consumers (US6) can import it from the module barrel. Satisfies AS 3.1, AS 3.3, AS 3.4, and the bypass half of AS 3.5 as a pure tree transform.
 
