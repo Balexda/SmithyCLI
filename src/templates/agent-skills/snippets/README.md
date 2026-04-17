@@ -19,7 +19,7 @@ its contents. The snippet file itself is never deployed.
 | `audit-checklist-rfc.md` | Audit checklist for RFC artifacts | smithy.audit |
 | `audit-checklist-features.md` | Audit checklist for feature map artifacts | smithy.audit |
 | `audit-checklist-tasks.md` | Audit checklist for task plan artifacts | smithy.audit |
-| `review-protocol.md` | Code review protocol shared by review agents | smithy.review |
+| `review-protocol.md` | Read-only findings protocol shared by review agents (Finding structure, severity × confidence triage, no file edits) | smithy.plan-review, smithy.implementation-review |
 | `guidance-shell.md` | Shell environment guidance | smithy.guidance |
 | `tdd-protocol.md` | TDD workflow protocol | smithy.implement |
 | `competing-lenses-decomposition.md` | Competing slice lenses for decomposition planning | smithy.cut |

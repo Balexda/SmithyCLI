@@ -46,7 +46,7 @@ composition tests can verify its content.
   - Snippet is usable as a partial from both review agent prompts
   - No references to auto-fixing, committing, or Edit/Write tools
 
-- [ ] **Update the snippets README entry for `review-protocol`**
+- [x] **Update the snippets README entry for `review-protocol`**
 
   Update the row for `review-protocol.md` in
   `src/templates/agent-skills/snippets/README.md` so its consumer
