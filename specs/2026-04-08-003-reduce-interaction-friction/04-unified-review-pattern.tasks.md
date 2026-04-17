@@ -28,7 +28,7 @@ composition tests can verify its content.
 
 ### Tasks
 
-- [ ] **Rewrite `review-protocol.md` as a read-only findings protocol**
+- [x] **Rewrite `review-protocol.md` as a read-only findings protocol**
 
   Replace the current auto-fix-oriented content in
   `src/templates/agent-skills/snippets/review-protocol.md` with a
@@ -46,7 +46,7 @@ composition tests can verify its content.
   - Snippet is usable as a partial from both review agent prompts
   - No references to auto-fixing, committing, or Edit/Write tools
 
-- [ ] **Update the snippets README entry for `review-protocol`**
+- [x] **Update the snippets README entry for `review-protocol`**
 
   Update the row for `review-protocol.md` in
   `src/templates/agent-skills/snippets/README.md` so its consumer
@@ -59,7 +59,7 @@ composition tests can verify its content.
   - Purpose column describes read-only findings protocol
   - No other snippet rows are touched
 
-- [ ] **Assert the rewritten snippet content in template tests**
+- [x] **Assert the rewritten snippet content in template tests**
 
   Add Tier 2 assertions in `src/templates.test.ts` that verify the
   rewritten snippet composes correctly and exposes the sections the

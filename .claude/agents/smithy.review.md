@@ -70,55 +70,68 @@ Break complex pipelines into individual steps. This makes each command easier to
 approve and debug.
 ---
 
-## Code Review Protocol
+## Review Protocol
 
-Review the implementation diff against the plan, spec, and contracts.
+Shared read-only review protocol used by the review sub-agents
+(`smithy-plan-review` and `smithy-implementation-review`). Both agents
+return structured findings using the same shape; neither agent modifies
+artifacts or code. The parent command (planning command or forge)
+applies fixes based on the returned findings.
 
 ### 1. Gather context
 
-Read the changed files and the raw diff. Cross-reference each change against:
-- The slice goal and task descriptions
+Read the target artifacts and any referenced source material. Cross-reference
+each observation against:
+
+- The stated goal or task descriptions driving the work
 - The spec requirements (`.spec.md`)
 - The data model (`.data-model.md`) and contracts (`.contracts.md`)
 
+Only read files — do not edit, write, or run commands that mutate state.
+
 ### 2. Identify findings
 
-Check for:
-- **Missing tests** — behavior added without corresponding test coverage
-- **Broken contracts** — implementation diverges from declared interfaces
-- **Security issues** — injection, auth bypass, data exposure
-- **Error handling gaps** — unhappy paths not covered
-- **Naming inconsistencies** — conventions broken within the change
-- **Scope creep** — changes beyond what the slice tasks require
+Scan the artifacts for issues in the categories documented by the calling
+agent's prompt. Each agent supplies its own category list; this protocol
+does not enumerate categories.
 
-### 3. Categorize each finding
+### 3. Return findings in the shared structure
 
-| Category | Meaning | Action |
-|----------|---------|--------|
-| **Critical** | Breaks functionality, violates contracts, security risk, missing required behavior | Must fix before PR |
-| **Important** | Suboptimal implementation, missing edge cases, test gaps | Should fix, can note if non-trivial |
-| **Minor** | Style, naming nits, minor improvements | Note in PR only |
+Every finding — regardless of which review agent produced it — uses the
+following shape. Emit one finding per distinct issue.
 
-### 4. Auto-fix triage
+| Field | Type | Description |
+|-------|------|-------------|
+| `category` | enum | What kind of issue (per-agent category list) |
+| `severity` | enum | Critical, Important, Minor |
+| `confidence` | enum | High or Low — whether the finding can be auto-resolved by the parent |
+| `description` | string | What the issue is and where it appears |
+| `artifact_path` | string | Path to the file containing the issue |
+| `proposed_fix` | string | Suggested resolution (for High-confidence findings) |
 
-Apply fixes automatically when confidence is high. Escalate when uncertain.
+### 4. Triage rules (applied by the parent command, not by the review agent)
 
-| Severity | Confidence | Action |
-|----------|------------|--------|
-| Critical | High | Auto-fix, commit, note in PR |
-| Critical | Low | **Stop and ask the user** |
-| Important | High | Auto-fix, commit |
-| Important | Low | Note in PR, flag for reviewer |
-| Minor | Any | Note in PR only — never auto-fix |
+The parent command decides what to do with each finding using the
+severity × confidence triage table below. The review agent only reports;
+it never takes the action itself.
 
-After each auto-fix, re-run the test suite to verify no regressions.
+| Severity | Confidence | Parent Action |
+|----------|------------|---------------|
+| Critical | High | Apply proposed fix, note in PR |
+| Critical | Low | Record as specification debt, flag in PR for reviewer |
+| Important | High | Apply proposed fix |
+| Important | Low | Record as specification debt |
+| Minor | Any | Note in PR only |
 
-### 5. Report findings
+### Read-only invariant
 
-Present a structured summary:
-- Findings table: file path, line reference, category, description, resolution
-- Auto-fixes applied (with commit SHAs)
-- Remaining items for PR description or reviewer attention
+Review agents are strictly read-only:
+
+- They do not modify files or code.
+- They do not create commits, branches, or PRs.
+- They do not run mutating tools.
+- Their sole output is a list of findings in the structure above; the
+  parent command is responsible for any resulting changes on disk.
 ---
 
 ## Handling Auto-Fixes
