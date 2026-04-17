@@ -1,0 +1,28 @@
+# Strike end-to-end eval scenario (YAML declarative form).
+#
+# Mirrors the EvalScenario shape described in the data model (§1) and the
+# TypeScript interface in evals/lib/types.ts. Single-quoted strings are used
+# for regex patterns so backslash escapes (e.g. \*, \d, \r, \n) round-trip
+# byte-for-byte to the parser.
+#
+# Spec:       specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.spec.md
+# Data model: specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.data-model.md
+# Contracts:  specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.contracts.md
+
+name: strike-health-check
+skill: /smithy.strike
+prompt: add a health check endpoint
+structural_expectations:
+  required_headings:
+    - '## Summary'
+    - '## Approach'
+    - '## Risks'
+  required_patterns:
+    # `**Phase N: <Label>**` — bold workflow-stage markers emitted by strike.
+    - '\*\*Phase \d+: [^*]+\*\*'
+  forbidden_patterns:
+    # Generic refusals / non-skill responses (FR-012).
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter (AS 5.2); `\r?\n` tolerates CRLF line endings.
+    - '^---\r?\n'
