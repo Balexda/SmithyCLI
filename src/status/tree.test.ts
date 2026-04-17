@@ -230,6 +230,31 @@ describe('buildTree — orphaned specs', () => {
     expect(orphanTasksGroup?.children[0]?.record.path).toBe(orphanTasks.path);
     expect(tree.roots).toHaveLength(1);
   });
+
+  it('does NOT route a tasks record with parent_path omitted (undefined) to Orphaned Tasks', () => {
+    // The scanner deliberately leaves `parent_path` undefined (rather
+    // than setting it to `null`) for tasks files it could not read —
+    // those records carry a `read_error:` warning and represent
+    // genuinely unknown parent state, not "definitively no parent".
+    // Classifying them as orphans would surface transient I/O or
+    // permission failures as ERROR output, which is wrong. They must
+    // fall through to top-level roots.
+    const unknownParentTasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/unreadable/01-blocked.tasks.md',
+      // parent_path deliberately omitted — defaults to undefined.
+      warnings: ['read_error: EACCES: permission denied'],
+      status: 'unknown',
+    });
+
+    const tree = buildTree([unknownParentTasks]);
+
+    expect(
+      tree.roots.find((n) => n.record.path === ORPHANED_TASKS_PATH),
+    ).toBeUndefined();
+    expect(tree.roots).toHaveLength(1);
+    expect(tree.roots[0]?.record.path).toBe(unknownParentTasks.path);
+  });
 });
 
 describe('buildTree — broken links', () => {

@@ -198,9 +198,10 @@ function applyStoryNumber(title: string, rowId: string | undefined): string {
 
 /**
  * Detect the synthetic group wrappers emitted by {@link buildTree}.
- * These wrap a sentinel `ArtifactRecord` whose `path` is one of two
- * reserved values — matching on `path` is cheaper and more precise
- * than title equality.
+ * These wrap a sentinel `ArtifactRecord` whose `path` is one of three
+ * reserved values (`ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, or
+ * `ORPHANED_TASKS_PATH`) — matching on `path` is cheaper and more
+ * precise than title equality.
  */
 function isGroupSentinel(record: ArtifactRecord): boolean {
   return (

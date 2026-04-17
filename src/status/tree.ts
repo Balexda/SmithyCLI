@@ -2,9 +2,9 @@
  * Pure tree projection over the flat `ArtifactRecord[]` produced by
  * {@link scan}. Turns a scan result into the hierarchical
  * {@link StatusTree} described in §7 of `smithy-status-skill.data-model.md`:
- * nested parent/child nodes plus two implicit top-level group nodes,
- * "Orphaned Specs" and "Broken Links", that are emitted only when they
- * have members.
+ * nested parent/child nodes plus three implicit top-level group nodes —
+ * "Orphaned Specs", "Broken Links", and "Orphaned Tasks" — that are
+ * emitted only when they have members.
  *
  * This module is deliberately side-effect-free. `buildTree` performs no
  * I/O, never mutates its input, and returns the same tree for the same
@@ -39,22 +39,22 @@
  *
  * Input order is preserved at every level: siblings appear in the order
  * their records appeared in the input array, and the group nodes are
- * prepended to `roots` in a fixed order (Orphaned Specs first, then
- * Broken Links) when populated, so the same input always yields the
- * same tree.
+ * prepended to `roots` in a fixed order (Orphaned Specs, then Broken
+ * Links, then Orphaned Tasks) when populated, so the same input always
+ * yields the same tree.
  *
  * ## Synthetic group nodes
  *
  * `TreeNode` "carries no additional data" (see `types.ts`), so group
  * nodes are modelled as real `TreeNode` values whose wrapped
  * `ArtifactRecord` is a synthesized sentinel rather than a real file
- * record. The sentinels use reserved `path` values (`__orphaned_specs__`
- * and `__broken_links__`) and set `virtual: true` so consumers can
- * cheaply detect them via `record.path.startsWith('__')`. This choice
- * keeps the `TreeNode` shape aligned with the data model while giving
- * the Slice 2 renderer (`renderTree`) a clear, documented contract for
- * locating the group headings. See SD-010 for the narrowed Broken
- * Links scope.
+ * record. The sentinels use reserved `path` values (`__orphaned_specs__`,
+ * `__broken_links__`, and `__orphaned_tasks__`) and set `virtual: true`
+ * so consumers can cheaply detect them via `record.path.startsWith('__')`.
+ * This choice keeps the `TreeNode` shape aligned with the data model
+ * while giving the Slice 2 renderer (`renderTree`) a clear, documented
+ * contract for locating the group headings. See SD-010 for the narrowed
+ * Broken Links scope.
  *
  * Every real record appears in the tree exactly once. An empty input
  * yields `{ roots: [] }`.
@@ -139,12 +139,21 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     if (!hasParent) {
       if (record.type === 'spec' && record.virtual !== true) {
         orphanedSpecs.push(node);
-      } else if (record.type === 'tasks' && record.virtual !== true) {
+      } else if (
+        record.type === 'tasks' &&
+        record.virtual !== true &&
+        record.parent_path === null
+      ) {
         // Real tasks files should always be claimed by a spec row or
-        // declare a `**Source**:` header. An on-disk tasks file with
-        // no parent is an error condition — surface it through the
-        // dedicated "Orphaned Tasks" group so renderers can flag it
-        // rather than hiding it among top-level roots.
+        // declare a `**Source**:` header. A `parent_path` of `null`
+        // is the scanner's definitive "no parent" signal — surface
+        // those through the dedicated "Orphaned Tasks" group so
+        // renderers can flag them rather than hiding them among
+        // top-level roots. Records with `parent_path === undefined`
+        // (e.g. a tasks file the scanner could not read — see the
+        // Phase 2c skip for `read_error:` warnings in scanner.ts)
+        // carry genuinely unknown parent state and must NOT be
+        // reported as orphans; fall them through to top-level roots.
         orphanedTasks.push(node);
       } else {
         roots.push(node);
@@ -174,8 +183,9 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     }
   }
 
-  // Prepend the populated group nodes in a fixed order so the output
-  // is deterministic and the two groups sit "at the top of `roots`" as
+  // Prepend the populated group nodes in a fixed order (Orphaned
+  // Specs, then Broken Links, then Orphaned Tasks) so the output is
+  // deterministic and the three groups sit "at the top of `roots`" as
   // the data model specifies.
   const finalRoots: TreeNode[] = [];
   if (orphanedSpecs.length > 0) {
