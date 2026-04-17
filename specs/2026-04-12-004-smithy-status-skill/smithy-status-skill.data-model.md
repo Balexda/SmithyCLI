@@ -26,7 +26,7 @@ Purpose: One entry per discovered artifact file, carrying everything needed to r
 | `warnings` | string[] | No | Non-fatal parse issues encountered while reading the file (unknown sections, ambiguous numbering, legacy formats, malformed dependency tables, dangling ID references). Empty array if clean. |
 
 Validation rules:
-- For a **tasks** record (the only leaf type), `status = 'done'` requires `completed === total`, where both counts come from slice-body task checkboxes inside `## Slice N:` sections. `status = 'in-progress'` requires `0 < completed < total`.
+- For a **tasks** record (the only leaf type), `status = 'done'` requires `completed === total`, where both counts come from slices — `total` is the number of `## Slice N:` sections in the file and a slice is "complete" when every checkbox inside its section is ticked. Individual task checkboxes are the input used to determine slice completion but are not themselves surfaced as the record's progress counter. `status = 'in-progress'` requires `0 < completed < total`.
 - For **spec**, **features**, and **rfc** records (parent types), `status = 'done'` requires that every row in the record's parsed `dependency_order` table has a rolled-up status of `done`. `status = 'in-progress'` requires at least one row whose rolled-up status is `in-progress` or `done` AND at least one row that is not yet `done`. `status = 'not-started'` requires every row to be `not-started` (or its `Artifact` column to be `—`).
 - `status = 'unknown'` requires at least one entry in `warnings` describing the parse failure (malformed table, legacy-format detection, missing required section, etc.).
 - `virtual === true` implies `status === 'not-started'` and `path` is the *expected* path, not an existing file.
@@ -148,7 +148,7 @@ An `artifact_path` cell containing `—` signals "not yet created" and causes th
 
 A record's status is computed freshly on each scan from the underlying file contents. There is no persistent state machine — the "transitions" below describe the rules the classifier applies when comparing one scan to a prior one, not live observations.
 
-Trigger terminology: "a child reaches status X" means (a) for tasks records, a slice-body task checkbox flipped, or (b) for spec / features / rfc records, a downstream artifact referenced by the record's `dependency_order` table rolled up to status X.
+Trigger terminology: "a child reaches status X" means (a) for tasks records, a slice reached full completion (every checkbox inside its `## Slice N:` section became ticked) or a previously-complete slice regressed, or (b) for spec / features / rfc records, a downstream artifact referenced by the record's `dependency_order` table rolled up to status X.
 
 1. `unknown` → (any other status)
    - Trigger: the artifact's `## Dependency Order` table (or slice bodies, for tasks files) parses successfully where a prior scan could not.
