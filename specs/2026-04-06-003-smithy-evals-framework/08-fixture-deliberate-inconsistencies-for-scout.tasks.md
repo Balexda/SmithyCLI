@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant a deliberate scout-detectable inconsistency in the fixture**
+- [x] **Plant a deliberate scout-detectable inconsistency in the fixture**
 
   Introduce at least one deliberate inconsistency in `evals/fixture/` that maps to a row in smithy-scout's Severity Guidelines table (see `src/templates/agent-skills/agents/smithy.scout.prompt` — e.g., a doc comment that contradicts a function signature, or a TODO/FIXME marker). Only use plant types reliably detected at **shallow** depth — stale doc comments, signature mismatches, and TODO markers. Do NOT plant dead exports or other deep-scan-only inconsistencies, as the scout scenario runs at shallow depth. The plant must live in a file scout would scan at shallow depth (`src/routes/users.ts`, `src/types.ts`, or `src/index.ts`). The fixture must still type-check conceptually — do not break imports or introduce syntax errors, because other eval scenarios copy this fixture verbatim.
 
