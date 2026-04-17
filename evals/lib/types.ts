@@ -95,6 +95,18 @@ export interface SubAgentEvidence {
   pattern: string;
 }
 
+/**
+ * Persisted baseline snapshot of a known-good skill output.
+ * Loaded from `evals/baselines/<scenario_name>.json`; used by
+ * `compareToBaseline` to detect structural regressions.
+ */
+export interface Baseline {
+  scenario_name: string;
+  captured_at: string;
+  headings: string[];
+  tables: { columns: string[] }[];
+}
+
 /** A single eval scenario loaded from YAML. */
 export interface EvalScenario {
   name: string;
@@ -139,6 +151,7 @@ export interface EvalResult {
   duration_ms: number;
   structural_checks: CheckResult[];
   sub_agent_checks?: CheckResult[] | undefined;
+  baseline_checks?: CheckResult[] | undefined;
   error?: string | undefined;
 }
 

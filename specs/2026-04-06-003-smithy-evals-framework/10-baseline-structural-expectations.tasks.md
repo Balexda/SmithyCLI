@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Declare `Baseline` type and extend `EvalResult` with `baseline_checks`**
+- [x] **Declare `Baseline` type and extend `EvalResult` with `baseline_checks`**
 
   Add a `Baseline` interface to `evals/lib/types.ts` capturing the persisted snapshot shape: `scenario_name`, `captured_at` (ISO 8601 timestamp), `headings` (ordered string array of ATX headings observed in the known-good output), and `tables` (array of `{ columns: string[] }` objects matching the existing `StructuralExpectations.required_tables` shape for consistency). Extend `EvalResult` with an optional `baseline_checks?: CheckResult[] | undefined` field so baseline results can flow through the report library without colliding with `structural_checks` or `sub_agent_checks`. Mirror the new entity into `smithy-evals-framework.data-model.md` under a new `### 5) Baseline` subsection and update the `EvalResult` table to list `baseline_checks`.
 
