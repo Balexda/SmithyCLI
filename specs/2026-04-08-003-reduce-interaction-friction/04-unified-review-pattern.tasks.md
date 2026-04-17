@@ -59,7 +59,7 @@ composition tests can verify its content.
   - Purpose column describes read-only findings protocol
   - No other snippet rows are touched
 
-- [ ] **Assert the rewritten snippet content in template tests**
+- [x] **Assert the rewritten snippet content in template tests**
 
   Add Tier 2 assertions in `src/templates.test.ts` that verify the
   rewritten snippet composes correctly and exposes the sections the

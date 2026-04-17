@@ -132,10 +132,89 @@ describe('loadSnippets', () => {
     expect(snippets.get('audit-checklist-strike.md')).toContain('Audit Checklist (.strike.md)');
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
-    expect(snippets.get('review-protocol.md')).toContain('Code Review Protocol');
+    expect(snippets.get('review-protocol.md')).toContain('Review Protocol');
     expect(snippets.get('competing-lenses-decomposition.md')).toContain('Competing Slice Lenses');
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
+  });
+});
+
+describe('review-protocol snippet', () => {
+  // Story 4 Slice 1: the shared review-protocol snippet is the single source
+  // of truth for the read-only, findings-based review protocol that both
+  // `smithy-plan-review` and `smithy-implementation-review` compose. These
+  // assertions lock down the snippet's contract so any regression (deleted
+  // file, renamed file, dropped Finding structure section, dropped triage
+  // table, reintroduced auto-fix language) fails the test suite immediately.
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has('review-protocol.md')).toBe(true);
+    const content = snippets.get('review-protocol.md')!;
+    expect(content.length).toBeGreaterThan(0);
+  });
+
+  it('snippet exposes the shared Finding structure with all required fields', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    // The shared Finding shape from the contracts must be present so both
+    // review agents can emit findings in the same structure.
+    expect(content).toContain('`category`');
+    expect(content).toContain('`severity`');
+    expect(content).toContain('`confidence`');
+    expect(content).toContain('`description`');
+    expect(content).toContain('`artifact_path`');
+    expect(content).toContain('`proposed_fix`');
+  });
+
+  it('snippet contains the severity × confidence triage table', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    // Every row of the contracts triage table must be present so the parent
+    // command has an unambiguous rulebook for processing returned findings.
+    expect(content).toMatch(/Critical\s*\|\s*High/);
+    expect(content).toMatch(/Critical\s*\|\s*Low/);
+    expect(content).toMatch(/Important\s*\|\s*High/);
+    expect(content).toMatch(/Important\s*\|\s*Low/);
+    expect(content).toMatch(/Minor\s*\|\s*Any/);
+    // Parent-action column content is what makes this a triage table rather
+    // than just a grid of severities.
+    expect(content).toContain('specification debt');
+    expect(content).toContain('Apply proposed fix');
+  });
+
+  it('snippet no longer contains auto-fix language', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    // The rewritten protocol is read-only: review agents return findings,
+    // they do not auto-fix, commit, or edit artifacts themselves. Guard
+    // against a future edit that reintroduces the old auto-fix vocabulary.
+    expect(content).not.toMatch(/auto[- ]fix/i);
+    expect(content).not.toMatch(/auto[- ]resolve\b/i);
+    expect(content).not.toContain('Edit tool');
+    expect(content).not.toContain('Write tool');
+    // The read-only invariant must be stated so both review agents inherit
+    // the correct behavior when composing this snippet.
+    expect(content).toMatch(/read[- ]only/i);
+    expect(content).toContain('do not modify files');
+  });
+
+  it('snippet composes into any template via the {{>review-protocol}} partial', async () => {
+    // Prove the snippet is resolvable by the same partial machinery that
+    // both review agents will use. If the snippet is deleted or renamed,
+    // this fails because the renderer has no partial to substitute.
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>review-protocol}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Review Protocol');
+    expect(result).toContain('`proposed_fix`');
+    expect(result).toContain('Critical');
+    expect(result).not.toContain('{{>review-protocol}}');
   });
 });
 
@@ -670,8 +749,12 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('TDD Protocol');
-    expect(forge).toContain('Code Review Protocol');
-    expect(forge).not.toContain('smithy-implement');
+    expect(forge).toContain('Review Protocol');
+    // Use a word-boundary check so the assertion catches the standalone
+    // sub-agent name `smithy-implement` (which only the claude variant
+    // dispatches) without false-positive-matching `smithy-implementation-review`
+    // referenced by the shared review-protocol snippet.
+    expect(forge).not.toMatch(/\bsmithy-implement\b/);
     expect(forge).not.toContain('{{');
   });
 
