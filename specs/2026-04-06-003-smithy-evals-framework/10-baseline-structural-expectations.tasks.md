@@ -40,7 +40,7 @@
   - Default directory is `evals/baselines` relative to the current working directory; caller can override for tests
   - Unit tests cover missing-file, malformed-JSON, missing-field, and happy-path cases
 
-- [ ] **Implement `compareToBaseline` pure structural comparator**
+- [x] **Implement `compareToBaseline` pure structural comparator**
 
   Add `compareToBaseline(output: string, baseline: Baseline): CheckResult[]` to `evals/lib/baseline.ts`. Extract the current output's ATX headings (per-line, matching the `validateStructure` convention in `structural.ts`) and pipe-delimited table column lists, then diff them against the baseline. Emit one check per baseline heading (`has baseline heading '<text>'`) that fails when the heading is absent, one check per baseline table (`has baseline table with columns: <list>`), and one aggregate regression-summary check (`baseline regression summary`) whose `actual` field enumerates any missing items so a reviewer can read the failure without correlating multiple lines. Additions present in the output but absent from the baseline are **not** failures — baselines are a regression signal, not a content lock.
 

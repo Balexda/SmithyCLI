@@ -1,9 +1,11 @@
 /**
  * Baseline library — convention-based JSON loader for persisted known-good
- * output snapshots used to detect structural regressions.
+ * output snapshots used to detect structural regressions, plus a pure
+ * structural comparator that diffs a live output against a baseline.
  *
- * Exports `loadBaseline` (this file); `compareToBaseline` lands in a follow-up
- * task.
+ * Exports:
+ *   - `loadBaseline`      — file-system loader (convention-based JSON lookup)
+ *   - `compareToBaseline` — pure structural diff (no I/O, no mutation)
  *
  * Contract / data model:
  *   specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.data-model.md §5
@@ -13,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { Baseline } from './types.js';
+import type { Baseline, CheckResult } from './types.js';
 
 /** Default directory (relative to cwd) where baselines are looked up. */
 const DEFAULT_BASELINES_DIR = 'evals/baselines';
@@ -131,4 +133,104 @@ export function loadBaseline(
     headings: (record['headings'] as string[]).slice(),
     tables,
   };
+}
+
+/**
+ * Compare a live skill output against a persisted baseline and emit one
+ * `CheckResult` per baseline heading, one per baseline table, and a final
+ * aggregate summary entry.
+ *
+ * The comparator is intentionally a regression signal, not a content lock —
+ * additional headings or tables in `output` that are not recorded in
+ * `baseline` are treated as neutral and do not produce failures. Only items
+ * present in the baseline but missing from the output count as drift.
+ *
+ * Heading matching mirrors `validateStructure` in `structural.ts`: lines are
+ * split, right-trimmed, and compared for exact equality. Table matching also
+ * mirrors `structural.ts`: a baseline table is "present" when some output
+ * line contains a pipe and includes every one of that table's column names
+ * as a substring.
+ *
+ * Emit order (stable, for predictable report rendering):
+ *   1. one check per baseline heading, in baseline order
+ *   2. one check per baseline table, in baseline order
+ *   3. exactly one `'baseline regression summary'` aggregate check
+ *
+ * The summary's `actual` field enumerates every missing item on a single line
+ * so a reviewer can see "what changed" without correlating the per-item
+ * checks. When nothing is missing, `actual` is `'no regressions'`.
+ *
+ * This function is pure: no I/O, no mutation of `baseline` or `output`.
+ *
+ * @param output    The live extracted skill-output string to evaluate.
+ * @param baseline  The persisted `Baseline` snapshot to compare against.
+ * @returns A `CheckResult[]` with per-heading, per-table, and aggregate entries.
+ */
+export function compareToBaseline(
+  output: string,
+  baseline: Baseline,
+): CheckResult[] {
+  const results: CheckResult[] = [];
+
+  // Match the per-line, right-trimmed heading convention in structural.ts so
+  // the baseline comparator and validateStructure agree on what counts as a
+  // heading line.
+  const lines = output.split('\n').map((line) => line.trimEnd());
+
+  const missingHeadings: string[] = [];
+  const missingTables: string[] = [];
+
+  // (1) Per-heading checks, in baseline order.
+  for (const heading of baseline.headings) {
+    const found = lines.some((line) => line === heading);
+    if (!found) {
+      missingHeadings.push(heading);
+    }
+    results.push({
+      check_name: `has baseline heading '${heading}'`,
+      passed: found,
+      expected: heading,
+      actual: found ? 'found' : 'not found',
+    });
+  }
+
+  // (2) Per-table checks, in baseline order. A table is present when some
+  // pipe-bearing line contains every column name as a substring — identical
+  // to the required_tables heuristic in structural.ts.
+  for (const table of baseline.tables) {
+    const cols = table.columns;
+    const colList = cols.join(', ');
+    const found = lines.some(
+      (line) => line.includes('|') && cols.every((col) => line.includes(col)),
+    );
+    if (!found) {
+      missingTables.push(colList);
+    }
+    results.push({
+      check_name: `has baseline table with columns: ${colList}`,
+      passed: found,
+      expected: colList,
+      actual: found ? 'found' : 'not found',
+    });
+  }
+
+  // (3) Aggregate regression summary. `actual` is a compact one-line
+  // enumeration of everything that is missing so the reviewer can read the
+  // failure at a glance. When nothing is missing, `actual` is 'no regressions'.
+  const summaryParts: string[] = [];
+  if (missingHeadings.length > 0) {
+    summaryParts.push(`missing headings: ${missingHeadings.join(', ')}`);
+  }
+  if (missingTables.length > 0) {
+    summaryParts.push(`missing tables: ${missingTables.join('; ')}`);
+  }
+  const passed = summaryParts.length === 0;
+  results.push({
+    check_name: 'baseline regression summary',
+    passed,
+    expected: `${baseline.headings.length} headings, ${baseline.tables.length} tables`,
+    actual: passed ? 'no regressions' : summaryParts.join('; '),
+  });
+
+  return results;
 }
