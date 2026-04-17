@@ -25,7 +25,6 @@
 - [X] Write **Phase 3: Draft RFC** — using the workshopped answers, produce a structured RFC containing: summary, motivation/problem statement, goals, proposal, milestones (each with title, description, and success criteria), design considerations, open questions. Present the full draft for user approval before writing.
 - [X] Write **Phase 4: Output** — create the `docs/rfcs/<YYYY-NNN-slug>/` folder, write `<slug>.rfc.md`. Confirm the file path to the user and suggest next step: "Ready for `smithy.render` to break a milestone into features."
 - [X] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, maintain "WHAT not HOW" tone, milestones must be clearly delineated.
-- [ ] Manually test: run `npm run build && node dist/cli.js init` targeting a test repo with Claude selected, restart Claude Code, invoke `/smithy.ignite "build a plugin system"`, and verify the interactive flow produces a well-structured RFC with milestones in the correct folder.
 
 **PR Outcome**: `/smithy.ignite` is a working slash command. Developers can workshop a broad idea or PRD into a structured RFC with milestones via interactive Q&A.
 
@@ -46,7 +45,6 @@
 - [X] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question. *(Implemented in Slice 1 PR.)*
 - [X] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing RFC to incorporate refinements. Present changes for user approval before writing. *(Implemented in Slice 1 PR.)*
 - [X] Add routing logic at the top of the template: if input is an existing `.rfc.md` path, go to Phase 0 (review loop). If input is a description or PRD path, go to Phase 1 (new RFC generation). *(Implemented in Slice 1 PR, including mid-intake redirect for slug-matched RFCs.)*
-- [ ] Manually test: create a sample RFC via Slice 1's ignite flow, then re-run `/smithy.ignite path/to/existing.rfc.md` and verify it enters the review loop with audit findings and refinement questions.
 
 **PR Outcome**: Re-running `/smithy.ignite` on an existing RFC enters a structured audit and refinement flow. The "repeat to refine" convention is fully implemented for ignite.
 
