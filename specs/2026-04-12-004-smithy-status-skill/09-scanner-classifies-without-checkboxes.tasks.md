@@ -61,7 +61,7 @@
 
 ### Tasks
 
-- [ ] **Add AS 9.1 and AS 9.2 spec→tasks rollup tests**
+- [x] **Add AS 9.1 and AS 9.2 spec→tasks rollup tests**
 
   Add two `it(...)` blocks in `src/status/scanner.test.ts`, each tagged with its AS ID. AS 9.1 covers a spec row whose `Artifact` column points at an existing tasks file and whose rolled-up classification must derive from that tasks file's slice-body state. AS 9.2 covers a spec row whose `Artifact` is `—` and whose scanner output must include a single virtual not-started tasks record at a naming-convention path.
 
