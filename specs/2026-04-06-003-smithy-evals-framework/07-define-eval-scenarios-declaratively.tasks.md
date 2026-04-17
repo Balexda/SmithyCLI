@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Promote `yaml` to a direct runtime dependency.** Add the `yaml` package to `dependencies` (not `devDependencies`) in `package.json` since `npm run eval` is a runtime script. The package is already present transitively via `dotprompt`, so the lockfile should be stable and no new top-level install occurs. Pick the same major version that dotprompt resolves to in order to avoid a second copy in the tree.
+- [x] **Promote `yaml` to a direct runtime dependency.** Add the `yaml` package to `dependencies` (not `devDependencies`) in `package.json` since `npm run eval` is a runtime script. The package is already present transitively via `dotprompt`, so the lockfile should be stable and no new top-level install occurs. Pick the same major version that dotprompt resolves to in order to avoid a second copy in the tree.
   - **Acceptance criteria**: `yaml` appears in `dependencies` in `package.json`; lockfile changes are minimal; `npm run build`, `npm run typecheck`, `npm test`, and `npm run test:evals` all succeed.
 
 - [ ] **Create `evals/cases/strike-health-check.yaml`.** Author the first declarative case file under `evals/cases/`, encoding the same scenario fields currently hardcoded in `evals/lib/strike-scenario.ts` (`name`, `skill`, `prompt`, `structural_expectations.required_headings`, `structural_expectations.required_patterns`, `structural_expectations.forbidden_patterns`). The YAML schema must match the `EvalScenario` shape defined in `evals/lib/types.ts` and the data model (§1). Regex patterns must survive YAML quoting — backslash escapes, leading `^`, and `\r?\n` in `forbidden_patterns` must round-trip unchanged.
