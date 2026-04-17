@@ -31,7 +31,7 @@
   - Empty input (`{ roots: [] }`) returns `{ roots: [] }` without throwing.
   - Unit tests in a new `src/status/collapse.test.ts` drive synthetic `StatusTree` inputs covering each of the criteria above: done leaf collapse, done parent collapsing whole subtree, partial subtree preservation, `--all` passthrough, group-sentinel passthrough, and empty tree.
 
-- [ ] **Wire `collapseTree` into the text-mode pipeline and retire `--all` stub comments**
+- [x] **Wire `collapseTree` into the text-mode pipeline and retire `--all` stub comments**
 
   In `src/commands/status.ts`, insert `collapseTree(tree, { all: opts.all === true })` between the existing `buildTree(records)` and `renderTree(...)` calls on the default text-mode path so the rendered output reflects the collapsed tree; the JSON-mode branch keeps emitting the uncollapsed `buildTree(records)` output verbatim. Update the `StatusOptions.all` JSDoc in the same file (currently labelled as a stub wired in US3) so it describes the live behavior, and refresh the `src/status/render.ts` module docstring block that currently asserts "Collapsing of done subtrees is US3's responsibility, so every record shows its marker inline here" so it reflects the new reality that collapse now runs before the renderer. Satisfies AS 3.2 (partial tasks keep the `N/M` counter because only `done` nodes collapse) and the end-to-end half of AS 3.5.
 
