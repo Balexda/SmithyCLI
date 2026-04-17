@@ -74,10 +74,10 @@ Patterns used below are grounded in `evals/spike/FINDINGS.md` — not speculativ
 
 ## Dependency Order
 
-Recommended implementation sequence:
-
-1. [ ] **Slice 1 — Strike Sub-Agent Evidence for Plan, Reconcile, Clarify** — The verifier machinery already exists; extending the scenario is the minimum viable increment and surfaces three of the four acceptance scenarios (6.2, 6.3, 6.4) with a single scenario data change.
-2. [ ] **Slice 2 — Standalone Scout Scenario and Multi-Scenario Orchestration** — Builds on Slice 1 by introducing a second scenario and teaching `run-evals.ts` to aggregate multiple results. Resolves AS 6.1 via the standalone path and lays the groundwork for US7's YAML-driven multi-scenario loader.
+| ID | Title                                                          | Depends On | Artifact |
+|----|----------------------------------------------------------------|------------|----------|
+| S1 | Strike Sub-Agent Evidence for Plan, Reconcile, Clarify         | —          | —        |
+| S2 | Standalone Scout Scenario and Multi-Scenario Orchestration     | S1         | —        |
 
 ### Cross-Story Dependencies
 
