@@ -30,7 +30,6 @@
 - [X] Write **Phase 3: Draft Feature Map** — using the workshopped answers, produce a structured `.features.md` containing: milestone title and reference back to the RFC, a numbered list of features each with title, description, user-facing value, and scope boundaries. Present the full draft for user approval before writing.
 - [X] Write **Phase 4: Output** — write `<NN>-<milestone-slug>.features.md` to the RFC folder (`docs/rfcs/<YYYY-NNN-slug>/`). Confirm the file path to the user and suggest next step: "Ready for `smithy.mark` to specify each feature."
 - [X] Write the **Rules** section: do not write code, do not skip clarification, do not publish until user confirms, render is not an entry point (requires RFC from ignite), features must be discrete units of user-facing functionality.
-- [ ] Manually test: create a sample RFC with milestones in `docs/rfcs/` (or use one from a prior ignite run), run `npm run build && node dist/cli.js init` targeting a test repo with Claude selected, restart Claude Code, invoke `/smithy.render path/to/rfc.rfc.md`, and verify the interactive flow produces a well-structured `.features.md` co-located with the RFC.
 
 **PR Outcome**: `/smithy.render` is a working slash command. Developers can break an RFC milestone into a feature map via interactive Q&A, with smart auto-selection of the next unprocessed milestone.
 
@@ -51,7 +50,6 @@
 - [X] Write **Phase 0b: Refinement Questions** — present audit findings as a summary table, then ask up to 5 refinement questions one at a time, targeting the most impactful Weak/Gap categories. Each question includes a recommended resolution. STOP after each question.
 - [X] Write **Phase 0c: Apply Refinements** — after all questions are answered, update the existing `.features.md` to incorporate refinements. Present changes for user approval before writing.
 - [X] Update the input routing logic from Slice 1: when all milestones have maps and user selects one, or when a specific milestone with an existing map is targeted, route to Phase 0.
-- [ ] Manually test: create a sample `.features.md` via Slice 1's render flow, then re-run `/smithy.render` targeting the same milestone and verify it enters the review loop with audit findings and refinement questions.
 
 **PR Outcome**: Re-running `/smithy.render` on a milestone with an existing feature map enters a structured audit and refinement flow. The "repeat to refine" convention is fully implemented for render.
 
