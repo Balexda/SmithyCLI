@@ -97,7 +97,7 @@ dispatchable but unused — safe for parallel review.
 
 ### Tasks
 
-- [ ] **Create `smithy.plan-review.prompt`**
+- [x] **Create `smithy.plan-review.prompt`**
 
   Add `src/templates/agent-skills/agents/smithy.plan-review.prompt`
   with frontmatter (`name: smithy-plan-review`, description, and
@@ -116,7 +116,7 @@ dispatchable but unused — safe for parallel review.
   - Body describes the `ReviewResult` return shape from contracts
   - Body states the agent does not modify artifacts directly
 
-- [ ] **Register the new agent in the templates index**
+- [x] **Register the new agent in the templates index**
 
   Add `smithy.plan-review.md` to the expected agents list in
   `src/templates.test.ts` and document the agent in
@@ -130,7 +130,7 @@ dispatchable but unused — safe for parallel review.
   - CLAUDE.md Sub-Agents list mentions `smithy-plan-review`
   - Gemini deployment test still excludes non-deployed agents
 
-- [ ] **Assert `smithy-plan-review` composition and tool restrictions**
+- [x] **Assert `smithy-plan-review` composition and tool restrictions**
 
   Add Tier 2 assertions in `src/templates.test.ts` mirroring the
   existing `smithy.plan.prompt` checks: verify frontmatter is
