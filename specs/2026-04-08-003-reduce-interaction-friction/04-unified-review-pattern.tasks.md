@@ -28,7 +28,7 @@ composition tests can verify its content.
 
 ### Tasks
 
-- [ ] **Rewrite `review-protocol.md` as a read-only findings protocol**
+- [x] **Rewrite `review-protocol.md` as a read-only findings protocol**
 
   Replace the current auto-fix-oriented content in
   `src/templates/agent-skills/snippets/review-protocol.md` with a
