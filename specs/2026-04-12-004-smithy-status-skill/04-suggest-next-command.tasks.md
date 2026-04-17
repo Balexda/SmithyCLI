@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add pure `suggestNextAction` module in `src/status/suggester.ts`**
+- [x] **Add pure `suggestNextAction` module in `src/status/suggester.ts`**
 
   Introduce a new pure module following the `classifier.ts` precedent: a dedicated file with a single exported function that derives a `NextAction | null` from an already-classified `ArtifactRecord` plus a boolean flag indicating whether any ancestor in the record's parent chain is `not-started`. No filesystem I/O, no network, no mutation of the input record. Re-export from `src/status/index.ts`. Apply the deterministic rule table from FR-010 (AS 4.1–4.4): `rfc` → `smithy.render`, `features` → `smithy.mark`, `spec` → `smithy.cut`, `tasks` → `smithy.forge`. Done records always return `null`. Records classified as `unknown` (parse failures) also return `null` — the data model treats `unknown` as not actionable. When the ancestor-not-started flag is `true`, the returned `NextAction` carries `suppressed_by_ancestor: true` so FR-011 suppression is visible to JSON consumers.
 
@@ -34,7 +34,7 @@
   - The module exports are visible via `import { suggestNextAction } from '../status/index.js'`.
   - The function does not read, write, or stat any file, and does not mutate the `ArtifactRecord` argument.
 
-- [ ] **Wire `suggestNextAction` into `scan()` as a post-classification pass in `src/status/scanner.ts`**
+- [x] **Wire `suggestNextAction` into `scan()` as a post-classification pass in `src/status/scanner.ts`**
 
   After the existing Phase 3 leaf-to-root classification loop, add a new pass that populates `next_action` on every record. Build an upward-walk helper keyed on `parent_path` (which Phase 2 already populates) so each record can detect whether any ancestor has `status: 'not-started'`. Call `suggestNextAction` for each record with the derived flag and assign the result to `record.next_action`. The pass must run after all statuses are finalized so ancestor classification is stable. Update the scanner module JSDoc to document the new phase. Records carrying a `read_error:` warning continue to be skipped by classification and suggestion alike — leave their `next_action` omitted (not set to `null`) so the field's absence signals "never evaluated" to JSON consumers, matching the scanner's existing skip-on-read-error behavior.
 
@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Add pure `formatNextAction` helper and render hints in the text-mode flat listing**
+- [x] **Add pure `formatNextAction` helper and render hints in the text-mode flat listing**
 
   Introduce a small pure formatter (in `src/status/suggester.ts` alongside `suggestNextAction` so related logic stays colocated) that takes a `NextAction` and returns a one-line string of the form `→ <command> <arg1> <arg2>...` with the command and space-separated arguments. Update the text-mode branch of `statusAction` in `src/commands/status.ts` so that, after printing each record's existing flat line, it also emits an indented continuation line containing the formatted hint when `record.next_action` is non-null and `record.next_action.suppressed_by_ancestor` is not `true`. Done records and suppressed records emit no hint line. The indentation is a single leading two-space pad so the hint visually attaches to its record in both the current flat listing and the eventual tree view. `--format json` output remains untouched. Resolves SD-016.
 
