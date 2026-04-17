@@ -77,7 +77,7 @@ export interface CollapseTreeOptions {
 }
 
 /**
- * Collapse `done` subtrees of `tree` in place of a non-pure
+ * Collapse `done` subtrees of `tree` instead of applying a non-pure
  * side-effectful filter. See the module-level JSDoc for the full
  * ruleset and the `--all` bypass contract. Pure function — does no I/O
  * and does not mutate its input.
