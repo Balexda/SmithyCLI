@@ -36,7 +36,7 @@
   - Each plant is listed with file path and expected scout category (Warning vs Conflict)
   - The section is discoverable from the README's existing "Intentional Gap" context so the fixture's twin purposes (health-check gap + planted inconsistencies) are documented together
 
-- [ ] **Create the scout scenario module**
+- [x] **Create the scout scenario module**
 
   Add `evals/lib/scout-scenario.ts` exporting a typed `scoutScenario: EvalScenario` constant (type imported from `./types.js`), following the shape of `strike-scenario.ts`. The scenario's `skill` and `prompt` must be authored so headless `claude -p` dispatches smithy-scout against the fixture source at shallow depth with a concrete planning context (e.g., planning a health check endpoint). Structural expectations must assert that scout's report template is present AND that at least one finding row is emitted.
 
