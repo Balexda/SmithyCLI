@@ -19,9 +19,6 @@
 - [x] In the template block, insert `## Out of Scope` immediately after the `## Goals` section (after its placeholder bullets, before `## Proposal`), with placeholder content for explicitly excluded capabilities.
 - [x] Immediately after `## Out of Scope`, insert `## Personas` (still before `## Proposal`), with placeholder content for persona roles and benefits.
 - [x] Verify the resulting section order in the template block is: Summary, Motivation / Problem Statement, Goals, Out of Scope, Personas, Proposal, Design Considerations, Decisions, Open Questions, Milestones.
-- [ ] Task 5 (pending assignment by orchestrator)
-- [ ] Task 6 (pending assignment by orchestrator)
-- [ ] Task 7 (pending assignment by orchestrator)
 
 ---
 
