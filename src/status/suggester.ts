@@ -9,12 +9,19 @@
  * network calls, and no mutation of its inputs.
  *
  * The rule table mirrors FR-010 in `smithy-status-skill.spec.md` and
- * Acceptance Scenarios 4.1–4.5:
+ * Acceptance Scenarios 4.1–4.5, extended so every hint represents a
+ * command whose on-disk prerequisites are satisfied:
  *
  * - `rfc` → `smithy.render <rfc-path>`
- * - `features` → `smithy.mark <features-path> <first-not-started-F<N>-digits>`
- * - `spec` → `smithy.cut <dirname(spec-path)> <first-not-started-US<N>-digits>`
- * - `tasks` → `smithy.forge <tasks-path>`
+ * - `features` → `smithy.mark <features-path> <first-virtual-F<N>-digits>`
+ *   (only when at least one feature row has no spec file on disk; null
+ *   otherwise so per-spec hints below the features map drive the work)
+ * - `spec` → `smithy.cut <dirname(spec-path)> <first-virtual-US<N>-digits>`
+ *   (only when at least one user-story row has no tasks file on disk;
+ *   null otherwise so per-task hints below the spec drive the work)
+ * - `tasks` → `smithy.forge <tasks-path>` for real tasks files, or
+ *   `smithy.cut <spec-folder> <US<N>-digits>` for virtual tasks
+ *   records (where the tasks file does not yet exist)
  *
  * `done` records always return `null`. `unknown`-status records (parse
  * failures that made it through classification) also return `null` — the
@@ -45,6 +52,31 @@ function numericIdSuffix(id: string): string | undefined {
 }
 
 /**
+ * Resolve the `smithy.cut` target (folder + story digits) for a
+ * virtual tasks record. Virtual tasks records carry the parent spec's
+ * path in `parent_path` and the canonical `US<N>` row id in
+ * `parent_row_id`; both are populated by the scanner whenever it emits
+ * a virtual. Returns `null` if either field is missing, so the caller
+ * can fall back to the legacy `smithy.forge` shape rather than
+ * crashing. The spec folder is derived via `path.dirname` of the
+ * parent spec file — exactly the same transform the real spec case
+ * applies at `specFolderFromPath`.
+ */
+function cutTargetFromVirtualTasks(
+  record: ArtifactRecord,
+): { folder: string; digits: string | undefined } | null {
+  const parentPath = record.parent_path;
+  if (typeof parentPath !== 'string' || parentPath.length === 0) {
+    return null;
+  }
+  const folder = specFolderFromPath(parentPath);
+  const digits = record.parent_row_id !== undefined
+    ? numericIdSuffix(record.parent_row_id)
+    : undefined;
+  return { folder, digits };
+}
+
+/**
  * Derive the `smithy.cut` target folder for a spec record.
  *
  * Real spec records have `record.path` pointing at a `.spec.md` file,
@@ -64,22 +96,31 @@ function specFolderFromPath(specPath: string): string {
 }
 
 /**
- * Find the first resolved child whose `status` is `'not-started'` and
+ * Find the first resolved child that is both `virtual` (the child
+ * artifact file does not yet exist on disk) and `not-started`, and
  * return its corresponding row's numeric id suffix. Returns `undefined`
  * if no row matches or if the matching row has no trailing digits.
+ *
+ * This is the "cuttable / markable" predicate — the suggester uses it
+ * to decide whether a features/spec parent should emit a
+ * `smithy.mark`/`smithy.cut` hint. Real (non-virtual) not-started
+ * children are deliberately skipped: their artifact file already
+ * exists, so the parent does not need to be told to create it again;
+ * the child itself will emit its own `smithy.forge` hint.
  *
  * Rows and children are paired by index — the scanner (and the
  * classifier's consumers) already guarantees `resolvedChildren` is in
  * the same order as `record.dependency_order.rows`.
  */
-function firstNotStartedRowDigits(
+function firstVirtualNotStartedRowDigits(
   record: ArtifactRecord,
   resolvedChildren: ArtifactRecord[],
 ): string | undefined {
   const rows = record.dependency_order.rows;
   const limit = Math.min(rows.length, resolvedChildren.length);
   for (let i = 0; i < limit; i++) {
-    if (resolvedChildren[i]!.status === 'not-started') {
+    const child = resolvedChildren[i]!;
+    if (child.virtual === true && child.status === 'not-started') {
       const digits = numericIdSuffix(rows[i]!.id);
       if (digits !== undefined) return digits;
     }
@@ -97,13 +138,24 @@ function firstNotStartedRowDigits(
  * 2. An `unknown`-status record returns `null` regardless of type — the
  *    data model treats `unknown` as not actionable.
  * 3. Otherwise the record is `not-started` or `in-progress` and the
- *    deterministic rule table from FR-010 applies:
+ *    deterministic rule table from FR-010 applies, with a
+ *    prerequisite check so every suggested command is runnable:
  *    - `rfc` → `smithy.render [record.path]`
- *    - `features` → `smithy.mark [record.path, <first-not-started-row-digits>]`
- *      (fallback `[record.path]` when no row matches)
- *    - `spec` → `smithy.cut [dirname(record.path), <first-not-started-row-digits>]`
- *      (fallback `[dirname(record.path)]` when no row matches)
- *    - `tasks` → `smithy.forge [record.path]`
+ *    - `features` → `smithy.mark [record.path, <first-virtual-row-digits>]`
+ *      when a feature has no spec file yet; `smithy.mark [record.path]`
+ *      only when the record has zero rows but is itself `not-started`;
+ *      `null` otherwise (every declared spec already exists, so the
+ *      per-spec hints cover the remaining work).
+ *    - `spec` → `smithy.cut [dirname(record.path), <first-virtual-row-digits>]`
+ *      when a user story has no tasks file yet; `smithy.cut [dirname(record.path)]`
+ *      only when the record has zero rows but is itself `not-started`;
+ *      `null` otherwise (every declared tasks file already exists, so
+ *      the per-task hints cover the remaining work).
+ *    - `tasks` → `smithy.forge [record.path]` for a real tasks record;
+ *      `smithy.cut [dirname(parent_path), <parent_row_id-digits>]` for
+ *      a virtual tasks record whose file does not yet exist (falling
+ *      back to the `smithy.forge` shape when the scanner did not
+ *      populate `parent_path`).
  * 4. When `ancestorNotStarted` is `true`, the returned `NextAction`
  *    includes `suppressed_by_ancestor: true`. Otherwise the field is
  *    omitted entirely (never serialized as `false`).
@@ -115,7 +167,9 @@ function firstNotStartedRowDigits(
  * @param resolvedChildren   Children whose `status` is already
  *                           finalized, in the same order as
  *                           `record.dependency_order.rows`. Ignored
- *                           for `rfc` and `tasks` records.
+ *                           for `rfc` records; also ignored for `tasks`
+ *                           records (their virtual/real state lives on
+ *                           the record itself).
  * @param ancestorNotStarted True when any ancestor in the record's
  *                           parent chain has `status: 'not-started'`.
  *                           Drives `suppressed_by_ancestor`.
@@ -144,30 +198,73 @@ export function suggestNextAction(
     }
     case 'features': {
       command = 'smithy.mark';
-      const digits = firstNotStartedRowDigits(record, resolvedChildren);
+      const digits = firstVirtualNotStartedRowDigits(record, resolvedChildren);
       if (digits !== undefined) {
         args = [record.path, digits];
-        reason = `Features map ${record.title} has a not-started feature F${digits}; run smithy.mark to produce its spec.`;
-      } else {
+        reason = `Features map ${record.title} has a feature F${digits} with no spec file yet; run smithy.mark to produce it.`;
+      } else if (
+        record.status === 'not-started' &&
+        record.dependency_order.rows.length === 0
+      ) {
+        // Pathological actionable features record with zero rows —
+        // surface the no-digits fallback so the user can still drive
+        // the command manually.
         args = [record.path];
         reason = `Features map ${record.title} is ${record.status}; run smithy.mark to produce its next spec.`;
+      } else {
+        // Every declared feature already has a spec file on disk.
+        // Nothing left to mark at this level — per-spec hints below
+        // this record cover the remaining work.
+        return null;
       }
       break;
     }
     case 'spec': {
       command = 'smithy.cut';
       const folder = specFolderFromPath(record.path);
-      const digits = firstNotStartedRowDigits(record, resolvedChildren);
+      const digits = firstVirtualNotStartedRowDigits(record, resolvedChildren);
       if (digits !== undefined) {
         args = [folder, digits];
-        reason = `Spec ${record.title} has a not-started user story US${digits}; run smithy.cut to decompose it into tasks.`;
-      } else {
+        reason = `Spec ${record.title} has a user story US${digits} with no tasks file yet; run smithy.cut to decompose it into tasks.`;
+      } else if (
+        record.status === 'not-started' &&
+        record.dependency_order.rows.length === 0
+      ) {
+        // Pathological actionable spec with zero rows — surface the
+        // no-digits fallback so the user can still drive the command
+        // manually.
         args = [folder];
         reason = `Spec ${record.title} is ${record.status}; run smithy.cut to decompose its stories into tasks.`;
+      } else {
+        // Every declared user story already has a tasks file on disk.
+        // The spec-level cut hint would be a no-op here; per-task
+        // hints below this record drive the remaining work.
+        return null;
       }
       break;
     }
     case 'tasks': {
+      // Virtual tasks records point at a path that does not yet exist
+      // on disk, so `smithy.forge` would fail. Redirect to the
+      // `smithy.cut` invocation that would create the file in the
+      // first place. Real tasks records keep the existing `forge`
+      // hint.
+      if (record.virtual === true) {
+        const cutTarget = cutTargetFromVirtualTasks(record);
+        if (cutTarget !== null) {
+          command = 'smithy.cut';
+          args = cutTarget.digits !== undefined
+            ? [cutTarget.folder, cutTarget.digits]
+            : [cutTarget.folder];
+          reason = cutTarget.digits !== undefined
+            ? `Tasks file ${record.title} does not exist yet; run smithy.cut to create it from user story US${cutTarget.digits}.`
+            : `Tasks file ${record.title} does not exist yet; run smithy.cut to create it.`;
+          break;
+        }
+        // Defensive fallback: scanner didn't populate parent fields.
+        // Keep the legacy forge shape rather than crashing so the
+        // suggester stays total.
+      }
       command = 'smithy.forge';
       args = [record.path];
       reason = `Tasks file ${record.title} is ${record.status}; run smithy.forge to implement its next slice.`;
