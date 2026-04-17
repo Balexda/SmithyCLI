@@ -519,6 +519,18 @@ ${TABLE_HEADER}
     expect(spec).toBeDefined();
     expect(spec?.virtual).toBeUndefined();
     expect(spec?.status).toBe('not-started');
+    // Linkage assertion: prove the feature row resolved to the real
+    // spec, not a virtual placeholder. Without this, a regression in
+    // folder→spec resolution could leave the feature row bound to a
+    // virtual `specs/feature-a/` placeholder while both records still
+    // independently classify as `not-started`, masking the failure.
+    expect(spec?.parent_path).toBe(
+      'specs/feature-a/feature-a.features.md',
+    );
+    const virtualSpecs = records.filter(
+      (r) => r.type === 'spec' && r.virtual === true,
+    );
+    expect(virtualSpecs).toHaveLength(0);
 
     const features = byPath(
       records,
@@ -558,6 +570,16 @@ ${TABLE_HEADER}
     expect(features).toBeDefined();
     expect(features?.virtual).toBeUndefined();
     expect(features?.status).toBe('not-started');
+    // Linkage assertion: prove the RFC row resolved to the real
+    // features file, not a virtual placeholder. Without this, a
+    // regression in path→features resolution could leave the RFC row
+    // bound to a virtual placeholder while both records still
+    // independently classify as `not-started`, masking the failure.
+    expect(features?.parent_path).toBe('docs/rfcs/demo.rfc.md');
+    const virtualFeatures = records.filter(
+      (r) => r.type === 'features' && r.virtual === true,
+    );
+    expect(virtualFeatures).toHaveLength(0);
 
     const rfc = byPath(records, 'docs/rfcs/demo.rfc.md');
     expect(rfc).toBeDefined();
