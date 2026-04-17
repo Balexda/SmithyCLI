@@ -274,13 +274,13 @@ export function parseArtifact(
 
   if (type === 'tasks') {
     try {
-      const counts = countSliceBodyCheckboxes(content);
+      const counts = countSlices(content);
       record.completed = counts.completed;
       record.total = counts.total;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       warnings.push(
-        `parser: unexpected error while counting slice checkboxes — ${message}`,
+        `parser: unexpected error while counting slices — ${message}`,
       );
       record.completed = 0;
       record.total = 0;
@@ -328,11 +328,17 @@ function filenameStem(filePath: string): string {
 }
 
 /**
- * Count `- [ ]` and `- [x]` / `- [X]` items that appear only inside
- * `## Slice <N>:` H2 body sections. Checkboxes anywhere else in the
- * file (e.g., `## Dependency Order`, appendices) are ignored.
+ * Count slices in a tasks file. Returns `{ total, completed }` where
+ * `total` is the number of `## Slice <N>:` H2 sections and `completed`
+ * is the number of those slices in which at least one task checkbox
+ * exists and every checkbox is ticked. A slice with no checkboxes is
+ * never counted as done — a well-formed slice body always lists at
+ * least one task, so an empty slice is treated as in-progress/malformed
+ * rather than complete. Checkboxes outside a `## Slice <N>:` section
+ * (e.g., `## Dependency Order`, appendices) are ignored when resolving
+ * per-slice completion.
  */
-function countSliceBodyCheckboxes(content: string): {
+function countSlices(content: string): {
   completed: number;
   total: number;
 } {
@@ -344,21 +350,38 @@ function countSliceBodyCheckboxes(content: string): {
   let completed = 0;
   let total = 0;
   let insideSlice = false;
+  let sliceCheckboxTotal = 0;
+  let sliceCheckboxCompleted = 0;
+
+  const finalizeSlice = (): void => {
+    if (!insideSlice) return;
+    total += 1;
+    if (
+      sliceCheckboxTotal > 0 &&
+      sliceCheckboxCompleted === sliceCheckboxTotal
+    ) {
+      completed += 1;
+    }
+  };
 
   for (const line of lines) {
     if (h2Regex.test(line)) {
+      finalizeSlice();
       insideSlice = sliceHeadingRegex.test(line);
+      sliceCheckboxTotal = 0;
+      sliceCheckboxCompleted = 0;
       continue;
     }
     if (!insideSlice) continue;
     const match = checkboxRegex.exec(line);
     if (match === null) continue;
-    total += 1;
+    sliceCheckboxTotal += 1;
     const marker = match[1] ?? ' ';
     if (marker === 'x' || marker === 'X') {
-      completed += 1;
+      sliceCheckboxCompleted += 1;
     }
   }
+  finalizeSlice();
 
   return { completed, total };
 }

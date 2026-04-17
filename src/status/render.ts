@@ -37,7 +37,7 @@
  * | Record state | Marker |
  * |--------------|--------|
  * | `status === 'done'` | `DONE` |
- * | `status === 'in-progress'` on a tasks record | `<completed>/<total>` |
+ * | `status === 'in-progress'` on a tasks record | `<completed-slices>/<total-slices>` |
  * | `status === 'in-progress'` on a parent record | `in progress` |
  * | `status === 'not-started'` (real or virtual) | `not started` |
  * | `status === 'unknown'` | `unknown (<first warning>)` |
