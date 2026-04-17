@@ -17,7 +17,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { loadScenarios } from './scenario-loader.js';
+import { loadScenarios, loadScenarioFromFile } from './scenario-loader.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const realCasesDir = path.resolve(here, '..', 'cases');
@@ -341,5 +341,90 @@ describe('loadScenarios', () => {
       expect(scenarios[0]!.name).toBe('real-case');
       expect(errSpy).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('loadScenarioFromFile', () => {
+  let errSpy: ReturnType<typeof vi.spyOn>;
+  const tempDirs: string[] = [];
+
+  beforeEach(() => {
+    errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    errSpy.mockRestore();
+    for (const dir of tempDirs.splice(0)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  function mkdir(): string {
+    const dir = makeTempDir();
+    tempDirs.push(dir);
+    return dir;
+  }
+
+  it('loads the real strike-health-check.yaml by exact path', () => {
+    const scenario = loadScenarioFromFile(
+      path.join(realCasesDir, 'strike-health-check.yaml'),
+    );
+    expect(scenario.name).toBe('strike-health-check');
+    expect(scenario.skill).toBe('/smithy.strike');
+    expect(errSpy).not.toHaveBeenCalled();
+  });
+
+  it('is not redirected by an alphabetically-earlier duplicate name', () => {
+    // This is the core P1 regression guard: even when another YAML in the
+    // same directory claims `name: strike-health-check` and sorts before the
+    // real file, loading by exact path must still return the real file's
+    // contents.
+    const dir = mkdir();
+    const decoy = [
+      'name: strike-health-check',
+      'skill: /smithy.decoy',
+      'prompt: should not be selected',
+      'structural_expectations:',
+      '  required_headings:',
+      '    - "## Wrong"',
+      '',
+    ].join('\n');
+    const real = [
+      'name: strike-health-check',
+      'skill: /smithy.strike',
+      'prompt: add a health check endpoint',
+      'structural_expectations:',
+      '  required_headings:',
+      '    - "## Summary"',
+      '',
+    ].join('\n');
+    fs.writeFileSync(path.join(dir, 'a-decoy.yaml'), decoy);
+    fs.writeFileSync(path.join(dir, 'strike-health-check.yaml'), real);
+
+    const scenario = loadScenarioFromFile(
+      path.join(dir, 'strike-health-check.yaml'),
+    );
+    expect(scenario.skill).toBe('/smithy.strike');
+    expect(scenario.prompt).toBe('add a health check endpoint');
+  });
+
+  it('throws when the file does not exist', () => {
+    const missing = path.join(makeTempDir(), 'does-not-exist.yaml');
+    tempDirs.push(path.dirname(missing));
+    expect(() => loadScenarioFromFile(missing)).toThrow(/failed to read/i);
+  });
+
+  it('throws with "YAML parse error" on malformed YAML', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'bad.yaml');
+    fs.writeFileSync(file, ':\n\t-::oops\n');
+    expect(() => loadScenarioFromFile(file)).toThrow(/YAML parse error/i);
+  });
+
+  it('throws with "failed validation" when required fields are missing', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'invalid.yaml');
+    fs.writeFileSync(file, 'skill: /smithy.strike\n');
+    expect(() => loadScenarioFromFile(file)).toThrow(/failed validation/i);
   });
 });

@@ -115,6 +115,46 @@ export function loadScenarios(casesDir: string): EvalScenario[] {
   return scenarios;
 }
 
+/**
+ * Load a single scenario file by exact path, bypassing the directory scan.
+ *
+ * Unlike `loadScenarios`, this helper does not depend on alphabetical
+ * filename ordering or the duplicate-name skip policy — it binds one
+ * consumer (e.g. the `strikeScenario` re-export) to one specific YAML file,
+ * so the consumer can never be silently redirected to a different file that
+ * happens to share a `name`.
+ *
+ * Throws on read, parse, or validation failure. Validation errors are
+ * aggregated into a single thrown `Error` (not stderr-logged) because the
+ * caller treats the scenario as required.
+ */
+export function loadScenarioFromFile(filePath: string): EvalScenario {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`loadScenarioFromFile: failed to read ${filePath}: ${msg}`);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(raw);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`loadScenarioFromFile: YAML parse error in ${filePath}: ${msg}`);
+  }
+
+  const errors: string[] = [];
+  const scenario = validateScenario(parsed, (reason) => errors.push(reason));
+  if (!scenario) {
+    throw new Error(
+      `loadScenarioFromFile: ${filePath} failed validation: ${errors.join('; ')}`,
+    );
+  }
+  return scenario;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

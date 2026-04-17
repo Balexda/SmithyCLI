@@ -3,17 +3,19 @@
  *
  * The scenario's fields — `name`, `skill`, `prompt`, and
  * `structural_expectations` — live in `evals/cases/strike-health-check.yaml`
- * as the single declarative source of truth. This module loads that file
- * through `loadScenarios` and re-exports the resulting `EvalScenario` under
- * the historical `strikeScenario` name so existing consumers
+ * as the single declarative source of truth. This module loads that specific
+ * file via `loadScenarioFromFile` and re-exports the resulting `EvalScenario`
+ * under the historical `strikeScenario` name so existing consumers
  * (`evals/run-evals.ts` and `evals/lib/strike-scenario.test.ts`) continue to
- * import the same symbol unchanged.
+ * import the same symbol unchanged. A later slice rewires `run-evals.ts` to
+ * call the loader directly, at which point this file can be deleted.
  *
- * Keeping this indirection for the duration of Slice 1 means the pre-existing
- * spike-capture test transitively exercises the loader's happy path: if the
- * YAML round-trip drifts from the original literal, `strike-scenario.test.ts`
- * will catch it without any test churn. A later slice rewires `run-evals.ts`
- * to call `loadScenarios` directly, at which point this file can be deleted.
+ * Loading by exact path rather than by name-search across the cases
+ * directory keeps this export unambiguously bound to
+ * `strike-health-check.yaml`: no alphabetically-earlier YAML claiming the
+ * same `name` can redirect the canonical strike scenario. The spike-capture
+ * test (`strike-scenario.test.ts`) remains the regression guard that the
+ * YAML round-trip preserves the scenario's behavioral contract.
  *
  * The load runs at module-import time (the loader uses synchronous `fs`
  * calls). That matches the test file's own top-level `fs.readFileSync`, and
@@ -30,19 +32,16 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { loadScenarios } from './scenario-loader.js';
+import { loadScenarioFromFile } from './scenario-loader.js';
 import type { EvalScenario } from './types.js';
 
-// Resolve `evals/cases/` relative to this source file so the load works the
-// same under `tsx evals/run-evals.ts` and under vitest regardless of CWD.
+// Resolve the specific case file relative to this source file so the load
+// works the same under `tsx evals/run-evals.ts` and under vitest regardless
+// of CWD. Loading by exact path — rather than by name-search across the
+// cases directory — ensures this export is always bound to
+// `strike-health-check.yaml` and can never be hijacked by a different file
+// that declares the same `name`.
 const here = path.dirname(fileURLToPath(import.meta.url));
-const casesDir = path.resolve(here, '..', 'cases');
+const strikeCasePath = path.resolve(here, '..', 'cases', 'strike-health-check.yaml');
 
-const found = loadScenarios(casesDir).find((s) => s.name === 'strike-health-check');
-if (!found) {
-  throw new Error(
-    'strike-health-check scenario not found in evals/cases/ — strike-health-check.yaml may have been renamed or removed, or it may exist but have failed validation. Check stderr output for parse or validation errors from scenario loading.',
-  );
-}
-
-export const strikeScenario: EvalScenario = found;
+export const strikeScenario: EvalScenario = loadScenarioFromFile(strikeCasePath);
