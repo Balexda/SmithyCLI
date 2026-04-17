@@ -150,6 +150,15 @@ export interface ArtifactRecord {
    */
   parent_missing?: boolean;
   /**
+   * Canonical row id on the parent's `## Dependency Order` table that
+   * claimed this record (e.g. `US3`, `F1`, `M2`). Populated by the
+   * scanner during parent/child resolution. Omitted for top-level
+   * records and broken/orphan cases where no parent row was matched.
+   * Renderers use this to prefix children with their zero-padded story
+   * number so the tree mirrors the parent's dep-order numbering.
+   */
+  parent_row_id?: string;
+  /**
    * True for not-started records inferred from a parent's parsed
    * `## Dependency Order` table but not yet present on disk. `virtual`
    * records always have `status: 'not-started'` and their `path` is the

@@ -153,7 +153,10 @@ function renderChild(
 /**
  * Format a single record into its rendered line. Group sentinels
  * render as bare headings; real records append a status marker and,
- * for broken-link records, their dangling parent reference.
+ * for broken-link records, their dangling parent reference. Records
+ * whose scanner populated `parent_row_id` get the zero-padded story
+ * number injected into the label so the tree mirrors the parent's
+ * canonical dep-order numbering.
  */
 function formatLine(record: ArtifactRecord, prefix: string): string {
   if (isGroupSentinel(record)) {
@@ -161,14 +164,36 @@ function formatLine(record: ArtifactRecord, prefix: string): string {
   }
 
   const marker = formatStatusMarker(record);
+  const titleWithNumber = applyStoryNumber(record.title, record.parent_row_id);
   const label =
     record.parent_missing === true &&
     typeof record.parent_path === 'string' &&
     record.parent_path.length > 0
-      ? `${record.title} [missing parent: ${record.parent_path}]`
-      : record.title;
+      ? `${titleWithNumber} [missing parent: ${record.parent_path}]`
+      : titleWithNumber;
 
   return `${prefix}${label}  ${marker}`;
+}
+
+/**
+ * Inject the parent row's zero-padded numeric prefix into `title`.
+ * When the title carries a type prefix like `Tasks: …` (emitted by
+ * `smithy.cut` as the H1 of every tasks file), the number slots in
+ * after that prefix so the prefix stays visible. Otherwise the number
+ * prefixes the title directly. Returns the title unchanged when
+ * `rowId` is missing or has no trailing digits.
+ */
+function applyStoryNumber(title: string, rowId: string | undefined): string {
+  if (rowId === undefined) return title;
+  const digits = rowId.match(/[0-9]+$/)?.[0];
+  if (digits === undefined) return title;
+  const nn = digits.padStart(2, '0');
+  const tasksPrefix = /^(Tasks:\s+)/;
+  const prefixMatch = tasksPrefix.exec(title);
+  if (prefixMatch !== null) {
+    return `${prefixMatch[1]}${nn} ${title.slice(prefixMatch[0].length)}`;
+  }
+  return `${nn} ${title}`;
 }
 
 /**

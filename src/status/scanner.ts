@@ -139,6 +139,7 @@ export function scan(root: string): ArtifactRecord[] {
           );
         } else {
           child.parent_path = parent.path;
+          child.parent_row_id = row.id;
         }
       } else {
         child = makeVirtualRecord(resolution.path, resolution.type, row, parent);
@@ -579,6 +580,7 @@ function makeVirtualRecord(
     title: row.title,
     status: 'not-started',
     parent_path: parent.path,
+    parent_row_id: row.id,
     virtual: true,
     dependency_order: {
       rows: [],

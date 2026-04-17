@@ -393,6 +393,90 @@ describe('renderTree — group sentinel detection', () => {
   });
 });
 
+describe('renderTree — story number prefix', () => {
+  it('injects zero-padded story number after a leading `Tasks: ` prefix', () => {
+    // Real tasks file: H1 is `# Tasks: <title>`, so the record's title
+    // carries the `Tasks: ` prefix verbatim. The scanner's Phase 2
+    // populates `parent_row_id` from the owning spec row (e.g. US3),
+    // and the renderer must slot `03` in after the `Tasks: ` prefix —
+    // not before it — so the type prefix stays visible.
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/feature-a/03-suggest-next.tasks.md',
+      title: 'Tasks: Suggest the Next Command',
+      status: 'not-started',
+      parent_path: 'specs/feature-a/feature-a.spec.md',
+      parent_row_id: 'US3',
+    });
+    const output = renderTree({
+      roots: [{ record: tasks, children: [] }],
+    });
+    expect(output).toBe('Tasks: 03 Suggest the Next Command  not started');
+  });
+
+  it('prefixes virtual records (from `—` spec rows) with their US number', () => {
+    // Virtual records carry the parent row's title verbatim (no
+    // `Tasks: ` prefix). The renderer must prepend the zero-padded
+    // number directly to the title.
+    const virt = makeRecord({
+      type: 'tasks',
+      path: 'specs/feature-a/07-collapse.tasks.md',
+      title: 'Collapse Completed Items',
+      status: 'not-started',
+      virtual: true,
+      parent_path: 'specs/feature-a/feature-a.spec.md',
+      parent_row_id: 'US7',
+    });
+    const output = renderTree({
+      roots: [{ record: virt, children: [] }],
+    });
+    expect(output).toBe('07 Collapse Completed Items  not started');
+  });
+
+  it('zero-pads single-digit US numbers and preserves multi-digit numbers', () => {
+    const us1 = makeRecord({
+      type: 'tasks',
+      path: 'specs/a/01-one.tasks.md',
+      title: 'Tasks: One',
+      status: 'done',
+      parent_path: 'specs/a/a.spec.md',
+      parent_row_id: 'US1',
+    });
+    const us12 = makeRecord({
+      type: 'tasks',
+      path: 'specs/a/12-twelve.tasks.md',
+      title: 'Tasks: Twelve',
+      status: 'done',
+      parent_path: 'specs/a/a.spec.md',
+      parent_row_id: 'US12',
+    });
+    const output = renderTree({
+      roots: [
+        { record: us1, children: [] },
+        { record: us12, children: [] },
+      ],
+    });
+    expect(output.split('\n')).toEqual([
+      'Tasks: 01 One  DONE',
+      'Tasks: 12 Twelve  DONE',
+    ]);
+  });
+
+  it('leaves records without parent_row_id unchanged', () => {
+    // Top-level RFCs and orphan tasks have no parent row and must not
+    // gain a spurious number prefix.
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo RFC',
+      status: 'done',
+      parent_path: null,
+    });
+    const output = renderTree({ roots: [{ record: rfc, children: [] }] });
+    expect(output).toBe('Demo RFC  DONE');
+  });
+});
+
 describe('renderTree — orphaned tasks error output', () => {
   it('renders real tasks with no parent as flat ERROR lines (not nested tree rows)', () => {
     // A real on-disk `.tasks.md` that could not be linked to a spec is
