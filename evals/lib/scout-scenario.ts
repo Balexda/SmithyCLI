@@ -116,7 +116,12 @@ export const scoutScenario: EvalScenario = {
       // Matches the dispatch phrasing in assistant text (FR-016 example
       // style, mirroring the smithy-clarify guidance). Also matches the
       // sub-agent's report output when it appears in dispatch resultText.
-      pattern: 'dispatching the.*smithy-scout',
+      // `validateStructure` compiles patterns via `new RegExp(pattern)` with
+      // no flags, so `.` does not match newlines and matching is
+      // case-sensitive. `[Dd]` tolerates a sentence-initial capital and
+      // `[\s\S]*` bridges any line breaks the model may insert between
+      // "the" and the agent name.
+      pattern: '[Dd]ispatching the[\\s\\S]*smithy-scout',
     },
   ],
 };

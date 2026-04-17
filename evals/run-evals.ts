@@ -85,7 +85,18 @@ const baseScenarios: EvalScenario[] = [strikeScenario, scoutScenario];
 // should never trigger a real claude invocation.
 let selectedScenarios: EvalScenario[] = baseScenarios;
 const caseFilter = values['case'];
-if (typeof caseFilter === 'string') {
+if (caseFilter !== undefined) {
+  // `parseArgs` runs with `strict: false`, so `--case` passed without a value
+  // yields the boolean `true` rather than throwing. Require a non-empty
+  // string here so a bare `--case` flag fails fast instead of silently
+  // running every scenario against a live `claude` invocation.
+  if (typeof caseFilter !== 'string' || caseFilter.length === 0) {
+    const available = baseScenarios.map((s) => s.name).join(', ');
+    console.error(
+      `Error: --case requires a scenario name. Available scenarios: ${available}`,
+    );
+    process.exit(1);
+  }
   const matched = baseScenarios.filter((s) => s.name === caseFilter);
   if (matched.length === 0) {
     const available = baseScenarios.map((s) => s.name).join(', ');
