@@ -27,7 +27,7 @@
   - `npm test` continues to pass (the existing fixture deployment test re-hashes the directory, so any edits are implicitly covered)
   - No new runtime files are added — the plant is an edit inside existing fixture source files
 
-- [ ] **Document the planted inconsistencies in the fixture README**
+- [x] **Document the planted inconsistencies in the fixture README**
 
   Extend `evals/fixture/README.md` with a "Planted Inconsistencies" section listing each deliberate flaw, the file it lives in, and the scout severity category it is expected to trigger. This is the signal that tells future maintainers (and smithy-fix / smithy-scout itself at higher depths) not to "clean up" the plant.
 
