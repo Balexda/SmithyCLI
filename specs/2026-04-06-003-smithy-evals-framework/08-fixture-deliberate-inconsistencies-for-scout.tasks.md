@@ -60,7 +60,7 @@
   - A negative sample containing one of FR-012's generic refusal strings fails the forbidden-pattern check
   - The test imports `scoutScenario` by name rather than redefining expectations inline, preserving a single source of truth
 
-- [ ] **Wire the scout scenario into the orchestrator**
+- [x] **Wire the scout scenario into the orchestrator**
 
   Update `evals/run-evals.ts` to run `scoutScenario` alongside `strikeScenario` so `npm run eval` exercises both cases in a single invocation. The orchestrator's existing structural and sub-agent validation pipeline (from US4 Slice 2) and `EvalReport` aggregation (from US9 Slice 2) must continue to operate unchanged — only the scenario list grows.
 

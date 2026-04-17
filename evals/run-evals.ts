@@ -1,19 +1,21 @@
 /**
  * Minimal orchestrator entry point for the Smithy evals framework.
  *
- * Accepts --fixture and --timeout CLI flags; calls preflight() on startup;
- * runs the imported `strikeScenario`, validates output structure, prints
+ * Accepts --fixture, --timeout, and --case CLI flags; calls preflight() on
+ * startup; runs each configured scenario (currently the imported
+ * `strikeScenario` and `scoutScenario`), validates output structure, prints
  * per-check pass/fail results to stdout, assembles a full `EvalReport` via
- * the report library, prints the formatted summary, and exits with code 1
- * if the report's `overall_status` is `'fail'`.
+ * the report library across ALL scenarios, prints the formatted summary,
+ * and exits with code 1 if the report's `overall_status` is `'fail'`.
  *
- * US7 will replace the imported scenario with YAML loading — the
- * one-element `results` array passed to `buildReport` becomes N-element
- * without changes to the summary code path.
+ * `--case <name>` honors FR-008: the flag filters the scenario list to the
+ * single scenario whose `name` matches. Full YAML scenario loading still
+ * lands in US7 — this wiring keeps the scenario list as a typed array so the
+ * migration to YAML replaces only the list-construction step.
  *
- * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-009, FR-010,
- * FR-012; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 9.1, 9.2,
- * 9.3
+ * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-008, FR-009,
+ * FR-010, FR-012; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3,
+ * 8.1, 8.2, 9.1, 9.2, 9.3
  */
 
 import { parseArgs } from 'node:util';
@@ -25,7 +27,8 @@ import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
 import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
 import { strikeScenario } from './lib/strike-scenario.js';
-import type { CheckResult, EvalScenario } from './lib/types.js';
+import { scoutScenario } from './lib/scout-scenario.js';
+import type { CheckResult, EvalResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
 // Run-wide wall-clock timer — started before any orchestrator work (preflight,
@@ -45,6 +48,7 @@ const { values } = parseArgs({
   options: {
     fixture: { type: 'string', default: 'evals/fixture' },
     timeout: { type: 'string' },
+    case: { type: 'string' },
   },
   strict: false,
 });
@@ -62,6 +66,35 @@ if (values['timeout'] !== undefined) {
     process.exit(1);
   }
   timeoutOverrideSec = parsed;
+}
+
+// ---------------------------------------------------------------------------
+// Scenario list (US7 will replace this with YAML loading)
+// ---------------------------------------------------------------------------
+//
+// Scenario definitions live in `./lib/{strike,scout}-scenario.ts` as a single
+// source of truth shared with each scenario's unit test. Strike is listed
+// first so log output ordering stays stable for anyone reading eval runs.
+// The `--case` filter below narrows this list to a single entry; the
+// `--timeout` override is layered on every remaining scenario.
+
+const baseScenarios: EvalScenario[] = [strikeScenario, scoutScenario];
+
+// --case filter (FR-008). Fails fast — before preflight — when the requested
+// name matches none of the configured scenarios, because a typo'd case name
+// should never trigger a real claude invocation.
+let selectedScenarios: EvalScenario[] = baseScenarios;
+const caseFilter = values['case'];
+if (typeof caseFilter === 'string') {
+  const matched = baseScenarios.filter((s) => s.name === caseFilter);
+  if (matched.length === 0) {
+    const available = baseScenarios.map((s) => s.name).join(', ');
+    console.error(
+      `Error: No scenario matches --case "${caseFilter}". Available scenarios: ${available}`,
+    );
+    process.exit(1);
+  }
+  selectedScenarios = matched;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,105 +123,111 @@ if (!fixtureStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
-// Scenarios (US7 will replace this with YAML loading)
+// Apply --timeout override (if any) to every selected scenario.
 // ---------------------------------------------------------------------------
 //
-// The scenario definition lives in `./lib/strike-scenario.ts` as a single
-// source of truth shared with `strike-scenario.test.ts`. When the user
-// passes `--timeout`, layer it on top of the imported constant; otherwise
-// leave `scenario.timeout` undefined so the runner's DEFAULT_TIMEOUT_MS
-// applies (FR-004). The list is held as an array so the pre-execution case
-// count (US11 AS 11.1) sources its value from `scenarios.length` — US7 can
-// swap in an N-element YAML-loaded array without touching the count line.
-const scenarios: EvalScenario[] = [
-  timeoutOverrideSec !== undefined
-    ? { ...strikeScenario, timeout: timeoutOverrideSec }
-    : { ...strikeScenario },
-];
+// `finalScenarios.length` is also the source of truth for the pre-execution
+// case count (US11 AS 11.1). When US7 swaps in a YAML-loaded array, this
+// count line continues to work unchanged.
 
-console.log(`Running ${scenarios.length} case(s)`);
-console.log('');
-
-const scenario = scenarios[0]!;
-
-console.log(`Running scenario: ${scenario.name}`);
-console.log(`  Skill:   ${scenario.skill}`);
-console.log(`  Prompt:  ${scenario.prompt}`);
-console.log(`  Fixture: ${fixtureDir}`);
-console.log(
-  `  Timeout: ${
-    scenario.timeout !== undefined
-      ? `${scenario.timeout}s (--timeout override)`
-      : 'runner default'
-  }`,
+const finalScenarios: EvalScenario[] = selectedScenarios.map((s) =>
+  timeoutOverrideSec !== undefined ? { ...s, timeout: timeoutOverrideSec } : { ...s },
 );
+
+console.log(`Running ${finalScenarios.length} case(s)`);
 console.log('');
 
-let output;
-try {
-  output = await runScenario(scenario, fixtureDir);
-} catch (err) {
-  console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
-}
-
-console.log(`  Duration:  ${output.duration_ms}ms`);
-if (output.timed_out) console.log('  Timed out: yes');
-if (output.exit_code !== 0) console.log(`  Exit code: ${output.exit_code}`);
-console.log(`  Text length: ${output.extracted_text.length} chars`);
-console.log(`  Stream events: ${output.stream_events.length}`);
-
 // ---------------------------------------------------------------------------
-// Structural validation (FR-005, FR-006)
+// Run each scenario in order, collecting per-scenario EvalResults.
 // ---------------------------------------------------------------------------
+//
+// Error-handling choice: on `runScenario` throw we keep the pre-US8 behavior
+// and `process.exit(1)` immediately. The task brief explicitly calls for the
+// conservative wire-up — "the orchestrator's existing structural and
+// sub-agent validation pipeline ... must continue to operate unchanged — only
+// the scenario list grows." Aggregating runScenario errors across scenarios
+// would be a behavioral change beyond the stated scope, so we defer it.
 
-let structuralChecks: CheckResult[];
-let subAgentChecks: CheckResult[] = [];
-try {
-  structuralChecks = validateStructure(
-    output.extracted_text,
-    scenario.structural_expectations,
+const results: EvalResult[] = [];
+
+for (const scenario of finalScenarios) {
+  console.log(`Running scenario: ${scenario.name}`);
+  console.log(`  Skill:   ${scenario.skill}`);
+  console.log(`  Prompt:  ${scenario.prompt}`);
+  console.log(`  Fixture: ${fixtureDir}`);
+  console.log(
+    `  Timeout: ${
+      scenario.timeout !== undefined
+        ? `${scenario.timeout}s (--timeout override)`
+        : 'runner default'
+    }`,
   );
+  console.log('');
 
-  if (scenario.sub_agent_evidence && scenario.sub_agent_evidence.length > 0) {
-    const dispatches = extractSubAgentDispatches(output.stream_events);
-    subAgentChecks = verifySubAgents(
+  let output;
+  try {
+    output = await runScenario(scenario, fixtureDir);
+  } catch (err) {
+    console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+
+  console.log(`  Duration:  ${output.duration_ms}ms`);
+  if (output.timed_out) console.log('  Timed out: yes');
+  if (output.exit_code !== 0) console.log(`  Exit code: ${output.exit_code}`);
+  console.log(`  Text length: ${output.extracted_text.length} chars`);
+  console.log(`  Stream events: ${output.stream_events.length}`);
+
+  // -------------------------------------------------------------------------
+  // Structural validation (FR-005, FR-006)
+  // -------------------------------------------------------------------------
+
+  let structuralChecks: CheckResult[];
+  let subAgentChecks: CheckResult[] = [];
+  try {
+    structuralChecks = validateStructure(
       output.extracted_text,
-      dispatches,
-      scenario.sub_agent_evidence,
+      scenario.structural_expectations,
     );
-  }
-} catch (err) {
-  console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
-}
 
-console.log('');
-console.log('Checks:');
-for (const check of [...structuralChecks, ...subAgentChecks]) {
-  if (check.passed) {
-    console.log(`  [PASS] ${check.check_name}`);
-  } else {
-    console.log(
-      `  [FAIL] ${check.check_name} — expected: ${check.expected}, actual: ${check.actual}`,
-    );
+    if (scenario.sub_agent_evidence && scenario.sub_agent_evidence.length > 0) {
+      const dispatches = extractSubAgentDispatches(output.stream_events);
+      subAgentChecks = verifySubAgents(
+        output.extracted_text,
+        dispatches,
+        scenario.sub_agent_evidence,
+      );
+    }
+  } catch (err) {
+    console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
   }
+
+  console.log('');
+  console.log('Checks:');
+  for (const check of [...structuralChecks, ...subAgentChecks]) {
+    if (check.passed) {
+      console.log(`  [PASS] ${check.check_name}`);
+    } else {
+      console.log(
+        `  [FAIL] ${check.check_name} — expected: ${check.expected}, actual: ${check.actual}`,
+      );
+    }
+  }
+  console.log('');
+
+  results.push(
+    scenarioRunToResult(scenario, output, structuralChecks, subAgentChecks),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Aggregate summary (FR-009; AS 9.1, 9.2, 9.3)
 // ---------------------------------------------------------------------------
 
-const evalResult = scenarioRunToResult(
-  scenario,
-  output,
-  structuralChecks,
-  subAgentChecks,
-);
 const totalDurationMs = Math.round(performance.now() - runStartPerf);
-const report = buildReport([evalResult], totalDurationMs);
+const report = buildReport(results, totalDurationMs);
 
-console.log('');
 console.log(formatReport(report));
 
 process.exit(report.overall_status === 'pass' ? 0 : 1);
