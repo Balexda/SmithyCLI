@@ -575,6 +575,12 @@ describe('CLI status', () => {
         title: string;
         status: string;
         dependency_order: { rows: unknown[]; id_prefix: string; format: string };
+        next_action?: {
+          command: string;
+          arguments: string[];
+          reason: string;
+          suppressed_by_ancestor?: boolean;
+        } | null;
       }>;
       tree: { roots: unknown[] };
       graph: { nodes: unknown; layers: unknown[]; cycles: unknown[]; dangling_refs: unknown[] };
@@ -624,6 +630,18 @@ describe('CLI status', () => {
     expect(payload.summary.counts.spec.done).toBe(1);
     expect(payload.summary.counts.tasks.done).toBe(1);
     expect(payload.summary.parse_error_count).toBe(0);
+
+    // US4 Slice 1 Task 2: JSON consumers see the populated
+    // next_action outcome on every classified record. Every record in
+    // this fixture rolls up to `done`, so each one must serialize
+    // `next_action: null` (evaluated, no action) rather than omit the
+    // field entirely (never evaluated).
+    expect(tasksRecord?.next_action).toBeNull();
+    expect(specRecord?.next_action).toBeNull();
+    const featuresRecord = payload.records.find((r) => r.type === 'features');
+    const rfcRecord = payload.records.find((r) => r.type === 'rfc');
+    expect(featuresRecord?.next_action).toBeNull();
+    expect(rfcRecord?.next_action).toBeNull();
   });
 
   it('text mode prints a per-type summary header above the flat listing (AS 7.1)', () => {
@@ -875,7 +893,17 @@ describe('CLI status', () => {
       { encoding: 'utf-8' },
     );
     const payload = JSON.parse(output) as {
-      records: unknown[];
+      records: Array<{
+        type: string;
+        path: string;
+        status: string;
+        next_action?: {
+          command: string;
+          arguments: string[];
+          reason: string;
+          suppressed_by_ancestor?: boolean;
+        } | null;
+      }>;
       tree: { roots: Array<{ record: { path: string; title: string }; children: unknown[] }> };
     };
 
@@ -929,6 +957,21 @@ describe('CLI status', () => {
     );
     expect(features?.[0]?.children[0]?.children[0]?.record.path).toBe(
       'specs/chain-feature/01-chain-story.tasks.md',
+    );
+
+    // US4 Slice 1 Task 2: at least one non-done record in this fixture
+    // carries a populated `next_action` with a valid smithy command.
+    // The chain's tasks file has an unchecked checkbox, so it is
+    // not-started, and the scanner's Phase 4 must have populated its
+    // next_action with smithy.forge pointing at the tasks path.
+    const chainTasks = payload.records.find(
+      (r) => r.path === 'specs/chain-feature/01-chain-story.tasks.md',
+    );
+    expect(chainTasks).toBeDefined();
+    expect(chainTasks?.status).toBe('not-started');
+    expect(chainTasks?.next_action).not.toBeNull();
+    expect(chainTasks?.next_action?.command).toMatch(
+      /^smithy\.(mark|cut|forge|render|ignite|strike)$/,
     );
   });
 

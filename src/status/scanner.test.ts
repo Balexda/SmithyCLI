@@ -777,4 +777,191 @@ ${TABLE_HEADER}
     expect(tasks.parent_path).toBeUndefined();
     expect(tasks.parent_missing).toBeUndefined();
   });
+
+  // -------------------------------------------------------------------------
+  // Phase 4: next-action suggestion
+  //
+  // US4 Slice 1 Task 2 wires `suggestNextAction` into `scan()` as a
+  // post-classification pass. After Phase 3 finalizes status for every
+  // record, Phase 4 walks each record's `parent_path` chain to detect a
+  // `not-started` ancestor and calls `suggestNextAction` to populate
+  // `record.next_action`. The tests below lock the observable contract:
+  // done/unknown records get `null`, actionable records get a
+  // `NextAction` from the deterministic rule table, descendants of a
+  // `not-started` ancestor carry `suppressed_by_ancestor: true`, and
+  // records with a `read_error:` warning leave `next_action` omitted.
+  // -------------------------------------------------------------------------
+
+  it('Phase 4: every record in a fully-done chain gets next_action === null', () => {
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Only | — | specs/feature-a/feature-a.features.md |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Only | — | specs/feature-a/ |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Only | — | specs/feature-a/01-only.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-a/01-only.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [x] One\n- [x] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+
+    const records = scan(root);
+    const rfc = byPath(records, 'docs/rfcs/demo.rfc.md');
+    const features = byPath(records, 'specs/feature-a/feature-a.features.md');
+    const spec = byPath(records, 'specs/feature-a/feature-a.spec.md');
+    const tasks = byPath(records, 'specs/feature-a/01-only.tasks.md');
+    expect(rfc?.status).toBe('done');
+    expect(features?.status).toBe('done');
+    expect(spec?.status).toBe('done');
+    expect(tasks?.status).toBe('done');
+    expect(rfc?.next_action).toBeNull();
+    expect(features?.next_action).toBeNull();
+    expect(spec?.next_action).toBeNull();
+    expect(tasks?.next_action).toBeNull();
+  });
+
+  it('Phase 4: actionable tasks record with in-progress ancestors gets smithy.forge and no suppression', () => {
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | One | — | specs/feature-a/01-a.tasks.md |\n| US2 | Two | — | specs/feature-a/02-b.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-a/01-a.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/feature-a/02-b.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [x] Done one\n- [ ] Pending two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const spec = byPath(records, 'specs/feature-a/feature-a.spec.md');
+    const t2 = byPath(records, 'specs/feature-a/02-b.tasks.md');
+    expect(spec?.status).toBe('in-progress');
+    expect(t2?.status).toBe('in-progress');
+    expect(t2?.next_action).not.toBeNull();
+    expect(t2?.next_action?.command).toBe('smithy.forge');
+    expect(t2?.next_action?.suppressed_by_ancestor).toBeUndefined();
+    // The in-progress spec parent is also actionable and not suppressed.
+    expect(spec?.next_action?.command).toBe('smithy.cut');
+    expect(spec?.next_action?.suppressed_by_ancestor).toBeUndefined();
+  });
+
+  it('Phase 4: multi-level not-started chain — only the topmost ancestor is un-suppressed, descendants are suppressed', () => {
+    // rfc not-started (top), with a — M1 row that produces a virtual
+    // features child (not-started). The virtual features record in
+    // turn has no dependency_order rows so it stays at not-started.
+    // A real spec record under the same feature-a folder is discovered
+    // but is not linked to the rfc chain (it is an orphan for this
+    // test); we do not need it to verify the chain below.
+    //
+    // Build an explicit three-level real chain so the ancestor walk has
+    // two levels to traverse: rfc → features → spec (all not-started).
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Only | — | specs/feature-a/feature-a.features.md |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Only | — | specs/feature-a/feature-a.spec.md |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Only | — | — |\n`,
+    );
+
+    const records = scan(root);
+    const rfc = byPath(records, 'docs/rfcs/demo.rfc.md');
+    const features = byPath(records, 'specs/feature-a/feature-a.features.md');
+    const spec = byPath(records, 'specs/feature-a/feature-a.spec.md');
+    // All three are not-started (the tasks virtual is not-started, so
+    // spec rolls up to not-started; features' only child is spec
+    // not-started, so features is not-started; rfc's only child is
+    // features not-started, so rfc is not-started).
+    expect(rfc?.status).toBe('not-started');
+    expect(features?.status).toBe('not-started');
+    expect(spec?.status).toBe('not-started');
+
+    // Topmost ancestor (rfc) has no parent and therefore no suppression.
+    expect(rfc?.next_action).not.toBeNull();
+    expect(rfc?.next_action?.command).toBe('smithy.render');
+    expect(rfc?.next_action?.suppressed_by_ancestor).toBeUndefined();
+
+    // Features and spec are both descendants of a not-started ancestor,
+    // so their suggestions must carry the suppression flag.
+    expect(features?.next_action).not.toBeNull();
+    expect(features?.next_action?.suppressed_by_ancestor).toBe(true);
+    expect(spec?.next_action).not.toBeNull();
+    expect(spec?.next_action?.suppressed_by_ancestor).toBe(true);
+
+    // The virtual tasks record under the spec row is also suppressed —
+    // every ancestor in its chain is not-started.
+    const virtualTasks = records.find(
+      (r) => r.type === 'tasks' && r.virtual === true,
+    );
+    expect(virtualTasks).toBeDefined();
+    expect(virtualTasks?.next_action).not.toBeNull();
+    expect(virtualTasks?.next_action?.command).toBe('smithy.forge');
+    expect(virtualTasks?.next_action?.suppressed_by_ancestor).toBe(true);
+  });
+
+  it('Phase 4: top-level rfc with no feature-map children gets smithy.render and no suppression', () => {
+    // An rfc whose dependency_order table has zero rows classifies as
+    // not-started with no children — the acceptance criterion covers
+    // the "orphan top-level rfc" case from the task description.
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n`,
+    );
+    const records = scan(root);
+    const rfc = byPath(records, 'docs/rfcs/demo.rfc.md');
+    expect(rfc).toBeDefined();
+    expect(rfc?.status).toBe('not-started');
+    expect(rfc?.next_action).not.toBeNull();
+    expect(rfc?.next_action?.command).toBe('smithy.render');
+    expect(rfc?.next_action?.arguments).toEqual(['docs/rfcs/demo.rfc.md']);
+    expect(rfc?.next_action?.suppressed_by_ancestor).toBeUndefined();
+  });
+
+  it('Phase 4: a read_error tasks record leaves next_action omitted (not null)', () => {
+    // Mirror the existing `broken-link detection: ... read_error ...`
+    // test: create a file, strip read permission, and verify the
+    // scanner neither classifies nor suggests on it. The `next_action`
+    // field must be ABSENT (in-operator check) to preserve the "never
+    // evaluated" semantic — distinct from `null` which means
+    // "evaluated, no action".
+    const abs = join(root, 'specs', 'feature-a', '01-broken.tasks.md');
+    write(
+      'specs/feature-a/01-broken.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [ ] Task\n`,
+    );
+    try {
+      chmodSync(abs, 0o000);
+    } catch {
+      return; // Platform without chmod — skip.
+    }
+    let records: ReturnType<typeof scan>;
+    try {
+      records = scan(root);
+    } finally {
+      try {
+        chmodSync(abs, 0o644);
+      } catch {
+        /* ignore */
+      }
+    }
+    const tasks = byPath(records, 'specs/feature-a/01-broken.tasks.md');
+    if (tasks === undefined) {
+      return; // Running as root — chmod did not block the read.
+    }
+    if (!tasks.warnings.some((w) => w.startsWith('read_error:'))) {
+      return; // Same — chmod did not produce a read error on this host.
+    }
+    expect('next_action' in tasks).toBe(false);
+    expect(tasks.next_action).toBeUndefined();
+  });
 });
