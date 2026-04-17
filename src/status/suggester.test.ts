@@ -340,6 +340,51 @@ describe('suggestNextAction — spec records', () => {
     expect(action!.command).toBe('smithy.cut');
     expect(action!.arguments).toEqual(['specs/empty']);
   });
+
+  it('preserves the virtual spec folder path when record.path ends with a trailing slash', () => {
+    // Virtual spec records emitted by the scanner (feature-map row whose
+    // `Artifact` cell points at a folder with no discovered `.spec.md`)
+    // use the folder path itself as `record.path` — including the
+    // trailing slash. `path.dirname('specs/webhooks/')` collapses to
+    // `'specs'`, which would cause smithy.cut to target the wrong
+    // directory. The first argument must be the folder itself with
+    // trailing slashes stripped.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      path: 'specs/webhooks/',
+      virtual: true,
+      dependency_order: {
+        rows: [],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual(['specs/webhooks']);
+  });
+
+  it('preserves the virtual spec folder path even with a matching not-started row', () => {
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      path: 'specs/webhooks/',
+      virtual: true,
+      dependency_order: {
+        rows: [makeRow('US2')],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const action = suggestNextAction(
+      record,
+      [makeChild('not-started', 'tasks')],
+      false,
+    );
+    expect(action!.arguments).toEqual(['specs/webhooks', '2']);
+  });
 });
 
 describe('suggestNextAction — ancestor suppression flag', () => {

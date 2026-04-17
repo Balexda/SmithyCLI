@@ -45,6 +45,25 @@ function numericIdSuffix(id: string): string | undefined {
 }
 
 /**
+ * Derive the `smithy.cut` target folder for a spec record.
+ *
+ * Real spec records have `record.path` pointing at a `.spec.md` file,
+ * so the target folder is `dirname(path)`. Virtual spec records (emitted
+ * by the scanner when a features row points at a spec folder with no
+ * discovered `.spec.md`) have `record.path` already equal to the folder
+ * itself — including a trailing slash. In that case `dirname()` would
+ * collapse `specs/webhooks/` to `specs`, breaking the suggestion. Treat
+ * trailing-slash paths as the folder itself (stripping trailing slashes)
+ * and only use `dirname()` on real file paths.
+ */
+function specFolderFromPath(specPath: string): string {
+  if (specPath.endsWith('/')) {
+    return specPath.replace(/\/+$/, '');
+  }
+  return path.dirname(specPath);
+}
+
+/**
  * Find the first resolved child whose `status` is `'not-started'` and
  * return its corresponding row's numeric id suffix. Returns `undefined`
  * if no row matches or if the matching row has no trailing digits.
@@ -137,7 +156,7 @@ export function suggestNextAction(
     }
     case 'spec': {
       command = 'smithy.cut';
-      const folder = path.dirname(record.path);
+      const folder = specFolderFromPath(record.path);
       const digits = firstNotStartedRowDigits(record, resolvedChildren);
       if (digits !== undefined) {
         args = [folder, digits];
