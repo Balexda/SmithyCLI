@@ -753,8 +753,10 @@ describe('CLI status', () => {
     expect(storyLine!).toMatch(/└─/);
 
     // The DONE marker appears at least once — the fully-completed
-    // tasks record rolls up to DONE on every ancestor, and collapsing
-    // is deferred to US3, so every level shows the marker inline.
+    // tasks record rolls up to DONE on every ancestor. Because this
+    // test passes `--all`, collapsing is bypassed and every level
+    // shows the marker inline (the default collapsed path is covered
+    // by the US3 collapse-behavior test below).
     expect(output).toContain('DONE');
   });
 
