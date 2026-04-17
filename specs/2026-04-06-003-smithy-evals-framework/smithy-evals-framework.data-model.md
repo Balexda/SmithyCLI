@@ -100,7 +100,7 @@ Purpose: Persisted snapshot of a known-good skill output used to detect structur
 | `scenario_name` | string | Yes | Must exactly match the owning `EvalScenario.name`; used to locate the file via `evals/baselines/<scenario_name>.json` |
 | `captured_at` | string | Yes | ISO 8601 timestamp indicating when the baseline was authored; informational (not used by the comparator) |
 | `headings` | string[] | Yes | Ordered list of ATX headings observed in the known-good output (e.g., `["## Summary", "## Approach", "## Risks"]`); compared per-element by `compareToBaseline` |
-| `tables` | object[] | Yes | Array of `{ columns: string[] }` objects mirroring `StructuralExpectations.required_tables`; may be an empty array when the known-good output has no tables |
+| `tables` | object[] | No | Array of `{ columns: string[] }` objects mirroring `StructuralExpectations.required_tables`; may be omitted from the persisted JSON (defaults to `[]`) or written as an empty array when the known-good output has no tables |
 
 Validation rules:
 - A missing file is not an error — `loadBaseline` returns `null` so the scenario runs without baseline checks (baselines are optional per AS 10.3).

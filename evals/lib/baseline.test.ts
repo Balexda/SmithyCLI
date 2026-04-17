@@ -225,6 +225,35 @@ describe('loadBaseline', () => {
         /headings/,
       );
     });
+
+    it('throws when `scenario_name` does not match the requested name', () => {
+      writeBaselineFile(tmp.dir, 'asked-for-this', {
+        scenario_name: 'but-recorded-that',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+      });
+
+      expect(() => loadBaseline('asked-for-this', tmp.dir)).toThrow(
+        /scenario_name.*must match.*asked-for-this/,
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // scenarioName path-safety
+  // -----------------------------------------------------------------------
+  describe('scenarioName path-safety', () => {
+    it.each([
+      ['empty string', ''],
+      ['forward slash', 'foo/bar'],
+      ['backslash', 'foo\\bar'],
+      ['parent-directory segment', '../escape'],
+      ['unix absolute path', '/etc/passwd'],
+    ])('throws when scenarioName is %s', (_label, name) => {
+      expect(() => loadBaseline(name, tmp.dir)).toThrow(
+        /must not contain path separators/,
+      );
+    });
   });
 
   // -----------------------------------------------------------------------

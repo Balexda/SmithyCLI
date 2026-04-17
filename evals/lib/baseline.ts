@@ -43,6 +43,22 @@ export function loadBaseline(
   scenarioName: string,
   baselinesDir?: string,
 ): Baseline | null {
+  // Reject names that could escape the baselines directory — `scenarioName` is
+  // interpolated straight into the resolved path, so path separators, `..`
+  // segments, or absolute paths (including Windows `C:\...`) would let a
+  // malformed scenario read an unintended file.
+  if (
+    scenarioName === '' ||
+    scenarioName.includes('/') ||
+    scenarioName.includes('\\') ||
+    scenarioName.split(/[\\/]/).some((seg) => seg === '..') ||
+    path.isAbsolute(scenarioName)
+  ) {
+    throw new Error(
+      `Invalid scenarioName "${scenarioName}": must not contain path separators, parent-directory segments, or be absolute`,
+    );
+  }
+
   const dir = baselinesDir ?? DEFAULT_BASELINES_DIR;
   const filePath = path.resolve(dir, `${scenarioName}.json`);
 
@@ -80,6 +96,11 @@ export function loadBaseline(
   if (typeof record['scenario_name'] !== 'string') {
     throw new Error(
       `Invalid baseline file ${filePath}: missing required field "scenario_name"`,
+    );
+  }
+  if (record['scenario_name'] !== scenarioName) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: field "scenario_name" must match "${scenarioName}" (found "${record['scenario_name']}")`,
     );
   }
   if (typeof record['captured_at'] !== 'string') {
