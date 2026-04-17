@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Create pure `filterRecords` module with ancestor-aware status and type projection**
+- [x] **Create pure `filterRecords` module with ancestor-aware status and type projection**
 
   Add `src/status/filter.ts` exporting `filterRecords(records, opts)` where `opts` accepts optional `status: Status`, `type: ArtifactType`, and `root: string` fields; re-export it (plus its options type) from `src/status/index.ts`. The function is pure — no I/O, no input mutation, stable output for stable input — and operates on the flat `ArtifactRecord[]` produced by `scan()` before `buildTree()` synthesizes any sentinel group nodes. When `opts.status` is set, keep records whose `status` matches plus every ancestor reachable via recursive `parent_path` walks through the input set, so AS 6.1's "ancestors still rendered for context" holds. When `opts.type` is set, keep records whose `type` matches plus those same ancestor-by-`parent_path` records (the renderer's existing rules surface them as AS 6.3 headers; no new rendering behavior is introduced here). When both fields are set, apply intersection — a record must satisfy both predicates (or be an ancestor of a record that does) to survive. When `opts.root` is set, treat it as a no-op inside the filter: `statusAction` already narrows the scan via `scan(resolvedRoot)`, so the field is accepted for signature symmetry only. Virtual records (`virtual === true`, `status: 'not-started'`) are treated identically to real records of the same `type` and `status`. Co-locate `src/status/filter.test.ts` and exercise every branch against synthetic `ArtifactRecord[]` fixtures built in-memory.
 
@@ -33,7 +33,7 @@
   - Unit tests in `src/status/filter.test.ts` cover identity, each single-flag case, intersection, virtual-record handling, and the empty-input case — all in-memory, no disk fixtures.
   - `filterRecords` and its options type are re-exported from `src/status/index.ts`.
 
-- [ ] **Wire `filterRecords` into `statusAction`, keep `ScanSummary` pre-filter, refresh stub comments, add CLI integration tests**
+- [x] **Wire `filterRecords` into `statusAction`, keep `ScanSummary` pre-filter, refresh stub comments, add CLI integration tests**
 
   In `src/commands/status.ts`, call `filterRecords(records, { status: opts.status, type: opts.type, root: resolvedRoot })` after `scan(resolvedRoot)` and feed the filtered record set into both `buildTree()` and the JSON payload's `records` / `tree` fields. `summarize()` and `formatSummaryHeader()` continue to consume the unfiltered `records` so `ScanSummary.counts` and the rendered summary line remain aggregate over the full scan (satisfies the contracts' aggregate-summary framing; see SD-010). Delete the "stub — wired in US6" annotations on the `StatusOptions.status` / `StatusOptions.type` JSDoc entries and the stub mention in the file-level doc block at the top of `src/commands/status.ts`; likewise remove the matching "(stub — wired in US6)" suffixes on the `--status` and `--type` options in `src/cli.ts`. Extend `src/cli.test.ts` with integration tests that drive the built CLI against a synthetic temp-dir fixture covering every US6 acceptance scenario plus the summary-stability assumption called out in the plan. Confirm the existing "accepts all downstream option stubs without error" test remains green.
 
