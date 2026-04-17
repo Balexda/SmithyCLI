@@ -834,9 +834,12 @@ ${TABLE_HEADER}
       'specs/feature-a/01-a.tasks.md',
       `# Tasks\n\n## Slice 1: Only\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
     );
+    // Two slices: Slice 1 fully done, Slice 2 partially checked →
+    // the tasks record classifies as in-progress (1 of 2 slices done
+    // under the slice-counting rule landed in #235 on master).
     write(
       'specs/feature-a/02-b.tasks.md',
-      `# Tasks\n\n## Slice 1: Only\n\n- [x] Done one\n- [ ] Pending two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+      `# Tasks\n\n## Slice 1: First\n\n- [x] Done one\n- [x] Done two\n\n## Slice 2: Second\n\n- [x] Done three\n- [ ] Pending four\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n| S2 | Second | — | — |\n`,
     );
     const records = scan(root);
     const spec = byPath(records, 'specs/feature-a/feature-a.spec.md');
