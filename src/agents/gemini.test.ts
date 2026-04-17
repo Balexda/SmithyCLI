@@ -48,7 +48,7 @@ describe('deploy', () => {
 
     expect(skills).not.toContain('smithy-clarify');
     expect(skills).not.toContain('smithy-implement');
-    expect(skills).not.toContain('smithy-review');
+    expect(skills).not.toContain('smithy-implementation-review');
   });
 
   it('does not remove non-skill directories that share the prefix', async () => {
