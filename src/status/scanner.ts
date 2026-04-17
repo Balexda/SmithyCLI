@@ -82,7 +82,7 @@ const SUFFIX_TYPES: Array<readonly [string, ArtifactType]> = [
 /**
  * Walk the repo under `root`, build `ArtifactRecord` entries for every
  * discovered Smithy artifact file, and return the fully-classified
- * record set. See the module-level JSDoc for the three-phase flow.
+ * record set. See the module-level JSDoc for the four-phase flow.
  */
 export function scan(root: string): ArtifactRecord[] {
   let realRoot: string;

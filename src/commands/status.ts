@@ -10,11 +10,12 @@
  *   3. Call {@link scan} to build the fully-classified `ArtifactRecord[]`.
  *   4. Derive a {@link ScanSummary} from the records.
  *   5. Emit either contract-shaped JSON (`--format json`) or a per-type
- *      roll-up summary header followed by a flat text listing (default).
- *      The JSON `tree` field is populated via {@link buildTree} (US2
- *      Slice 1); the `graph` field is still stubbed and owned by US10.
- *      The top-level JSON shape is stable from US1 onward so consumers
- *      can depend on it today.
+ *      roll-up summary header followed by a hierarchical tree with
+ *      next-action hints (default, via {@link renderTree} with
+ *      `renderHints: true`). The JSON `tree` field is populated via
+ *      {@link buildTree} (US2 Slice 1); the `graph` field is still
+ *      stubbed and owned by US10. The top-level JSON shape is stable
+ *      from US1 onward so consumers can depend on it today.
  *   6. On an empty repo (no discovered artifacts), print a friendly hint
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error".

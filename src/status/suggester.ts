@@ -186,8 +186,8 @@ export function suggestNextAction(
  * This function is pure and performs no I/O. It is intentionally
  * colocated with {@link suggestNextAction} so downstream callers that
  * need to both derive and render a next action can import from a single
- * module, and so the future US2 hierarchical tree renderer can reuse
- * the same formatter to attach hints beneath tree nodes (SD-016).
+ * module, and so the `render.ts` tree renderer (US2) can reuse the
+ * same formatter to attach hints beneath tree nodes (SD-016).
  *
  * @param action The next action to format.
  * @returns A single-line hint string.
