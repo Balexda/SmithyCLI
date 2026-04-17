@@ -19,16 +19,19 @@
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error".
  *
- * Option stubs for `--status`, `--type`, `--all`, `--graph`, and
- * `--no-color` are accepted but intentionally have no behavioral effect
- * yet. Downstream stories (US3, US6) wire the filter flags; US10 wires
- * `--graph`.
+ * `--all` now disables done-subtree collapsing in text mode via the
+ * pure `collapseTree` transform inserted between `buildTree` and
+ * `renderTree` (US3); JSON mode continues to emit the uncollapsed
+ * `buildTree(records)` structure unconditionally. Option stubs for
+ * `--status`, `--type`, `--graph`, and `--no-color` remain accepted
+ * but have no behavioral effect yet — US6 wires the filter flags and
+ * US10 wires `--graph`.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildTree, renderTree, scan } from '../status/index.js';
+import { buildTree, collapseTree, renderTree, scan } from '../status/index.js';
 import type {
   ArtifactRecord,
   ArtifactType,
@@ -54,7 +57,14 @@ export interface StatusOptions {
   status?: Status;
   /** Stub: filter by artifact type. Parsed but not wired (US6). */
   type?: ArtifactType;
-  /** Stub: disable done-subtree collapsing. Parsed but not wired (US3). */
+  /**
+   * Disable done-subtree collapsing in text mode. When truthy, every
+   * artifact surfaces in the rendered tree regardless of status —
+   * otherwise any `TreeNode` whose `record.status === 'done'` collapses
+   * to a single `DONE` line and its descendants are hidden. Has no
+   * effect on `--format json` output, which always emits the
+   * uncollapsed `buildTree(records)` structure.
+   */
   all?: boolean;
   /** Stub: render the cross-artifact graph. Parsed but not wired (US2/US10). */
   graph?: boolean;
@@ -200,16 +210,24 @@ export function statusAction(opts: StatusOptions = {}): void {
   // the helper.
   console.log(formatSummaryHeader(summary));
 
-  // US2 Slice 2: default text output is a hierarchical tree built
-  // from the same `ArtifactRecord[]` the JSON payload uses. Group
-  // sentinels ("Orphaned Specs", "Broken Links") surface at the top
-  // of `tree.roots` and render as their own headings above their
-  // grouped children. `color: opts.color !== false` preserves the
-  // future `--no-color` wire-up by disabling color only when
-  // Commander sets `opts.color` to `false`; today the renderer
-  // emits plain text with UTF-8 box-drawing connectors and no
-  // color regardless.
-  const tree = buildTree(records);
+  // US2 Slice 2 + US3 Slice 1: default text output is a hierarchical
+  // tree built from the same `ArtifactRecord[]` the JSON payload
+  // uses, then passed through the pure `collapseTree` transform so
+  // any fully-`done` subtree collapses to a single `DONE` line with
+  // no descendants (AS 3.1, 3.3, 3.4). Passing `--all` routes through
+  // the same transform with `{ all: true }`, which returns a fresh
+  // but structurally equivalent tree so every artifact still
+  // surfaces (AS 3.5). Group sentinels ("Orphaned Specs", "Broken
+  // Links") surface at the top of `tree.roots` and render as their
+  // own headings above their grouped children; `collapseTree` never
+  // collapses them regardless of `--all`. `color: opts.color !== false`
+  // preserves the future `--no-color` wire-up by disabling color
+  // only when Commander sets `opts.color` to `false`; today the
+  // renderer emits plain text with UTF-8 box-drawing connectors and
+  // no color regardless.
+  const tree = collapseTree(buildTree(records), {
+    all: opts.all === true,
+  });
   const rendered = renderTree(tree, { color: opts.color !== false });
   if (rendered.length > 0) {
     console.log(rendered);

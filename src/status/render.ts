@@ -47,8 +47,12 @@
  * implementation; the table above is the convention that lands with
  * this slice. SD-012 asks for an unambiguous marker on `in-progress`
  * parents distinct from `DONE` — `in progress` lowercase satisfies
- * that. Collapsing of done subtrees is US3's responsibility, so every
- * record shows its marker inline here.
+ * that. `renderTree` emits every node it receives verbatim with its
+ * marker inline — collapsing of done subtrees is handled upstream by
+ * the pure `collapseTree` transform that sits between `buildTree`
+ * and `renderTree` in the text-mode pipeline (or bypassed under
+ * `--all`), so the input tree is already the view the caller wants
+ * rendered.
  *
  * Group sentinel nodes (detected via the reserved
  * `ORPHANED_SPECS_PATH` / `BROKEN_LINKS_PATH` values) are rendered as

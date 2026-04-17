@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add pure `collapseTree` transform to prune done subtrees**
+- [x] **Add pure `collapseTree` transform to prune done subtrees**
 
   Create `src/status/collapse.ts` exporting `collapseTree(tree: StatusTree, options?: { all?: boolean }): StatusTree`. The transform returns a new `StatusTree` in which any `TreeNode` whose `record.status === 'done'` is replaced by a copy with an empty `children` array — its descendants are not visited or emitted. When `options.all` is truthy the tree is returned structurally unchanged. Group sentinel nodes (detected via the reserved `ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, and `ORPHANED_TASKS_PATH` constants already exported from `src/status/tree.ts`) always retain their children regardless of their synthesized status. Re-export `collapseTree` from `src/status/index.ts` so `statusAction` and future pipeline consumers (US6) can import it from the module barrel. Satisfies AS 3.1, AS 3.3, AS 3.4, and the bypass half of AS 3.5 as a pure tree transform.
 
@@ -31,7 +31,7 @@
   - Empty input (`{ roots: [] }`) returns `{ roots: [] }` without throwing.
   - Unit tests in a new `src/status/collapse.test.ts` drive synthetic `StatusTree` inputs covering each of the criteria above: done leaf collapse, done parent collapsing whole subtree, partial subtree preservation, `--all` passthrough, group-sentinel passthrough, and empty tree.
 
-- [ ] **Wire `collapseTree` into the text-mode pipeline and retire `--all` stub comments**
+- [x] **Wire `collapseTree` into the text-mode pipeline and retire `--all` stub comments**
 
   In `src/commands/status.ts`, insert `collapseTree(tree, { all: opts.all === true })` between the existing `buildTree(records)` and `renderTree(...)` calls on the default text-mode path so the rendered output reflects the collapsed tree; the JSON-mode branch keeps emitting the uncollapsed `buildTree(records)` output verbatim. Update the `StatusOptions.all` JSDoc in the same file (currently labelled as a stub wired in US3) so it describes the live behavior, and refresh the `src/status/render.ts` module docstring block that currently asserts "Collapsing of done subtrees is US3's responsibility, so every record shows its marker inline here" so it reflects the new reality that collapse now runs before the renderer. Satisfies AS 3.2 (partial tasks keep the `N/M` counter because only `done` nodes collapse) and the end-to-end half of AS 3.5.
 

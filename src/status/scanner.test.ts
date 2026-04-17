@@ -437,10 +437,11 @@ ${TABLE_HEADER}
     // Single-hop spec → tasks rollup. The spec's `## Dependency Order`
     // section contains a 4-column table with exactly one data row whose
     // `Artifact` cell points at a real tasks file. The tasks file's
-    // classification is driven purely by its `## Slice N:` body
-    // checkboxes (one checked, one unchecked → in-progress), and the
-    // spec must roll up to that same in-progress status. No checkbox
-    // lines appear inside the `## Dependency Order` section of either
+    // classification is driven by its `## Slice N:` body checkboxes
+    // counted at slice granularity (one slice fully done, one slice
+    // still pending → 1/2 slices done → in-progress), and the spec
+    // must roll up to that same in-progress status. No checkbox lines
+    // appear inside the `## Dependency Order` section of either
     // fixture file.
     write(
       'specs/feature-a/feature-a.spec.md',
@@ -448,7 +449,7 @@ ${TABLE_HEADER}
     );
     write(
       'specs/feature-a/01-only-story.tasks.md',
-      `# Tasks\n\n## Slice 1: Only\n\n- [x] Done task\n- [ ] Pending task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+      `# Tasks\n\n## Slice 1: Done\n\n- [x] Done task\n\n## Slice 2: Pending\n\n- [ ] Pending task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Done | — | — |\n| S2 | Pending | S1 | — |\n`,
     );
 
     const records = scan(root);

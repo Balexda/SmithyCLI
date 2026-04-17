@@ -78,9 +78,11 @@ program
       .choices(['text', 'json'])
       .default('text'),
   )
-  // Option stubs wired for downstream stories (US2, US3, US6). Commander
-  // parses them so `smithy status --help` advertises the full surface,
-  // but their behavioral effect is out of scope for US1 Slice 3.
+  // `--all` is fully wired (US3); `--status` / `--type` / `--graph` /
+  // `--no-color` remain stubs that Commander parses so `smithy status
+  // --help` advertises the full surface. `--status` and `--type` will
+  // be wired in US6, `--graph` in US10; `--no-color` has no effect
+  // until a colored renderer lands.
   //
   // `--status` and `--type` deliberately do NOT use Commander
   // `.choices()` because Commander's invalid-choice handler exits with
@@ -89,7 +91,7 @@ program
   // sets `process.exitCode = 2`.
   .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown (stub — wired in US6)')
   .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks (stub — wired in US6)')
-  .option('--all', 'Disable collapsing of done subtrees (stub — wired in US3)')
+  .option('--all', 'Disable collapsing of done subtrees so every artifact surfaces')
   .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
   .option('--no-color', 'Suppress ANSI color output (stub — no colored text yet)')
   .action((opts: Record<string, unknown>) => {

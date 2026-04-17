@@ -23,14 +23,19 @@ describe('CLI init (interactive)', () => {
   it('shows the interactive prompt when no flags are passed', () => {
     // Use Node-native timeout via spawnSync instead of shell `timeout` command
     // so the test works cross-platform (Windows, macOS without coreutils).
+    // Budget generously: cold-start CI runners can take >2s to load Node +
+    // the 80KB dist/cli.js bundle and reach Inquirer's first prompt. The
+    // timeout exists only to prevent an infinite hang when Inquirer is
+    // waiting on stdin — the assertions key off captured output, not
+    // wall-clock speed.
     const result = spawnSync('node', [CLI, 'init'], {
       encoding: 'utf-8',
-      timeout: 2000,
+      timeout: 15_000,
     });
     const output = result.stdout + result.stderr;
     expect(output).toContain('Welcome to Smithy CLI');
     expect(output).toContain('Which AI assistant CLI');
-  });
+  }, 20_000);
 });
 
 describe('CLI init --yes (non-interactive)', () => {
@@ -643,7 +648,12 @@ describe('CLI status', () => {
       `# Tasks\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
     );
 
-    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
+    // Pass `--all` so the fully-done fixture does not collapse under
+    // US3 — AS 7.1 only asserts the header appears above the tree
+    // body and says nothing about collapse, so bypassing collapse
+    // here keeps the body rich enough to observe "Feature A" as a
+    // child row.
+    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir, '--all'], {
       encoding: 'utf-8',
     });
 
@@ -715,7 +725,12 @@ describe('CLI status', () => {
       `# Story One\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
     );
 
-    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
+    // Pass `--all` so the fully-done fixture does not collapse under
+    // US3 — AS 2.4 asserts tree-connector rendering across a
+    // multi-level chain, which requires descendants to remain
+    // visible. The default (collapsed) path is covered by the US3
+    // collapse-behavior test below.
+    const output = execFileSync('node', [CLI, 'status', '--root', tmpDir, '--all'], {
       encoding: 'utf-8',
     });
 
@@ -743,8 +758,10 @@ describe('CLI status', () => {
     expect(storyLine!).toMatch(/└─/);
 
     // The DONE marker appears at least once — the fully-completed
-    // tasks record rolls up to DONE on every ancestor, and collapsing
-    // is deferred to US3, so every level shows the marker inline.
+    // tasks record rolls up to DONE on every ancestor. Because this
+    // test passes `--all`, collapsing is bypassed and every level
+    // shows the marker inline (the default collapsed path is covered
+    // by the US3 collapse-behavior test below).
     expect(output).toContain('DONE');
   });
 
@@ -937,5 +954,112 @@ describe('CLI status', () => {
     );
     // Commander should not reject any of these stubs.
     expect(result.status).toBe(0);
+  });
+
+  it('collapses fully-done subtrees in default text mode, expands under --all, and leaves JSON untouched (AS 3.1, 3.3, 3.4, 3.5)', () => {
+    // US3 Slice 1: a fully-done RFC → features → spec → tasks chain
+    // collapses at the top-most `done` node (the RFC rolls up to `done`
+    // because its only descendant is done), so the default text output
+    // should render the RFC title on a single `DONE` line with no
+    // descendants below it. Passing `--all` must restore every artifact
+    // the pre-collapse US2 pipeline surfaced. The JSON payload must be
+    // identical regardless of `--all` because collapsing is a
+    // text-mode-only transform.
+    write(
+      'docs/rfcs/example.rfc.md',
+      `# RFC: Example\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/01-milestone-one.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/01-milestone-one.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Feature A | — | specs/feature-a |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story One | — | specs/feature-a/01-first.tasks.md |\n`,
+    );
+    write(
+      'specs/feature-a/01-first.tasks.md',
+      `# Story One\n\n## Slice 1: First\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+
+    // Default: the top-level `done` node collapses — no descendants
+    // appear. The only record title that should appear in the tree
+    // body is the RFC's `Example`. The H1 `Feature Map` for the
+    // features file, the spec title `Feature A`, and the tasks title
+    // `Story One` must all be hidden by collapse.
+    const defaultOut = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
+      encoding: 'utf-8',
+    });
+    // Split off the summary header (line 0) from the tree body so the
+    // summary counts (which mention every type) do not leak into the
+    // body assertions.
+    const [, ...defaultBodyLines] = defaultOut.split('\n');
+    const defaultBody = defaultBodyLines.join('\n');
+    expect(defaultBody).toContain('Example');
+    expect(defaultBody).toContain('DONE');
+    // Descendant titles of the done RFC must not appear under it.
+    expect(defaultBody).not.toContain('Feature Map');
+    expect(defaultBody).not.toContain('Feature A');
+    expect(defaultBody).not.toContain('Story One');
+    // No tree connectors in the body: a single collapsed root has no
+    // child rows to connect.
+    expect(defaultBody).not.toMatch(/[├└]/);
+
+    // --all: every artifact title surfaces just as US2's uncollapsed
+    // pipeline showed.
+    const allOut = execFileSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--all'],
+      { encoding: 'utf-8' },
+    );
+    expect(allOut).toContain('Example');
+    expect(allOut).toContain('Feature Map');
+    expect(allOut).toContain('Feature A');
+    expect(allOut).toContain('Story One');
+    // Tree connectors reappear once the descendants surface.
+    expect(allOut).toMatch(/[├└]/);
+
+    // JSON mode: `--all` is a no-op; the `tree` field always reflects
+    // the uncollapsed `buildTree(records)` output verbatim so machine
+    // consumers get the complete structural projection.
+    const jsonDefault = execFileSync(
+      'node',
+      [CLI, 'status', '--format', 'json', '--root', tmpDir],
+      { encoding: 'utf-8' },
+    );
+    const jsonAll = execFileSync(
+      'node',
+      [CLI, 'status', '--format', 'json', '--root', tmpDir, '--all'],
+      { encoding: 'utf-8' },
+    );
+    expect(jsonDefault).toBe(jsonAll);
+    // Sanity: the JSON tree exposes every uncollapsed descendant.
+    const payload = JSON.parse(jsonDefault) as {
+      tree: {
+        roots: Array<{
+          record: { path: string };
+          children: Array<{
+            record: { path: string };
+            children: Array<{
+              record: { path: string };
+              children: Array<{ record: { path: string } }>;
+            }>;
+          }>;
+        }>;
+      };
+    };
+    const rfcRoot = payload.tree.roots.find((r) =>
+      r.record.path.endsWith('.rfc.md'),
+    );
+    expect(rfcRoot).toBeDefined();
+    expect(rfcRoot?.children[0]?.record.path).toBe(
+      'docs/rfcs/01-milestone-one.features.md',
+    );
+    expect(rfcRoot?.children[0]?.children[0]?.record.path).toBe(
+      'specs/feature-a/feature-a.spec.md',
+    );
+    expect(rfcRoot?.children[0]?.children[0]?.children[0]?.record.path).toBe(
+      'specs/feature-a/01-first.tasks.md',
+    );
   });
 });
