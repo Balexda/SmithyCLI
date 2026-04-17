@@ -114,6 +114,7 @@ Sub-agents are invoked by parent commands, not directly by users:
 | smithy-reconcile | Synthesize competing plan outputs | strike (agent mode, after smithy-plan), ignite (Phase 1.5) |
 | smithy-clarify | Ambiguity scanning and triage (assumptions + specification debt) | strike, ignite, mark, cut, render |
 | smithy-refine | Artifact review and refinement | mark, cut, ignite, render (Phase 0) |
+| smithy-plan-review | Read-only self-consistency review of planning artifacts; returns structured findings | strike, ignite, mark, render, cut (after artifact generation, before PR) |
 | smithy-implement | TDD implementation (test → code → commit) | forge |
 | smithy-review | Code review with auto-fix | forge |
 | smithy-scout | Pre-planning consistency scan | render, mark, cut |

@@ -53,6 +53,6 @@ Agents fall into two interaction styles:
    assumptions, ask questions one at a time, wait for responses. Return a
    structured summary to the parent when done.
 
-2. **Non-interactive** (scout, maid, implement, review, prose): Do not talk to the
+2. **Non-interactive** (plan-review, scout, maid, implement, review, prose): Do not talk to the
    user. Perform their work and return a structured report to the parent agent,
    which decides how to surface findings.
