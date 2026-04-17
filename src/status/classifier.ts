@@ -24,8 +24,9 @@ import type { ArtifactRecord, Status } from './types.js';
  * 1. A record with `virtual === true` always resolves to `'not-started'`
  *    regardless of type, children, or dependency_order.
  * 2. A `tasks` record derives its status from `completed` / `total`,
- *    where both numbers count slices (a slice is "done" when every
- *    checkbox inside its `## Slice N:` section is ticked):
+ *    where both numbers count slices (a slice is "done" only when its
+ *    `## Slice N:` section contains at least one checkbox and every
+ *    checkbox in that section is ticked):
  *    - `completed === total && total > 0` → `'done'`
  *    - `0 < completed < total` → `'in-progress'`
  *    - otherwise (`total === 0` or `completed === 0`) → `'not-started'`
