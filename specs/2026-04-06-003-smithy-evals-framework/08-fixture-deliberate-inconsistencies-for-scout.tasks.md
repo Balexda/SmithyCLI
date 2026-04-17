@@ -49,7 +49,7 @@
   - `sub_agent_evidence` includes an entry for `smithy-scout` whose `pattern` matches either the dispatch message in assistant text or the agent's report output (per FR-016)
   - `timeout` is left to the framework default so the `--timeout` CLI override still applies
 
-- [ ] **Unit test the scout scenario against synthetic samples**
+- [x] **Unit test the scout scenario against synthetic samples**
 
   Add `evals/lib/scout-scenario.test.ts` that exercises `validateStructure` and `verifySubAgents` from `./structural.js` against synthetic scout outputs. The tests must pin both the positive and negative cases without requiring a live `claude` invocation, mirroring the coverage approach in `strike-scenario.test.ts`.
 
