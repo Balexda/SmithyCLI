@@ -43,12 +43,16 @@
  *
  * ## `--all` bypass
  *
- * When `options.all` is truthy the transform returns a structurally
+ * When `options.all === true` the transform returns a structurally
  * equivalent tree in which every record reachable in the input
  * remains reachable in the output (AS 3.5). The output is a fresh
  * {@link StatusTree} / `TreeNode` graph — callers get the same
  * immutability guarantees as the default path so the two branches can
- * share a render pipeline without a special case.
+ * share a render pipeline without a special case. Any other value
+ * (including `undefined` or `false`) takes the default collapsing
+ * path; the strict-boolean check matches the `boolean`-typed
+ * {@link CollapseTreeOptions.all} field and the CLI caller's
+ * `opts.all === true` normalization.
  *
  * An empty input (`{ roots: [] }`) returns `{ roots: [] }` in both
  * modes without throwing.
@@ -68,10 +72,13 @@ import type { ArtifactRecord, StatusTree, TreeNode } from './types.js';
  */
 export interface CollapseTreeOptions {
   /**
-   * When truthy, disable done-subtree collapsing and return a tree in
-   * which every `ArtifactRecord` reachable in the input remains
-   * reachable in the output (AS 3.5). The transform still returns a
-   * fresh tree so callers retain the purity guarantees.
+   * When set to `true`, disable done-subtree collapsing and return a
+   * tree in which every `ArtifactRecord` reachable in the input
+   * remains reachable in the output (AS 3.5). The check is strict
+   * (`=== true`) to match the `boolean`-typed field — `undefined` and
+   * `false` both take the default collapsing path. The transform
+   * still returns a fresh tree so callers retain the purity
+   * guarantees.
    */
   all?: boolean;
 }
