@@ -23,14 +23,19 @@ describe('CLI init (interactive)', () => {
   it('shows the interactive prompt when no flags are passed', () => {
     // Use Node-native timeout via spawnSync instead of shell `timeout` command
     // so the test works cross-platform (Windows, macOS without coreutils).
+    // Budget generously: cold-start CI runners can take >2s to load Node +
+    // the 80KB dist/cli.js bundle and reach Inquirer's first prompt. The
+    // timeout exists only to prevent an infinite hang when Inquirer is
+    // waiting on stdin — the assertions key off captured output, not
+    // wall-clock speed.
     const result = spawnSync('node', [CLI, 'init'], {
       encoding: 'utf-8',
-      timeout: 2000,
+      timeout: 15_000,
     });
     const output = result.stdout + result.stderr;
     expect(output).toContain('Welcome to Smithy CLI');
     expect(output).toContain('Which AI assistant CLI');
-  });
+  }, 20_000);
 });
 
 describe('CLI init --yes (non-interactive)', () => {
