@@ -54,7 +54,14 @@ export function loadScenarios(casesDir: string): EvalScenario[] {
     entries = fs.readdirSync(casesDir);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`loadScenarios: cases directory not found: ${casesDir} (${msg})`);
+    const code =
+      typeof err === 'object' && err !== null && 'code' in err
+        ? String((err as { code: unknown }).code)
+        : undefined;
+    const details = code ? `${code}: ${msg}` : msg;
+    throw new Error(
+      `loadScenarios: unable to read cases directory: ${casesDir} (${details})`,
+    );
   }
 
   const yamlFiles = entries
@@ -248,10 +255,14 @@ function validateScenario(
     scenario.model = obj['model'];
   }
 
-  // Optional: timeout (number)
+  // Optional: timeout (positive number, in seconds)
   if (obj['timeout'] !== undefined) {
-    if (typeof obj['timeout'] !== 'number' || !Number.isFinite(obj['timeout'])) {
-      skip("'timeout' must be a finite number when provided");
+    if (
+      typeof obj['timeout'] !== 'number' ||
+      !Number.isFinite(obj['timeout']) ||
+      obj['timeout'] <= 0
+    ) {
+      skip("'timeout' must be a positive finite number (seconds) when provided");
       return null;
     }
     scenario.timeout = obj['timeout'];
