@@ -262,14 +262,26 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  // Defensive fallback: the scanner found records but `buildTree`
-  // produced an empty `roots` array — either a pathological cycle
-  // where two records claim each other as parents, or the US6 filter
-  // retained no records at all. The slice's acceptance criterion
-  // forbids silent drops ("every ArtifactRecord is represented by
-  // exactly one line"), so surface every retained record on its own
-  // line with a diagnostic header so operators can still see what
-  // the scanner found.
+  // US6: the filter retained no records. This is a valid outcome —
+  // the scan found artifacts but none match `--status` / `--type` —
+  // so print a friendly no-match hint instead of the pathological
+  // fallback warning below. The summary header printed above still
+  // reflects the full scan per SD-010, so users can see what was
+  // scanned even when the filtered view is empty.
+  if (filteredRecords.length === 0) {
+    console.log('No artifacts match the current filter.');
+    return;
+  }
+
+  // Defensive fallback: the scanner found records, the filter
+  // retained at least one, but `buildTree` still produced an empty
+  // `roots` array. The only realistic way this happens today is a
+  // pathological cycle where two records claim each other as
+  // parents, so neither reaches a root. The slice's acceptance
+  // criterion forbids silent drops ("every ArtifactRecord is
+  // represented by exactly one line"), so surface every retained
+  // record on its own line with a diagnostic header so operators
+  // can still see what the scanner found.
   console.log(
     'warning: tree rendering produced no output — listing records flat to avoid silent drops.',
   );

@@ -1265,6 +1265,29 @@ describe('CLI status', () => {
       );
     });
 
+    it('prints a friendly no-match hint (not the pathological fallback warning) when filters retain zero records', () => {
+      writeFilterFixture();
+      // No artifact in the fixture has `status: done`, so this
+      // filter matches nothing. The exit should be 0 and the output
+      // should carry the summary header + a no-match line — not the
+      // "tree rendering produced no output" warning (which is
+      // reserved for real cycle/rendering bugs where the filter
+      // retained records but the tree came back empty).
+      const result = spawnSync(
+        'node',
+        [CLI, 'status', '--root', tmpDir, '--status', 'done'],
+        { encoding: 'utf-8' },
+      );
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain('No artifacts match the current filter');
+      expect(result.stdout).not.toContain(
+        'tree rendering produced no output',
+      );
+      // The aggregate summary header still prints above the hint
+      // (SD-010).
+      expect(result.stdout).toMatch(/RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/);
+    });
+
     it('text-mode summary header is byte-identical with and without filter flags', () => {
       writeFilterFixture();
       const unfiltered = execFileSync(
