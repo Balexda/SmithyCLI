@@ -59,6 +59,7 @@
 import {
   BROKEN_LINKS_PATH,
   ORPHANED_SPECS_PATH,
+  ORPHANED_TASKS_PATH,
 } from './tree.js';
 import type { ArtifactRecord, StatusTree, TreeNode } from './types.js';
 
@@ -100,8 +101,22 @@ export function renderTree(
 /**
  * Emit a top-level node (a root, or a synthetic group heading). Roots
  * carry no connector prefix — only their descendants do.
+ *
+ * The "Orphaned Tasks" group is a diagnostic, not part of the normal
+ * tree: a real on-disk `.tasks.md` that could not be linked to any
+ * spec is always an error. Emit its members as flat `ERROR:` lines so
+ * they survive log scrapes and CI output, and skip the heading + tree
+ * connectors that normal groups use.
  */
 function renderRoot(node: TreeNode, lines: string[]): void {
+  if (node.record.path === ORPHANED_TASKS_PATH) {
+    for (const child of node.children) {
+      lines.push(
+        `ERROR: Orphaned task file ${child.record.path} could not be linked to a spec`,
+      );
+    }
+    return;
+  }
   lines.push(formatLine(node.record, ''));
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
@@ -164,7 +179,9 @@ function formatLine(record: ArtifactRecord, prefix: string): string {
  */
 function isGroupSentinel(record: ArtifactRecord): boolean {
   return (
-    record.path === ORPHANED_SPECS_PATH || record.path === BROKEN_LINKS_PATH
+    record.path === ORPHANED_SPECS_PATH ||
+    record.path === BROKEN_LINKS_PATH ||
+    record.path === ORPHANED_TASKS_PATH
   );
 }
 

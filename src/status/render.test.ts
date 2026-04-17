@@ -6,6 +6,7 @@ import {
   buildTree,
   BROKEN_LINKS_PATH,
   ORPHANED_SPECS_PATH,
+  ORPHANED_TASKS_PATH,
   renderTree,
   type ArtifactRecord,
   type ArtifactType,
@@ -389,5 +390,42 @@ describe('renderTree — group sentinel detection', () => {
     // And is NOT misrouted via the sentinel constants.
     expect(output).not.toContain(ORPHANED_SPECS_PATH);
     expect(output).not.toContain(BROKEN_LINKS_PATH);
+  });
+});
+
+describe('renderTree — orphaned tasks error output', () => {
+  it('renders real tasks with no parent as flat ERROR lines (not nested tree rows)', () => {
+    // A real on-disk `.tasks.md` that could not be linked to a spec is
+    // always an error condition. The renderer must surface it as an
+    // `ERROR:` line per orphan — no tree connectors, no "Orphaned
+    // Tasks" heading — so the diagnostic is visible in log scrapes and
+    // CI output and is clearly distinguishable from regular rows.
+    const tree = buildTree([
+      makeRecord({
+        type: 'tasks',
+        path: 'specs/lost/01-lost.tasks.md',
+        title: 'Lost Tasks',
+        parent_path: null,
+      }),
+      makeRecord({
+        type: 'tasks',
+        path: 'specs/abandoned/02-abandoned.tasks.md',
+        title: 'Abandoned Tasks',
+        parent_path: null,
+      }),
+    ]);
+
+    const output = renderTree(tree);
+    const lines = output.split('\n');
+    expect(lines).toEqual([
+      'ERROR: Orphaned task file specs/lost/01-lost.tasks.md could not be linked to a spec',
+      'ERROR: Orphaned task file specs/abandoned/02-abandoned.tasks.md could not be linked to a spec',
+    ]);
+    // The sentinel path must never leak into the rendered output.
+    expect(output).not.toContain(ORPHANED_TASKS_PATH);
+    // No tree connectors or status markers on ERROR lines.
+    expect(output).not.toContain('├─');
+    expect(output).not.toContain('└─');
+    expect(output).not.toContain('not started');
   });
 });

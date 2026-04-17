@@ -450,16 +450,41 @@ function resolveChildForRow(
     }
     case 'spec': {
       const type: ArtifactType = 'tasks';
-      if (row.artifact_path !== null) {
-        return { path: normalizePath(row.artifact_path), type };
-      }
-      // Placeholder for a spec `—` row. Smithy tasks files use the
-      // convention `<NN>-<story-slug>.tasks.md` inside the spec folder
-      // (see `smithy.cut` output). Derive NN from the row id (US1 → 01)
-      // so virtual placeholders match the eventual real path and the
-      // real record wins on the next scan.
       const parentDir = repoDirname(parent.path);
       const nn = paddedNumberFromId(row.id);
+
+      if (row.artifact_path !== null) {
+        const declared = normalizePath(row.artifact_path);
+        // Happy path: the declared Artifact cell resolves to a real
+        // discovered record. Use it directly.
+        if (records.has(declared)) {
+          return { path: declared, type };
+        }
+        // Declared path did not match a known record (typo, stale
+        // path, malformed cell after parser edge cases). Fall back to
+        // the filename convention — a single `<NN>-*.tasks.md` under
+        // the spec's folder is unambiguous and recovers linkage that
+        // would otherwise produce a floating orphan.
+        const fallback = findTasksByStoryNumber(parentDir, nn, records);
+        if (fallback !== null) {
+          return { path: fallback, type };
+        }
+        // No convention-based match either. Return the declared path
+        // so a virtual record is emitted there; subsequent scans that
+        // create the file at that path will replace the virtual.
+        return { path: declared, type };
+      }
+
+      // `—` row: try the convention-based match before emitting a
+      // slug-based placeholder. A US row whose Artifact cell is `—`
+      // but whose tasks file already exists under
+      // `<parentDir>/<NN>-*.tasks.md` should link to that real file,
+      // not a virtual derived from the row title (the row title and
+      // the on-disk slug routinely diverge in practice).
+      const fallback = findTasksByStoryNumber(parentDir, nn, records);
+      if (fallback !== null) {
+        return { path: fallback, type };
+      }
       return {
         path: repoJoin(parentDir, `${nn}-${slugify(row.title)}.tasks.md`),
         type,
@@ -468,6 +493,47 @@ function resolveChildForRow(
     case 'tasks':
       return null;
   }
+}
+
+/**
+ * Look for an on-disk `<parentDir>/<nn>-*.tasks.md` record among the
+ * already-discovered records. Used as a convention-based fallback when
+ * a spec row's Artifact cell is `—` or fails to resolve directly. The
+ * filename convention emitted by `smithy.cut` is
+ * `<NN>-<story-slug>.tasks.md`; we key on the `<NN>-` prefix alone so
+ * the slug portion can diverge between the row title and the on-disk
+ * filename without breaking parent linking.
+ *
+ * Returns the repo-relative path of the match, or `null` if there is
+ * no match or more than one (ambiguous cases fall through to the
+ * caller's virtual-placeholder path so a warning can surface).
+ */
+function findTasksByStoryNumber(
+  parentDir: string,
+  nn: string,
+  records: Map<string, ArtifactRecord>,
+): string | null {
+  const prefix = parentDir === '' ? `${nn}-` : `${parentDir}/${nn}-`;
+  let match: string | null = null;
+  for (const [p, rec] of records) {
+    if (rec.type !== 'tasks') continue;
+    if (rec.virtual === true) continue;
+    if (!p.startsWith(prefix)) continue;
+    if (!p.endsWith('.tasks.md')) continue;
+    // Reject nested sub-folder matches: only direct children of
+    // `parentDir` count. A tasks file at `specs/a/b/01-foo.tasks.md`
+    // must not match a query rooted at `specs/a/`.
+    const tail = p.slice(prefix.length);
+    if (tail.includes('/')) continue;
+    if (match !== null) {
+      // Ambiguous — two or more `<nn>-*.tasks.md` siblings. Give up
+      // so the caller's placeholder path is used and the conflict is
+      // visible in the scan output.
+      return null;
+    }
+    match = p;
+  }
+  return match;
 }
 
 /**

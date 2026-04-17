@@ -104,6 +104,11 @@ describe('scan', () => {
   it('AS 1.1: spec with two done tasks children and one — row', () => {
     // Spec references two existing tasks files (both fully checked)
     // and one — row which must emit a virtual not-started tasks record.
+    //
+    // The Artifact cells use the canonical backtick-wrapped form that
+    // real specs and `src/templates/agent-skills/README.md` emit, so
+    // the parent-linking assertions below also guard against regression
+    // of the backtick-stripping behaviour exercised in parser.test.ts.
     write(
       'specs/feature-a/feature-a.spec.md',
       `# Feature Specification: Feature A
@@ -111,9 +116,9 @@ describe('scan', () => {
 ## Dependency Order
 
 ${TABLE_HEADER}
-| US1 | First story  | — | specs/feature-a/01-first.tasks.md  |
-| US2 | Second story | — | specs/feature-a/02-second.tasks.md |
-| US3 | Third story  | — | —                                   |
+| US1 | First story  | — | \`specs/feature-a/01-first.tasks.md\`  |
+| US2 | Second story | — | \`specs/feature-a/02-second.tasks.md\` |
+| US3 | Third story  | — | —                                     |
 `,
     );
     write(
@@ -469,24 +474,56 @@ ${TABLE_HEADER}
     expect(tasks?.parent_path).toBe('specs/feature-a/missing.spec.md');
   });
 
-  it('broken-link detection: tasks **Source** header points at an existing spec (no dep-order row) → orphan with parent_path=null', () => {
+  it('broken-link detection: tasks **Source** header points at an existing spec (no dep-order row, no NN match) → orphan with parent_path=null', () => {
     // The declared source exists on disk but does not reference this
-    // tasks file from its dep-order table. Per AC, the probe leaves
-    // the record alone; the final orphan normalization sets
+    // tasks file from its dep-order table, and the tasks filename's
+    // NN prefix (99) does not match any US row in the spec, so the
+    // convention-based fallback also finds no link. Per AC, the probe
+    // leaves the record alone; the final orphan normalization sets
     // parent_path to `null` and parent_missing stays unset.
     write(
       'specs/feature-a/feature-a.spec.md',
       `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Other | — | — |\n`,
     );
     write(
-      'specs/feature-a/01-declared.tasks.md',
-      `# Tasks\n\n**Source**: \`specs/feature-a/feature-a.spec.md\` — User Story 7\n\n## Slice 1: Only\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+      'specs/feature-a/99-declared.tasks.md',
+      `# Tasks\n\n**Source**: \`specs/feature-a/feature-a.spec.md\` — User Story 99\n\n## Slice 1: Only\n\n- [ ] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
     );
     const records = scan(root);
-    const tasks = byPath(records, 'specs/feature-a/01-declared.tasks.md');
+    const tasks = byPath(records, 'specs/feature-a/99-declared.tasks.md');
     expect(tasks).toBeDefined();
     expect(tasks?.parent_missing).toBeUndefined();
     expect(tasks?.parent_path).toBeNull();
+  });
+
+  it('NN-prefix fallback: tasks file under a spec folder links to the US row with the matching story number even when the Artifact cell is `—`', () => {
+    // A spec `—` row whose on-disk tasks file uses a slug that differs
+    // from the row title must still be picked up via the filename
+    // convention `<NN>-*.tasks.md`, where NN is derived from the US id.
+    // Without this fallback, the scanner would emit a virtual
+    // placeholder at a slug-based path and the real tasks record
+    // would float as an orphan.
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Ignite: Workshop Broad Idea into RFC | — | — |\n`,
+    );
+    write(
+      'specs/feature-a/01-workshop-idea-into-rfc.tasks.md',
+      `# Tasks\n\n## Slice 1: Only\n\n- [x] Task one\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    const records = scan(root);
+    const tasks = byPath(
+      records,
+      'specs/feature-a/01-workshop-idea-into-rfc.tasks.md',
+    );
+    expect(tasks).toBeDefined();
+    expect(tasks?.parent_path).toBe('specs/feature-a/feature-a.spec.md');
+    // The scanner should NOT emit a slug-based virtual placeholder
+    // when the convention-based fallback finds a real file.
+    const virtuals = records.filter(
+      (r) => r.type === 'tasks' && r.virtual === true,
+    );
+    expect(virtuals).toHaveLength(0);
   });
 
   it('broken-link detection: tasks file without a **Source** header and no resolved parent → orphan with parent_path=null', () => {

@@ -6,17 +6,22 @@ import { parseArtifact, parseDependencyTable } from './index.js';
 
 describe('parseDependencyTable', () => {
   it('parses a well-formed 4-column table preserving source order', () => {
+    // Mix backticked and plain Artifact cells. Real specs wrap paths in
+    // markdown inline-code backticks (the canonical form documented in
+    // `src/templates/agent-skills/README.md`), so the parser must strip
+    // a single pair of surrounding backticks while still accepting plain
+    // paths for backwards compatibility.
     const markdown = `# Some Spec
 
 Preamble text.
 
 ## Dependency Order
 
-| ID  | Title       | Depends On | Artifact              |
-|-----|-------------|------------|-----------------------|
-| US1 | First story | —          | specs/a/us1.tasks.md  |
-| US2 | Second story| US1        | specs/a/us2.tasks.md  |
-| US3 | Third story | —          | —                     |
+| ID  | Title       | Depends On | Artifact                |
+|-----|-------------|------------|-------------------------|
+| US1 | First story | —          | \`specs/a/us1.tasks.md\` |
+| US2 | Second story| US1        | specs/a/us2.tasks.md    |
+| US3 | Third story | —          | —                       |
 
 ## Next Section
 
@@ -45,6 +50,26 @@ trailing content
       depends_on: [],
       artifact_path: null,
     });
+  });
+
+  it('coerces backtick-wrapped absolute Artifact paths to null with a warning', () => {
+    // Backtick unwrapping must happen before the absolute-path check so
+    // a backticked absolute path is still rejected instead of being
+    // treated as a relative path after stripping.
+    const markdown = `## Dependency Order
+
+| ID  | Title | Depends On | Artifact            |
+|-----|-------|------------|---------------------|
+| US1 | Foo   | —          | \`/etc/passwd\`      |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.rows).toHaveLength(1);
+    expect(result.table.rows[0]?.artifact_path).toBeNull();
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/absolute path/);
+    expect(result.warnings[0]).toMatch(/US1/);
+    // The warning should quote the unwrapped path, not the backticked form.
+    expect(result.warnings[0]).toContain("'/etc/passwd'");
   });
 
   it('returns missing format when no Dependency Order section exists', () => {

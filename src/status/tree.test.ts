@@ -6,6 +6,7 @@ import {
   buildTree,
   BROKEN_LINKS_PATH,
   ORPHANED_SPECS_PATH,
+  ORPHANED_TASKS_PATH,
   type ArtifactRecord,
   type ArtifactType,
   type DependencyOrderTable,
@@ -204,6 +205,10 @@ describe('buildTree — orphaned specs', () => {
 
   it('does NOT group non-spec records (e.g. orphan tasks without parent_missing) under Orphaned Specs', () => {
     // Only specs belong in the Orphaned Specs bucket per AS 2.2.
+    // Real orphan tasks are routed to the dedicated "Orphaned Tasks"
+    // error group instead — rendering them as top-level roots would
+    // hide an error condition (every `.tasks.md` on disk is expected
+    // to link to a spec).
     const orphanTasks = makeRecord({
       type: 'tasks',
       path: 'specs/lost/01-lost.tasks.md',
@@ -214,11 +219,16 @@ describe('buildTree — orphaned specs', () => {
 
     // Not routed to Orphaned Specs (that group is spec-only).
     expect(tree.roots.find((n) => n.record.path === ORPHANED_SPECS_PATH)).toBeUndefined();
-    // And not routed to Broken Links either (parent_missing is not set).
+    // Not routed to Broken Links either (parent_missing is not set).
     expect(tree.roots.find((n) => n.record.path === BROKEN_LINKS_PATH)).toBeUndefined();
-    // Falls through to top-level roots.
+    // Routed to the Orphaned Tasks error group.
+    const orphanTasksGroup = tree.roots.find(
+      (n) => n.record.path === ORPHANED_TASKS_PATH,
+    );
+    expect(orphanTasksGroup).toBeDefined();
+    expect(orphanTasksGroup?.children).toHaveLength(1);
+    expect(orphanTasksGroup?.children[0]?.record.path).toBe(orphanTasks.path);
     expect(tree.roots).toHaveLength(1);
-    expect(tree.roots[0]!.record.path).toBe(orphanTasks.path);
   });
 });
 

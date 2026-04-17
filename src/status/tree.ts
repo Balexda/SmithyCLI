@@ -80,8 +80,19 @@ export const ORPHANED_SPECS_PATH = '__orphaned_specs__';
  */
 export const BROKEN_LINKS_PATH = '__broken_links__';
 
+/**
+ * Reserved `path` value on the synthetic "Orphaned Tasks" group node.
+ * Real tasks records whose `parent_path` is `null` (no parent-dep-order
+ * row and no resolvable `**Source**:` header) land here. They are
+ * always an error condition — every on-disk tasks file is expected to
+ * be linked to a spec — so renderers surface them with an explicit
+ * ERROR prefix instead of a normal tree row.
+ */
+export const ORPHANED_TASKS_PATH = '__orphaned_tasks__';
+
 const ORPHANED_SPECS_TITLE = 'Orphaned Specs';
 const BROKEN_LINKS_TITLE = 'Broken Links';
+const ORPHANED_TASKS_TITLE = 'Orphaned Tasks';
 
 /**
  * Project a flat `ArtifactRecord[]` into a {@link StatusTree}. Pure
@@ -109,6 +120,7 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
   const roots: TreeNode[] = [];
   const orphanedSpecs: TreeNode[] = [];
   const brokenLinks: TreeNode[] = [];
+  const orphanedTasks: TreeNode[] = [];
 
   for (const record of records) {
     const node = nodesByPath.get(record.path);
@@ -127,6 +139,13 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     if (!hasParent) {
       if (record.type === 'spec' && record.virtual !== true) {
         orphanedSpecs.push(node);
+      } else if (record.type === 'tasks' && record.virtual !== true) {
+        // Real tasks files should always be claimed by a spec row or
+        // declare a `**Source**:` header. An on-disk tasks file with
+        // no parent is an error condition — surface it through the
+        // dedicated "Orphaned Tasks" group so renderers can flag it
+        // rather than hiding it among top-level roots.
+        orphanedTasks.push(node);
       } else {
         roots.push(node);
       }
@@ -139,6 +158,11 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     const parentNode = nodesByPath.get(parentPath);
     if (parentNode !== undefined) {
       parentNode.children.push(node);
+    } else if (record.type === 'tasks' && record.virtual !== true) {
+      // Real tasks record declares a parent that is not present in
+      // the input set. Treat it as orphaned rather than dropping it
+      // silently as a top-level root.
+      orphanedTasks.push(node);
     } else {
       // Parent referenced but not present in the record set. This
       // shouldn't happen for well-formed scanner output — tasks with
@@ -159,6 +183,9 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
   }
   if (brokenLinks.length > 0) {
     finalRoots.push(makeGroupNode(BROKEN_LINKS_PATH, BROKEN_LINKS_TITLE, 'tasks', brokenLinks));
+  }
+  if (orphanedTasks.length > 0) {
+    finalRoots.push(makeGroupNode(ORPHANED_TASKS_PATH, ORPHANED_TASKS_TITLE, 'tasks', orphanedTasks));
   }
   for (const node of roots) {
     finalRoots.push(node);

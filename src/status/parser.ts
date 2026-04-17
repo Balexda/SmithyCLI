@@ -163,16 +163,23 @@ export function parseDependencyTable(
             .map((v) => v.trim())
             .filter((v) => v.length > 0);
 
+    // Real specs wrap the Artifact cell in markdown inline-code backticks
+    // (e.g. `` `specs/foo/01-bar.tasks.md` ``); the canonical template in
+    // `src/templates/agent-skills/README.md` shows the same form. Unwrap
+    // a single pair of surrounding backticks before the absolute-path
+    // check so a backticked absolute path is still rejected.
+    const unwrappedArtifact = stripInlineCode(artifactCell);
+
     let artifact_path: string | null;
-    if (artifactCell === EM_DASH || artifactCell === '') {
+    if (unwrappedArtifact === EM_DASH || unwrappedArtifact === '') {
       artifact_path = null;
-    } else if (isAbsolutePath(artifactCell)) {
+    } else if (isAbsolutePath(unwrappedArtifact)) {
       warnings.push(
-        `dependency_order: row ${id} has absolute path '${artifactCell}' — coerced to null`,
+        `dependency_order: row ${id} has absolute path '${unwrappedArtifact}' — coerced to null`,
       );
       artifact_path = null;
     } else {
-      artifact_path = artifactCell;
+      artifact_path = unwrappedArtifact;
     }
 
     partials.push({
@@ -491,4 +498,16 @@ function isSeparatorRow(line: string): boolean {
  */
 function isAbsolutePath(value: string): boolean {
   return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
+}
+
+/**
+ * Unwrap a single pair of surrounding markdown inline-code backticks
+ * from a table cell, returning the inner text trimmed. Leaves cells
+ * without wrapping backticks (or with unbalanced backticks) untouched.
+ */
+function stripInlineCode(cell: string): string {
+  if (cell.length >= 2 && cell.startsWith('`') && cell.endsWith('`')) {
+    return cell.slice(1, -1).trim();
+  }
+  return cell;
 }
