@@ -41,7 +41,7 @@ const casesDir = path.resolve(here, '..', 'cases');
 const found = loadScenarios(casesDir).find((s) => s.name === 'strike-health-check');
 if (!found) {
   throw new Error(
-    "strike-health-check scenario not found in evals/cases/ — did strike-health-check.yaml get renamed or removed?",
+    'strike-health-check scenario not found in evals/cases/ — strike-health-check.yaml may have been renamed or removed, or it may exist but have failed validation. Check stderr output for parse or validation errors from scenario loading.',
   );
 }
 
