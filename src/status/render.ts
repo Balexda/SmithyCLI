@@ -60,6 +60,7 @@
  * entities.
  */
 
+import { formatNextAction } from './suggester.js';
 import {
   BROKEN_LINKS_PATH,
   ORPHANED_SPECS_PATH,
@@ -77,6 +78,20 @@ import type { ArtifactRecord, StatusTree, TreeNode } from './types.js';
 export interface RenderTreeOptions {
   /** Reserved for ANSI color output (currently a no-op). */
   color?: boolean;
+  /**
+   * When `true`, append an indented next-action hint line beneath every
+   * real record whose `next_action` is non-null and not suppressed by
+   * an ancestor. Defaults to `false` so existing callers (and legacy
+   * tests) continue to see a pure tree with no hint annotations.
+   *
+   * The hint line uses the formatter {@link formatNextAction} and is
+   * indented with the same tree-prefix the record's descendants would
+   * inherit, plus a two-space pad (SD-016) so the hint visually
+   * attaches beneath the record line. Done records (whose `next_action`
+   * is `null`) and records carrying `suppressed_by_ancestor: true` emit
+   * no hint line. Group sentinel nodes never emit a hint line.
+   */
+  renderHints?: boolean;
 }
 
 /**
@@ -90,14 +105,15 @@ export interface RenderTreeOptions {
  */
 export function renderTree(
   tree: StatusTree,
-  _options: RenderTreeOptions = {},
+  options: RenderTreeOptions = {},
 ): string {
   if (tree.roots.length === 0) {
     return '';
   }
+  const renderHints = options.renderHints === true;
   const lines: string[] = [];
   for (const root of tree.roots) {
-    renderRoot(root, lines);
+    renderRoot(root, lines, renderHints);
   }
   return lines.join('\n');
 }
@@ -112,7 +128,11 @@ export function renderTree(
  * they survive log scrapes and CI output, and skip the heading + tree
  * connectors that normal groups use.
  */
-function renderRoot(node: TreeNode, lines: string[]): void {
+function renderRoot(
+  node: TreeNode,
+  lines: string[],
+  renderHints: boolean,
+): void {
   if (node.record.path === ORPHANED_TASKS_PATH) {
     for (const child of node.children) {
       lines.push(
@@ -122,9 +142,12 @@ function renderRoot(node: TreeNode, lines: string[]): void {
     return;
   }
   lines.push(formatLine(node.record, ''));
+  // A root's descendants inherit no parent spacer, so the hint line
+  // (when enabled) is anchored at column 0 plus the two-space hint pad.
+  maybePushHint(node.record, '', lines, renderHints);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
-    renderChild(children[i]!, '', i === children.length - 1, lines);
+    renderChild(children[i]!, '', i === children.length - 1, lines, renderHints);
   }
 }
 
@@ -139,6 +162,7 @@ function renderChild(
   parentPrefix: string,
   isLast: boolean,
   lines: string[],
+  renderHints: boolean,
 ): void {
   const connector = isLast ? '└─ ' : '├─ ';
   lines.push(formatLine(node.record, parentPrefix + connector));
@@ -148,10 +172,53 @@ function renderChild(
   // gets plain spaces because nothing else sits below it.
   const childSpacer = isLast ? '   ' : '│  ';
   const nextPrefix = parentPrefix + childSpacer;
+  // The hint line visually attaches to this record, so it inherits the
+  // same prefix the record's own children would use (the `nextPrefix`),
+  // keeping the hint anchored beneath the record but out of the way of
+  // real descendants below it.
+  maybePushHint(node.record, nextPrefix, lines, renderHints);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
-    renderChild(children[i]!, nextPrefix, i === children.length - 1, lines);
+    renderChild(
+      children[i]!,
+      nextPrefix,
+      i === children.length - 1,
+      lines,
+      renderHints,
+    );
   }
+}
+
+/**
+ * Conditionally push an indented next-action hint line beneath the
+ * record's primary line. Does nothing when any of the following holds:
+ *
+ * - `renderHints` is `false`.
+ * - The record is a group sentinel ("Orphaned Specs", "Broken Links",
+ *   "Orphaned Tasks") — these have no lifecycle and no next action.
+ * - The record's `next_action` is `null` or omitted (done and
+ *   read-error records, respectively).
+ * - `next_action.suppressed_by_ancestor === true` — suppressed hints
+ *   are intentionally hidden so only the topmost actionable ancestor's
+ *   hint surfaces (FR-011).
+ *
+ * Otherwise emit a single line of the form
+ * `<recordPrefix>  → <command> [args…]` where `recordPrefix` is the
+ * same prefix the record's descendants would inherit, and the two
+ * spaces after it are the SD-016 hint pad.
+ */
+function maybePushHint(
+  record: ArtifactRecord,
+  recordPrefix: string,
+  lines: string[],
+  renderHints: boolean,
+): void {
+  if (!renderHints) return;
+  if (isGroupSentinel(record)) return;
+  const action = record.next_action;
+  if (action === null || action === undefined) return;
+  if (action.suppressed_by_ancestor === true) return;
+  lines.push(`${recordPrefix}  ${formatNextAction(action)}`);
 }
 
 /**

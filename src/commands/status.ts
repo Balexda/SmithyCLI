@@ -253,10 +253,22 @@ export function statusAction(opts: StatusOptions = {}): void {
   // `--no-color` wire-up by disabling color only when Commander sets
   // `opts.color` to `false`; today the renderer emits plain text with
   // UTF-8 box-drawing connectors and no color regardless.
+  //
+  // US4 Slice 2: enable `renderHints` so the tree renderer attaches
+  // an indented `→ <command> <args>` hint beneath every actionable,
+  // non-suppressed record. Done records (`next_action: null`) and
+  // suppressed records (`suppressed_by_ancestor: true`) emit no hint.
+  // Collapsed done subtrees cannot leak hints either because
+  // `collapseTree` drops their descendants before `renderTree` sees
+  // them. The `--format json` branch above is untouched — this flag
+  // only affects text-mode output (SD-016).
   const tree = collapseTree(buildTree(filteredRecords), {
     all: opts.all === true,
   });
-  const rendered = renderTree(tree, { color: opts.color !== false });
+  const rendered = renderTree(tree, {
+    color: opts.color !== false,
+    renderHints: true,
+  });
   if (rendered.length > 0) {
     console.log(rendered);
     return;

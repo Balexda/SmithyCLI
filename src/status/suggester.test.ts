@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 // surface downstream modules consume, and these tests double as an
 // assertion that the barrel re-exports `suggestNextAction` correctly.
 import {
+  formatNextAction,
   suggestNextAction,
   type ArtifactRecord,
   type ArtifactType,
   type DependencyOrderTable,
   type DependencyRow,
+  type NextAction,
   type Status,
 } from './index.js';
 
@@ -426,5 +428,89 @@ describe('suggestNextAction — purity', () => {
     const a = suggestNextAction(record, children, false);
     const b = suggestNextAction(record, children, false);
     expect(a).toEqual(b);
+  });
+});
+
+describe('formatNextAction', () => {
+  function makeAction(overrides: Partial<NextAction> = {}): NextAction {
+    return {
+      command: overrides.command ?? 'smithy.forge',
+      arguments: overrides.arguments ?? [],
+      reason: overrides.reason ?? 'because',
+      ...overrides,
+    };
+  }
+
+  it('formats a smithy.forge action with its tasks file path', () => {
+    const action = makeAction({
+      command: 'smithy.forge',
+      arguments: ['specs/foo/01.tasks.md'],
+    });
+    expect(formatNextAction(action)).toBe('\u2192 smithy.forge specs/foo/01.tasks.md');
+  });
+
+  it('formats a smithy.cut action with folder and numeric story id', () => {
+    const action = makeAction({
+      command: 'smithy.cut',
+      arguments: ['specs/foo', '2'],
+    });
+    expect(formatNextAction(action)).toBe('\u2192 smithy.cut specs/foo 2');
+  });
+
+  it('formats a smithy.mark action with features path and numeric feature id', () => {
+    const action = makeAction({
+      command: 'smithy.mark',
+      arguments: ['features.md', '3'],
+    });
+    expect(formatNextAction(action)).toBe('\u2192 smithy.mark features.md 3');
+  });
+
+  it('formats a smithy.render action with an rfc path', () => {
+    const action = makeAction({
+      command: 'smithy.render',
+      arguments: ['path/to/rfc.rfc.md'],
+    });
+    expect(formatNextAction(action)).toBe('\u2192 smithy.render path/to/rfc.rfc.md');
+  });
+
+  it('formats an action with no arguments as command-only with no trailing space', () => {
+    const action = makeAction({ command: 'smithy.ignite', arguments: [] });
+    const formatted = formatNextAction(action);
+    expect(formatted).toBe('\u2192 smithy.ignite');
+    expect(formatted).not.toMatch(/\s$/);
+  });
+
+  it('emits exactly one line (no embedded newlines)', () => {
+    const action = makeAction({
+      command: 'smithy.cut',
+      arguments: ['specs/a', '1', '2'],
+    });
+    const formatted = formatNextAction(action);
+    expect(formatted.split('\n')).toHaveLength(1);
+    expect(formatted).not.toContain('\n');
+  });
+
+  it('uses the arrow character U+2192 as the prefix', () => {
+    const action = makeAction({
+      command: 'smithy.forge',
+      arguments: ['specs/x/01.tasks.md'],
+    });
+    expect(formatNextAction(action).startsWith('\u2192 ')).toBe(true);
+  });
+
+  it('joins multiple arguments with single spaces', () => {
+    const action = makeAction({
+      command: 'smithy.cut',
+      arguments: ['specs/a', '1'],
+    });
+    expect(formatNextAction(action)).toBe('\u2192 smithy.cut specs/a 1');
+  });
+
+  it('is a pure function — same input produces identical output on repeat calls', () => {
+    const action = makeAction({
+      command: 'smithy.mark',
+      arguments: [path.join('docs', 'rfcs', 'foo.features.md'), '2'],
+    });
+    expect(formatNextAction(action)).toBe(formatNextAction(action));
   });
 });

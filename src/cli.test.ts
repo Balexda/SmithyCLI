@@ -1077,7 +1077,7 @@ describe('CLI status', () => {
     );
     expect(jsonDefault).toBe(jsonAll);
     // Sanity: the JSON tree exposes every uncollapsed descendant.
-    const payload = JSON.parse(jsonDefault) as {
+    const collapsePayload = JSON.parse(jsonDefault) as {
       tree: {
         roots: Array<{
           record: { path: string };
@@ -1091,19 +1091,132 @@ describe('CLI status', () => {
         }>;
       };
     };
-    const rfcRoot = payload.tree.roots.find((r) =>
+    const collapseRfcRoot = collapsePayload.tree.roots.find((r) =>
       r.record.path.endsWith('.rfc.md'),
     );
-    expect(rfcRoot).toBeDefined();
-    expect(rfcRoot?.children[0]?.record.path).toBe(
+    expect(collapseRfcRoot).toBeDefined();
+    expect(collapseRfcRoot?.children[0]?.record.path).toBe(
       'docs/rfcs/01-milestone-one.features.md',
     );
-    expect(rfcRoot?.children[0]?.children[0]?.record.path).toBe(
+    expect(collapseRfcRoot?.children[0]?.children[0]?.record.path).toBe(
       'specs/feature-a/feature-a.spec.md',
     );
-    expect(rfcRoot?.children[0]?.children[0]?.children[0]?.record.path).toBe(
-      'specs/feature-a/01-first.tasks.md',
+    expect(
+      collapseRfcRoot?.children[0]?.children[0]?.children[0]?.record.path,
+    ).toBe('specs/feature-a/01-first.tasks.md');
+  });
+
+  it('text mode renders next-action hints beneath actionable records only (US4 Slice 2, AS 4.1–4.5)', () => {
+    // Fixture stitches two independent subtrees so every hint-line
+    // branch of the renderer is exercised in one invocation:
+    //
+    // 1. A not-started RFC with a virtual features child. The RFC is a
+    //    root (no ancestors) → un-suppressed → its hint line IS
+    //    emitted. The virtual features record below it inherits
+    //    `suppressed_by_ancestor: true` because its parent (the RFC)
+    //    is not-started → its hint line must NOT be emitted.
+    //
+    // 2. An independent spec whose only tasks child is fully checked
+    //    off → both records classify as `done` → neither emits a hint
+    //    line (`next_action` is null for done records). Under the
+    //    default US3 collapse pass, the done subtree collapses to a
+    //    single `DONE` line on the spec — pass `--all` so every
+    //    record surfaces and the "done records emit no hint"
+    //    assertion has the tasks line to test against.
+    write(
+      'docs/rfcs/active.rfc.md',
+      `# RFC: Active Work\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone One | — | docs/rfcs/active.features.md |\n`,
     );
+    write(
+      'specs/finished/finished.spec.md',
+      `# Feature Specification: Finished\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Finished Story | — | specs/finished/01-finished.tasks.md |\n`,
+    );
+    write(
+      'specs/finished/01-finished.tasks.md',
+      `# Tasks: Finished\n\n## Slice 1: Done\n\n- [x] Task one\n- [x] Task two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Done | — | — |\n`,
+    );
+
+    // Sanity-check the JSON payload first: the RFC is not-started and
+    // un-suppressed, the virtual features record IS suppressed, and
+    // the finished subtree rolls up to done with null next_actions.
+    const jsonOutput = execFileSync(
+      'node',
+      [CLI, 'status', '--format', 'json', '--root', tmpDir],
+      { encoding: 'utf-8' },
+    );
+    const payload = JSON.parse(jsonOutput) as {
+      records: Array<{
+        type: string;
+        path: string;
+        status: string;
+        next_action?: {
+          command: string;
+          arguments: string[];
+          reason: string;
+          suppressed_by_ancestor?: boolean;
+        } | null;
+      }>;
+    };
+    const rfcRecord = payload.records.find((r) => r.type === 'rfc');
+    const virtualFeatures = payload.records.find(
+      (r) => r.type === 'features' && r.path === 'docs/rfcs/active.features.md',
+    );
+    const finishedTasks = payload.records.find(
+      (r) => r.path === 'specs/finished/01-finished.tasks.md',
+    );
+    expect(rfcRecord?.status).toBe('not-started');
+    expect(rfcRecord?.next_action?.command).toBe('smithy.render');
+    expect(rfcRecord?.next_action?.suppressed_by_ancestor).toBeUndefined();
+    expect(virtualFeatures?.status).toBe('not-started');
+    expect(virtualFeatures?.next_action?.suppressed_by_ancestor).toBe(true);
+    expect(finishedTasks?.status).toBe('done');
+    expect(finishedTasks?.next_action).toBeNull();
+
+    // Text mode with `--all` so the done subtree is not collapsed:
+    // the hint lines surface exactly where expected, and the done
+    // tasks record is present in the rendered output so we can assert
+    // that no hint line attaches to it.
+    const textOutput = execFileSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--all'],
+      { encoding: 'utf-8' },
+    );
+    const lines = textOutput.split('\n');
+
+    // AS 4.4: the actionable RFC emits a hint line containing
+    // `smithy.render` and its rfc path.
+    const renderHintLines = lines.filter(
+      (l) => l.includes('\u2192') && l.includes('smithy.render'),
+    );
+    expect(renderHintLines).toHaveLength(1);
+    expect(renderHintLines[0]).toContain('docs/rfcs/active.rfc.md');
+
+    // AS 4.5: the suppressed features record emits NO hint line.
+    // There is only one feature-level hint-worthy command
+    // (`smithy.mark`) in the rule table; it must not appear anywhere
+    // in the text output since the only features record in the
+    // fixture is suppressed.
+    expect(textOutput).not.toContain('smithy.mark');
+
+    // Done records emit no hint line: the finished tasks file is done
+    // and must not have an arrow beneath its rendered line.
+    const finishedLineIndex = lines.findIndex((l) =>
+      l.includes('Finished') && l.includes('DONE'),
+    );
+    expect(finishedLineIndex).toBeGreaterThanOrEqual(0);
+    // The very next non-empty line must NOT be a hint line for the
+    // finished tasks record.
+    for (let i = finishedLineIndex + 1; i < lines.length; i++) {
+      const next = lines[i]!;
+      if (next.length === 0) continue;
+      expect(next).not.toMatch(/^\s*\u2192\s*smithy\.forge/);
+      break;
+    }
+
+    // There must be exactly one hint line in the entire output — the
+    // un-suppressed RFC's. No other arrow characters should appear.
+    const allHintLines = lines.filter((l) => l.includes('\u2192'));
+    expect(allHintLines).toHaveLength(1);
   });
 
   describe('US6 filters (--status, --type, --root)', () => {

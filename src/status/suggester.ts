@@ -170,3 +170,32 @@ export function suggestNextAction(
 
   return action;
 }
+
+/**
+ * Format a {@link NextAction} as a one-line, copy-pasteable hint string
+ * of the form `→ <command> <arg1> <arg2>...`.
+ *
+ * When `arguments` is empty the result collapses to `→ <command>` with
+ * no trailing whitespace. The returned string never contains embedded
+ * newlines — it is exactly one line.
+ *
+ * The prefix character is the Unicode rightwards arrow `→` (U+2192),
+ * separated from the command by a single ASCII space. Multiple
+ * arguments are joined by single ASCII spaces.
+ *
+ * This function is pure and performs no I/O. It is intentionally
+ * colocated with {@link suggestNextAction} so downstream callers that
+ * need to both derive and render a next action can import from a single
+ * module, and so the future US2 hierarchical tree renderer can reuse
+ * the same formatter to attach hints beneath tree nodes (SD-016).
+ *
+ * @param action The next action to format.
+ * @returns A single-line hint string.
+ */
+export function formatNextAction(action: NextAction): string {
+  const args = action.arguments;
+  if (args.length === 0) {
+    return `\u2192 ${action.command}`;
+  }
+  return `\u2192 ${action.command} ${args.join(' ')}`;
+}

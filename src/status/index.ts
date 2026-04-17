@@ -14,7 +14,7 @@ export {
   type ParsedDependencyTable,
 } from './parser.js';
 export { classifyRecord } from './classifier.js';
-export { suggestNextAction } from './suggester.js';
+export { formatNextAction, suggestNextAction } from './suggester.js';
 export { scan } from './scanner.js';
 export {
   buildTree,

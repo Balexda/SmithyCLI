@@ -477,6 +477,234 @@ describe('renderTree — story number prefix', () => {
   });
 });
 
+describe('renderTree — renderHints option (US4 Slice 2)', () => {
+  it('default (no renderHints) emits no hint line even when records carry next_action', () => {
+    // Backwards-compatibility guard: the renderHints flag defaults to
+    // false, so legacy callers (and legacy render.test.ts snapshots)
+    // continue to see a pure tree with no hint annotations.
+    const record = makeRecord({
+      type: 'tasks',
+      path: 'specs/f/01-story.tasks.md',
+      title: 'Story',
+      status: 'not-started',
+      parent_path: 'specs/f/f.spec.md',
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/f/01-story.tasks.md'],
+        reason: 'because',
+      },
+    });
+    const output = renderTree({
+      roots: [{ record, children: [] }],
+    });
+    expect(output).not.toContain('\u2192');
+    expect(output).not.toContain('smithy.forge');
+  });
+
+  it('default (no renderHints) is identical to explicit renderHints: false', () => {
+    const record = makeRecord({
+      type: 'tasks',
+      path: 'specs/f/01-story.tasks.md',
+      title: 'Story',
+      status: 'not-started',
+      parent_path: 'specs/f/f.spec.md',
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/f/01-story.tasks.md'],
+        reason: 'because',
+      },
+    });
+    const tree = { roots: [{ record, children: [] }] };
+    expect(renderTree(tree)).toBe(renderTree(tree, { renderHints: false }));
+  });
+
+  it('renderHints: true emits an indented hint line beneath an actionable record', () => {
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo RFC',
+      status: 'in-progress',
+      parent_path: null,
+      next_action: {
+        command: 'smithy.render',
+        arguments: ['docs/rfcs/demo.rfc.md'],
+        reason: 'because',
+      },
+    });
+    const output = renderTree(
+      { roots: [{ record: rfc, children: [] }] },
+      { renderHints: true },
+    );
+    const lines = output.split('\n');
+    // First line is the record line; second line is the hint.
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('Demo RFC  in progress');
+    // Two-space pad + arrow + command + args.
+    expect(lines[1]).toBe('  \u2192 smithy.render docs/rfcs/demo.rfc.md');
+  });
+
+  it('renderHints: true emits no hint line for a done record', () => {
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo RFC',
+      status: 'done',
+      parent_path: null,
+      next_action: null,
+    });
+    const output = renderTree(
+      { roots: [{ record: rfc, children: [] }] },
+      { renderHints: true },
+    );
+    const lines = output.split('\n');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('DONE');
+    expect(output).not.toContain('\u2192');
+  });
+
+  it('renderHints: true emits no hint line for a suppressed record', () => {
+    const record = makeRecord({
+      type: 'tasks',
+      path: 'specs/f/01-story.tasks.md',
+      title: 'Story',
+      status: 'not-started',
+      parent_path: 'specs/f/f.spec.md',
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/f/01-story.tasks.md'],
+        reason: 'because',
+        suppressed_by_ancestor: true,
+      },
+    });
+    const output = renderTree(
+      { roots: [{ record, children: [] }] },
+      { renderHints: true },
+    );
+    // No hint line; only the record line.
+    expect(output.split('\n')).toHaveLength(1);
+    expect(output).not.toContain('\u2192');
+    expect(output).not.toContain('smithy.forge');
+  });
+
+  it('renderHints: true emits a hint line beneath a nested record with the correct tree-prefix inheritance', () => {
+    // RFC → features → spec → tasks chain; the tasks record is the
+    // last descendant. The hint should inherit the same indentation
+    // as the descendants of the tasks record would (all blank spacers
+    // because every intermediate node is a last-sibling).
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo RFC',
+      status: 'in-progress',
+      parent_path: null,
+      next_action: null,
+    });
+    const features = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/demo.features.md',
+      title: 'Demo Features',
+      status: 'in-progress',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+      next_action: null,
+    });
+    const spec = makeRecord({
+      type: 'spec',
+      path: 'specs/a/a.spec.md',
+      title: 'Spec A',
+      status: 'in-progress',
+      parent_path: 'docs/rfcs/demo.features.md',
+      next_action: null,
+    });
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/a/01-story.tasks.md',
+      title: 'Story One',
+      status: 'in-progress',
+      completed: 1,
+      total: 3,
+      parent_path: 'specs/a/a.spec.md',
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/a/01-story.tasks.md'],
+        reason: 'because',
+      },
+    });
+    const tree = buildTree([rfc, features, spec, tasks]);
+    const output = renderTree(tree, { renderHints: true });
+    const lines = output.split('\n');
+    // Five lines: RFC, features, spec, tasks, hint.
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toBe('Demo RFC  in progress');
+    expect(lines[1]).toBe('└─ Demo Features  in progress');
+    expect(lines[2]).toBe('   └─ Spec A  in progress');
+    expect(lines[3]).toBe('      └─ Story One  1/3');
+    // The hint line lives beneath the tasks record. It uses the
+    // two-space hint pad, anchored at the deepest child-spacer column
+    // (nine leading spaces for this last-sibling-only chain).
+    expect(lines[4]).toContain('\u2192 smithy.forge specs/a/01-story.tasks.md');
+    expect(lines[4]!.startsWith(' ')).toBe(true);
+  });
+
+  it('renderHints: true does not emit a hint for group sentinel nodes', () => {
+    // An orphaned spec surfaces under the "Orphaned Specs" group; the
+    // group sentinel itself has no next_action and must not emit a
+    // hint line. The spec child may or may not emit a hint depending
+    // on its own next_action.
+    const orphan = makeRecord({
+      type: 'spec',
+      path: 'specs/orphan/orphan.spec.md',
+      title: 'Orphan',
+      status: 'not-started',
+      parent_path: null,
+      next_action: null,
+    });
+    const tree = buildTree([orphan]);
+    const output = renderTree(tree, { renderHints: true });
+    const lines = output.split('\n');
+    // Group heading first; no arrow follows it.
+    expect(lines[0]).toBe('Orphaned Specs');
+    // The very next line must not be a hint (no arrow under a group heading).
+    expect(lines[1]).not.toMatch(/^\s*\u2192/);
+  });
+
+  it('renderHints: true emits a hint line only for records whose next_action is non-null and not suppressed', () => {
+    // Mixed tree: one actionable record + one suppressed + one done.
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo RFC',
+      status: 'not-started',
+      parent_path: null,
+      next_action: {
+        command: 'smithy.render',
+        arguments: ['docs/rfcs/demo.rfc.md'],
+        reason: 'because',
+      },
+    });
+    const features = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/demo.features.md',
+      title: 'Demo Features',
+      status: 'not-started',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+      next_action: {
+        command: 'smithy.mark',
+        arguments: ['docs/rfcs/demo.features.md', '1'],
+        reason: 'because',
+        suppressed_by_ancestor: true,
+      },
+    });
+    const tree = buildTree([rfc, features]);
+    const output = renderTree(tree, { renderHints: true });
+    // Exactly ONE arrow line — the un-suppressed RFC root.
+    const arrowLines = output.split('\n').filter((l) => l.includes('\u2192'));
+    expect(arrowLines).toHaveLength(1);
+    expect(arrowLines[0]).toContain('smithy.render');
+    // The suppressed features record has no hint line.
+    expect(output).not.toContain('smithy.mark');
+  });
+});
+
 describe('renderTree — orphaned tasks error output', () => {
   it('renders real tasks with no parent as flat ERROR lines (not nested tree rows)', () => {
     // A real on-disk `.tasks.md` that could not be linked to a spec is
