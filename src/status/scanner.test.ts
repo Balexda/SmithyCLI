@@ -493,6 +493,78 @@ ${TABLE_HEADER}
     );
   });
 
+  it('AS 9.3: feature-map row pointing at a real spec folder rolls up from that spec\'s status', () => {
+    // Single-hop feature-map → spec rollup. The feature map's
+    // `## Dependency Order` has exactly one row whose `Artifact` cell
+    // points at an on-disk spec folder containing a canonical
+    // `<leaf>.spec.md`. The spec's own `## Dependency Order` has a
+    // single `—` row, which deterministically rolls up to
+    // `not-started` via a virtual tasks record — no tasks file is
+    // written on disk, isolating this fixture to the feature→spec
+    // hop only. The feature-map record's status must equal the
+    // spec's rolled-up status. No checkbox lines appear inside any
+    // `## Dependency Order` section of either fixture file.
+    write(
+      'specs/feature-a/feature-a.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Only feature | — | specs/feature-a/ |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Only story | — | — |\n`,
+    );
+
+    const records = scan(root);
+
+    const spec = byPath(records, 'specs/feature-a/feature-a.spec.md');
+    expect(spec).toBeDefined();
+    expect(spec?.virtual).toBeUndefined();
+    expect(spec?.status).toBe('not-started');
+
+    const features = byPath(
+      records,
+      'specs/feature-a/feature-a.features.md',
+    );
+    expect(features).toBeDefined();
+    expect(features?.status).toBe(spec?.status);
+    expect(features?.status).toBe('not-started');
+  });
+
+  it('AS 9.4: RFC row pointing at a real .features.md rolls up from that feature map\'s status', () => {
+    // Single-hop RFC → feature-map rollup. The RFC's
+    // `## Dependency Order` has exactly one row whose `Artifact` cell
+    // points at an on-disk `.features.md`. The feature map's own
+    // `## Dependency Order` has a single `—` row, which
+    // deterministically rolls up to `not-started` via a virtual spec
+    // record — no spec folder is written on disk, isolating this
+    // fixture to the RFC→features hop only. The RFC record's status
+    // must equal the feature map's rolled-up status. No checkbox
+    // lines appear inside any `## Dependency Order` section of
+    // either fixture file.
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Only milestone | — | specs/feature-a/feature-a.features.md |\n`,
+    );
+    write(
+      'specs/feature-a/feature-a.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Only feature | — | — |\n`,
+    );
+
+    const records = scan(root);
+
+    const features = byPath(
+      records,
+      'specs/feature-a/feature-a.features.md',
+    );
+    expect(features).toBeDefined();
+    expect(features?.virtual).toBeUndefined();
+    expect(features?.status).toBe('not-started');
+
+    const rfc = byPath(records, 'docs/rfcs/demo.rfc.md');
+    expect(rfc).toBeDefined();
+    expect(rfc?.status).toBe(features?.status);
+    expect(rfc?.status).toBe('not-started');
+  });
+
   it('AS 9.5: legacy-format artifact yields a spec record with status=unknown and migration-pointer warning', () => {
     // AS 9.5 — the scanner surfaces the parser's `format_legacy`
     // warning verbatim on the record's `warnings` list, carries

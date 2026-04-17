@@ -72,7 +72,7 @@
   - Neither fixture places any checkbox lines inside `## Dependency Order` sections.
   - Tests pass against the current scanner without production code changes.
 
-- [ ] **Add AS 9.3 and AS 9.4 feature→spec and RFC→features rollup tests**
+- [x] **Add AS 9.3 and AS 9.4 feature→spec and RFC→features rollup tests**
 
   Add two `it(...)` blocks in `src/status/scanner.test.ts` covering the remaining rollup hops. AS 9.3 uses a feature map whose row points at an existing spec folder. AS 9.4 uses an RFC whose row points at an existing `.features.md`. Each test isolates a single rollup hop — not a full RFC→features→spec→tasks chain — so regressions can be localized to the exact hop under test.
 
