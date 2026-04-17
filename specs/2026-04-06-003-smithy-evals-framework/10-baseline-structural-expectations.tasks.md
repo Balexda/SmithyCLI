@@ -28,7 +28,7 @@
   - No runtime logic introduced; existing exports unchanged
   - `npm run typecheck` passes
 
-- [ ] **Implement `loadBaseline` convention-based JSON loader**
+- [x] **Implement `loadBaseline` convention-based JSON loader**
 
   Create `evals/lib/baseline.ts` and export `loadBaseline(scenarioName: string, baselinesDir?: string): Baseline | null`. Look up `<baselinesDir ?? 'evals/baselines'>/<scenarioName>.json`; return `null` when the file does not exist (satisfies AS 10.3 — baselines are optional); throw a descriptive error when the file exists but is not valid JSON or is missing required `Baseline` fields. The loader is convention-based so scenarios do not need a new YAML field and US7 YAML loading lands unaffected.
 
