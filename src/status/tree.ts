@@ -2,9 +2,9 @@
  * Pure tree projection over the flat `ArtifactRecord[]` produced by
  * {@link scan}. Turns a scan result into the hierarchical
  * {@link StatusTree} described in §7 of `smithy-status-skill.data-model.md`:
- * nested parent/child nodes plus two implicit top-level group nodes,
- * "Orphaned Specs" and "Broken Links", that are emitted only when they
- * have members.
+ * nested parent/child nodes plus three implicit top-level group nodes —
+ * "Orphaned Specs", "Broken Links", and "Orphaned Tasks" — that are
+ * emitted only when they have members.
  *
  * This module is deliberately side-effect-free. `buildTree` performs no
  * I/O, never mutates its input, and returns the same tree for the same
@@ -39,22 +39,22 @@
  *
  * Input order is preserved at every level: siblings appear in the order
  * their records appeared in the input array, and the group nodes are
- * prepended to `roots` in a fixed order (Orphaned Specs first, then
- * Broken Links) when populated, so the same input always yields the
- * same tree.
+ * prepended to `roots` in a fixed order (Orphaned Specs, then Broken
+ * Links, then Orphaned Tasks) when populated, so the same input always
+ * yields the same tree.
  *
  * ## Synthetic group nodes
  *
  * `TreeNode` "carries no additional data" (see `types.ts`), so group
  * nodes are modelled as real `TreeNode` values whose wrapped
  * `ArtifactRecord` is a synthesized sentinel rather than a real file
- * record. The sentinels use reserved `path` values (`__orphaned_specs__`
- * and `__broken_links__`) and set `virtual: true` so consumers can
- * cheaply detect them via `record.path.startsWith('__')`. This choice
- * keeps the `TreeNode` shape aligned with the data model while giving
- * the Slice 2 renderer (`renderTree`) a clear, documented contract for
- * locating the group headings. See SD-010 for the narrowed Broken
- * Links scope.
+ * record. The sentinels use reserved `path` values (`__orphaned_specs__`,
+ * `__broken_links__`, and `__orphaned_tasks__`) and set `virtual: true`
+ * so consumers can cheaply detect them via `record.path.startsWith('__')`.
+ * This choice keeps the `TreeNode` shape aligned with the data model
+ * while giving the Slice 2 renderer (`renderTree`) a clear, documented
+ * contract for locating the group headings. See SD-010 for the narrowed
+ * Broken Links scope.
  *
  * Every real record appears in the tree exactly once. An empty input
  * yields `{ roots: [] }`.
@@ -80,8 +80,19 @@ export const ORPHANED_SPECS_PATH = '__orphaned_specs__';
  */
 export const BROKEN_LINKS_PATH = '__broken_links__';
 
+/**
+ * Reserved `path` value on the synthetic "Orphaned Tasks" group node.
+ * Real tasks records whose `parent_path` is `null` (no parent-dep-order
+ * row and no resolvable `**Source**:` header) land here. They are
+ * always an error condition — every on-disk tasks file is expected to
+ * be linked to a spec — so renderers surface them with an explicit
+ * ERROR prefix instead of a normal tree row.
+ */
+export const ORPHANED_TASKS_PATH = '__orphaned_tasks__';
+
 const ORPHANED_SPECS_TITLE = 'Orphaned Specs';
 const BROKEN_LINKS_TITLE = 'Broken Links';
+const ORPHANED_TASKS_TITLE = 'Orphaned Tasks';
 
 /**
  * Project a flat `ArtifactRecord[]` into a {@link StatusTree}. Pure
@@ -109,6 +120,7 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
   const roots: TreeNode[] = [];
   const orphanedSpecs: TreeNode[] = [];
   const brokenLinks: TreeNode[] = [];
+  const orphanedTasks: TreeNode[] = [];
 
   for (const record of records) {
     const node = nodesByPath.get(record.path);
@@ -127,6 +139,22 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     if (!hasParent) {
       if (record.type === 'spec' && record.virtual !== true) {
         orphanedSpecs.push(node);
+      } else if (
+        record.type === 'tasks' &&
+        record.virtual !== true &&
+        record.parent_path === null
+      ) {
+        // Real tasks files should always be claimed by a spec row or
+        // declare a `**Source**:` header. A `parent_path` of `null`
+        // is the scanner's definitive "no parent" signal — surface
+        // those through the dedicated "Orphaned Tasks" group so
+        // renderers can flag them rather than hiding them among
+        // top-level roots. Records with `parent_path === undefined`
+        // (e.g. a tasks file the scanner could not read — see the
+        // Phase 2c skip for `read_error:` warnings in scanner.ts)
+        // carry genuinely unknown parent state and must NOT be
+        // reported as orphans; fall them through to top-level roots.
+        orphanedTasks.push(node);
       } else {
         roots.push(node);
       }
@@ -139,6 +167,11 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     const parentNode = nodesByPath.get(parentPath);
     if (parentNode !== undefined) {
       parentNode.children.push(node);
+    } else if (record.type === 'tasks' && record.virtual !== true) {
+      // Real tasks record declares a parent that is not present in
+      // the input set. Treat it as orphaned rather than dropping it
+      // silently as a top-level root.
+      orphanedTasks.push(node);
     } else {
       // Parent referenced but not present in the record set. This
       // shouldn't happen for well-formed scanner output — tasks with
@@ -150,8 +183,9 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
     }
   }
 
-  // Prepend the populated group nodes in a fixed order so the output
-  // is deterministic and the two groups sit "at the top of `roots`" as
+  // Prepend the populated group nodes in a fixed order (Orphaned
+  // Specs, then Broken Links, then Orphaned Tasks) so the output is
+  // deterministic and the three groups sit "at the top of `roots`" as
   // the data model specifies.
   const finalRoots: TreeNode[] = [];
   if (orphanedSpecs.length > 0) {
@@ -159,6 +193,9 @@ export function buildTree(records: ArtifactRecord[]): StatusTree {
   }
   if (brokenLinks.length > 0) {
     finalRoots.push(makeGroupNode(BROKEN_LINKS_PATH, BROKEN_LINKS_TITLE, 'tasks', brokenLinks));
+  }
+  if (orphanedTasks.length > 0) {
+    finalRoots.push(makeGroupNode(ORPHANED_TASKS_PATH, ORPHANED_TASKS_TITLE, 'tasks', orphanedTasks));
   }
   for (const node of roots) {
     finalRoots.push(node);
