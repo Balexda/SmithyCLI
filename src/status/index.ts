@@ -23,3 +23,4 @@ export {
 } from './tree.js';
 export { collapseTree, type CollapseTreeOptions } from './collapse.js';
 export { renderTree, type RenderTreeOptions } from './render.js';
+export { filterRecords, type FilterRecordsOptions } from './filter.js';

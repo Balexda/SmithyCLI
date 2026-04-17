@@ -1062,4 +1062,228 @@ describe('CLI status', () => {
       'specs/feature-a/01-first.tasks.md',
     );
   });
+
+  describe('US6 filters (--status, --type, --root)', () => {
+    // Shared fixture for the US6 filter tests: two sibling features
+    // under one RFC. Feature A is entirely in-progress (its spec has
+    // an in-progress tasks file), feature B is entirely not-started
+    // (its spec's only story row has `Artifact: —`, so the scanner
+    // emits a virtual not-started tasks record for it). This gives
+    // the filter something to discriminate in both dimensions
+    // (status and type) without needing four independent fixtures.
+    function writeFilterFixture(): void {
+      write(
+        'docs/rfcs/demo.rfc.md',
+        `# RFC: Demo\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone | — | docs/rfcs/demo.features.md |\n`,
+      );
+      write(
+        'docs/rfcs/demo.features.md',
+        `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | Feature A | — | specs/feature-a |\n| F2 | Feature B | — | specs/feature-b |\n`,
+      );
+      // Feature A: spec → tasks with 1/2 ticked → in-progress.
+      write(
+        'specs/feature-a/feature-a.spec.md',
+        `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story A | — | specs/feature-a/01-story-a.tasks.md |\n`,
+      );
+      // Master's a3fa215 counts completed slices, not individual
+      // checkboxes, so feature A's tasks file supplies one fully-
+      // checked slice plus one open slice — yielding 1/2 slices done
+      // → in-progress at rollup.
+      write(
+        'specs/feature-a/01-story-a.tasks.md',
+        `# Story A Tasks\n\n## Slice 1: Done Slice\n\n- [x] Done task A\n- [x] Done task B\n\n## Slice 2: Open Slice\n\n- [ ] Open task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Done Slice | — | — |\n| S2 | Open Slice | — | — |\n`,
+      );
+      // Feature B: spec with an Artifact-— row → virtual
+      // not-started tasks record is synthesized by the scanner.
+      write(
+        'specs/feature-b/feature-b.spec.md',
+        `# Feature Specification: Feature B\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story B | — | — |\n`,
+      );
+    }
+
+    function runStatusJson(args: string[]): {
+      status: number;
+      payload: {
+        summary: {
+          counts: Record<string, Record<string, number>>;
+          parse_error_count: number;
+        };
+        records: Array<{
+          type: string;
+          path: string;
+          status: string;
+          virtual?: boolean;
+          parent_path?: string | null;
+        }>;
+        tree: { roots: Array<{ record: { path: string } }> };
+      };
+      raw: string;
+    } {
+      const result = spawnSync(
+        'node',
+        [CLI, 'status', '--format', 'json', '--root', tmpDir, ...args],
+        { encoding: 'utf-8' },
+      );
+      return {
+        status: result.status ?? 0,
+        payload: JSON.parse(result.stdout) as ReturnType<
+          typeof runStatusJson
+        >['payload'],
+        raw: result.stdout,
+      };
+    }
+
+    it('--status in-progress keeps in-progress records and their ancestors (AS 6.1)', () => {
+      writeFilterFixture();
+      const { status, payload } = runStatusJson(['--status', 'in-progress']);
+      expect(status).toBe(0);
+
+      const paths = payload.records.map((r) => r.path).sort();
+      // Chain A survives (tasks match + ancestors). Nothing from
+      // chain B survives — feature B's spec and virtual tasks are
+      // not-started, and the shared features/rfc are retained only
+      // because chain A's records walked through them.
+      expect(paths).toEqual(
+        [
+          'docs/rfcs/demo.rfc.md',
+          'docs/rfcs/demo.features.md',
+          'specs/feature-a/feature-a.spec.md',
+          'specs/feature-a/01-story-a.tasks.md',
+        ].sort(),
+      );
+      // Feature B artifacts are dropped.
+      expect(paths).not.toContain('specs/feature-b/feature-b.spec.md');
+    });
+
+    it('--type spec retains only specs plus their ancestors (AS 6.3)', () => {
+      writeFilterFixture();
+      const { status, payload } = runStatusJson(['--type', 'spec']);
+      expect(status).toBe(0);
+
+      const types = payload.records.map((r) => r.type).sort();
+      // Only rfc, features, spec, spec remain — no tasks records,
+      // because tasks are descendants of a spec, not ancestors.
+      expect(types).toEqual(['features', 'rfc', 'spec', 'spec']);
+      // Both specs made it in as direct matches.
+      const specPaths = payload.records
+        .filter((r) => r.type === 'spec')
+        .map((r) => r.path)
+        .sort();
+      expect(specPaths).toEqual([
+        'specs/feature-a/feature-a.spec.md',
+        'specs/feature-b/feature-b.spec.md',
+      ]);
+    });
+
+    it('--root <path> narrows the scan to artifacts under that root (AS 6.2)', () => {
+      // AS 6.2 is about narrowing the scan root. The scanner walks
+      // `specs/`, `docs/rfcs/`, `specs/strikes/` under the supplied
+      // root, so to exercise narrowing we lay down two independent
+      // sub-repos inside the temp dir and verify `--root subrepoA`
+      // surfaces only sub-repo A's artifacts. This exercises the
+      // US1-Slice-3 `--root` wire-up end-to-end under US6.
+      write(
+        'subrepoA/specs/feature-a/feature-a.spec.md',
+        `# Feature Specification: Feature A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story A | — | — |\n`,
+      );
+      write(
+        'subrepoB/specs/feature-b/feature-b.spec.md',
+        `# Feature Specification: Feature B\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story B | — | — |\n`,
+      );
+
+      const subrepoA = path.join(tmpDir, 'subrepoA');
+      const result = spawnSync(
+        'node',
+        [CLI, 'status', '--format', 'json', '--root', subrepoA],
+        { encoding: 'utf-8' },
+      );
+      expect(result.status).toBe(0);
+      const payload = JSON.parse(result.stdout) as {
+        records: Array<{ path: string; title: string }>;
+      };
+      const titles = payload.records.map((r) => r.title).sort();
+      // Feature A is in scope; Feature B is not discoverable from
+      // subrepoA's root.
+      expect(titles).toContain('Feature A');
+      expect(titles).not.toContain('Feature B');
+    });
+
+    it('--status in-progress --type spec yields the intersection (matches both predicates + shared ancestors)', () => {
+      writeFilterFixture();
+      const { status, payload } = runStatusJson([
+        '--status',
+        'in-progress',
+        '--type',
+        'spec',
+      ]);
+      expect(status).toBe(0);
+
+      const paths = payload.records.map((r) => r.path).sort();
+      // Only Feature A's spec is BOTH a spec AND in-progress. Its
+      // ancestors (rfc, features) are retained; Feature B's spec is
+      // dropped because it is not in-progress; tasks records are
+      // dropped because they are not specs.
+      expect(paths).toEqual(
+        [
+          'docs/rfcs/demo.rfc.md',
+          'docs/rfcs/demo.features.md',
+          'specs/feature-a/feature-a.spec.md',
+        ].sort(),
+      );
+    });
+
+    it('--format json emits the filtered records and tree', () => {
+      writeFilterFixture();
+      const { payload } = runStatusJson(['--status', 'in-progress']);
+      // `records` and `tree.roots` are both computed from the
+      // filtered set — Feature B's tree must not leak into `tree`.
+      const treePaths: string[] = [];
+      const walk = (nodes: typeof payload.tree.roots): void => {
+        for (const n of nodes) {
+          treePaths.push(n.record.path);
+          walk(
+            (n as unknown as {
+              children: typeof payload.tree.roots;
+            }).children,
+          );
+        }
+      };
+      walk(payload.tree.roots);
+      expect(treePaths).not.toContain('specs/feature-b/feature-b.spec.md');
+      expect(treePaths).toContain('specs/feature-a/01-story-a.tasks.md');
+    });
+
+    it('summary counts are byte-identical with and without filter flags against the same fixture (SD-010)', () => {
+      writeFilterFixture();
+      const unfiltered = runStatusJson([]);
+      const filtered = runStatusJson(['--status', 'in-progress']);
+      // Summary is aggregate over the full scan regardless of
+      // filters — locked in by SD-010 to preserve the JSON
+      // contract's aggregate-summary framing.
+      expect(JSON.stringify(filtered.payload.summary)).toBe(
+        JSON.stringify(unfiltered.payload.summary),
+      );
+    });
+
+    it('text-mode summary header is byte-identical with and without filter flags', () => {
+      writeFilterFixture();
+      const unfiltered = execFileSync(
+        'node',
+        [CLI, 'status', '--root', tmpDir],
+        { encoding: 'utf-8' },
+      );
+      const filtered = execFileSync(
+        'node',
+        [CLI, 'status', '--root', tmpDir, '--status', 'in-progress'],
+        { encoding: 'utf-8' },
+      );
+      const unfilteredHeader = (unfiltered.split('\n')[0] ?? '').trim();
+      const filteredHeader = (filtered.split('\n')[0] ?? '').trim();
+      expect(filteredHeader).toBe(unfilteredHeader);
+      // Sanity: header carries all four type labels.
+      expect(unfilteredHeader).toMatch(
+        /RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/,
+      );
+    });
+  });
 });

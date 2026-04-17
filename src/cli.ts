@@ -78,19 +78,19 @@ program
       .choices(['text', 'json'])
       .default('text'),
   )
-  // `--all` is fully wired (US3); `--status` / `--type` / `--graph` /
-  // `--no-color` remain stubs that Commander parses so `smithy status
-  // --help` advertises the full surface. `--status` and `--type` will
-  // be wired in US6, `--graph` in US10; `--no-color` has no effect
-  // until a colored renderer lands.
+  // `--all` is wired (US3) and `--status` / `--type` are wired (US6).
+  // `--graph` and `--no-color` remain stubs that Commander parses so
+  // `smithy status --help` advertises the full surface; `--graph` is
+  // owned by US10 and `--no-color` has no effect until a colored
+  // renderer lands.
   //
   // `--status` and `--type` deliberately do NOT use Commander
   // `.choices()` because Commander's invalid-choice handler exits with
   // code 1, while the contracts mandate exit code 2 for invalid values
   // on these two flags. `statusAction` validates them manually and
   // sets `process.exitCode = 2`.
-  .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown (stub — wired in US6)')
-  .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks (stub — wired in US6)')
+  .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown')
+  .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks')
   .option('--all', 'Disable collapsing of done subtrees so every artifact surfaces')
   .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
   .option('--no-color', 'Suppress ANSI color output (stub — no colored text yet)')

@@ -19,19 +19,26 @@
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error".
  *
- * `--all` now disables done-subtree collapsing in text mode via the
- * pure `collapseTree` transform inserted between `buildTree` and
- * `renderTree` (US3); JSON mode continues to emit the uncollapsed
- * `buildTree(records)` structure unconditionally. Option stubs for
- * `--status`, `--type`, `--graph`, and `--no-color` remain accepted
- * but have no behavioral effect yet — US6 wires the filter flags and
- * US10 wires `--graph`.
+ * `--status`, `--type`, and `--root` are wired end-to-end (US6):
+ * `--root` is honored by `scan(resolvedRoot)` upstream, and
+ * `filterRecords` applies the status / type predicates between the
+ * scan and the tree / JSON emission with ancestor retention so AS 6.1
+ * and AS 6.3 render correctly. `ScanSummary` is deliberately computed
+ * from the pre-filter record set so the `summary` block keeps its
+ * aggregate-scan framing (see SD-010). `--all` now disables
+ * done-subtree collapsing in text mode via the pure `collapseTree`
+ * transform inserted between `buildTree` and `renderTree` (US3); JSON
+ * mode continues to emit the uncollapsed tree structure
+ * unconditionally. Remaining stubs (`--graph`, `--no-color`) are
+ * accepted but have no behavioral effect — US10 wires `--graph`; a
+ * colored renderer will wire `--no-color`.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildTree, collapseTree, renderTree, scan } from '../status/index.js';
+import { buildTree, collapseTree, filterRecords, renderTree, scan } from '../status/index.js';
+import type { FilterRecordsOptions } from '../status/index.js';
 import type {
   ArtifactRecord,
   ArtifactType,
@@ -53,9 +60,15 @@ export interface StatusOptions {
   root?: string;
   /** Output format. Defaults to `text`. */
   format?: 'text' | 'json';
-  /** Stub: filter by status. Parsed but not wired (US6). */
+  /**
+   * Filter by status. Retains matching records and every ancestor by
+   * `parent_path` so the renderer keeps context (AS 6.1).
+   */
   status?: Status;
-  /** Stub: filter by artifact type. Parsed but not wired (US6). */
+  /**
+   * Filter by artifact type. Retains matching records and their
+   * ancestors as headers (AS 6.3). Descendants are hidden.
+   */
   type?: ArtifactType;
   /**
    * Disable done-subtree collapsing in text mode. When truthy, every
@@ -173,7 +186,22 @@ export function statusAction(opts: StatusOptions = {}): void {
   }
 
   const records = scan(resolvedRoot);
+  // US6: apply the `--status` / `--type` filters to the classified
+  // record set before it reaches `buildTree` / the JSON emitter.
+  // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
+  // 6.3 context without any renderer change. `--root` is a no-op
+  // here (the scan was already narrowed above); we pass it through
+  // for signature symmetry. `summarize(records)` stays above the
+  // filter call so `ScanSummary` / the header remain aggregate over
+  // the full scan per SD-010.
   const summary = summarize(records);
+  // Build a sparse options object — `exactOptionalPropertyTypes` in
+  // tsconfig forbids assigning `undefined` to optional fields, so we
+  // only set each key when Commander actually populated it.
+  const filterOpts: FilterRecordsOptions = { root: resolvedRoot };
+  if (opts.status !== undefined) filterOpts.status = opts.status;
+  if (opts.type !== undefined) filterOpts.type = opts.type;
+  const filteredRecords = filterRecords(records, filterOpts);
 
   // JSON mode: always emit a valid JSON payload, even on an empty
   // repo. Machine consumers (CI, the smithy.status agent skill) parse
@@ -182,8 +210,8 @@ export function statusAction(opts: StatusOptions = {}): void {
   if (opts.format === 'json') {
     const payload: StatusJsonPayload = {
       summary,
-      records,
-      tree: buildTree(records),
+      records: filteredRecords,
+      tree: buildTree(filteredRecords),
       graph: {
         nodes: {},
         layers: [],
@@ -210,22 +238,22 @@ export function statusAction(opts: StatusOptions = {}): void {
   // the helper.
   console.log(formatSummaryHeader(summary));
 
-  // US2 Slice 2 + US3 Slice 1: default text output is a hierarchical
-  // tree built from the same `ArtifactRecord[]` the JSON payload
-  // uses, then passed through the pure `collapseTree` transform so
-  // any fully-`done` subtree collapses to a single `DONE` line with
-  // no descendants (AS 3.1, 3.3, 3.4). Passing `--all` routes through
-  // the same transform with `{ all: true }`, which returns a fresh
-  // but structurally equivalent tree so every artifact still
-  // surfaces (AS 3.5). Group sentinels ("Orphaned Specs", "Broken
-  // Links") surface at the top of `tree.roots` and render as their
-  // own headings above their grouped children; `collapseTree` never
-  // collapses them regardless of `--all`. `color: opts.color !== false`
-  // preserves the future `--no-color` wire-up by disabling color
-  // only when Commander sets `opts.color` to `false`; today the
-  // renderer emits plain text with UTF-8 box-drawing connectors and
-  // no color regardless.
-  const tree = collapseTree(buildTree(records), {
+  // US2 Slice 2 + US3 Slice 1 + US6 Slice 1: default text output is a
+  // hierarchical tree built from the US6-filtered record set (the full
+  // scan when `--status` / `--type` are absent), then passed through
+  // the pure `collapseTree` transform so any fully-`done` subtree
+  // collapses to a single `DONE` line with no descendants (AS 3.1,
+  // 3.3, 3.4). Passing `--all` routes through the same transform with
+  // `{ all: true }`, which returns a fresh but structurally equivalent
+  // tree so every artifact still surfaces (AS 3.5). Group sentinels
+  // ("Orphaned Specs", "Broken Links") surface at the top of
+  // `tree.roots` and render as their own headings above their grouped
+  // children; `collapseTree` never collapses them regardless of
+  // `--all`. `color: opts.color !== false` preserves the future
+  // `--no-color` wire-up by disabling color only when Commander sets
+  // `opts.color` to `false`; today the renderer emits plain text with
+  // UTF-8 box-drawing connectors and no color regardless.
+  const tree = collapseTree(buildTree(filteredRecords), {
     all: opts.all === true,
   });
   const rendered = renderTree(tree, { color: opts.color !== false });
@@ -235,18 +263,17 @@ export function statusAction(opts: StatusOptions = {}): void {
   }
 
   // Defensive fallback: the scanner found records but `buildTree`
-  // produced an empty `roots` array — the only realistic way this
-  // happens today is a pathological cycle where two records claim
-  // each other as parents, so neither reaches a root. The slice's
-  // acceptance criterion forbids silent drops ("every ArtifactRecord
-  // is represented by exactly one line"), so surface every record on
-  // its own line with a diagnostic header so operators can still see
-  // what the scanner found. Matches the spirit of the US1 flat
-  // listing this slice replaces.
+  // produced an empty `roots` array — either a pathological cycle
+  // where two records claim each other as parents, or the US6 filter
+  // retained no records at all. The slice's acceptance criterion
+  // forbids silent drops ("every ArtifactRecord is represented by
+  // exactly one line"), so surface every retained record on its own
+  // line with a diagnostic header so operators can still see what
+  // the scanner found.
   console.log(
     'warning: tree rendering produced no output — listing records flat to avoid silent drops.',
   );
-  for (const record of records) {
+  for (const record of filteredRecords) {
     console.log(
       `${record.type}\t${record.path}\t${record.title}\t${record.status}`,
     );
