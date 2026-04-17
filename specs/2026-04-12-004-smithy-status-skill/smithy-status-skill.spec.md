@@ -232,7 +232,7 @@ As a Smithy user with multiple in-progress artifacts, I want `smithy status` to 
 | US3  | Collapse Completed Items                                                   | US2            | —        |
 | US4  | Suggest the Next Command                                                   | US1            | `specs/2026-04-12-004-smithy-status-skill/04-suggest-next-command.tasks.md` |
 | US5  | Invoke Status via the smithy.status Skill                                  | US1, US2, US3, US4 | —    |
-| US6  | Filter and Scope the View                                                  | US2            | —        |
+| US6  | Filter and Scope the View                                                  | US2            | `specs/2026-04-12-004-smithy-status-skill/06-filter-and-scope-view.tasks.md` |
 | US7  | Summary Roll-up Header                                                     | US1            | `specs/2026-04-12-004-smithy-status-skill/07-summary-roll-up-header.tasks.md` |
 | US8  | Deterministic Dependency Order Format Across All Artifacts                 | —              | `specs/2026-04-12-004-smithy-status-skill/08-deterministic-dependency-order-format.tasks.md` |
 | US9  | Scanner Classifies Without Relying on Dependency-Order Checkboxes          | US1, US8       | `specs/2026-04-12-004-smithy-status-skill/09-scanner-classifies-without-checkboxes.tasks.md` |
