@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant a deliberate scout-detectable inconsistency in the fixture**
+- [x] **Plant a deliberate scout-detectable inconsistency in the fixture**
 
   Introduce at least one deliberate inconsistency in `evals/fixture/` that maps to a row in smithy-scout's Severity Guidelines table (see `src/templates/agent-skills/agents/smithy.scout.prompt` — e.g., a doc comment that contradicts a function signature, or a TODO/FIXME marker). Only use plant types reliably detected at **shallow** depth — stale doc comments, signature mismatches, and TODO markers. Do NOT plant dead exports or other deep-scan-only inconsistencies, as the scout scenario runs at shallow depth. The plant must live in a file scout would scan at shallow depth (`src/routes/users.ts`, `src/types.ts`, or `src/index.ts`). The fixture must still type-check conceptually — do not break imports or introduce syntax errors, because other eval scenarios copy this fixture verbatim.
 
@@ -27,7 +27,7 @@
   - `npm test` continues to pass (the existing fixture deployment test re-hashes the directory, so any edits are implicitly covered)
   - No new runtime files are added — the plant is an edit inside existing fixture source files
 
-- [ ] **Document the planted inconsistencies in the fixture README**
+- [x] **Document the planted inconsistencies in the fixture README**
 
   Extend `evals/fixture/README.md` with a "Planted Inconsistencies" section listing each deliberate flaw, the file it lives in, and the scout severity category it is expected to trigger. This is the signal that tells future maintainers (and smithy-fix / smithy-scout itself at higher depths) not to "clean up" the plant.
 
@@ -36,7 +36,7 @@
   - Each plant is listed with file path and expected scout category (Warning vs Conflict)
   - The section is discoverable from the README's existing "Intentional Gap" context so the fixture's twin purposes (health-check gap + planted inconsistencies) are documented together
 
-- [ ] **Create the scout scenario module**
+- [x] **Create the scout scenario module**
 
   Add `evals/lib/scout-scenario.ts` exporting a typed `scoutScenario: EvalScenario` constant (type imported from `./types.js`), following the shape of `strike-scenario.ts`. The scenario's `skill` and `prompt` must be authored so headless `claude -p` dispatches smithy-scout against the fixture source at shallow depth with a concrete planning context (e.g., planning a health check endpoint). Structural expectations must assert that scout's report template is present AND that at least one finding row is emitted.
 
@@ -49,7 +49,7 @@
   - `sub_agent_evidence` includes an entry for `smithy-scout` whose `pattern` matches either the dispatch message in assistant text or the agent's report output (per FR-016)
   - `timeout` is left to the framework default so the `--timeout` CLI override still applies
 
-- [ ] **Unit test the scout scenario against synthetic samples**
+- [x] **Unit test the scout scenario against synthetic samples**
 
   Add `evals/lib/scout-scenario.test.ts` that exercises `validateStructure` and `verifySubAgents` from `./structural.js` against synthetic scout outputs. The tests must pin both the positive and negative cases without requiring a live `claude` invocation, mirroring the coverage approach in `strike-scenario.test.ts`.
 
@@ -60,7 +60,7 @@
   - A negative sample containing one of FR-012's generic refusal strings fails the forbidden-pattern check
   - The test imports `scoutScenario` by name rather than redefining expectations inline, preserving a single source of truth
 
-- [ ] **Wire the scout scenario into the orchestrator**
+- [x] **Wire the scout scenario into the orchestrator**
 
   Update `evals/run-evals.ts` to run `scoutScenario` alongside `strikeScenario` so `npm run eval` exercises both cases in a single invocation. The orchestrator's existing structural and sub-agent validation pipeline (from US4 Slice 2) and `EvalReport` aggregation (from US9 Slice 2) must continue to operate unchanged — only the scenario list grows.
 

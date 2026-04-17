@@ -55,6 +55,8 @@ The evals framework (under `evals/`) — implemented:
 - Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)
 - Eval summary report library (`scenarioRunToResult`, `buildReport`, `formatReport`, `EvalReport` — pure, fully unit-tested)
 - Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
+- Strike and scout end-to-end scenarios (`strikeScenario`, `scoutScenario`) wired into the orchestrator; `--case <name>` filter selects a single scenario by name
+- Reference fixture carries documented planted inconsistencies (`evals/fixture/README.md` — Planted Inconsistencies section) that the scout scenario asserts are detected
 
 Pending:
 - YAML-defined scenario loading (`evals/cases/`)

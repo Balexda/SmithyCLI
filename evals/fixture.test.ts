@@ -72,7 +72,7 @@ describe('evals/fixture deployment', () => {
     expect(promptFiles.length).toBeGreaterThan(0);
     expect(agentFiles.length).toBeGreaterThan(0);
 
-    // Key skills for strike evals are present
+    // Key skills present for strike and scout evals
     expect(commandFiles).toContain('smithy.strike.md');
     expect(agentFiles).toContain('smithy.plan.md');
   });
