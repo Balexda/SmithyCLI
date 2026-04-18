@@ -184,10 +184,18 @@ from the shared review protocol:
 | Severity | Confidence | Forge action |
 |----------|------------|--------------|
 | Critical | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`, and note the fix in the PR body. |
-| Critical | Low | Do not apply. Append the finding to the artifact's `## Specification Debt` section and flag it in the PR body for the reviewer. |
+| Critical | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section and flag it in the PR body for the reviewer. |
 | Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
-| Important | Low | Do not apply. Append the finding to the artifact's `## Specification Debt` section. |
+| Important | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section. |
 | Minor | Any | Do not apply and do not record as debt. Note in the PR body only. |
+
+"Slice planning artifact" above means the `.tasks.md`, `.strike.md`,
+`.spec.md`, or equivalent planning file associated with the slice you were
+asked to implement (derived from the intake file path). This is intentionally
+independent of the finding's `artifact_path`: when `artifact_path` points to
+source code or another non-planning file, do **not** create or edit a
+`## Specification Debt` section there — record the debt in the planning
+artifact only.
 
 When applying a High-confidence fix:
 
