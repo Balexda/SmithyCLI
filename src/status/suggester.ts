@@ -56,11 +56,19 @@ function numericIdSuffix(id: string): string | undefined {
  * virtual tasks record. Virtual tasks records carry the parent spec's
  * path in `parent_path` and the canonical `US<N>` row id in
  * `parent_row_id`; both are populated by the scanner whenever it emits
- * a virtual. Returns `null` if either field is missing, so the caller
- * can fall back to the legacy `smithy.forge` shape rather than
- * crashing. The spec folder is derived via `path.dirname` of the
- * parent spec file — exactly the same transform the real spec case
- * applies at `specFolderFromPath`.
+ * a virtual.
+ *
+ * Returns `null` when `parent_path` is missing or empty — in that
+ * case the scanner left us without a spec folder to target, so the
+ * caller falls back to the legacy `smithy.forge` shape rather than
+ * producing a `smithy.cut` with no arguments. When `parent_path` is
+ * present but `parent_row_id` is missing or has no numeric suffix,
+ * returns `{ folder, digits: undefined }` so the caller emits a
+ * folder-only `smithy.cut <folder>` hint — the same no-digits
+ * fallback the spec case uses for zero-row pathological specs. The
+ * spec folder is derived via `path.dirname` of the parent spec file —
+ * exactly the same transform the real spec case applies at
+ * `specFolderFromPath`.
  */
 function cutTargetFromVirtualTasks(
   record: ArtifactRecord,
