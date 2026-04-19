@@ -148,7 +148,7 @@ const COLOR_PAINT: ThemePaint = (() => {
  */
 export function resolveColor(opts: { noColor?: boolean } = {}): boolean {
   if (opts.noColor === true) return false;
-  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') {
+  if (process.env.NO_COLOR !== undefined) {
     return false;
   }
   const force = process.env.FORCE_COLOR;

@@ -62,10 +62,13 @@ describe('resolveColor', () => {
     expect(resolveColor({ noColor: true })).toBe(false);
   });
 
-  it('returns false when NO_COLOR env var is set to any non-empty value', () => {
+  it('returns false whenever NO_COLOR is set — including the empty-string case, per no-color.org', () => {
     process.env.NO_COLOR = '1';
     expect(resolveColor()).toBe(false);
     process.env.NO_COLOR = 'yes';
+    expect(resolveColor()).toBe(false);
+    // no-color.org: "presence of the variable, regardless of value"
+    process.env.NO_COLOR = '';
     expect(resolveColor()).toBe(false);
   });
 
