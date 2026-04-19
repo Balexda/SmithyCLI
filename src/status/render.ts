@@ -43,7 +43,7 @@
  * | `status === 'in-progress'` on a tasks record | `◐ <completed>/<total>` |
  * | `status === 'in-progress'` on a parent record | `◐ <done>/<wip>/<not-started> (<total>)` |
  * | `status === 'not-started'` (real or virtual) | `○` |
- * | `status === 'unknown'` | `⚠ (<first warning>)` |
+ * | `status === 'unknown'` | `⚠ unknown (<first warning>)` |
  *
  * A broken-link parent (see `parent_missing === true`) additionally
  * gets a red error prefix (`theme.icons.error` painted red) ahead of
