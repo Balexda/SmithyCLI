@@ -261,18 +261,43 @@ export function scan(root: string): ArtifactRecord[] {
 
   // Phase 4: populate `next_action` on every classified record.
   //
-  // `suggestNextAction` is pure — this pass runs once, after every
-  // status is finalized, so the suppression flag derived from the
-  // ancestor walk reflects the stable classification output. Records
-  // carrying a `read_error:` warning are skipped entirely: their
-  // `next_action` field stays omitted (not set to `null`) so JSON
-  // consumers can distinguish "never evaluated" (absent) from
-  // "evaluated, no action" (`null`).
+  // `suggestNextAction` is pure — this pass runs after every status is
+  // finalized. Records carrying a `read_error:` warning are skipped
+  // entirely: their `next_action` field stays omitted (not set to
+  // `null`) so JSON consumers can distinguish "never evaluated"
+  // (absent) from "evaluated, no action" (`null`).
+  //
+  // Two sub-passes so the suppression flag tracks whether an ancestor
+  // actually has a hint the user could run:
+  //
+  //  4a. Compute each record's tentative `next_action` with
+  //      `ancestorNotStarted = false`. `suggestNextAction` may still
+  //      return `null` (e.g. a spec whose US rows all have real tasks
+  //      files on disk — no `smithy.cut` is needed at the spec level
+  //      because the per-task `forge` hints drive the work).
+  //
+  //  4b. For every record whose tentative action is non-null, walk
+  //      upward through `parent_path`. If any ancestor is both
+  //      `not-started` **and** has a non-null `next_action`, mark the
+  //      current record's action with `suppressed_by_ancestor: true`.
+  //      Ancestors whose `next_action` is `null` are skipped — the
+  //      user has no command to run on them, so their presence in
+  //      the chain does not justify hiding a descendant's hint
+  //      (otherwise an in-progress spec stacked under a not-started
+  //      parent would silence every task below it with nothing left
+  //      to surface).
   for (const record of records.values()) {
     if (hasReadError(record)) continue;
     const kids = childrenByParent.get(record.path) ?? [];
-    const ancestorNotStarted = hasNotStartedAncestor(record, records);
-    record.next_action = suggestNextAction(record, kids, ancestorNotStarted);
+    record.next_action = suggestNextAction(record, kids, false);
+  }
+  for (const record of records.values()) {
+    if (hasReadError(record)) continue;
+    const action = record.next_action;
+    if (action === null || action === undefined) continue;
+    if (hasActionableNotStartedAncestor(record, records)) {
+      action.suppressed_by_ancestor = true;
+    }
   }
 
   return Array.from(records.values());
@@ -631,7 +656,14 @@ function hasReadError(record: ArtifactRecord): boolean {
 /**
  * Walk upward from `record` through the `parent_path` chain (resolved
  * against the scanner's full `records` map) and return `true` as soon
- * as any ancestor's `status` is `'not-started'`.
+ * as any ancestor is both `not-started` **and** has a populated
+ * `next_action`.
+ *
+ * An ancestor with a `null` `next_action` is skipped even when its
+ * `status` is `'not-started'` — there is no hint competing for the
+ * user's attention at that level, so descendants are free to surface
+ * their own hints. This avoids silencing every task under a
+ * not-started spec whose only remaining work is per-task forges.
  *
  * Terminates when:
  * - `parent_path` is `null`, `undefined`, or an empty string.
@@ -640,9 +672,11 @@ function hasReadError(record: ArtifactRecord): boolean {
  *   against malformed record sets that could otherwise loop forever.
  *
  * Pure function: never mutates inputs. Used by Phase 4 to populate
- * `NextAction.suppressed_by_ancestor` per FR-011.
+ * `NextAction.suppressed_by_ancestor` per FR-011. Callers must have
+ * already computed `next_action` on every candidate ancestor in the
+ * records map (Phase 4a).
  */
-function hasNotStartedAncestor(
+function hasActionableNotStartedAncestor(
   record: ArtifactRecord,
   recordsByPath: Map<string, ArtifactRecord>,
 ): boolean {
@@ -653,7 +687,13 @@ function hasNotStartedAncestor(
     seen.add(cursor);
     const ancestor = recordsByPath.get(cursor);
     if (ancestor === undefined) return false;
-    if (ancestor.status === 'not-started') return true;
+    if (
+      ancestor.status === 'not-started' &&
+      ancestor.next_action !== null &&
+      ancestor.next_action !== undefined
+    ) {
+      return true;
+    }
     cursor = ancestor.parent_path ?? null;
   }
   return false;

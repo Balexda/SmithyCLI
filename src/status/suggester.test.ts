@@ -141,7 +141,31 @@ describe('suggestNextAction — tasks records', () => {
     expect(action!.reason.length).toBeGreaterThan(0);
   });
 
-  it('treats a virtual tasks record like a not-started tasks record', () => {
+  it('redirects a virtual tasks record to smithy.cut on its parent spec', () => {
+    // A virtual tasks record has no file on disk, so `smithy.forge` on
+    // its path would fail. The scanner populates `parent_path` (the
+    // owning `.spec.md`) and `parent_row_id` (`US<N>`) whenever it
+    // emits a virtual; the suggester must redirect to the `smithy.cut`
+    // invocation that would create the tasks file in the first place.
+    const record = makeRecord({
+      type: 'tasks',
+      status: 'not-started',
+      virtual: true,
+      path: 'specs/x/03-baz.tasks.md',
+      parent_path: 'specs/x/x.spec.md',
+      parent_row_id: 'US3',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual(['specs/x', '3']);
+  });
+
+  it('falls back to smithy.forge on a virtual tasks record missing parent fields', () => {
+    // Defensive guard: if the scanner ever emits a virtual tasks
+    // record without `parent_path`/`parent_row_id` (shouldn't happen
+    // in practice), the suggester must still produce an action rather
+    // than crashing. Fall back to the legacy forge shape.
     const record = makeRecord({
       type: 'tasks',
       status: 'not-started',
@@ -183,7 +207,7 @@ describe('suggestNextAction — rfc records', () => {
 });
 
 describe('suggestNextAction — features records', () => {
-  it('suggests smithy.mark with the first not-started row numeric id', () => {
+  it('suggests smithy.mark with the first virtual (no-spec-on-disk) row numeric id', () => {
     const record = makeRecord({
       type: 'features',
       status: 'in-progress',
@@ -200,7 +224,7 @@ describe('suggestNextAction — features records', () => {
     });
     const children: ArtifactRecord[] = [
       makeChild('done', 'spec'),
-      makeChild('not-started', 'spec'),
+      makeRecord({ type: 'spec', status: 'not-started', virtual: true }),
       makeChild('in-progress', 'spec'),
     ];
     const action = suggestNextAction(record, children, false);
@@ -210,7 +234,7 @@ describe('suggestNextAction — features records', () => {
     expect(action!.reason.length).toBeGreaterThan(0);
   });
 
-  it('picks the lowest-index not-started row when multiple are not-started', () => {
+  it('picks the lowest-index virtual row when multiple features have no spec file yet', () => {
     const record = makeRecord({
       type: 'features',
       status: 'not-started',
@@ -226,16 +250,41 @@ describe('suggestNextAction — features records', () => {
       },
     });
     const children: ArtifactRecord[] = [
-      makeChild('not-started', 'spec'),
-      makeChild('not-started', 'spec'),
-      makeChild('not-started', 'spec'),
+      makeRecord({ type: 'spec', status: 'not-started', virtual: true }),
+      makeRecord({ type: 'spec', status: 'not-started', virtual: true }),
+      makeRecord({ type: 'spec', status: 'not-started', virtual: true }),
     ];
     const action = suggestNextAction(record, children, false);
     expect(action!.command).toBe('smithy.mark');
     expect(action!.arguments).toEqual(['docs/rfcs/foo.features.md', '1']);
   });
 
-  it('treats a virtual child as not-started for matching', () => {
+  it('skips a real (on-disk) not-started spec and picks the next virtual row', () => {
+    // Real not-started spec files already exist on disk — `smithy.mark`
+    // would be a no-op there. The suggester must skip real children
+    // (their own hints cover them) and only suggest mark for virtual
+    // rows where the spec file does not yet exist.
+    const record = makeRecord({
+      type: 'features',
+      status: 'in-progress',
+      path: 'docs/rfcs/foo.features.md',
+      dependency_order: {
+        rows: [makeRow('F1', 'specs/a'), makeRow('F2', null)],
+        id_prefix: 'F',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('not-started', 'spec'), // real not-started spec file on disk
+      makeRecord({ type: 'spec', status: 'not-started', virtual: true }),
+    ];
+    const action = suggestNextAction(record, children, false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.mark');
+    expect(action!.arguments).toEqual(['docs/rfcs/foo.features.md', '2']);
+  });
+
+  it('treats a virtual child as the mark target', () => {
     const record = makeRecord({
       type: 'features',
       status: 'in-progress',
@@ -253,6 +302,27 @@ describe('suggestNextAction — features records', () => {
     const action = suggestNextAction(record, children, false);
     expect(action!.command).toBe('smithy.mark');
     expect(action!.arguments).toEqual(['docs/rfcs/foo.features.md', '2']);
+  });
+
+  it('returns null when every declared feature already has a spec file on disk', () => {
+    // All children are real (non-virtual). `smithy.mark` would be a
+    // no-op at this level; per-spec hints below this record cover the
+    // remaining work.
+    const record = makeRecord({
+      type: 'features',
+      status: 'in-progress',
+      path: 'docs/rfcs/foo.features.md',
+      dependency_order: {
+        rows: [makeRow('F1', 'specs/a'), makeRow('F2', 'specs/b')],
+        id_prefix: 'F',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('done', 'spec'),
+      makeChild('not-started', 'spec'),
+    ];
+    expect(suggestNextAction(record, children, false)).toBeNull();
   });
 
   it('falls back to record path only when no row matches but record is actionable', () => {
@@ -275,7 +345,7 @@ describe('suggestNextAction — features records', () => {
 });
 
 describe('suggestNextAction — spec records', () => {
-  it('suggests smithy.cut against the spec parent directory with the first not-started row numeric id', () => {
+  it('suggests smithy.cut against the spec parent directory with the first virtual (no-tasks-on-disk) row numeric id', () => {
     const record = makeRecord({
       type: 'spec',
       status: 'in-progress',
@@ -316,12 +386,76 @@ describe('suggestNextAction — spec records', () => {
         format: 'table',
       },
     });
-    const children: ArtifactRecord[] = [makeChild('not-started', 'tasks')];
+    // Child is virtual — the tasks file hasn't been cut yet, so the
+    // spec-level `smithy.cut` hint fires. Real not-started children
+    // do not trigger a spec-level cut suggestion (their own `forge`
+    // hints cover them).
+    const children: ArtifactRecord[] = [
+      makeRecord({ type: 'tasks', status: 'not-started', virtual: true }),
+    ];
     const action = suggestNextAction(record, children, false);
     expect(action!.command).toBe('smithy.cut');
     expect(action!.arguments[0]).toBe('specs/deep/nested/dir');
     expect(action!.arguments[0]).not.toContain('.spec.md');
     expect(action!.arguments[1]).toBe('1');
+  });
+
+  it('returns null when every declared user story already has a tasks file on disk', () => {
+    // Regression for the Smithy Evals Framework scenario: the spec
+    // has a real (on-disk) tasks file for every US row, including a
+    // not-started one. `smithy.cut` at the spec level would be a
+    // no-op because re-cutting a story that already has a tasks file
+    // doesn't advance anything. The per-task `forge` hints below
+    // this record cover the remaining work.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'in-progress',
+      path: 'specs/evals/evals.spec.md',
+      dependency_order: {
+        rows: [
+          makeRow('US1', 'specs/evals/01-a.tasks.md'),
+          makeRow('US2', 'specs/evals/02-b.tasks.md'),
+          makeRow('US3', 'specs/evals/03-c.tasks.md'),
+        ],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('done', 'tasks'),
+      makeChild('not-started', 'tasks'), // real — file exists, just not started
+      makeChild('done', 'tasks'),
+    ];
+    expect(suggestNextAction(record, children, false)).toBeNull();
+  });
+
+  it('skips a real not-started user story and picks the next virtual one', () => {
+    // Mixed: US1 done (real), US2 not-started (real — already cut),
+    // US3 not-started (virtual — not yet cut). Only US3 needs
+    // cutting; the spec-level hint must point at digit '3', not '2'.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'in-progress',
+      path: 'specs/mix/mix.spec.md',
+      dependency_order: {
+        rows: [
+          makeRow('US1', 'specs/mix/01-a.tasks.md'),
+          makeRow('US2', 'specs/mix/02-b.tasks.md'),
+          makeRow('US3'),
+        ],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('done', 'tasks'),
+      makeChild('not-started', 'tasks'), // real — tasks file exists
+      makeRecord({ type: 'tasks', status: 'not-started', virtual: true }),
+    ];
+    const action = suggestNextAction(record, children, false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual(['specs/mix', '3']);
   });
 
   it('falls back to dirname only when no row matches but record is actionable', () => {
@@ -366,7 +500,7 @@ describe('suggestNextAction — spec records', () => {
     expect(action!.arguments).toEqual(['specs/webhooks']);
   });
 
-  it('preserves the virtual spec folder path even with a matching not-started row', () => {
+  it('preserves the virtual spec folder path even with a matching virtual row', () => {
     const record = makeRecord({
       type: 'spec',
       status: 'not-started',
@@ -380,7 +514,7 @@ describe('suggestNextAction — spec records', () => {
     });
     const action = suggestNextAction(
       record,
-      [makeChild('not-started', 'tasks')],
+      [makeRecord({ type: 'tasks', status: 'not-started', virtual: true })],
       false,
     );
     expect(action!.arguments).toEqual(['specs/webhooks', '2']);
@@ -422,9 +556,11 @@ describe('suggestNextAction — ancestor suppression flag', () => {
         format: 'table',
       },
     });
+    // Virtual spec child — triggers the features-level `smithy.mark`
+    // hint so we can observe the suppression flag being attached.
     const action = suggestNextAction(
       record,
-      [makeChild('not-started', 'spec')],
+      [makeRecord({ type: 'spec', status: 'not-started', virtual: true })],
       true,
     );
     expect(action!.suppressed_by_ancestor).toBe(true);

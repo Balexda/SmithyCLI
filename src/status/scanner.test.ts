@@ -849,9 +849,11 @@ ${TABLE_HEADER}
     expect(t2?.next_action).not.toBeNull();
     expect(t2?.next_action?.command).toBe('smithy.forge');
     expect(t2?.next_action?.suppressed_by_ancestor).toBeUndefined();
-    // The in-progress spec parent is also actionable and not suppressed.
-    expect(spec?.next_action?.command).toBe('smithy.cut');
-    expect(spec?.next_action?.suppressed_by_ancestor).toBeUndefined();
+    // Every US row on the spec is backed by a real (on-disk) tasks
+    // file, so there is nothing left to `smithy.cut` at the spec
+    // level — the per-task `forge` hints below cover the remaining
+    // work. The spec's `next_action` is therefore `null`.
+    expect(spec?.next_action).toBeNull();
   });
 
   it('Phase 4: multi-level not-started chain — only the topmost ancestor is un-suppressed, descendants are suppressed', () => {
@@ -894,21 +896,31 @@ ${TABLE_HEADER}
     expect(rfc?.next_action?.command).toBe('smithy.render');
     expect(rfc?.next_action?.suppressed_by_ancestor).toBeUndefined();
 
-    // Features and spec are both descendants of a not-started ancestor,
-    // so their suggestions must carry the suppression flag.
-    expect(features?.next_action).not.toBeNull();
-    expect(features?.next_action?.suppressed_by_ancestor).toBe(true);
+    // Features has a real (on-disk) spec child, so no `smithy.mark`
+    // hint is needed — the per-spec hint below covers the remaining
+    // work. The features record's `next_action` is therefore `null`
+    // regardless of ancestor state.
+    expect(features?.next_action).toBeNull();
+
+    // Spec has a `—` US1 row, which the scanner resolves to a virtual
+    // tasks child. `smithy.cut` fires at the spec level (a story with
+    // no tasks file yet), and because the rfc ancestor is not-started
+    // the hint carries the suppression flag.
     expect(spec?.next_action).not.toBeNull();
+    expect(spec?.next_action?.command).toBe('smithy.cut');
     expect(spec?.next_action?.suppressed_by_ancestor).toBe(true);
 
     // The virtual tasks record under the spec row is also suppressed —
-    // every ancestor in its chain is not-started.
+    // every ancestor in its chain is not-started. Virtual tasks
+    // records redirect to `smithy.cut` (the command that would
+    // create the file) rather than a `smithy.forge` that would fail
+    // on a nonexistent path.
     const virtualTasks = records.find(
       (r) => r.type === 'tasks' && r.virtual === true,
     );
     expect(virtualTasks).toBeDefined();
     expect(virtualTasks?.next_action).not.toBeNull();
-    expect(virtualTasks?.next_action?.command).toBe('smithy.forge');
+    expect(virtualTasks?.next_action?.command).toBe('smithy.cut');
     expect(virtualTasks?.next_action?.suppressed_by_ancestor).toBe(true);
   });
 
