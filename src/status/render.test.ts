@@ -528,6 +528,30 @@ describe('renderTree — story number prefix', () => {
     );
     expect(output).toBe('Demo RFC  \u2713');
   });
+
+  it('strips a leading `Tasks: ` prefix even when parent_row_id is missing', () => {
+    // Defensive: an orphan real tasks file has a `Tasks: <title>` H1 but
+    // the scanner never populated `parent_row_id` (no parent row owns
+    // it). The renderer must still drop the prefix so the row reads
+    // cleanly rather than shouting `Tasks:` at every orphan.
+    const orphanTasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/unlinked/01-ghost.tasks.md',
+      title: 'Tasks: Ghost Work',
+      status: 'not-started',
+      parent_path: 'specs/unlinked/unlinked.spec.md',
+      parent_missing: true,
+    });
+    // Broken-link row: the renderer prefixes with ✗ and appends the
+    // dangling parent reference, but the title itself must have the
+    // `Tasks: ` prefix stripped.
+    const output = renderTree(
+      { roots: [{ record: orphanTasks, children: [] }] },
+      { theme: utf8Theme },
+    );
+    expect(output).toContain('Ghost Work');
+    expect(output).not.toContain('Tasks: Ghost');
+  });
 });
 
 describe('renderTree — renderHints option (US4 Slice 2)', () => {
