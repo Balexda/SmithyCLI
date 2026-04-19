@@ -311,6 +311,53 @@ describe('renderTree — status markers', () => {
     expect(lines[0]).toBe('Childless  \u25D0');
   });
 
+  it('excludes unknown direct children from the parent counter total so displayed segments always sum to (total)', () => {
+    // Parent with 1 done + 1 in-progress + 1 unknown. The counter
+    // should display `1/1/0 (2)` — the unknown child is skipped in
+    // both the segment counts AND the (total) so the displayed
+    // segments always sum to the total. The unknown child still
+    // renders beneath the parent with its own ⚠ marker.
+    const parent = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/0001.features.md',
+      title: 'Parent',
+      status: 'in-progress',
+      parent_path: null,
+    });
+    const done = makeRecord({
+      type: 'spec',
+      path: 'specs/d/d.spec.md',
+      title: 'Done Spec',
+      status: 'done',
+      parent_path: 'docs/rfcs/0001.features.md',
+    });
+    const wip = makeRecord({
+      type: 'spec',
+      path: 'specs/w/w.spec.md',
+      title: 'WIP Spec',
+      status: 'in-progress',
+      parent_path: 'docs/rfcs/0001.features.md',
+    });
+    const broken = makeRecord({
+      type: 'spec',
+      path: 'specs/u/u.spec.md',
+      title: 'Broken Spec',
+      status: 'unknown',
+      warnings: ['parser: legacy checkbox format detected'],
+      parent_path: 'docs/rfcs/0001.features.md',
+    });
+    const output = renderTree(buildTree([parent, done, wip, broken]), {
+      theme: utf8Theme,
+    });
+    const lines = output.split('\n');
+    // Counter renders 1/1/0 (2) — displayed segments (1+1+0) sum to 2.
+    expect(lines[0]).toBe('Parent  \u25D0  1/1/0 (2)');
+    // Unknown child still surfaces as its own ⚠ row beneath the
+    // parent, so nothing is hidden.
+    expect(output).toContain('Broken Spec');
+    expect(output).toContain('\u26A0');
+  });
+
   it('renders the not-started icon (○) for not-started records (real and virtual)', () => {
     const tree = buildTree([
       makeRecord({

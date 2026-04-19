@@ -369,6 +369,14 @@ function formatStatusMarker(
  * nonzero `not-started` stays default/white, and any zero segment
  * fades to dim. Separators (`/`), parens, and the total inside the
  * parens are always dim so the numbers themselves carry the signal.
+ *
+ * `unknown`-status direct children are excluded from the counter (and
+ * from its `(total)`) so the row stays internally consistent: a
+ * counter that displays `done/wip/not-started` must not also claim a
+ * total larger than the three segments can explain. Any excluded
+ * `unknown` child still surfaces as its own `⚠ unknown (…)` row under
+ * this parent, so nothing is hidden — the anomaly just isn't counted
+ * toward lifecycle progress here.
  */
 function formatParentCounter(node: TreeNode, theme: Theme): string {
   const counts: Record<Status, number> = {
@@ -380,6 +388,7 @@ function formatParentCounter(node: TreeNode, theme: Theme): string {
   let total = 0;
   for (const child of node.children) {
     if (isGroupSentinel(child.record)) continue;
+    if (child.record.status === 'unknown') continue;
     counts[child.record.status] += 1;
     total += 1;
   }
