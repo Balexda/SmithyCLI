@@ -2,16 +2,15 @@
  * Minimal orchestrator entry point for the Smithy evals framework.
  *
  * Accepts --fixture, --timeout, and --case CLI flags; calls preflight() on
- * startup; runs each configured scenario (currently the imported
- * `strikeScenario` and `scoutScenario`), validates output structure, prints
- * per-check pass/fail results to stdout, assembles a full `EvalReport` via
+ * startup; loads every `*.yaml` scenario from `evals/cases/` via
+ * `loadScenarios`, iterates each scenario through the runner + structural
+ * validator + sub-agent verifier pipeline, assembles a full `EvalReport` via
  * the report library across ALL scenarios, prints the formatted summary,
  * and exits with code 1 if the report's `overall_status` is `'fail'`.
  *
  * `--case <name>` honors FR-008: the flag filters the scenario list to the
- * single scenario whose `name` matches. Full YAML scenario loading still
- * lands in US7 — this wiring keeps the scenario list as a typed array so the
- * migration to YAML replaces only the list-construction step.
+ * single scenario whose `name` matches, after the loader completes. An
+ * unknown name exits 1 with a message listing the available case names.
  *
  * Sub-agent verification (FR-016) runs on every scenario whose YAML declares
  * `sub_agent_evidence`: strike carries entries for plan, reconcile, and
@@ -19,9 +18,18 @@
  * smithy-scout (AS 6.1). Both paths reuse the same
  * `extractSubAgentDispatches` → `verifySubAgents` pipeline below.
  *
- * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-008, FR-009,
- * FR-010, FR-012, FR-016; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2,
- * 5.3, 6.1, 6.2, 6.3, 6.4, 8.1, 8.2, 9.1, 9.2, 9.3
+ * Scout's scenario is imported directly from `./lib/scout-scenario.ts` rather
+ * than declared in YAML. Scout uses an empty `skill` field (because
+ * `/smithy.scout` is not a user-invocable slash command) which the loader's
+ * non-empty-string validation rejects; migrating scout to YAML would require
+ * loosening that rule and is deliberately out of scope for this slice. The
+ * list-combination step below (`[...loaded, scoutScenario]`) is the single
+ * point where scout joins the YAML-loaded scenarios, so a later slice can
+ * drop this line when scout migrates.
+ *
+ * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-007, FR-008,
+ * FR-009, FR-010, FR-012, FR-016; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3,
+ * 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 7.1, 7.2, 7.3, 8.1, 8.2, 9.1, 9.2, 9.3
  */
 
 import { parseArgs } from 'node:util';
@@ -34,7 +42,7 @@ import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
 import { loadBaseline, compareToBaseline } from './lib/baseline.js';
 import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
-import { strikeScenario } from './lib/strike-scenario.js';
+import { loadScenarios } from './lib/scenario-loader.js';
 import { scoutScenario } from './lib/scout-scenario.js';
 import type { CheckResult, EvalResult, EvalScenario } from './lib/types.js';
 
@@ -62,6 +70,7 @@ const { values } = parseArgs({
 });
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
+const casesDir = path.resolve(process.cwd(), 'evals/cases');
 
 // Resolve the baselines directory relative to this source file so baseline
 // lookups work regardless of process cwd (matching the pattern used by
@@ -85,46 +94,6 @@ if (values['timeout'] !== undefined) {
     process.exit(1);
   }
   timeoutOverrideSec = parsed;
-}
-
-// ---------------------------------------------------------------------------
-// Scenario list (US7 will replace this with YAML loading)
-// ---------------------------------------------------------------------------
-//
-// Scenario definitions live in `./lib/{strike,scout}-scenario.ts` as a single
-// source of truth shared with each scenario's unit test. Strike is listed
-// first so log output ordering stays stable for anyone reading eval runs.
-// The `--case` filter below narrows this list to a single entry; the
-// `--timeout` override is layered on every remaining scenario.
-
-const baseScenarios: EvalScenario[] = [strikeScenario, scoutScenario];
-
-// --case filter (FR-008). Fails fast — before preflight — when the requested
-// name matches none of the configured scenarios, because a typo'd case name
-// should never trigger a real claude invocation.
-let selectedScenarios: EvalScenario[] = baseScenarios;
-const caseFilter = values['case'];
-if (caseFilter !== undefined) {
-  // `parseArgs` runs with `strict: false`, so `--case` passed without a value
-  // yields the boolean `true` rather than throwing. Require a non-empty
-  // string here so a bare `--case` flag fails fast instead of silently
-  // running every scenario against a live `claude` invocation.
-  if (typeof caseFilter !== 'string' || caseFilter.length === 0) {
-    const available = baseScenarios.map((s) => s.name).join(', ');
-    console.error(
-      `Error: --case requires a scenario name. Available scenarios: ${available}`,
-    );
-    process.exit(1);
-  }
-  const matched = baseScenarios.filter((s) => s.name === caseFilter);
-  if (matched.length === 0) {
-    const available = baseScenarios.map((s) => s.name).join(', ');
-    console.error(
-      `Error: No scenario matches --case "${caseFilter}". Available scenarios: ${available}`,
-    );
-    process.exit(1);
-  }
-  selectedScenarios = matched;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,12 +122,69 @@ if (!fixtureStat.isDirectory()) {
 }
 
 // ---------------------------------------------------------------------------
+// Load scenarios from YAML (FR-007)
+// ---------------------------------------------------------------------------
+//
+// `loadScenarios` reads every `*.yaml` file in the cases directory, skipping
+// malformed entries with a stderr note (AS 7.3). If the directory is empty or
+// every file was skipped the contracts require exit 1 — a dev invoking
+// `npm run eval` with no discoverable cases has a misconfigured checkout, not
+// a silent no-op. Scout is appended from its TypeScript declaration because
+// its empty `skill` field is incompatible with the loader's validation; this
+// is the single remaining TS-declared scenario and the only place outside the
+// loader where a scenario enters the pipeline.
+
+let loadedScenarios: EvalScenario[];
+try {
+  loadedScenarios = loadScenarios(casesDir);
+} catch (err) {
+  console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+}
+
+if (loadedScenarios.length === 0) {
+  console.error(
+    `Error: No scenario files found in ${casesDir}. Add at least one *.yaml case file and re-run.`,
+  );
+  process.exit(1);
+}
+
+const baseScenarios: EvalScenario[] = [...loadedScenarios, scoutScenario];
+
+// --case filter (FR-008, AS 7.2). Filtering happens post-load so the filter
+// operates over the same concrete scenario list the default run would
+// execute.
+let selectedScenarios: EvalScenario[] = baseScenarios;
+const caseFilter = values['case'];
+if (caseFilter !== undefined) {
+  // `parseArgs` runs with `strict: false`, so `--case` passed without a value
+  // yields the boolean `true` rather than throwing. Require a non-empty
+  // string here so a bare `--case` flag fails fast instead of silently
+  // running every scenario against a live `claude` invocation.
+  if (typeof caseFilter !== 'string' || caseFilter.length === 0) {
+    const available = baseScenarios.map((s) => s.name).join(', ');
+    console.error(
+      `Error: --case requires a scenario name. Available scenarios: ${available}`,
+    );
+    process.exit(1);
+  }
+  const matched = baseScenarios.filter((s) => s.name === caseFilter);
+  if (matched.length === 0) {
+    const available = baseScenarios.map((s) => s.name).join(', ');
+    console.error(
+      `Error: No scenario matches --case "${caseFilter}". Available scenarios: ${available}`,
+    );
+    process.exit(1);
+  }
+  selectedScenarios = matched;
+}
+
+// ---------------------------------------------------------------------------
 // Apply --timeout override (if any) to every selected scenario.
 // ---------------------------------------------------------------------------
 //
 // `finalScenarios.length` is also the source of truth for the pre-execution
-// case count (US11 AS 11.1). When US7 swaps in a YAML-loaded array, this
-// count line continues to work unchanged.
+// case count (US11 AS 11.1).
 
 const finalScenarios: EvalScenario[] = selectedScenarios.map((s) =>
   timeoutOverrideSec !== undefined ? { ...s, timeout: timeoutOverrideSec } : { ...s },
