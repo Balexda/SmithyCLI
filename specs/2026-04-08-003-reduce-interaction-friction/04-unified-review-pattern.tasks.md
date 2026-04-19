@@ -291,7 +291,7 @@ their tests.
   - Each command describes flagging drift findings per AS 4.4
   - None of the five commands invoke the review agent to edit files
 
-- [ ] **Assert plan-review wiring in template tests**
+- [x] **Assert plan-review wiring in template tests**
 
   Extend `src/templates.test.ts` with assertions that each of the
   five planning commands dispatches `smithy-plan-review` and that
