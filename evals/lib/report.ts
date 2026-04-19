@@ -7,7 +7,7 @@
  *
  * No I/O, no console output, no process control — everything is exercised
  * via unit tests in `report.test.ts`. The orchestrator (`run-evals.ts`)
- * imports these functions in Slice 2.
+ * imports these functions and wires them into the scenario loop.
  *
  * Implements FR-009; backs Acceptance Scenarios 9.1, 9.2, 9.3.
  */

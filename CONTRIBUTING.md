@@ -54,13 +54,12 @@ The evals framework (under `evals/`) — implemented:
 - Structural output validation (`validateStructure` — required headings, patterns, tables, forbidden patterns)
 - Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)
 - Eval summary report library (`scenarioRunToResult`, `buildReport`, `formatReport`, `EvalReport` — pure, fully unit-tested)
-- Baseline regression library (`loadBaseline`, `compareToBaseline` — convention-based JSON loader and pure structural diff; not yet wired into the orchestrator)
+- Baseline regression library (`loadBaseline`, `compareToBaseline` — convention-based JSON loader and pure structural diff; wired into the orchestrator with a committed `strike-health-check.json` baseline)
 - Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
 - Strike and scout end-to-end scenarios (`strikeScenario`, `scoutScenario`) wired into the orchestrator; `--case <name>` filter selects a single scenario by name
 - Reference fixture carries documented planted inconsistencies (`evals/fixture/README.md` — Planted Inconsistencies section) that the scout scenario asserts are detected
 
 Pending:
-- Baseline orchestrator wiring (`run-evals.ts` integration, `formatReport` baseline section, seeded `strike-health-check.json`)
 - YAML-defined scenario loading (`evals/cases/`)
 
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
