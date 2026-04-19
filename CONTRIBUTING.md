@@ -42,7 +42,7 @@ Tests that templates compose correctly (snippet/partial resolution, frontmatter 
 |-----------|-------|
 | `src/templates.test.ts` | Template composition, partial resolution, frontmatter, agent variants, file categorization |
 
-**Agent tests** (Claude Code session) — verify deployed prompts are visible, slash commands are invocable, permissions are enforced, and stale artifacts are cleaned up. See **[tests/Agent.tests.md](tests/Agent.tests.md)** (A1-A6).
+**Agent tests** (Claude Code session) — verify deployed prompts are visible, slash commands are invocable, permissions are enforced, and stale artifacts are cleaned up. See **[tests/Agent.tests.md](tests/Agent.tests.md)** (A1-A9).
 
 ### Tier 3: Agent-Skill Execution Behavior (evals)
 
@@ -70,7 +70,7 @@ See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy
 Before publishing a new version:
 
 1. All automated tests pass: `npm test`
-2. Agent tests (A1-A6) verified in a Claude Code session
+2. Agent tests (A1-A9) verified in a Claude Code session
 3. Human tests (H1-H4) verified in an interactive terminal
 4. Evals pass (when available): `npm run eval`
 5. Trigger the **Publish to npm** workflow with both test gate checkboxes checked
