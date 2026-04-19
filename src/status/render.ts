@@ -17,42 +17,47 @@
  *   beneath them like any other children.
  *
  * - Every non-root node is preceded by a tree connector drawn from the
- *   classic box-drawing set: `├─ ` for non-last siblings, `└─ ` for
- *   the last sibling of each parent. Descendants of a non-last sibling
- *   inherit a `│  ` spacer; descendants of the last sibling inherit a
- *   blank spacer, so vertical bars trail only the branches that still
- *   have siblings below them.
+ *   active {@link Theme}'s `glyphs` bundle: `theme.glyphs.branch` for
+ *   non-last siblings, `theme.glyphs.lastBranch` for the last sibling
+ *   of each parent. Descendants of a non-last sibling inherit the
+ *   `theme.glyphs.vertical` spacer; descendants of the last sibling
+ *   inherit the `theme.glyphs.blank` spacer, so vertical bars trail
+ *   only the branches that still have siblings below them.
  *
- * - Each rendered line uses the record's `title` as the primary label
- *   — file paths intentionally stay out of the visual field and live
- *   only in the JSON payload. Broken-link records additionally append
- *   their dangling `parent_path` so reviewers can see what the source
- *   file claims without opening it.
+ * - Each rendered line uses the record's `title` as the primary label —
+ *   file paths intentionally stay out of the visual field and live only
+ *   in the JSON payload. Broken-link records additionally append their
+ *   dangling `parent_path` so reviewers can see what the source file
+ *   claims without opening it.
  *
  * ## Status markers
  *
  * Every real record (every non-group node) carries a trailing status
- * marker separated from the label by two spaces. The exact mapping is:
+ * marker separated from the label by two spaces. The marker is a
+ * colored icon (`theme.icons.*` painted via `theme.paint.*`) followed
+ * by an optional counter:
  *
  * | Record state | Marker |
  * |--------------|--------|
- * | `status === 'done'` | `DONE` |
- * | `status === 'in-progress'` on a tasks record | `<completed-slices>/<total-slices>` |
- * | `status === 'in-progress'` on a parent record | `in progress` |
- * | `status === 'not-started'` (real or virtual) | `not started` |
- * | `status === 'unknown'` | `unknown (<first warning>)` |
+ * | `status === 'done'` | `✓` |
+ * | `status === 'in-progress'` on a tasks record | `◐ <completed>/<total>` |
+ * | `status === 'in-progress'` on a parent record | `◐ <done>/<wip>/<not-started> (<total>)` |
+ * | `status === 'not-started'` (real or virtual) | `○` |
+ * | `status === 'unknown'` | `⚠ (<first warning>)` |
  *
- * The markers are plain ASCII so they survive non-UTF-8 terminals and
- * copy/paste into tickets. SD-011 leaves the exact wording to
- * implementation; the table above is the convention that lands with
- * this slice. SD-012 asks for an unambiguous marker on `in-progress`
- * parents distinct from `DONE` — `in progress` lowercase satisfies
- * that. `renderTree` emits every node it receives verbatim with its
- * marker inline — collapsing of done subtrees is handled upstream by
- * the pure `collapseTree` transform that sits between `buildTree`
- * and `renderTree` in the text-mode pipeline (or bypassed under
- * `--all`), so the input tree is already the view the caller wants
- * rendered.
+ * A broken-link parent (see `parent_missing === true`) additionally
+ * gets a red error prefix (`theme.icons.error` painted red) ahead of
+ * the title so the break is hard to miss in a dense tree.
+ *
+ * ASCII fallback (`theme.encoding === 'ascii'`) swaps every icon for
+ * a copy-safe bracketed sigil (`[x]`, `[~]`, `[ ]`, `[?]`, `[!]`) and
+ * every tree connector for an ASCII equivalent, so the output survives
+ * non-UTF-8 terminals and grep-based log scrapes. `renderTree` emits
+ * every node it receives verbatim with its marker inline — collapsing
+ * of done subtrees is handled upstream by the pure `collapseTree`
+ * transform that sits between `buildTree` and `renderTree` in the
+ * text-mode pipeline (or bypassed under `--all`), so the input tree is
+ * already the view the caller wants rendered.
  *
  * Group sentinel nodes (detected via the reserved
  * `ORPHANED_SPECS_PATH` / `BROKEN_LINKS_PATH` values) are rendered as
@@ -61,23 +66,27 @@
  */
 
 import { formatNextAction } from './suggester.js';
+import { createTheme, type Theme } from './theme.js';
 import {
   BROKEN_LINKS_PATH,
   ORPHANED_SPECS_PATH,
   ORPHANED_TASKS_PATH,
 } from './tree.js';
-import type { ArtifactRecord, StatusTree, TreeNode } from './types.js';
+import type { ArtifactRecord, Status, StatusTree, TreeNode } from './types.js';
 
 /**
- * Options accepted by {@link renderTree}. The `color` flag is reserved
- * so a future ANSI palette (SD-001) can slot in without changing the
- * call sites that already pass `{ color: true }`. It is a no-op today:
- * the renderer emits plain text with UTF-8 box-drawing connectors and
- * no ANSI color.
+ * Options accepted by {@link renderTree}. A default theme (UTF-8 glyphs,
+ * no color) is used when `theme` is omitted so legacy call sites that
+ * pass only `{ renderHints: true }` keep rendering sensibly.
  */
 export interface RenderTreeOptions {
-  /** Reserved for ANSI color output (currently a no-op). */
-  color?: boolean;
+  /**
+   * Theme bundle controlling glyphs, icons, and paint helpers. Callers
+   * typically build it once at the top of `statusAction` via
+   * {@link buildTheme}; tests construct deterministic themes via
+   * {@link createTheme}.
+   */
+  theme?: Theme;
   /**
    * When `true`, append an indented next-action hint line beneath every
    * real record whose `next_action` is non-null and not suppressed by
@@ -93,6 +102,13 @@ export interface RenderTreeOptions {
    */
   renderHints?: boolean;
 }
+
+/**
+ * Default theme used when `renderTree` is called without an explicit
+ * theme. Keeps UTF-8 glyphs (matching legacy tests that assert on
+ * `├─`/`└─`) and disables color so snapshots remain ANSI-free.
+ */
+const DEFAULT_THEME: Theme = createTheme({ color: false, encoding: 'utf8' });
 
 /**
  * Render a {@link StatusTree} as a block of indented, tree-connector
@@ -111,9 +127,10 @@ export function renderTree(
     return '';
   }
   const renderHints = options.renderHints === true;
+  const theme = options.theme ?? DEFAULT_THEME;
   const lines: string[] = [];
   for (const root of tree.roots) {
-    renderRoot(root, lines, renderHints);
+    renderRoot(root, lines, renderHints, theme);
   }
   return lines.join('\n');
 }
@@ -132,22 +149,31 @@ function renderRoot(
   node: TreeNode,
   lines: string[],
   renderHints: boolean,
+  theme: Theme,
 ): void {
   if (node.record.path === ORPHANED_TASKS_PATH) {
     for (const child of node.children) {
+      const prefix = theme.paint.error('ERROR:');
       lines.push(
-        `ERROR: Orphaned task file ${child.record.path} could not be linked to a spec`,
+        `${prefix} Orphaned task file ${child.record.path} could not be linked to a spec`,
       );
     }
     return;
   }
-  lines.push(formatLine(node.record, ''));
+  lines.push(formatLine(node.record, '', node, theme));
   // A root's descendants inherit no parent spacer, so the hint line
   // (when enabled) is anchored at column 0 plus the two-space hint pad.
-  maybePushHint(node.record, '', lines, renderHints);
+  maybePushHint(node.record, '', lines, renderHints, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
-    renderChild(children[i]!, '', i === children.length - 1, lines, renderHints);
+    renderChild(
+      children[i]!,
+      '',
+      i === children.length - 1,
+      lines,
+      renderHints,
+      theme,
+    );
   }
 }
 
@@ -163,20 +189,21 @@ function renderChild(
   isLast: boolean,
   lines: string[],
   renderHints: boolean,
+  theme: Theme,
 ): void {
-  const connector = isLast ? '└─ ' : '├─ ';
-  lines.push(formatLine(node.record, parentPrefix + connector));
+  const connector = isLast ? theme.glyphs.lastBranch : theme.glyphs.branch;
+  lines.push(formatLine(node.record, parentPrefix + connector, node, theme));
 
   // Descendants of a non-last sibling still need a trailing vertical
   // bar so the connector columns line up; the last sibling's subtree
   // gets plain spaces because nothing else sits below it.
-  const childSpacer = isLast ? '   ' : '│  ';
+  const childSpacer = isLast ? theme.glyphs.blank : theme.glyphs.vertical;
   const nextPrefix = parentPrefix + childSpacer;
   // The hint line visually attaches to this record, so it inherits the
   // same prefix the record's own children would use (the `nextPrefix`),
   // keeping the hint anchored beneath the record but out of the way of
   // real descendants below it.
-  maybePushHint(node.record, nextPrefix, lines, renderHints);
+  maybePushHint(node.record, nextPrefix, lines, renderHints, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
     renderChild(
@@ -185,6 +212,7 @@ function renderChild(
       i === children.length - 1,
       lines,
       renderHints,
+      theme,
     );
   }
 }
@@ -212,13 +240,16 @@ function maybePushHint(
   recordPrefix: string,
   lines: string[],
   renderHints: boolean,
+  theme: Theme,
 ): void {
   if (!renderHints) return;
   if (isGroupSentinel(record)) return;
   const action = record.next_action;
   if (action === null || action === undefined) return;
   if (action.suppressed_by_ancestor === true) return;
-  lines.push(`${recordPrefix}  ${formatNextAction(action)}`);
+  lines.push(
+    `${recordPrefix}  ${formatNextAction(action, theme.glyphs.arrow)}`,
+  );
 }
 
 /**
@@ -229,42 +260,47 @@ function maybePushHint(
  * number injected into the label so the tree mirrors the parent's
  * canonical dep-order numbering.
  */
-function formatLine(record: ArtifactRecord, prefix: string): string {
+function formatLine(
+  record: ArtifactRecord,
+  prefix: string,
+  node: TreeNode,
+  theme: Theme,
+): string {
   if (isGroupSentinel(record)) {
     return `${prefix}${record.title}`;
   }
 
-  const marker = formatStatusMarker(record);
+  const marker = formatStatusMarker(record, node, theme);
   const titleWithNumber = applyStoryNumber(record.title, record.parent_row_id);
-  const label =
+  const isBroken =
     record.parent_missing === true &&
     typeof record.parent_path === 'string' &&
-    record.parent_path.length > 0
-      ? `${titleWithNumber} [missing parent: ${record.parent_path}]`
-      : titleWithNumber;
+    record.parent_path.length > 0;
+  const errorPrefix = isBroken
+    ? `${theme.paint.error(theme.icons.error)} `
+    : '';
+  const label = isBroken
+    ? `${errorPrefix}${titleWithNumber} [missing parent: ${record.parent_path}]`
+    : titleWithNumber;
 
   return `${prefix}${label}  ${marker}`;
 }
 
 /**
- * Inject the parent row's zero-padded numeric prefix into `title`.
- * When the title carries a type prefix like `Tasks: …` (emitted by
- * `smithy.cut` as the H1 of every tasks file), the number slots in
- * after that prefix so the prefix stays visible. Otherwise the number
- * prefixes the title directly. Returns the title unchanged when
- * `rowId` is missing or has no trailing digits.
+ * Inject the parent row's zero-padded numeric prefix into `title`. The
+ * legacy `Tasks: ` prefix emitted by `smithy.cut` as the H1 of every
+ * tasks file is stripped — every rendered task row already lives under
+ * a tasks-context parent in the tree, so repeating `Tasks: ` on every
+ * line is noise. Returns the title unchanged (minus any `Tasks: `
+ * prefix) when `rowId` is missing or has no trailing digits.
  */
 function applyStoryNumber(title: string, rowId: string | undefined): string {
-  if (rowId === undefined) return title;
+  const stripped = title.replace(/^Tasks:\s+/, '');
+  if (rowId === undefined) return stripped;
   const digits = rowId.match(/[0-9]+$/)?.[0];
-  if (digits === undefined) return title;
+  if (digits === undefined) return stripped;
   const nn = digits.padStart(2, '0');
-  const tasksPrefix = /^(Tasks:\s+)/;
-  const prefixMatch = tasksPrefix.exec(title);
-  if (prefixMatch !== null) {
-    return `${prefixMatch[1]}${nn} ${title.slice(prefixMatch[0].length)}`;
-  }
-  return `${nn} ${title}`;
+  return `${nn} ${stripped}`;
 }
 
 /**
@@ -286,23 +322,59 @@ function isGroupSentinel(record: ArtifactRecord): boolean {
  * Derive the trailing status marker for a real record. See the module
  * JSDoc for the full mapping.
  */
-function formatStatusMarker(record: ArtifactRecord): string {
+function formatStatusMarker(
+  record: ArtifactRecord,
+  node: TreeNode,
+  theme: Theme,
+): string {
   switch (record.status) {
     case 'done':
-      return 'DONE';
-    case 'in-progress':
+      return theme.paint.done(theme.icons.done);
+    case 'in-progress': {
+      const icon = theme.paint.inProgress(theme.icons.inProgress);
       if (record.type === 'tasks') {
         const completed = record.completed ?? 0;
         const total = record.total ?? 0;
-        return `${completed}/${total}`;
+        return `${icon} ${completed}/${total}`;
       }
-      return 'in progress';
+      const counter = formatParentCounter(node, theme);
+      return counter === '' ? icon : `${icon}  ${counter}`;
+    }
     case 'not-started':
-      return 'not started';
+      return theme.paint.notStarted(theme.icons.notStarted);
     case 'unknown': {
       const first =
         record.warnings.length > 0 ? record.warnings[0] : 'parse error';
-      return `unknown (${first})`;
+      return `${theme.paint.unknown(theme.icons.unknown)} unknown (${first})`;
     }
   }
+}
+
+/**
+ * Compute the compact `done/wip/not-started (total)` counter rendered
+ * beside an in-progress parent record's icon. Walks the parent's direct
+ * children (not the full subtree) so the counter answers "how far along
+ * is this row's immediate batch of work?". Returns the empty string
+ * when the parent has no non-group children, so callers can suppress
+ * the whole counter for sentinel-free parents.
+ */
+function formatParentCounter(node: TreeNode, theme: Theme): string {
+  const counts: Record<Status, number> = {
+    done: 0,
+    'in-progress': 0,
+    'not-started': 0,
+    unknown: 0,
+  };
+  let total = 0;
+  for (const child of node.children) {
+    if (isGroupSentinel(child.record)) continue;
+    counts[child.record.status] += 1;
+    total += 1;
+  }
+  if (total === 0) return '';
+  const done = counts.done;
+  const wip = counts['in-progress'];
+  const not = counts['not-started'];
+  const body = `${done}/${wip}/${not} (${total})`;
+  return theme.paint.dim(body);
 }

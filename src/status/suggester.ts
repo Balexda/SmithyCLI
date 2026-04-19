@@ -297,15 +297,17 @@ export function suggestNextAction(
 
 /**
  * Format a {@link NextAction} as a one-line, copy-pasteable hint string
- * of the form `→ <command> <arg1> <arg2>...`.
+ * of the form `<arrow> <command> <arg1> <arg2>...`.
  *
- * When `arguments` is empty the result collapses to `→ <command>` with
- * no trailing whitespace. The returned string never contains embedded
- * newlines — it is exactly one line.
+ * When `arguments` is empty the result collapses to `<arrow> <command>`
+ * with no trailing whitespace. The returned string never contains
+ * embedded newlines — it is exactly one line.
  *
- * The prefix character is the Unicode rightwards arrow `→` (U+2192),
- * separated from the command by a single ASCII space. Multiple
- * arguments are joined by single ASCII spaces.
+ * The arrow defaults to the Unicode rightwards arrow `→` (U+2192)
+ * followed by a single ASCII space, matching the original hint style.
+ * Callers that need an ASCII fallback (non-UTF-8 terminal) pass the
+ * ASCII variant (`-> `) from the theme bundle so no trailing whitespace
+ * handling differs between the two bundles.
  *
  * This function is pure and performs no I/O. It is intentionally
  * colocated with {@link suggestNextAction} so downstream callers that
@@ -314,12 +316,17 @@ export function suggestNextAction(
  * same formatter to attach hints beneath tree nodes (SD-016).
  *
  * @param action The next action to format.
+ * @param arrow Optional arrow prefix (including its trailing space).
+ * Defaults to `'→ '`.
  * @returns A single-line hint string.
  */
-export function formatNextAction(action: NextAction): string {
+export function formatNextAction(
+  action: NextAction,
+  arrow: string = '\u2192 ',
+): string {
   const args = action.arguments;
   if (args.length === 0) {
-    return `\u2192 ${action.command}`;
+    return `${arrow}${action.command}`;
   }
-  return `\u2192 ${action.command} ${args.join(' ')}`;
+  return `${arrow}${action.command} ${args.join(' ')}`;
 }
