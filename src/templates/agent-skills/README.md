@@ -115,7 +115,7 @@ Sub-agents are invoked by parent commands, not directly by users:
 | smithy-clarify | Ambiguity scanning and triage (assumptions + specification debt) | strike, ignite, mark, cut, render |
 | smithy-refine | Artifact review and refinement | mark, cut, ignite, render (Phase 0) |
 | smithy-implement | TDD implementation (test → code → commit) | forge |
-| smithy-review | Code review with auto-fix | forge |
+| smithy-implementation-review | Read-only code review; returns findings for forge to apply | forge |
 | smithy-scout | Pre-planning consistency scan | render, mark, cut |
 | smithy-maid | Post-implementation doc cleanup | forge |
 | smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b) |
