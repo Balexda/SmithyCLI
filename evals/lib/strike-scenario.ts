@@ -21,8 +21,16 @@
  * calls). That matches the test file's own top-level `fs.readFileSync`, and
  * lets the export remain a plain `const` for import ergonomics.
  *
- * Addresses: FR-005, FR-006, FR-007, FR-012; Acceptance Scenarios 5.1, 5.2,
- * 5.3, 7.1
+ * The loaded scenario carries `sub_agent_evidence` entries for `smithy-plan`,
+ * `smithy-reconcile`, and `smithy-clarify` (FR-016; AS 6.2, 6.3, 6.4). The
+ * orchestrator feeds those entries through `verifySubAgents` at run time, so
+ * no extra wiring is required here — the re-export stays a plain load of the
+ * YAML scenario. AS 6.1 (scout evidence) is covered by the standalone
+ * `scoutScenario`, not by strike, because the spike confirmed strike does not
+ * dispatch smithy-scout.
+ *
+ * Addresses: FR-005, FR-006, FR-007, FR-012, FR-016; Acceptance Scenarios
+ * 5.1, 5.2, 5.3, 6.2, 6.3, 6.4, 7.1
  *
  * Spec:         specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.spec.md
  * Data model:   specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.data-model.md

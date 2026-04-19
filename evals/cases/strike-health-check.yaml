@@ -26,3 +26,35 @@ structural_expectations:
     - "Sure, here's"
     # Leading YAML frontmatter (AS 5.2); `\r?\n` tolerates CRLF line endings.
     - '^---\r?\n'
+# Sub-agent invocation evidence (FR-016; Acceptance Scenarios 6.2, 6.3, 6.4).
+#
+# Patterns are grounded in evals/spike/FINDINGS.md and verified against the
+# checked-in spike capture (evals/spike/output-strike.txt), not speculative.
+# AS 6.1 (smithy-scout evidence) is intentionally NOT listed here — the spike
+# confirmed strike does not dispatch scout, so scout coverage is delivered by
+# the standalone `scoutScenario` rather than by extending strike.
+#
+# `Simplification` is deliberately omitted from the plan-lens alternation:
+# the spike artifacts contain only `Separation of Concerns` and `Robustness`
+# attribution markers (e.g., `[via Robustness]`). Adding a label that never
+# appears in real output would weaken the check without improving coverage.
+sub_agent_evidence:
+  # smithy-plan: strike runs plan under competing lenses and the reconciled
+  # plan output carries `[via <Lens>]` attribution markers. Matching either
+  # label catches the case where plan was dispatched but reconcile collapsed
+  # to a single-lens view.
+  - agent: smithy-plan
+    pattern: 'Separation of Concerns|Robustness'
+  # smithy-reconcile: the reconcile agent announces itself both in the
+  # dispatch line (`**smithy-reconcile** agent`) and in the heading above its
+  # output (`reconciled plan`). The alternation covers both surfaces — if
+  # future strike revisions rename the heading, the dispatch line still fires.
+  - agent: smithy-reconcile
+    pattern: 'reconciled plan|smithy-reconcile'
+  # smithy-clarify: per FR-016's guidance, target the dispatch phrasing in
+  # assistant text rather than agent-name presence alone. The `.*` here is
+  # safe because the dispatch message is a single-line assistant string
+  # (`Now dispatching the **smithy-clarify** agent for ambiguity scanning.`);
+  # no newline appears between "the" and the agent name in the spike capture.
+  - agent: smithy-clarify
+    pattern: 'dispatching the.*smithy-clarify'
