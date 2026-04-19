@@ -7,8 +7,9 @@
  * (`run-evals.ts`) and the scenario unit test (`scout-scenario.test.ts`)
  * share a single source of truth.
  *
- * US7 will migrate this declaration into `evals/cases/*.yaml` alongside
- * `strike-scenario.ts`.
+ * Scout remains a TypeScript declaration because its empty `skill` field is
+ * rejected by the YAML loader's non-empty-string validation. Migrating scout
+ * to YAML would require loosening that rule and is deferred to a later slice.
  *
  * Addresses: FR-005, FR-006, FR-012, FR-016; Acceptance Scenarios 8.1, 8.2
  *
