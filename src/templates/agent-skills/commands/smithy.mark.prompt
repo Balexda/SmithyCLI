@@ -484,6 +484,53 @@ Write-back procedure:
 The `Artifact` cell is the single source of truth for "does this feature
 have a spec yet".
 
+### Plan-Review Pass
+
+After the three spec artifacts are on disk (and the feature-map write-back
+has been performed, if applicable) and before committing, dispatch the
+**smithy-plan-review** sub-agent to perform a self-consistency review. Pass
+it:
+
+- **artifact_paths** — the repo-relative paths to the three spec artifacts
+  just written (for mark: `<slug>.spec.md`, `<slug>.data-model.md`, and
+  `<slug>.contracts.md` in the new spec folder). The feature-map
+  write-back path is **not** part of the review's `artifact_paths` — the
+  review only audits the new spec artifact set, not the parent feature
+  map's dependency-order table.
+- **artifact_type** — `spec`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table from the contracts:
+
+| Severity  | Confidence | Action                                                                                              |
+|-----------|------------|-----------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note the fix in the PR body.        |
+| Critical  | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.    |
+| Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk.                                     |
+| Important | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                 |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+
+For each Low-confidence finding routed to debt, append a new row to the
+`.spec.md` file's `## Specification Debt` table with the next available
+`SD-NNN` identifier (continue numbering from whatever clarify already wrote
+in Phase 2 — do not reset). Use the finding's `description` for the
+Description column, set `Source Category` to `plan-review:<finding
+category>` (e.g., `plan-review:Internal contradiction`), copy severity into
+Impact and confidence into Confidence, set Status to `open`, and leave
+Resolution as `—`.
+
+For each High-confidence finding, edit the referenced spec artifact file in
+place using the `proposed_fix`. The commit below captures both the original
+artifacts and the applied fixes in the same diff.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the PR body so the reviewer can confirm the
+underlying assumption rather than silently accepting the applied fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by mark.
+
 ### Commit and create the PR
 
 One-shot mode: do **not** stop to ask the user to review or approve the
@@ -562,11 +609,54 @@ below is how the user sees it.
 
 **No-op check**: if refine returned an empty `refinements` list and no new
 `debt_items`, and `git status --porcelain` reports a clean worktree, this
-pass had nothing to change. Skip the commit, push, and PR-creation steps
-below. Render the one-shot output snippet with an explicit "no-op" note in
-`## Summary` ("Artifacts produced: 0 files — refine found no changes") and
-reuse the branch's existing PR URL if one exists (fall back to "No PR —
-nothing to change" otherwise). Do not fail with "nothing to commit".
+pass had nothing to change. Skip the plan-review, commit, push, and
+PR-creation steps below. Render the one-shot output snippet with an explicit
+"no-op" note in `## Summary` ("Artifacts produced: 0 files — refine found
+no changes") and reuse the branch's existing PR URL if one exists (fall back
+to "No PR — nothing to change" otherwise). Do not fail with "nothing to
+commit".
+
+#### Plan-Review Pass (Phase 0c)
+
+After refine applies its changes to the spec, data-model, and/or contracts
+files and before committing, dispatch the **smithy-plan-review** sub-agent
+to perform a self-consistency review of the refined artifact set. Pass it:
+
+- **artifact_paths** — the repo-relative paths to the refined spec artifacts
+  (`<slug>.spec.md`, `<slug>.data-model.md`, `<slug>.contracts.md`).
+- **artifact_type** — `spec`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table:
+
+| Severity  | Confidence | Action                                                                                              |
+|-----------|------------|-----------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note the fix in the PR body.        |
+| Critical  | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.    |
+| Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk.                                     |
+| Important | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                 |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+
+For each Low-confidence finding routed to debt, append a new row to the
+`.spec.md` file's `## Specification Debt` table with the next available
+`SD-NNN` identifier (continue numbering from whatever the spec already
+contains — do not reset). Use the finding's `description` for the
+Description column, set `Source Category` to `plan-review:<finding
+category>`, copy severity into Impact and confidence into Confidence, set
+Status to `open`, and leave Resolution as `—`.
+
+For each High-confidence finding, edit the referenced spec artifact file in
+place using the `proposed_fix`. The Phase 0c commit below captures both the
+refine diff and the plan-review fixes in the same diff.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the refinement PR body so the reviewer can
+confirm the underlying assumption rather than silently accepting the applied
+fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by mark.
 
 1. Stage and commit the refinement diff on the current branch (the spec
    folder's branch). The commit message should describe the refinements

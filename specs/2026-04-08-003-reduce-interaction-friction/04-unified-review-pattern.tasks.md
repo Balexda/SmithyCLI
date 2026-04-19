@@ -265,7 +265,7 @@ their tests.
 
 ### Tasks
 
-- [ ] **Add a plan-review phase to each planning command**
+- [x] **Add a plan-review phase to each planning command**
 
   Update each of the five planning-command prompts
   (`smithy.strike.prompt`, `smithy.ignite.prompt`,
