@@ -280,7 +280,7 @@ function formatLine(
     ? `${theme.paint.error(theme.icons.error)} `
     : '';
   const label = isBroken
-    ? `${errorPrefix}${titleWithNumber} [missing parent: ${record.parent_path}]`
+    ? `${errorPrefix}${titleWithNumber} ${theme.paint.dim(`[missing parent: ${record.parent_path}]`)}`
     : titleWithNumber;
 
   return `${prefix}${label}  ${marker}`;
@@ -335,7 +335,12 @@ function formatStatusMarker(
       if (record.type === 'tasks') {
         const completed = record.completed ?? 0;
         const total = record.total ?? 0;
-        return `${icon} ${completed}/${total}`;
+        const completedPaint =
+          completed === 0
+            ? theme.paint.dim(String(completed))
+            : theme.paint.done(String(completed));
+        const slashTotal = theme.paint.dim(`/${total}`);
+        return `${icon} ${completedPaint}${slashTotal}`;
       }
       const counter = formatParentCounter(node, theme);
       return counter === '' ? icon : `${icon}  ${counter}`;
@@ -345,7 +350,7 @@ function formatStatusMarker(
     case 'unknown': {
       const first =
         record.warnings.length > 0 ? record.warnings[0] : 'parse error';
-      return `${theme.paint.unknown(theme.icons.unknown)} unknown (${first})`;
+      return `${theme.paint.unknown(theme.icons.unknown)} ${theme.paint.dim(`unknown (${first})`)}`;
     }
   }
 }
@@ -357,6 +362,13 @@ function formatStatusMarker(
  * is this row's immediate batch of work?". Returns the empty string
  * when the parent has no non-group children, so callers can suppress
  * the whole counter for sentinel-free parents.
+ *
+ * Each segment is painted by its own status color so the row carries
+ * the same semantic accent as the icons elsewhere in the tree: a
+ * nonzero `done` count is green, nonzero `in-progress` is yellow,
+ * nonzero `not-started` stays default/white, and any zero segment
+ * fades to dim. Separators (`/`), parens, and the total inside the
+ * parens are always dim so the numbers themselves carry the signal.
  */
 function formatParentCounter(node: TreeNode, theme: Theme): string {
   const counts: Record<Status, number> = {
@@ -375,6 +387,14 @@ function formatParentCounter(node: TreeNode, theme: Theme): string {
   const done = counts.done;
   const wip = counts['in-progress'];
   const not = counts['not-started'];
-  const body = `${done}/${wip}/${not} (${total})`;
-  return theme.paint.dim(body);
+  const paintSegment = (kind: 'done' | 'wip' | 'not', n: number): string => {
+    const s = String(n);
+    if (n === 0) return theme.paint.dim(s);
+    if (kind === 'done') return theme.paint.done(s);
+    if (kind === 'wip') return theme.paint.inProgress(s);
+    return theme.paint.white(s);
+  };
+  const slash = theme.paint.dim('/');
+  const totalBody = theme.paint.dim(`(${total})`);
+  return `${paintSegment('done', done)}${slash}${paintSegment('wip', wip)}${slash}${paintSegment('not', not)} ${totalBody}`;
 }

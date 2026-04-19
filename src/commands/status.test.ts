@@ -179,6 +179,54 @@ describe('formatSummaryHeader', () => {
     expect(output).not.toContain('\u25D0');
     expect(output).not.toContain('\u25CB');
   });
+
+  it('paints count columns by status kind when color is on (nonzero done green, nonzero wip yellow, nonzero not-started white, zero dim)', () => {
+    const colorTheme = createTheme({ color: true, encoding: 'utf8' });
+    const summary = makeSummary({
+      spec: { done: 2, 'in-progress': 3, 'not-started': 1 },
+      tasks: { done: 0, 'in-progress': 5, 'not-started': 0 },
+    });
+    const output = formatSummaryHeader(summary, colorTheme, null);
+    const { paint } = colorTheme;
+
+    // Spec row: all three counts nonzero → each picks up its status
+    // color. Counts are right-padded to a 2-char column (`0` / `3` /
+    // `5` → max width 1, but Tasks row has `0` only too, so width
+    // stays 1). With `3/0/0 (1)` vs `2/3/1 (5)`, max width is 1.
+    expect(output).toContain(paint.done('2'));
+    expect(output).toContain(paint.inProgress('3'));
+    expect(output).toContain(paint.white('1'));
+
+    // Tasks row: the zero done count dims, the nonzero wip paints
+    // yellow, the zero not-started dims.
+    expect(output).toContain(paint.inProgress('5'));
+    // At least two zeros in the tasks row → at least two dim-painted
+    // zero counts.
+    const dimmedZero = paint.dim('0');
+    const dimZeroCount = output.split(dimmedZero).length - 1;
+    expect(dimZeroCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('bolds both the `Next:` label and the command verb when color is on', () => {
+    const colorTheme = createTheme({ color: true, encoding: 'utf8' });
+    const summary = makeSummary({ spec: { done: 1 } });
+    const action: NextAction = {
+      command: 'smithy.forge',
+      arguments: ['specs/foo/01-story.tasks.md'],
+      reason: 'because',
+    };
+    const output = formatSummaryHeader(summary, colorTheme, action);
+    const { paint } = colorTheme;
+    // Next: label is bold.
+    expect(output).toContain(paint.bold('Next:'));
+    // Command verb is bold; args stay default (not bold).
+    expect(output).toContain(paint.bold('smithy.forge'));
+    expect(output).toContain(' specs/foo/01-story.tasks.md');
+    // And that the args segment is not itself bold-wrapped.
+    expect(output).not.toContain(
+      paint.bold('smithy.forge specs/foo/01-story.tasks.md'),
+    );
+  });
 });
 
 function makeRecord(overrides: Partial<ArtifactRecord> = {}): ArtifactRecord {

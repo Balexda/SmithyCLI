@@ -22,6 +22,14 @@ import { createTheme, type Theme } from './theme.js';
  */
 const utf8Theme: Theme = createTheme({ color: false, encoding: 'utf8' });
 const asciiTheme: Theme = createTheme({ color: false, encoding: 'ascii' });
+/**
+ * Color-on UTF-8 theme used by the per-segment coloring tests. The
+ * production paint helpers use `picocolors.createColors(true)` so
+ * ANSI escapes emit regardless of whether the test runner inherits a
+ * TTY — assertions interpolate the same helpers to avoid hardcoding
+ * escape sequences.
+ */
+const colorTheme: Theme = createTheme({ color: true, encoding: 'utf8' });
 
 /**
  * Minimal `ArtifactRecord` factory for renderer tests. Only the fields
@@ -866,5 +874,184 @@ describe('renderTree — ASCII fallback theme', () => {
     const output = renderTree(tree, { theme: asciiTheme });
     expect(output).toContain('[!]');
     expect(output).not.toContain('\u2717');
+  });
+});
+
+describe('renderTree — per-segment counter coloring (color on)', () => {
+  // Interpolate the same paint helpers the production code uses so
+  // assertions don't encode raw ANSI escape sequences. Tests still
+  // verify the paint KIND — e.g., the done count goes through
+  // `paint.done` (green), the wip count through `paint.inProgress`
+  // (yellow), etc. — by comparing against `colorTheme.paint.*`-wrapped
+  // fragments.
+  const { paint } = colorTheme;
+
+  it('parent counter paints each nonzero segment with its status color and leaves zeros dim', () => {
+    // Parent with 2 done / 0 wip / 1 not-started children → counter
+    // should be `2[green]/[dim]0[dim]/[dim]1[white] (3)[dim]` beside a
+    // yellow `◐`.
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo',
+      status: 'in-progress',
+      parent_path: null,
+    });
+    const childA = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/a.features.md',
+      title: 'A',
+      status: 'done',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+    });
+    const childB = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/b.features.md',
+      title: 'B',
+      status: 'done',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+    });
+    const childC = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/c.features.md',
+      title: 'C',
+      status: 'not-started',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+    });
+    const tree = buildTree([rfc, childA, childB, childC]);
+    const output = renderTree(tree, { theme: colorTheme });
+    const rootLine = output.split('\n')[0]!;
+
+    // Nonzero done count → green, via paint.done.
+    expect(rootLine).toContain(paint.done('2'));
+    // Zero wip count → dim.
+    expect(rootLine).toContain(paint.dim('0'));
+    // Nonzero not-started count → white.
+    expect(rootLine).toContain(paint.white('1'));
+    // Separators and total are dim.
+    expect(rootLine).toContain(paint.dim('/'));
+    expect(rootLine).toContain(paint.dim('(3)'));
+    // In-progress icon stays yellow.
+    expect(rootLine).toContain(paint.inProgress(colorTheme.icons.inProgress));
+  });
+
+  it('parent counter nonzero wip segment paints yellow via paint.inProgress', () => {
+    const rfc = makeRecord({
+      type: 'rfc',
+      path: 'docs/rfcs/demo.rfc.md',
+      title: 'Demo',
+      status: 'in-progress',
+      parent_path: null,
+    });
+    const wipChild = makeRecord({
+      type: 'features',
+      path: 'docs/rfcs/wip.features.md',
+      title: 'WIP',
+      status: 'in-progress',
+      parent_path: 'docs/rfcs/demo.rfc.md',
+    });
+    const tree = buildTree([rfc, wipChild]);
+    const output = renderTree(tree, { theme: colorTheme });
+    const rootLine = output.split('\n')[0]!;
+
+    // `0/1/0 (1)` → the middle `1` is the wip segment and should be
+    // yellow.
+    expect(rootLine).toContain(paint.inProgress('1'));
+    // The done and not-started zero segments stay dim.
+    expect(rootLine).toContain(paint.dim('0'));
+  });
+
+  it('task counter paints the completed segment green and keeps the total dim', () => {
+    const parent = makeRecord({
+      type: 'spec',
+      path: 'specs/f/f.spec.md',
+      title: 'F',
+      status: 'in-progress',
+      parent_path: null,
+    });
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/f/01-story.tasks.md',
+      title: 'Story',
+      status: 'in-progress',
+      completed: 3,
+      total: 7,
+      parent_path: 'specs/f/f.spec.md',
+    });
+    const output = renderTree(buildTree([parent, tasks]), {
+      theme: colorTheme,
+    });
+    // Completed count `3` is green.
+    expect(output).toContain(paint.done('3'));
+    // `/7` is dim (including the leading slash so the pair reads as
+    // muted structural chrome behind the bright completed count).
+    expect(output).toContain(paint.dim('/7'));
+  });
+
+  it('task counter fades the completed segment to dim when zero tasks are done', () => {
+    const parent = makeRecord({
+      type: 'spec',
+      path: 'specs/f/f.spec.md',
+      title: 'F',
+      status: 'in-progress',
+      parent_path: null,
+    });
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/f/01-story.tasks.md',
+      title: 'Story',
+      status: 'in-progress',
+      completed: 0,
+      total: 4,
+      parent_path: 'specs/f/f.spec.md',
+    });
+    const output = renderTree(buildTree([parent, tasks]), {
+      theme: colorTheme,
+    });
+    // Zero completed → dim, not green (nothing done yet).
+    expect(output).toContain(paint.dim('0'));
+    // Note: `/4` is also dim, so we only assert the count itself to
+    // avoid false matches on the adjacent `/4` substring.
+    expect(output).not.toContain(paint.done('0'));
+  });
+
+  it('unknown records paint the warning parenthetical dim while keeping the ⚠ icon colored', () => {
+    const tree = buildTree([
+      makeRecord({
+        type: 'spec',
+        path: 'specs/broken/broken.spec.md',
+        title: 'Broken',
+        status: 'unknown',
+        warnings: ['parser: legacy checkbox format detected'],
+        parent_path: null,
+      }),
+    ]);
+    const output = renderTree(tree, { theme: colorTheme });
+    // Icon is yellow.
+    expect(output).toContain(paint.unknown(colorTheme.icons.unknown));
+    // Parenthetical (including the `unknown` word) is dim so the ⚠
+    // carries the alarm and the detail fades.
+    expect(output).toContain(
+      paint.dim('unknown (parser: legacy checkbox format detected)'),
+    );
+  });
+
+  it('broken-link rows dim the `[missing parent: …]` suffix while keeping the ✗ red', () => {
+    const broken = makeRecord({
+      type: 'tasks',
+      path: 'specs/lost/01-dangling.tasks.md',
+      title: 'Dangling',
+      status: 'not-started',
+      parent_path: 'specs/deleted/deleted.spec.md',
+      parent_missing: true,
+    });
+    const tree = buildTree([broken]);
+    const output = renderTree(tree, { theme: colorTheme });
+    // ✗ prefix is red via paint.error.
+    expect(output).toContain(paint.error(colorTheme.icons.error));
+    // `[missing parent: ...]` is dim.
+    expect(output).toContain(
+      paint.dim('[missing parent: specs/deleted/deleted.spec.md]'),
+    );
   });
 });

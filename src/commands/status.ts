@@ -422,25 +422,43 @@ export function formatSummaryHeader(
     1,
   );
 
-  const paintCount = (n: number): string => {
+  // Per-status count coloring: nonzero done → green, nonzero wip →
+  // yellow, nonzero not-started → white. Zero → dim across the board.
+  // This matches the rule used by `formatParentCounter` and the tasks
+  // counter in the tree renderer, so the summary block and the body
+  // share one visual language.
+  const paintCount = (n: number, kind: 'done' | 'wip' | 'not'): string => {
     const padded = String(n).padStart(countWidth, ' ');
-    return n === 0 ? theme.paint.dim(padded) : theme.paint.white(padded);
+    if (n === 0) return theme.paint.dim(padded);
+    if (kind === 'done') return theme.paint.done(padded);
+    if (kind === 'wip') return theme.paint.inProgress(padded);
+    return theme.paint.white(padded);
   };
 
   const rowLines = rows.map((r) => {
     const label = r.label.padEnd(labelWidth, ' ');
-    const done = `${paintCount(r.done)} ${theme.paint.done(theme.icons.done)}`;
-    const wip = `${paintCount(r.wip)} ${theme.paint.inProgress(theme.icons.inProgress)}`;
-    const not = `${paintCount(r.not)} ${theme.paint.notStarted(theme.icons.notStarted)}`;
+    const done = `${paintCount(r.done, 'done')} ${theme.paint.done(theme.icons.done)}`;
+    const wip = `${paintCount(r.wip, 'wip')} ${theme.paint.inProgress(theme.icons.inProgress)}`;
+    const not = `${paintCount(r.not, 'not')} ${theme.paint.notStarted(theme.icons.notStarted)}`;
     return `  ${label}   ${done}   ${wip}   ${not}`;
   });
 
   const lines = [title, '', ...rowLines];
   if (nextAction !== null) {
     lines.push('');
-    lines.push(
-      `  ${theme.paint.bold('Next:')} ${formatNextAction(nextAction, theme.glyphs.arrow).slice(theme.glyphs.arrow.length)}`,
+    // Split the formatted hint into `<command>` and `<args>` so the
+    // command verb can be bolded while args stay in the terminal
+    // default. `formatNextAction` returns `<arrow><command> <args…>` —
+    // strip the leading arrow glyph, then peel off the command token.
+    const hint = formatNextAction(nextAction, theme.glyphs.arrow).slice(
+      theme.glyphs.arrow.length,
     );
+    const spaceIdx = hint.indexOf(' ');
+    const boldHint =
+      spaceIdx === -1
+        ? theme.paint.bold(hint)
+        : `${theme.paint.bold(hint.slice(0, spaceIdx))}${hint.slice(spaceIdx)}`;
+    lines.push(`  ${theme.paint.bold('Next:')} ${boldHint}`);
   }
   return lines.join('\n');
 }
