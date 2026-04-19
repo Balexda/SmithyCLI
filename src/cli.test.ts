@@ -676,24 +676,36 @@ describe('CLI status', () => {
     });
 
     const lines = output.split('\n');
-    const headerLine = lines[0] ?? '';
-    // All four plural type labels appear in the canonical order.
-    expect(headerLine).toMatch(
-      /RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/,
-    );
+    // The vitest-style summary block opens with ` Smithy Status` as
+    // line 0, followed by a blank line, then per-type count rows.
+    expect(lines[0]).toBe(' Smithy Status');
+    // Every surviving type label (plural form) appears in the header
+    // block. With every type populated, RFCs/Features/Specs/Tasks all
+    // render their own row.
+    // `findIndex` returns -1 when the substring is missing, and -1 is
+    // truthy — so a `|| lines.length` fallback would miss the case
+    // entirely and silently drop the last line via `slice(0, -1)`. Use
+    // an explicit `-1` check instead.
+    const bodyStartIdx = lines.findIndex((l) => l.includes('Example'));
+    const headerBlock = lines
+      .slice(0, bodyStartIdx === -1 ? lines.length : bodyStartIdx)
+      .join('\n');
+    expect(headerBlock).toContain('RFCs');
+    expect(headerBlock).toContain('Features');
+    expect(headerBlock).toContain('Specs');
+    expect(headerBlock).toContain('Tasks');
     // Header precedes the tree body. The first rendered title (from
-    // US2 Slice 2 `renderTree`) comes after the header line (AS 7.1:
+    // US2 Slice 2 `renderTree`) comes after the header block (AS 7.1:
     // header "above" the body).
     const firstTreeLineIndex = lines.findIndex((l) =>
       l.includes('Feature A'),
     );
     expect(firstTreeLineIndex).toBeGreaterThan(0);
-    // Header segments use the stable "N done / N in-progress / N not-started"
-    // shape — status segments whose count is zero are suppressed, and a
-    // type with every count zero still renders with a "0 done" placeholder
-    // (SD-011). Only done / in-progress / not-started appear — `unknown`
-    // is intentionally omitted per FR-016 / SD-012.
-    expect(headerLine).not.toMatch(/unknown/);
+    // Header segments use the icon-driven format: `<n> ✓   <n> ◐   <n> ○`.
+    // Only done / in-progress / not-started appear — `unknown` is
+    // intentionally omitted per FR-016 / SD-012.
+    expect(headerBlock).not.toMatch(/unknown/);
+    expect(headerBlock).toContain('\u2713');
   });
 
   it('exits 0 with a friendly hint on an empty repo', () => {
@@ -775,12 +787,12 @@ describe('CLI status', () => {
     expect(storyLine).toBeDefined();
     expect(storyLine!).toMatch(/└─/);
 
-    // The DONE marker appears at least once — the fully-completed
-    // tasks record rolls up to DONE on every ancestor. Because this
+    // The done icon (✓) appears at least once — the fully-completed
+    // tasks record rolls up to done on every ancestor. Because this
     // test passes `--all`, collapsing is bypassed and every level
     // shows the marker inline (the default collapsed path is covered
     // by the US3 collapse-behavior test below).
-    expect(output).toContain('DONE');
+    expect(output).toContain('\u2713');
   });
 
   it('emits a valid (empty) JSON payload for an empty repo in --format json mode', () => {
@@ -1033,13 +1045,15 @@ describe('CLI status', () => {
     const defaultOut = execFileSync('node', [CLI, 'status', '--root', tmpDir], {
       encoding: 'utf-8',
     });
-    // Split off the summary header (line 0) from the tree body so the
-    // summary counts (which mention every type) do not leak into the
-    // body assertions.
-    const [, ...defaultBodyLines] = defaultOut.split('\n');
-    const defaultBody = defaultBodyLines.join('\n');
+    // Split off the multi-line summary header from the tree body so
+    // the summary counts (which mention every type) do not leak into
+    // the body assertions. The tree body starts at the first line
+    // containing the RFC title `Example`.
+    const defaultLines = defaultOut.split('\n');
+    const bodyStart = defaultLines.findIndex((l) => l.includes('Example'));
+    const defaultBody = defaultLines.slice(bodyStart).join('\n');
     expect(defaultBody).toContain('Example');
-    expect(defaultBody).toContain('DONE');
+    expect(defaultBody).toContain('\u2713');
     // Descendant titles of the done RFC must not appear under it.
     expect(defaultBody).not.toContain('Feature Map');
     expect(defaultBody).not.toContain('Feature A');
@@ -1201,7 +1215,7 @@ describe('CLI status', () => {
     // Done records emit no hint line: the finished tasks file is done
     // and must not have an arrow beneath its rendered line.
     const finishedLineIndex = lines.findIndex((l) =>
-      l.includes('Finished') && l.includes('DONE'),
+      l.includes('Finished') && l.includes('\u2713'),
     );
     expect(finishedLineIndex).toBeGreaterThanOrEqual(0);
     // The very next non-empty line must NOT be a hint line for the
@@ -1441,10 +1455,10 @@ describe('CLI status', () => {
       );
       // The aggregate summary header still prints above the hint
       // (SD-010).
-      expect(result.stdout).toMatch(/RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/);
+      expect(result.stdout).toContain(' Smithy Status');
     });
 
-    it('text-mode summary header is byte-identical with and without filter flags', () => {
+    it('text-mode summary count rows are byte-identical with and without filter flags', () => {
       writeFilterFixture();
       const unfiltered = execFileSync(
         'node',
@@ -1456,13 +1470,29 @@ describe('CLI status', () => {
         [CLI, 'status', '--root', tmpDir, '--status', 'in-progress'],
         { encoding: 'utf-8' },
       );
-      const unfilteredHeader = (unfiltered.split('\n')[0] ?? '').trim();
-      const filteredHeader = (filtered.split('\n')[0] ?? '').trim();
-      expect(filteredHeader).toBe(unfilteredHeader);
-      // Sanity: header carries all four type labels.
-      expect(unfilteredHeader).toMatch(
-        /RFCs:.*·\s*Features:.*·\s*Specs:.*·\s*Tasks:/,
-      );
+      // Extract just the count rows (the lines between ` Smithy
+      // Status` and the first blank-line separator that follows). The
+      // `Next:` line can legitimately differ between filtered and
+      // unfiltered runs because it reads off the filtered tree, while
+      // the count rows are computed pre-filter per SD-010 and must be
+      // byte-identical.
+      const extractRows = (output: string): string => {
+        const lines = output.split('\n');
+        const start = lines.findIndex((l) => l === ' Smithy Status');
+        expect(start).toBeGreaterThanOrEqual(0);
+        // Skip the blank line right after the title, then collect
+        // contiguous non-blank rows.
+        const rows: string[] = [];
+        for (let i = start + 2; i < lines.length; i++) {
+          if (lines[i]!.length === 0) break;
+          rows.push(lines[i]!);
+        }
+        return rows.join('\n');
+      };
+      expect(extractRows(filtered)).toBe(extractRows(unfiltered));
+      // Sanity: the unfiltered count rows carry at least one type
+      // label.
+      expect(extractRows(unfiltered)).toMatch(/(RFCs|Features|Specs|Tasks)/);
     });
   });
 });

@@ -93,7 +93,8 @@ program
   .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks')
   .option('--all', 'Disable collapsing of done subtrees so every artifact surfaces')
   .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
-  .option('--no-color', 'Suppress ANSI color output (stub — no colored text yet)')
+  .option('--no-color', 'Suppress ANSI color output')
+  .option('--ascii', 'Use ASCII tree connectors and icons (auto when terminal is not UTF-8)')
   .action((opts: Record<string, unknown>) => {
     const statusOpts: StatusOptions = { ...opts } as StatusOptions;
     return statusAction(statusOpts);

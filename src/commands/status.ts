@@ -38,14 +38,23 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildTree, collapseTree, filterRecords, renderTree, scan } from '../status/index.js';
-import type { FilterRecordsOptions } from '../status/index.js';
+import {
+  buildTree,
+  collapseTree,
+  filterRecords,
+  formatNextAction,
+  renderTree,
+  scan,
+} from '../status/index.js';
+import type { FilterRecordsOptions, NextAction } from '../status/index.js';
+import { buildTheme, type Theme } from '../status/theme.js';
 import type {
   ArtifactRecord,
   ArtifactType,
   ScanSummary,
   Status,
   StatusTree,
+  TreeNode,
 } from '../status/index.js';
 
 /**
@@ -83,10 +92,17 @@ export interface StatusOptions {
   /** Stub: render the cross-artifact graph. Parsed but not wired (US2/US10). */
   graph?: boolean;
   /**
-   * Stub: suppress ANSI colors. Parsed but not wired — no text rendering
-   * in this slice uses color yet.
+   * Suppress ANSI colors. Set by Commander's `--no-color` flag (produces
+   * `color: false`). Honored alongside the ambient `NO_COLOR` env var.
    */
   color?: boolean;
+  /**
+   * Force ASCII glyphs (tree connectors and status icons). Set by
+   * Commander's `--ascii` flag. Also kicks in automatically when the
+   * terminal locale does not advertise UTF-8 or on Windows shells that
+   * mangle box-drawing characters.
+   */
+  ascii?: boolean;
 }
 
 /**
@@ -232,13 +248,6 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  // US7 Slice 1: per-type roll-up header printed above the tree
-  // output whenever the scan finds at least one artifact. Kept pure
-  // and derived from the already-computed `ScanSummary` so the tree
-  // renderer can keep, move, or wrap the call site without touching
-  // the helper.
-  console.log(formatSummaryHeader(summary));
-
   // US2 Slice 2 + US3 Slice 1 + US6 Slice 1: default text output is a
   // hierarchical tree built from the US6-filtered record set (the full
   // scan when `--status` / `--type` are absent), then passed through
@@ -250,10 +259,7 @@ export function statusAction(opts: StatusOptions = {}): void {
   // ("Orphaned Specs", "Broken Links") surface at the top of
   // `tree.roots` and render as their own headings above their grouped
   // children; `collapseTree` never collapses them regardless of
-  // `--all`. `color: opts.color !== false` preserves the future
-  // `--no-color` wire-up by disabling color only when Commander sets
-  // `opts.color` to `false`; today the renderer emits plain text with
-  // UTF-8 box-drawing connectors and no color regardless.
+  // `--all`.
   //
   // US4 Slice 2: enable `renderHints` so the tree renderer attaches
   // an indented `→ <command> <args>` hint beneath every actionable,
@@ -263,11 +269,17 @@ export function statusAction(opts: StatusOptions = {}): void {
   // `collapseTree` drops their descendants before `renderTree` sees
   // them. The `--format json` branch above is untouched — this flag
   // only affects text-mode output (SD-016).
+  const theme = buildTheme({
+    noColor: opts.color === false,
+    ascii: opts.ascii === true,
+  });
   const tree = collapseTree(buildTree(filteredRecords), {
     all: opts.all === true,
   });
+  const topNextAction = pickTopNextAction(tree);
+  console.log(formatSummaryHeader(summary, theme, topNextAction));
   const rendered = renderTree(tree, {
-    color: opts.color !== false,
+    theme,
     renderHints: true,
   });
   if (rendered.length > 0) {
@@ -343,48 +355,155 @@ function summarize(records: ArtifactRecord[]): ScanSummary {
 }
 
 /**
- * Render the per-type roll-up header printed above the text-mode flat
- * listing (US7 Slice 1, AS 7.1). A pure function of {@link ScanSummary}
- * so the caller can be moved or wrapped later (e.g., by the US2 tree
- * renderer) without touching this helper.
+ * Render the vitest-style summary block printed above the tree (US7
+ * Slice 1, AS 7.1). Pure function of {@link ScanSummary} and
+ * {@link Theme} so it can be moved or wrapped later without touching
+ * state.
  *
- * Format (SD-010 / SD-011 / SD-012):
- * - Single line with plural type labels in the canonical order
- *   `RFCs`, `Features`, `Specs`, `Tasks` regardless of count.
- * - Types are joined by ` · ` (U+00B7, one space either side).
- * - Within a type, status segments use ` / ` as the separator and
- *   appear in the fixed order `done`, `in-progress`, `not-started`.
- * - Segments whose count is zero are suppressed when at least one
- *   sibling segment is non-zero, so sparse types stay compact.
- * - A type whose counts are all zero still appears with a stable
- *   `0 done` placeholder to preserve the four-type column structure.
- * - `unknown` counts and the `orphan_count` / `broken_link_count` /
- *   `parse_error_count` summary fields are intentionally omitted —
- *   FR-016 enumerates only done / in-progress / not-started.
+ * Layout:
+ *
+ * ```
+ *  Smithy Status
+ *
+ *   Specs      2 ✓   3 ◐   1 ○
+ *   Tasks     36 ✓   2 ◐   8 ○
+ *
+ *   Next: <top-level suggested next action, if any>
+ * ```
+ *
+ * - Type rows whose done/in-progress/not-started counts are all zero
+ *   are suppressed so an empty RFCs/Features row doesn't eat a line
+ *   of visual budget. If every type has zero counts, the block
+ *   collapses to a single dim `No artifacts found.` line.
+ * - Label column is left-padded to the longest *surviving* label so
+ *   removing RFCs/Features tightens the column (`Specs`/`Tasks` fit
+ *   in a 5-char column).
+ * - Counts are right-padded to the widest count across surviving rows
+ *   so two-digit counters (`36`) align under single-digit ones.
+ * - Nonzero counts paint white, zero counts paint dim. Icons are
+ *   painted via the theme's status colors.
+ * - The `Next:` line is omitted when no actionable next step exists.
+ *
+ * `unknown` counts and the `orphan_count` / `broken_link_count` /
+ * `parse_error_count` summary fields are intentionally omitted —
+ * FR-016 enumerates only done / in-progress / not-started.
  */
-function formatSummaryHeader(summary: ScanSummary): string {
+export function formatSummaryHeader(
+  summary: ScanSummary,
+  theme: Theme,
+  nextAction: NextAction | null,
+): string {
   const TYPE_ORDER: Array<{ type: ArtifactType; label: string }> = [
     { type: 'rfc', label: 'RFCs' },
     { type: 'features', label: 'Features' },
     { type: 'spec', label: 'Specs' },
     { type: 'tasks', label: 'Tasks' },
   ];
-  const STATUS_ORDER: Array<Exclude<Status, 'unknown'>> = [
-    'done',
-    'in-progress',
-    'not-started',
-  ];
 
-  const segments = TYPE_ORDER.map(({ type, label }) => {
-    const counts = summary.counts[type];
-    const parts = STATUS_ORDER.filter((s) => counts[s] > 0).map(
-      (s) => `${counts[s]} ${s}`,
-    );
-    const body = parts.length > 0 ? parts.join(' / ') : '0 done';
-    return `${label}: ${body}`;
+  type Row = { label: string; done: number; wip: number; not: number };
+  const rows: Row[] = [];
+  for (const { type, label } of TYPE_ORDER) {
+    const c = summary.counts[type];
+    const done = c.done;
+    const wip = c['in-progress'];
+    const not = c['not-started'];
+    if (done + wip + not === 0) continue;
+    rows.push({ label, done, wip, not });
+  }
+
+  const title = theme.paint.bold(' Smithy Status');
+  if (rows.length === 0) {
+    // No done/in-progress/not-started rows to display. Two reasons this
+    // can happen: (a) the scan genuinely found nothing — empty repo —
+    // or (b) every record is `unknown` (parse errors). Case (b) must
+    // NOT claim "No artifacts found.", because the tree below will
+    // render the unknown rows and users would be told something false
+    // right above contradicting evidence. Distinguish via
+    // `parse_error_count` (which counts unknown records) and point at
+    // the tree for detail.
+    if (summary.parse_error_count > 0) {
+      const noun = summary.parse_error_count === 1 ? 'artifact' : 'artifacts';
+      return `${title}\n\n  ${theme.paint.dim(`${summary.parse_error_count} ${noun} with parse errors — see tree below.`)}`;
+    }
+    return `${title}\n\n  ${theme.paint.dim('No artifacts found.')}`;
+  }
+
+  const labelWidth = rows.reduce((w, r) => Math.max(w, r.label.length), 0);
+  const countWidth = rows.reduce(
+    (w, r) => Math.max(w, String(r.done).length, String(r.wip).length, String(r.not).length),
+    1,
+  );
+
+  // Per-status count coloring: nonzero done → green, nonzero wip →
+  // yellow, nonzero not-started → white. Zero → dim across the board.
+  // This matches the rule used by `formatParentCounter` and the tasks
+  // counter in the tree renderer, so the summary block and the body
+  // share one visual language.
+  const paintCount = (n: number, kind: 'done' | 'wip' | 'not'): string => {
+    const padded = String(n).padStart(countWidth, ' ');
+    if (n === 0) return theme.paint.dim(padded);
+    if (kind === 'done') return theme.paint.done(padded);
+    if (kind === 'wip') return theme.paint.inProgress(padded);
+    return theme.paint.white(padded);
+  };
+
+  const rowLines = rows.map((r) => {
+    const label = r.label.padEnd(labelWidth, ' ');
+    const done = `${paintCount(r.done, 'done')} ${theme.paint.done(theme.icons.done)}`;
+    const wip = `${paintCount(r.wip, 'wip')} ${theme.paint.inProgress(theme.icons.inProgress)}`;
+    const not = `${paintCount(r.not, 'not')} ${theme.paint.notStarted(theme.icons.notStarted)}`;
+    return `  ${label}   ${done}   ${wip}   ${not}`;
   });
 
-  return segments.join(' · ');
+  const lines = [title, '', ...rowLines];
+  if (nextAction !== null) {
+    lines.push('');
+    // Split the formatted hint into `<command>` and `<args>` so the
+    // command verb can be bolded while args stay in the terminal
+    // default. `formatNextAction` returns `<arrow><command> <args…>` —
+    // strip the leading arrow glyph, then peel off the command token.
+    const hint = formatNextAction(nextAction, theme.glyphs.arrow).slice(
+      theme.glyphs.arrow.length,
+    );
+    const spaceIdx = hint.indexOf(' ');
+    const boldHint =
+      spaceIdx === -1
+        ? theme.paint.bold(hint)
+        : `${theme.paint.bold(hint.slice(0, spaceIdx))}${hint.slice(spaceIdx)}`;
+    lines.push(`  ${theme.paint.bold('Next:')} ${boldHint}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Pick the first actionable, non-suppressed {@link NextAction} from a
+ * rendered {@link StatusTree} in render order (depth-first, input
+ * order). Group sentinels carry no next action and are skipped. Returns
+ * `null` when the tree has no actionable record — either every record
+ * is done or every actionable record is suppressed by an ancestor.
+ */
+export function pickTopNextAction(tree: StatusTree): NextAction | null {
+  for (const root of tree.roots) {
+    const found = findNextAction(root);
+    if (found !== null) return found;
+  }
+  return null;
+}
+
+function findNextAction(node: TreeNode): NextAction | null {
+  const action = node.record.next_action;
+  if (
+    action !== undefined &&
+    action !== null &&
+    action.suppressed_by_ancestor !== true
+  ) {
+    return action;
+  }
+  for (const child of node.children) {
+    const found = findNextAction(child);
+    if (found !== null) return found;
+  }
+  return null;
 }
 
 function emptyCounts(): ScanSummary['counts'] {
