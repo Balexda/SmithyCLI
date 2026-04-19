@@ -2,7 +2,7 @@
 
 ## Overview
 
-The evals framework operates on three core entities: scenario definitions (input), eval results (per-case output), and eval reports (aggregate output). All data is file-based — YAML for scenarios, JSON for baselines, and in-memory structures for results and reports during execution.
+The evals framework operates on four core entities: scenario definitions (input), eval results (per-case output), eval reports (aggregate output), and baselines (persisted known-good snapshots for regression detection). All data is file-based — YAML for scenarios, JSON for baselines, and in-memory structures for results and reports during execution.
 
 ## Entities
 
@@ -63,6 +63,7 @@ Purpose: Captures the outcome of running a single eval scenario, including the r
 | `duration_ms` | number | Yes | Wall-clock time for the skill invocation |
 | `structural_checks` | CheckResult[] | Yes | Per-check pass/fail results |
 | `sub_agent_checks` | CheckResult[] | No | Per-agent invocation verification results |
+| `baseline_checks` | CheckResult[] | No | Per-baseline pass/fail results; omitted when no baseline file exists for the scenario |
 | `error` | string | No | Error message if status is `error` or `timeout` |
 
 ### 3) CheckResult (in-memory, nested in EvalResult)
@@ -90,11 +91,29 @@ Purpose: Aggregate summary across all scenarios in a single eval run.
 | `results` | EvalResult[] | Yes | Per-case results |
 | `total_duration_ms` | number | Yes | Total wall-clock time for the entire run |
 
+### 5) Baseline (`evals/baselines/<scenario_name>.json`)
+
+Purpose: Persisted snapshot of a known-good skill output used to detect structural regressions on subsequent runs. Loaded by `loadBaseline` when a file exists for the active scenario; compared against the current output by `compareToBaseline`, which emits `CheckResult[]` entries that land on `EvalResult.baseline_checks`. Baselines are opt-in per scenario via convention-based file presence — no new YAML field is required.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `scenario_name` | string | Yes | Must exactly match the owning `EvalScenario.name`; used to locate the file via `evals/baselines/<scenario_name>.json` |
+| `captured_at` | string | Yes | ISO 8601 timestamp indicating when the baseline was authored; informational (not used by the comparator) |
+| `headings` | string[] | Yes | Ordered list of ATX headings observed in the known-good output (e.g., `["## Summary", "## Approach", "## Risks"]`); compared per-element by `compareToBaseline` |
+| `tables` | object[] | No | Array of `{ columns: string[] }` objects mirroring `StructuralExpectations.required_tables`; may be omitted from the persisted JSON (defaults to `[]`) or written as an empty array when the known-good output has no tables |
+
+Validation rules:
+- A missing file is not an error — `loadBaseline` returns `null` so the scenario runs without baseline checks (baselines are optional per AS 10.3).
+- A malformed JSON file or one missing a required field (`scenario_name`, `captured_at`, `headings`) is a scenario-authoring bug and surfaces through the existing validation-error exit path.
+- Extra unknown fields are ignored for forward compatibility.
+- `tables` defaults to `[]` when absent from the persisted file.
+
 ## Relationships
 
 - EvalReport 1:N EvalResult — one report contains results for all scenarios in a run.
-- EvalResult 1:N CheckResult — one result contains all structural and sub-agent checks for that scenario.
+- EvalResult 1:N CheckResult — one result contains all structural, sub-agent, and baseline checks for that scenario.
 - EvalResult N:1 EvalScenario — each result references the scenario it was run against (via `scenario_name`).
+- EvalScenario 0..1:1 Baseline — each scenario may have at most one persisted baseline, looked up by `scenario_name`; absence is the default and not an error.
 
 ## State Transitions
 
@@ -124,3 +143,4 @@ Purpose: Aggregate summary across all scenarios in a single eval run.
 
 - Scenarios are uniquely identified by their `name` field, which must be unique across all YAML files in `evals/cases/`.
 - Eval results are identified by `scenario_name` + run timestamp (a scenario can only have one result per run).
+- Baselines are identified by `scenario_name`, which must match the owning `EvalScenario.name` and the filename stem under `evals/baselines/`.

@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Declare `Baseline` type and extend `EvalResult` with `baseline_checks`**
+- [x] **Declare `Baseline` type and extend `EvalResult` with `baseline_checks`**
 
   Add a `Baseline` interface to `evals/lib/types.ts` capturing the persisted snapshot shape: `scenario_name`, `captured_at` (ISO 8601 timestamp), `headings` (ordered string array of ATX headings observed in the known-good output), and `tables` (array of `{ columns: string[] }` objects matching the existing `StructuralExpectations.required_tables` shape for consistency). Extend `EvalResult` with an optional `baseline_checks?: CheckResult[] | undefined` field so baseline results can flow through the report library without colliding with `structural_checks` or `sub_agent_checks`. Mirror the new entity into `smithy-evals-framework.data-model.md` under a new `### 5) Baseline` subsection and update the `EvalResult` table to list `baseline_checks`.
 
@@ -28,7 +28,7 @@
   - No runtime logic introduced; existing exports unchanged
   - `npm run typecheck` passes
 
-- [ ] **Implement `loadBaseline` convention-based JSON loader**
+- [x] **Implement `loadBaseline` convention-based JSON loader**
 
   Create `evals/lib/baseline.ts` and export `loadBaseline(scenarioName: string, baselinesDir?: string): Baseline | null`. Look up `<baselinesDir ?? 'evals/baselines'>/<scenarioName>.json`; return `null` when the file does not exist (satisfies AS 10.3 — baselines are optional); throw a descriptive error when the file exists but is not valid JSON or is missing required `Baseline` fields. The loader is convention-based so scenarios do not need a new YAML field and US7 YAML loading lands unaffected.
 
@@ -40,7 +40,7 @@
   - Default directory is `evals/baselines` relative to the current working directory; caller can override for tests
   - Unit tests cover missing-file, malformed-JSON, missing-field, and happy-path cases
 
-- [ ] **Implement `compareToBaseline` pure structural comparator**
+- [x] **Implement `compareToBaseline` pure structural comparator**
 
   Add `compareToBaseline(output: string, baseline: Baseline): CheckResult[]` to `evals/lib/baseline.ts`. Extract the current output's ATX headings (per-line, matching the `validateStructure` convention in `structural.ts`) and pipe-delimited table column lists, then diff them against the baseline. Emit one check per baseline heading (`has baseline heading '<text>'`) that fails when the heading is absent, one check per baseline table (`has baseline table with columns: <list>`), and one aggregate regression-summary check (`baseline regression summary`) whose `actual` field enumerates any missing items so a reviewer can read the failure without correlating multiple lines. Additions present in the output but absent from the baseline are **not** failures — baselines are a regression signal, not a content lock.
 
