@@ -413,6 +413,18 @@ export function formatSummaryHeader(
 
   const title = theme.paint.bold(' Smithy Status');
   if (rows.length === 0) {
+    // No done/in-progress/not-started rows to display. Two reasons this
+    // can happen: (a) the scan genuinely found nothing — empty repo —
+    // or (b) every record is `unknown` (parse errors). Case (b) must
+    // NOT claim "No artifacts found.", because the tree below will
+    // render the unknown rows and users would be told something false
+    // right above contradicting evidence. Distinguish via
+    // `parse_error_count` (which counts unknown records) and point at
+    // the tree for detail.
+    if (summary.parse_error_count > 0) {
+      const noun = summary.parse_error_count === 1 ? 'artifact' : 'artifacts';
+      return `${title}\n\n  ${theme.paint.dim(`${summary.parse_error_count} ${noun} with parse errors — see tree below.`)}`;
+    }
     return `${title}\n\n  ${theme.paint.dim('No artifacts found.')}`;
   }
 

@@ -86,13 +86,42 @@ describe('formatSummaryHeader', () => {
     expect(output).not.toContain('RFCs');
   });
 
-  it('collapses to a single "No artifacts found." line when every row would be suppressed', () => {
+  it('collapses to a single "No artifacts found." line when every row would be suppressed AND no parse errors exist', () => {
     const summary = makeSummary();
     const output = formatSummaryHeader(summary, theme, null);
     expect(output).toContain(' Smithy Status');
     expect(output).toContain('No artifacts found.');
     expect(output).not.toContain('\u2713');
     expect(output).not.toContain('\u25CB');
+    expect(output).not.toContain('parse errors');
+  });
+
+  it('surfaces a parse-error message instead of "No artifacts found." when unknown-only records exist', () => {
+    // Scan discovered artifacts but every one is `unknown` (parse
+    // failure). The count columns can't render those since they only
+    // enumerate done/in-progress/not-started, but claiming "No
+    // artifacts found." above a tree body that then prints the
+    // unknown rows would lie to the user. Header should point at the
+    // tree instead.
+    const summary = makeSummary({
+      spec: { unknown: 3 },
+    });
+    summary.parse_error_count = 3;
+    const output = formatSummaryHeader(summary, theme, null);
+    expect(output).toContain(' Smithy Status');
+    expect(output).not.toContain('No artifacts found.');
+    expect(output).toContain('3 artifacts with parse errors');
+    expect(output).toContain('see tree below');
+  });
+
+  it('uses the singular noun when exactly one parse-error record exists', () => {
+    const summary = makeSummary({
+      spec: { unknown: 1 },
+    });
+    summary.parse_error_count = 1;
+    const output = formatSummaryHeader(summary, theme, null);
+    expect(output).toContain('1 artifact with parse errors');
+    expect(output).not.toContain('1 artifacts with parse errors');
   });
 
   it('right-pads counts to the widest count in surviving rows so two-digit counters align', () => {
