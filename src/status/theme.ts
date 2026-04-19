@@ -121,16 +121,24 @@ const IDENTITY_PAINT: ThemePaint = {
   white: IDENTITY,
 };
 
-const COLOR_PAINT: ThemePaint = {
-  done: pc.green,
-  inProgress: pc.yellow,
-  notStarted: pc.dim,
-  unknown: pc.yellow,
-  error: pc.red,
-  dim: pc.dim,
-  bold: pc.bold,
-  white: pc.white,
-};
+const COLOR_PAINT: ThemePaint = (() => {
+  // picocolors auto-detects TTY / NO_COLOR and returns identity
+  // functions when color is off. We've already decided to emit color
+  // at this point, so force-enable via `createColors(true)` so the
+  // helpers actually emit ANSI escapes regardless of the ambient
+  // environment.
+  const c = pc.createColors(true);
+  return {
+    done: c.green,
+    inProgress: c.yellow,
+    notStarted: c.dim,
+    unknown: c.yellow,
+    error: c.red,
+    dim: c.dim,
+    bold: c.bold,
+    white: c.white,
+  };
+})();
 
 /**
  * Resolve whether ANSI color output is appropriate for the current process.

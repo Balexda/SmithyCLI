@@ -388,7 +388,7 @@ function summarize(records: ArtifactRecord[]): ScanSummary {
  * `parse_error_count` summary fields are intentionally omitted —
  * FR-016 enumerates only done / in-progress / not-started.
  */
-function formatSummaryHeader(
+export function formatSummaryHeader(
   summary: ScanSummary,
   theme: Theme,
   nextAction: NextAction | null,
@@ -452,7 +452,7 @@ function formatSummaryHeader(
  * `null` when the tree has no actionable record — either every record
  * is done or every actionable record is suppressed by an ancestor.
  */
-function pickTopNextAction(tree: StatusTree): NextAction | null {
+export function pickTopNextAction(tree: StatusTree): NextAction | null {
   for (const root of tree.roots) {
     const found = findNextAction(root);
     if (found !== null) return found;
