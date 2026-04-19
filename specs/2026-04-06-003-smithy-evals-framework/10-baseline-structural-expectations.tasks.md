@@ -90,7 +90,7 @@
   - No duplication of the status precedence rule — orchestrator continues to delegate to `scenarioRunToResult`
   - `npm run test:evals` and the smoke path through `npm run eval` remain functional
 
-- [ ] **Seed `evals/baselines/strike-health-check.json` from a known-good strike run**
+- [x] **Seed `evals/baselines/strike-health-check.json` from a known-good strike run**
 
   Create the `evals/baselines/` directory and commit an initial baseline JSON for the strike scenario. The file must conform to the `Baseline` type declared in Slice 1 and should capture the headings and tables observed in the known-good strike output already documented in `evals/spike/FINDINGS.md` and exercised by `strike-scenario.ts`. Populate `headings` from the structural markers `strikeScenario.structural_expectations.required_headings` already asserts (e.g., `## Summary`, `## Approach`, `## Risks`) augmented with any additional stable headings visible in the spike capture. Populate `captured_at` with a real ISO 8601 timestamp reflecting when the baseline was authored. This file is data, not code — it is expected to be regenerated manually whenever the strike template legitimately changes.
 
