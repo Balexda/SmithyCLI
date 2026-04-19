@@ -296,7 +296,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(12);
+    expect(byCategory.agents).toHaveLength(13);
     expect(byCategory.skills).toHaveLength(1);
   });
 
@@ -325,13 +325,14 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, implementation-review, plan, reconcile, reconcile-slices, slice, prose, and survey', () => {
+  it('agents includes clarify, refine, implement, implementation-review, plan, plan-review, reconcile, reconcile-slices, slice, prose, and survey', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
     expect(agents).toContain('smithy.implement.md');
     expect(agents).toContain('smithy.implementation-review.md');
     expect(agents).toContain('smithy.plan.md');
+    expect(agents).toContain('smithy.plan-review.md');
     expect(agents).toContain('smithy.reconcile.md');
     expect(agents).toContain('smithy.reconcile-slices.md');
     expect(agents).toContain('smithy.slice.md');
@@ -795,6 +796,62 @@ describe('getComposedTemplates', () => {
     expect(plan).not.toContain('Edit');
     expect(plan).not.toContain('Write');
     expect(plan).not.toContain('Bash');
+  });
+
+  // Story 4 Slice 2: smithy-plan-review is a new read-only sub-agent that
+  // composes the shared review-protocol snippet (Slice 1) and returns a
+  // structured ReviewResult. These assertions lock down the frontmatter
+  // contract (name, read-only tool list) and verify the composed body
+  // actually inlines the shared Finding structure so both review agents
+  // stay aligned on the return shape.
+  it('plan-review agent retains frontmatter with read-only tools', () => {
+    const planReview = composed.agents.get('smithy.plan-review.md')!;
+    expect(planReview).toBeDefined();
+    expect(planReview).toMatch(/^---\s*\n/);
+    expect(planReview).toContain('name: smithy-plan-review');
+    expect(planReview).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(planReview).toMatch(/^\s+-\s+Grep$/m);
+    expect(planReview).toMatch(/^\s+-\s+Glob$/m);
+    expect(planReview).not.toContain('Edit');
+    expect(planReview).not.toContain('Write');
+    expect(planReview).not.toContain('Bash');
+  });
+
+  it('plan-review agent composes the shared review-protocol snippet', () => {
+    const planReview = composed.agents.get('smithy.plan-review.md')!;
+    expect(planReview).toBeDefined();
+    // Shared review-protocol section header must appear so both review
+    // agents inherit the same findings contract.
+    expect(planReview).toContain('## Review Protocol');
+    // Finding-structure fields from the contracts must be present via the
+    // composed snippet — dropping the partial would drop these fields.
+    expect(planReview).toContain('`category`');
+    expect(planReview).toContain('`severity`');
+    expect(planReview).toContain('`confidence`');
+    expect(planReview).toContain('`description`');
+    expect(planReview).toContain('`artifact_path`');
+    expect(planReview).toContain('`proposed_fix`');
+    // Partial must have been resolved at compose time — no leftover
+    // Handlebars expression.
+    expect(planReview).not.toContain('{{>review-protocol}}');
+    expect(planReview).not.toContain('{{');
+  });
+
+  it('plan-review agent documents its five categories and ReviewResult shape', () => {
+    const planReview = composed.agents.get('smithy.plan-review.md')!;
+    expect(planReview).toBeDefined();
+    // Each contracts-defined plan-review category must appear in the body
+    // so dispatched findings can cite a category from the documented list.
+    expect(planReview).toContain('Internal contradiction');
+    expect(planReview).toContain('Logical gap');
+    expect(planReview).toContain('Assumption-output drift');
+    expect(planReview).toContain('Debt completeness');
+    expect(planReview).toContain('Brittle reference');
+    // ReviewResult return shape from the contracts must be described so
+    // parent commands know what to expect back.
+    expect(planReview).toContain('ReviewResult');
+    expect(planReview).toContain('findings');
+    expect(planReview).toContain('summary');
   });
 
   it('reconcile agent retains frontmatter with read-only tools', () => {
