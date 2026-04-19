@@ -22,24 +22,26 @@ import type {
 
 /**
  * Assemble an `EvalResult` from the scenario, runner output, and the
- * computed structural / sub-agent check arrays.
+ * computed structural / sub-agent / baseline check arrays.
  *
- * Status precedence (AS 9.3):
- *   1. `output.timed_out === true`              → `'timeout'`
- *   2. `output.exit_code !== 0`                 → `'error'`
- *   3. any failing structural / sub-agent check → `'fail'`
- *   4. otherwise                                → `'pass'`
+ * Status precedence (AS 9.3, extended by US10):
+ *   1. `output.timed_out === true`                          → `'timeout'`
+ *   2. `output.exit_code !== 0`                             → `'error'`
+ *   3. any failing structural / sub-agent / baseline check → `'fail'`
+ *   4. otherwise                                            → `'pass'`
  *
  * The function is pure: it does not mutate any of its inputs and performs
- * no I/O. `sub_agent_checks` is omitted from the returned object when the
- * caller passes `undefined` or an empty array. The `error` field is only
- * populated for `'timeout'` and `'error'` statuses.
+ * no I/O. `sub_agent_checks` and `baseline_checks` are omitted from the
+ * returned object when the caller passes `undefined` or an empty array.
+ * The `error` field is only populated for `'timeout'` and `'error'`
+ * statuses.
  */
 export function scenarioRunToResult(
   scenario: EvalScenario,
   output: RunOutput,
   structuralChecks: CheckResult[],
   subAgentChecks?: CheckResult[],
+  baselineChecks?: CheckResult[],
 ): EvalResult {
   let status: EvalResult['status'];
   let error: string | undefined;
@@ -55,7 +57,11 @@ export function scenarioRunToResult(
     const subAgentFailed = subAgentChecks
       ? subAgentChecks.some((c) => !c.passed)
       : false;
-    status = structuralFailed || subAgentFailed ? 'fail' : 'pass';
+    const baselineFailed = baselineChecks
+      ? baselineChecks.some((c) => !c.passed)
+      : false;
+    status =
+      structuralFailed || subAgentFailed || baselineFailed ? 'fail' : 'pass';
   }
 
   const result: EvalResult = {
@@ -68,6 +74,10 @@ export function scenarioRunToResult(
 
   if (subAgentChecks && subAgentChecks.length > 0) {
     result.sub_agent_checks = subAgentChecks;
+  }
+
+  if (baselineChecks && baselineChecks.length > 0) {
+    result.baseline_checks = baselineChecks;
   }
 
   if (error !== undefined) {
@@ -151,6 +161,20 @@ function statusToken(status: EvalResult['status']): string {
  *     Total elapsed: 127000ms
  *     Result: FAIL (1/4 passed, 4 total)
  *
+ * When at least one result in the report has populated `baseline_checks`,
+ * each per-case line is extended with a compact `baseline: PASS`,
+ * `baseline: FAIL`, or `baseline: n/a` marker (AS 10.3 — the marker only
+ * appears when at least one case opts into baselines, so scenarios without
+ * a baseline never pollute the default output):
+ *
+ *     Eval Summary
+ *       [PASS] strike-health-check (1234ms) baseline: PASS
+ *       [FAIL] plan-standalone (5678ms) baseline: FAIL
+ *       [PASS] no-baseline-case (789ms) baseline: n/a
+ *
+ *     Total elapsed: 127000ms
+ *     Result: FAIL (1/3 passed, 3 total)
+ *
  * The function is pure: no I/O, no `console.log`, no mutation of `report`.
  * Per-case lines are emitted in `report.results` order so the output is
  * stable across calls — making snapshot-style assertions feasible. The four
@@ -160,14 +184,24 @@ function statusToken(status: EvalResult['status']): string {
  * (`PASS` or `FAIL`) plus the total case count (AS 9.1, 9.2); the
  * `Total elapsed:` line precedes it so the `Result:` line remains last
  * (US11 AS 11.2, FR-009). Durations render as integer milliseconds with
- * the `ms` suffix uniformly across per-case and total lines.
+ * the `ms` suffix uniformly across per-case and total lines. The
+ * `Total elapsed:` and `Result:` summary lines are unchanged regardless
+ * of whether baseline markers appear (US10 Slice 2 — additions only).
  */
 export function formatReport(report: EvalReport): string {
   const lines: string[] = ['Eval Summary'];
 
+  const anyBaseline = report.results.some(
+    (r) => r.baseline_checks && r.baseline_checks.length > 0,
+  );
+
   for (const result of report.results) {
     const token = statusToken(result.status);
-    lines.push(`  [${token}] ${result.scenario_name} (${result.duration_ms}ms)`);
+    let line = `  [${token}] ${result.scenario_name} (${result.duration_ms}ms)`;
+    if (anyBaseline) {
+      line += ` baseline: ${baselineMarker(result)}`;
+    }
+    lines.push(line);
   }
 
   const overallToken = report.overall_status === 'pass' ? 'PASS' : 'FAIL';
@@ -178,4 +212,22 @@ export function formatReport(report: EvalReport): string {
   );
 
   return lines.join('\n');
+}
+
+/**
+ * Compute the compact baseline marker token for a single result.
+ *
+ * Returns `'PASS'` when `baseline_checks` is present and every check
+ * passed, `'FAIL'` when it is present and at least one check failed, and
+ * `'n/a'` when the result has no baseline checks (undefined or empty).
+ * The caller is responsible for deciding whether to render the marker
+ * at all — this function is only consulted when the enclosing report
+ * has at least one result with non-empty `baseline_checks`.
+ */
+function baselineMarker(result: EvalResult): string {
+  const checks = result.baseline_checks;
+  if (!checks || checks.length === 0) {
+    return 'n/a';
+  }
+  return checks.every((c) => c.passed) ? 'PASS' : 'FAIL';
 }

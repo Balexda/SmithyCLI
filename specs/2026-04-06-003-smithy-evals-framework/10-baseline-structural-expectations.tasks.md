@@ -67,7 +67,7 @@
 
 ### Tasks
 
-- [ ] **Thread baseline checks through `scenarioRunToResult` and `formatReport`**
+- [x] **Thread baseline checks through `scenarioRunToResult` and `formatReport`**
 
   Extend `scenarioRunToResult` in `evals/lib/report.ts` to accept an additional optional `baselineChecks` argument and populate `EvalResult.baseline_checks` when the array is non-empty (mirroring the existing handling of `sub_agent_checks`). Extend the status-precedence rule so that a failing baseline check rolls into `fail` status alongside structural and sub-agent failures — timeout/error precedence from US9 is unchanged. Update `formatReport` so that when any `EvalResult` has populated `baseline_checks`, the per-case line expands to include a compact baseline marker (e.g., `baseline: PASS` / `baseline: FAIL`) and the final summary line still exposes the single overall status from US9. Do not remove or reshape any existing output produced by US9 — additions only.
 
