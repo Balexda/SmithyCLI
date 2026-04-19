@@ -682,7 +682,14 @@ describe('CLI status', () => {
     // Every surviving type label (plural form) appears in the header
     // block. With every type populated, RFCs/Features/Specs/Tasks all
     // render their own row.
-    const headerBlock = lines.slice(0, lines.findIndex((l) => l.includes('Example')) || lines.length).join('\n');
+    // `findIndex` returns -1 when the substring is missing, and -1 is
+    // truthy — so a `|| lines.length` fallback would miss the case
+    // entirely and silently drop the last line via `slice(0, -1)`. Use
+    // an explicit `-1` check instead.
+    const bodyStartIdx = lines.findIndex((l) => l.includes('Example'));
+    const headerBlock = lines
+      .slice(0, bodyStartIdx === -1 ? lines.length : bodyStartIdx)
+      .join('\n');
     expect(headerBlock).toContain('RFCs');
     expect(headerBlock).toContain('Features');
     expect(headerBlock).toContain('Specs');
