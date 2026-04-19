@@ -78,7 +78,7 @@
   - `formatReport` renders the baseline marker only when at least one result in the report has non-empty `baseline_checks` (AS 10.3 — absence of a baseline must not clutter output)
   - Existing US9 unit tests in `evals/lib/report.test.ts` continue to pass; new tests cover baseline-pass, baseline-fail, and baseline-absent paths
 
-- [ ] **Invoke `loadBaseline` and `compareToBaseline` from `run-evals.ts`**
+- [x] **Invoke `loadBaseline` and `compareToBaseline` from `run-evals.ts`**
 
   In `evals/run-evals.ts`, after the existing `validateStructure` / `verifySubAgents` block and before the `scenarioRunToResult` call, attempt `loadBaseline(scenario.name)`. When the loader returns `null`, set `baselineChecks = []` and proceed (AS 10.3). When it returns a `Baseline`, call `compareToBaseline(output.extracted_text, baseline)` and capture the resulting check array. Print the baseline results into the existing `Checks:` block using the same `[PASS]` / `[FAIL]` formatting and pass the array as the new fifth argument to `scenarioRunToResult`. Loader errors (malformed JSON, missing required fields) must surface through the existing "Validation error" exit path — they are a scenario authoring bug, not a runtime failure.
 
