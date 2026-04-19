@@ -3,7 +3,7 @@
  *
  * `scan(root)` is the single entry point that turns a working directory
  * into a fully-classified `ArtifactRecord[]` matching the data-model
- * contract in `smithy-status-skill.data-model.md`. It proceeds in three
+ * contract in `smithy-status-skill.data-model.md`. It proceeds in four
  * phases:
  *
  *   1. **Discovery / parse** — walk `specs/`, `docs/rfcs/`, and
@@ -28,6 +28,18 @@
  *      carry a `read_error:` warning from Phase 1 are preserved as
  *      `status: 'unknown'` and are not re-classified.
  *
+ *   4. **Next-action suggestion** — after every record's status has
+ *      stabilized, iterate the record set once more and call
+ *      {@link suggestNextAction} to populate `record.next_action`. An
+ *      upward walk over each record's `parent_path` chain (with a
+ *      seen-set cycle guard) detects whether any ancestor is itself
+ *      `not-started`; when so, the returned {@link NextAction} carries
+ *      `suppressed_by_ancestor: true` so FR-011 suppression is visible
+ *      to JSON consumers. Records carrying a `read_error:` warning are
+ *      skipped: their `next_action` stays omitted (not `null`) so the
+ *      field's absence signals "never evaluated" to JSON consumers,
+ *      matching the scanner's existing skip-on-read-error behavior.
+ *
  * The scanner performs no network I/O and never throws on an individual
  * artifact failure. Per-file errors are surfaced as warnings on the
  * affected record and scanning continues.
@@ -50,6 +62,7 @@ import path from 'node:path';
 
 import { classifyRecord } from './classifier.js';
 import { extractSourceHeader, parseArtifact } from './parser.js';
+import { suggestNextAction } from './suggester.js';
 import type {
   ArtifactRecord,
   ArtifactType,
@@ -69,7 +82,7 @@ const SUFFIX_TYPES: Array<readonly [string, ArtifactType]> = [
 /**
  * Walk the repo under `root`, build `ArtifactRecord` entries for every
  * discovered Smithy artifact file, and return the fully-classified
- * record set. See the module-level JSDoc for the three-phase flow.
+ * record set. See the module-level JSDoc for the four-phase flow.
  */
 export function scan(root: string): ArtifactRecord[] {
   let realRoot: string;
@@ -243,6 +256,47 @@ export function scan(root: string): ArtifactRecord[] {
       if (hasReadError(record)) continue;
       const kids = childrenByParent.get(record.path) ?? [];
       record.status = classifyRecord(record, kids);
+    }
+  }
+
+  // Phase 4: populate `next_action` on every classified record.
+  //
+  // `suggestNextAction` is pure — this pass runs after every status is
+  // finalized. Records carrying a `read_error:` warning are skipped
+  // entirely: their `next_action` field stays omitted (not set to
+  // `null`) so JSON consumers can distinguish "never evaluated"
+  // (absent) from "evaluated, no action" (`null`).
+  //
+  // Two sub-passes so the suppression flag tracks whether an ancestor
+  // actually has a hint the user could run:
+  //
+  //  4a. Compute each record's tentative `next_action` with
+  //      `ancestorNotStarted = false`. `suggestNextAction` may still
+  //      return `null` (e.g. a spec whose US rows all have real tasks
+  //      files on disk — no `smithy.cut` is needed at the spec level
+  //      because the per-task `forge` hints drive the work).
+  //
+  //  4b. For every record whose tentative action is non-null, walk
+  //      upward through `parent_path`. If any ancestor is both
+  //      `not-started` **and** has a non-null `next_action`, mark the
+  //      current record's action with `suppressed_by_ancestor: true`.
+  //      Ancestors whose `next_action` is `null` are skipped — the
+  //      user has no command to run on them, so their presence in
+  //      the chain does not justify hiding a descendant's hint
+  //      (otherwise an in-progress spec stacked under a not-started
+  //      parent would silence every task below it with nothing left
+  //      to surface).
+  for (const record of records.values()) {
+    if (hasReadError(record)) continue;
+    const kids = childrenByParent.get(record.path) ?? [];
+    record.next_action = suggestNextAction(record, kids, false);
+  }
+  for (const record of records.values()) {
+    if (hasReadError(record)) continue;
+    const action = record.next_action;
+    if (action === null || action === undefined) continue;
+    if (hasActionableNotStartedAncestor(record, records)) {
+      action.suppressed_by_ancestor = true;
     }
   }
 
@@ -592,11 +646,57 @@ function makeVirtualRecord(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3 helpers
+// Phase 3 + Phase 4 helpers
 // ---------------------------------------------------------------------------
 
 function hasReadError(record: ArtifactRecord): boolean {
   return record.warnings.some((w) => w.startsWith('read_error:'));
+}
+
+/**
+ * Walk upward from `record` through the `parent_path` chain (resolved
+ * against the scanner's full `records` map) and return `true` as soon
+ * as any ancestor is both `not-started` **and** has a populated
+ * `next_action`.
+ *
+ * An ancestor with a `null` `next_action` is skipped even when its
+ * `status` is `'not-started'` — there is no hint competing for the
+ * user's attention at that level, so descendants are free to surface
+ * their own hints. This avoids silencing every task under a
+ * not-started spec whose only remaining work is per-task forges.
+ *
+ * Terminates when:
+ * - `parent_path` is `null`, `undefined`, or an empty string.
+ * - The parent path does not resolve to any known record.
+ * - A previously-seen path is revisited (cycle guard) — defensive
+ *   against malformed record sets that could otherwise loop forever.
+ *
+ * Pure function: never mutates inputs. Used by Phase 4 to populate
+ * `NextAction.suppressed_by_ancestor` per FR-011. Callers must have
+ * already computed `next_action` on every candidate ancestor in the
+ * records map (Phase 4a).
+ */
+function hasActionableNotStartedAncestor(
+  record: ArtifactRecord,
+  recordsByPath: Map<string, ArtifactRecord>,
+): boolean {
+  const seen = new Set<string>();
+  let cursor: string | null | undefined = record.parent_path;
+  while (typeof cursor === 'string' && cursor.length > 0) {
+    if (seen.has(cursor)) return false;
+    seen.add(cursor);
+    const ancestor = recordsByPath.get(cursor);
+    if (ancestor === undefined) return false;
+    if (
+      ancestor.status === 'not-started' &&
+      ancestor.next_action !== null &&
+      ancestor.next_action !== undefined
+    ) {
+      return true;
+    }
+    cursor = ancestor.parent_path ?? null;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

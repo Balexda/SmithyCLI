@@ -325,12 +325,12 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, review, plan, plan-review, reconcile, reconcile-slices, slice, prose, and survey', () => {
+  it('agents includes clarify, refine, implement, implementation-review, plan, plan-review, reconcile, reconcile-slices, slice, prose, and survey', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
     expect(agents).toContain('smithy.implement.md');
-    expect(agents).toContain('smithy.review.md');
+    expect(agents).toContain('smithy.implementation-review.md');
     expect(agents).toContain('smithy.plan.md');
     expect(agents).toContain('smithy.plan-review.md');
     expect(agents).toContain('smithy.reconcile.md');
@@ -738,12 +738,21 @@ describe('getComposedTemplates', () => {
     expect(implement).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
   });
 
-  it('review agent retains frontmatter with correct tools', () => {
-    const review = composed.agents.get('smithy.review.md')!;
+  it('implementation-review agent retains frontmatter with read-only tools', () => {
+    const review = composed.agents.get('smithy.implementation-review.md')!;
     expect(review).toBeDefined();
     expect(review).toMatch(/^---\s*\n/);
-    expect(review).toContain('name: smithy-review');
-    expect(review).toContain('tools: Read, Edit, Write, Grep, Glob, Bash');
+    expect(review).toContain('name: smithy-implementation-review');
+    expect(review).toMatch(/tools:\s*\n\s+-\s+Read/);
+    expect(review).toMatch(/^\s+-\s+Grep$/m);
+    expect(review).toMatch(/^\s+-\s+Glob$/m);
+    expect(review).not.toContain('Edit');
+    expect(review).not.toContain('Write');
+    expect(review).not.toContain('Bash');
+    // The composed body must pull in the shared review-protocol snippet
+    // from Slice 1 so both review agents share one source of truth.
+    expect(review).toContain('## Review Protocol');
+    expect(review).toContain('`proposed_fix`');
   });
 
   it('forge default renders inline TDD and review protocols', () => {
@@ -764,7 +773,16 @@ describe('getComposedTemplates', () => {
     const forge = claudeComposed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('smithy-implement');
-    expect(forge).toContain('smithy-review');
+    // Story 4 Slice 3: the rename from `smithy-review` to
+    // `smithy-implementation-review` must be visible in the forge agent-mode
+    // branch — otherwise forge would still dispatch an agent that no longer
+    // exists.
+    expect(forge).toContain('smithy-implementation-review');
+    expect(forge).not.toMatch(/\bsmithy-review\b/);
+    // Forge must retain the triage rule that turns Low-confidence Important
+    // findings into specification debt (per the contracts table), since
+    // forge — not the review agent — owns that on-disk action now.
+    expect(forge).toContain('Specification Debt');
     expect(forge).not.toContain('TDD Protocol');
     expect(forge).not.toContain('{{');
   });

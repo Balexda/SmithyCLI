@@ -48,7 +48,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-clarify** — Ambiguity scanning and triage into assumptions and specification debt (used by strike, ignite, mark, cut, render)
 - **smithy-refine** — Artifact review and refinement findings (used by mark, cut, ignite, render in Phase 0)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
-- **smithy-review** — Code review with auto-fix (used by forge)
+- **smithy-implementation-review** — Read-only code review; returns findings for forge to apply (used by forge)
 - **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Returns findings; parent commands apply fixes. (used by strike, ignite, mark, render, cut after artifact generation)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)

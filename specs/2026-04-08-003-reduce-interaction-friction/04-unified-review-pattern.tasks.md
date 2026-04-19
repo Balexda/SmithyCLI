@@ -172,7 +172,7 @@ atomic for the entire review pipeline.
 
 ### Tasks
 
-- [ ] **Rename and refactor the implementation-review prompt**
+- [x] **Rename and refactor the implementation-review prompt**
 
   Rename `src/templates/agent-skills/agents/smithy.review.prompt` to
   `smithy.implementation-review.prompt`. Update its frontmatter
@@ -193,7 +193,7 @@ atomic for the entire review pipeline.
   - Body describes the `ReviewResult` return shape from contracts
   - No auto-fix or commit instructions remain in the body
 
-- [ ] **Update forge to apply findings from the renamed review agent**
+- [x] **Update forge to apply findings from the renamed review agent**
 
   Update `src/templates/agent-skills/commands/smithy.forge.prompt`
   to dispatch `smithy-implementation-review` (not `smithy-review`)
@@ -215,7 +215,7 @@ atomic for the entire review pipeline.
   - Default (non-agent) forge branch still composes the inline
     review-protocol content for the direct-agent case
 
-- [ ] **Update template tests, READMEs, and CLAUDE.md references**
+- [x] **Update template tests, READMEs, and CLAUDE.md references**
 
   Update `src/templates.test.ts` so the agents list contains
   `smithy.implementation-review.md` instead of `smithy.review.md`,
