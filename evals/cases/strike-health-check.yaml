@@ -1,7 +1,8 @@
 # Strike end-to-end eval scenario (YAML declarative form).
 #
 # Mirrors the EvalScenario shape described in the data model (§1) and the
-# TypeScript interface in evals/lib/types.ts. Single-quoted strings are used
+# TypeScript interface in evals/lib/types.ts, including the optional
+# `sub_agent_evidence` field (FR-016). Single-quoted strings are used
 # for regex patterns so backslash escapes (e.g. \*, \d, \r, \n) round-trip
 # byte-for-byte to the parser.
 #
