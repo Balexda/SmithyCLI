@@ -4,7 +4,6 @@
 |----------|---------------|
 | **Requirement Completeness** | Are all functional requirements numbered and testable? Do they cover the full scope of the feature? |
 | **Slice Scoping** | Is the single slice PR-sized? Does it have a clear standalone goal and justification? |
-| **Validation Plan Coverage** | Does the validation plan have concrete steps that verify each requirement and success criterion? |
 | **Data Model Presence** | Is a Data Model section present? If data changes are needed, are entities and relationships defined? |
 | **Contracts Presence** | Is a Contracts section present? If interface changes are needed, are they specified? |
 | **Success Criteria** | Are success criteria numbered, testable, and aligned with the requirements? |
