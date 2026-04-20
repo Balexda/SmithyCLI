@@ -226,6 +226,10 @@ export const permissions: Record<string, PermissionEntry> = {
   tar: ["*", "-czf *", "-xzf *", "-xf *", "-tf *"],
   zip: ["*", "-r *"],
   unzip: ["*", "-l *"],
+  tmux: {
+    "-V": [],
+    "-h": [],
+  },
 };
 
 /**
