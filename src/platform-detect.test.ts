@@ -2,10 +2,12 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { detectPlatforms } from './platform-detect.js';
 
 describe('detectPlatforms', () => {
-  const originalPlatform = process.platform;
+  const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
 
   afterEach(() => {
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    if (originalPlatformDescriptor) {
+      Object.defineProperty(process, 'platform', originalPlatformDescriptor);
+    }
   });
 
   it('returns ["mac"] on darwin', () => {

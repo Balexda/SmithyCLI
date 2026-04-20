@@ -260,9 +260,12 @@ export const permissions: Record<string, PermissionEntry> = {
   },
 
   // --- Homebrew (macOS) — read-only queries only ---
-  // Platform-scoped: included only when `['mac']` is in the platforms filter.
-  // Install/uninstall/upgrade/reinstall/cleanup/tap with arg intentionally
-  // omitted — they mutate the global system and require explicit approval.
+  // Platform-scoped when callers pass the `platformManagers` filter: `brew`
+  // is then included only for `['mac']`. If `platformManagers` is omitted,
+  // `flattenPermissions()` includes all platform-manager keys for backward
+  // compatibility. Install/uninstall/upgrade/reinstall/cleanup/tap with arg
+  // intentionally omitted — they mutate the global system and require
+  // explicit approval.
   brew: {
     "--version": [],
     "--prefix": ["", "*"],
@@ -296,7 +299,10 @@ export const permissions: Record<string, PermissionEntry> = {
   },
 
   // --- apt (Debian/Ubuntu) — read-only queries only ---
-  // Platform-scoped: included only when `['linux']` is in the platforms filter.
+  // Platform-scoped when callers pass the `platformManagers` filter: `apt`,
+  // `apt-cache`, and `dpkg` are then included only for `['linux']`. If
+  // `platformManagers` is omitted, `flattenPermissions()` includes all
+  // platform-manager keys for backward compatibility.
   // install/remove/upgrade/update/purge/autoremove intentionally omitted.
   apt: {
     "--version": [],
