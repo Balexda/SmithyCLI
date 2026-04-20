@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
-import { flattenPermissions, claudeToolPermissions, denyPermissions, type LanguageToolchain } from '../permissions.js';
+import { flattenPermissions, claudeToolPermissions, denyPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
@@ -128,8 +128,11 @@ export function removeLegacy(targetDir: string): number {
  * Build the Claude Code allow-list from the shared permissions.
  * Wraps each command in Bash(...) and appends Claude-specific tool permissions.
  */
-export function buildClaudeAllowList(languages?: LanguageToolchain[]): string[] {
-  const bashPermissions = flattenPermissions(languages).map(cmd => `Bash(${cmd})`);
+export function buildClaudeAllowList(
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): string[] {
+  const bashPermissions = flattenPermissions(languages, platformManagers).map(cmd => `Bash(${cmd})`);
   return [...bashPermissions, ...claudeToolPermissions];
 }
 
@@ -154,11 +157,16 @@ export function resolveSettingsPath(targetDir: string, level: DeployablePermissi
  * Write permissions to the appropriate settings.json using Claude Code's schema.
  * Merges with existing settings.json if present.
  */
-export function writePermissions(targetDir: string, level: DeployablePermissionLevel, languages?: LanguageToolchain[]): void {
+export function writePermissions(
+  targetDir: string,
+  level: DeployablePermissionLevel,
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): void {
   const settingsPath = resolveSettingsPath(targetDir, level);
   const settingsDir = path.dirname(settingsPath);
   if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
-  const allowList = buildClaudeAllowList(languages);
+  const allowList = buildClaudeAllowList(languages, platformManagers);
   const denyList = buildClaudeDenyList();
 
   let config: Record<string, unknown> = {

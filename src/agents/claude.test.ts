@@ -451,6 +451,56 @@ describe('buildClaudeAllowList', () => {
     expect(remoteEntries).not.toContain('Bash(git remote *)');
     expect(remoteEntries.length).toBe(2);
   });
+
+  it('threads platformManagers through to Bash() wrapping (mac)', () => {
+    const macList = buildClaudeAllowList([], ['mac']);
+    expect(macList).toContain('Bash(brew list)');
+    expect(macList).toContain('Bash(brew info *)');
+    expect(macList.some(e => e.startsWith('Bash(apt '))).toBe(false);
+    expect(macList.some(e => e.startsWith('Bash(apt-cache'))).toBe(false);
+    expect(macList.some(e => e.startsWith('Bash(dpkg'))).toBe(false);
+  });
+
+  it('threads platformManagers through to Bash() wrapping (linux)', () => {
+    const linuxList = buildClaudeAllowList([], ['linux']);
+    expect(linuxList).toContain('Bash(apt list)');
+    expect(linuxList).toContain('Bash(apt-cache search *)');
+    expect(linuxList).toContain('Bash(dpkg -l)');
+    expect(linuxList.some(e => e.startsWith('Bash(brew'))).toBe(false);
+  });
+
+  it('wraps uv commands under python toolchain', () => {
+    const pyList = buildClaudeAllowList(['python']);
+    expect(pyList).toContain('Bash(uv --version)');
+    expect(pyList).toContain('Bash(uv add *)');
+    expect(pyList).toContain('Bash(uv sync)');
+    expect(pyList).toContain('Bash(uv pip install *)');
+  });
+
+  it('wraps cargo dep-management commands under rust toolchain', () => {
+    const rustList = buildClaudeAllowList(['rust']);
+    expect(rustList).toContain('Bash(cargo add *)');
+    expect(rustList).toContain('Bash(cargo update)');
+    expect(rustList).toContain('Bash(cargo fetch)');
+    expect(rustList).toContain('Bash(cargo search *)');
+    expect(rustList).toContain('Bash(cargo info *)');
+    expect(rustList).not.toContain('Bash(cargo install *)');
+    expect(rustList).not.toContain('Bash(cargo publish *)');
+  });
+
+  it('does not wrap mutating package-manager commands in Bash()', () => {
+    const list = buildClaudeAllowList();
+    expect(list).not.toContain('Bash(brew install *)');
+    expect(list).not.toContain('Bash(brew uninstall *)');
+    expect(list).not.toContain('Bash(apt install *)');
+    expect(list).not.toContain('Bash(apt remove *)');
+    expect(list).not.toContain('Bash(dpkg -i *)');
+    expect(list).not.toContain('Bash(uv tool install *)');
+    expect(list).not.toContain('Bash(uv python install *)');
+    expect(list).not.toContain('Bash(cargo install *)');
+    expect(list).not.toContain('Bash(cargo publish *)');
+    expect(list.some(e => e.startsWith('Bash(uv run'))).toBe(false);
+  });
 });
 
 describe('buildClaudeDenyList', () => {

@@ -6,7 +6,20 @@ export const toolchains: Record<LanguageToolchain, { label: string; permissionKe
   node:   { label: 'Node.js (npm)',        permissionKeys: ['npm', 'npx', 'nodenv'], markers: ['package.json'] },
   java:   { label: 'Java/Kotlin (Gradle)', permissionKeys: ['./gradlew'],  markers: ['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradlew'] },
   rust:   { label: 'Rust (Cargo)',         permissionKeys: ['cargo'],               markers: ['Cargo.toml'] },
-  python: { label: 'Python (pip)',         permissionKeys: ['python', 'pip', 'pytest'], markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] },
+  python: { label: 'Python (pip)',         permissionKeys: ['python', 'pip', 'pytest', 'uv'], markers: ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile', 'uv.lock'] },
+};
+
+/**
+ * Platform-scoped package managers. Unlike language toolchains (which reflect
+ * user choice), platforms reflect an OS fact: brew on macOS, apt/dpkg on Linux.
+ * `detectPlatforms()` (in `./platform-detect.ts`) matches `process.platform`
+ * against `osPlatforms` to decide which entries to include.
+ */
+export type PlatformPackageManager = 'mac' | 'linux';
+
+export const platforms: Record<PlatformPackageManager, { label: string; permissionKeys: string[]; osPlatforms: NodeJS.Platform[] }> = {
+  mac:   { label: 'Homebrew (macOS)', permissionKeys: ['brew'],                     osPlatforms: ['darwin'] },
+  linux: { label: 'apt/dpkg (Linux)', permissionKeys: ['apt', 'apt-cache', 'dpkg'], osPlatforms: ['linux'] },
 };
 
 export const permissions: Record<string, PermissionEntry> = {
@@ -162,6 +175,11 @@ export const permissions: Record<string, PermissionEntry> = {
   "./gradlew": ["*"],
 
   // --- Cargo (Rust) ---
+  // Project-scoped dependency commands (`add`, `update`, `fetch`,
+  // `generate-lockfile`) mirror the `npm install` / `uv add` policy.
+  // Global/publishing commands — `install`, `uninstall`, `publish`, `login`,
+  // `logout`, `owner`, `yank`, `remove` — stay out of auto-allow so Claude
+  // must ask before touching a global binary or crates.io.
   cargo: {
     "build": ["*"],
     "test": ["*"],
@@ -174,6 +192,23 @@ export const permissions: Record<string, PermissionEntry> = {
     "tree": [],
     "metadata": [],
     "version": [],
+    // Project-scoped dep management
+    "add": ["*"],
+    "update": ["", "*"],
+    "fetch": ["", "*"],
+    "generate-lockfile": [],
+    "package": ["", "*"],
+    "vendor": ["", "*"],
+    // Read-only queries
+    "--version": [],
+    "--list": [],
+    "help": ["", "*"],
+    "search": ["*"],
+    "info": ["*"],
+    "pkgid": ["", "*"],
+    "locate-project": ["", "*"],
+    "verify-project": [],
+    "read-manifest": [],
   },
 
   // --- Python ---
@@ -192,6 +227,133 @@ export const permissions: Record<string, PermissionEntry> = {
     "show": ["*"],
   },
   pytest: ["*"],
+
+  // --- uv (Python) — project-scoped dep management + read-only queries ---
+  // Part of the python toolchain (see `toolchains.python.permissionKeys`).
+  // Excludes globals: `uv tool install/uninstall`, `uv python install`,
+  // `uv remove`, `uv self update`, `uv run *` (arbitrary code), `uv publish`.
+  uv: {
+    "--version": [],
+    "add": ["*"],
+    "sync": ["", "*"],
+    "lock": ["", "*"],
+    "pip install": ["*"],
+    "pip install -r": ["*"],
+    "pip compile": ["*"],
+    "pip freeze": [],
+    "pip list": ["", "*"],
+    "pip show": ["*"],
+    "pip check": [],
+    "pip tree": ["", "*"],
+    "tree": ["", "*"],
+    "venv": ["", "*"],
+    "export": ["", "*"],
+    "cache dir": [],
+    "cache info": [],
+    "python list": ["", "*"],
+    "python find": ["", "*"],
+    "python dir": [],
+    "python pin": ["*"],
+    "tool list": [],
+    "tool dir": [],
+    "help": ["", "*"],
+  },
+
+  // --- Homebrew (macOS) — read-only queries only ---
+  // Platform-scoped when callers pass the `platformManagers` filter: `brew`
+  // is then included only for `['mac']`. If `platformManagers` is omitted,
+  // `flattenPermissions()` includes all platform-manager keys for backward
+  // compatibility. Install/uninstall/upgrade/reinstall/cleanup/tap with arg
+  // intentionally omitted — they mutate the global system and require
+  // explicit approval.
+  brew: {
+    "--version": [],
+    "--prefix": ["", "*"],
+    "--cellar": ["", "*"],
+    "--repository": [],
+    "--cache": [],
+    "config": [],
+    "doctor": [],
+    "list": ["", "*"],
+    "ls": ["", "*"],
+    "leaves": [],
+    "info": ["*"],
+    "desc": ["*"],
+    "search": ["*"],
+    "home": ["*"],
+    "deps": ["*"],
+    "deps --tree": ["*"],
+    "uses": ["*"],
+    "uses --installed": ["*"],
+    "outdated": [],
+    "options": ["*"],
+    "tap-info": ["*"],
+    "analytics": [],
+    "analytics state": [],
+    "commands": [],
+    "help": ["", "*"],
+    "log": ["*"],
+    "cat": ["*"],
+    "formulae": [],
+    "casks": [],
+  },
+
+  // --- apt (Debian/Ubuntu) — read-only queries only ---
+  // Platform-scoped when callers pass the `platformManagers` filter: `apt`,
+  // `apt-cache`, and `dpkg` are then included only for `['linux']`. If
+  // `platformManagers` is omitted, `flattenPermissions()` includes all
+  // platform-manager keys for backward compatibility.
+  // install/remove/upgrade/update/purge/autoremove intentionally omitted.
+  apt: {
+    "--version": [],
+    "list": ["", "*"],
+    "list --installed": [],
+    "list --upgradable": [],
+    "search": ["*"],
+    "show": ["*"],
+    "policy": ["", "*"],
+    "depends": ["*"],
+    "rdepends": ["*"],
+    "help": ["", "*"],
+  },
+
+  // --- apt-cache (read-only cache queries; mutation not possible here) ---
+  "apt-cache": {
+    "search": ["*"],
+    "show": ["*"],
+    "showpkg": ["*"],
+    "showsrc": ["*"],
+    "depends": ["*"],
+    "rdepends": ["*"],
+    "pkgnames": ["", "*"],
+    "policy": ["", "*"],
+    "madison": ["*"],
+    "stats": [],
+    "unmet": [],
+  },
+
+  // --- dpkg (query-only subcommands; -i/-r/-P intentionally omitted) ---
+  dpkg: {
+    "--version": [],
+    "-l": ["", "*"],
+    "--list": ["", "*"],
+    "-L": ["*"],
+    "--listfiles": ["*"],
+    "-s": ["*"],
+    "--status": ["*"],
+    "-S": ["*"],
+    "--search": ["*"],
+    "-p": ["*"],
+    "--print-avail": ["*"],
+    "-c": ["*"],
+    "--contents": ["*"],
+    "-I": ["*"],
+    "--info": ["*"],
+    "--get-selections": ["", "*"],
+    "--print-architecture": [],
+    "--compare-versions": ["*"],
+    "--help": [],
+  },
 
   // --- GitHub CLI ---
   // Entries with ["", "*"] generate both bare and wildcard permissions,
@@ -286,31 +448,56 @@ function toolchainPermissionKeys(): Set<string> {
 }
 
 /**
+ * Collect all permission keys that belong to platform-scoped package managers.
+ */
+function platformPermissionKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const p of Object.values(platforms)) {
+    for (const k of p.permissionKeys) keys.add(k);
+  }
+  return keys;
+}
+
+/**
  * Flatten the nested permissions structure into a list of command strings.
  * e.g., git.checkout ["*"] -> ["git checkout *"]
  *        cp ["*"] -> ["cp *"]
  *        npm."run build" [] -> ["npm run build"]
  *
- * When `languages` is provided, only the specified toolchain permissions are
- * included alongside universal (non-toolchain) permissions. When omitted,
- * all permissions are included (backward compatible).
+ * Filtering: `languages` and `platformManagers` each gate their own key set.
+ * When either is `undefined`, that category's keys are all included
+ * (backward compatible). When provided (even as `[]`), only keys belonging
+ * to the selected toolchains / platforms are kept; the rest are skipped.
+ * Universal permissions (those not owned by any toolchain or platform)
+ * are always included.
  */
-export function flattenPermissions(languages?: LanguageToolchain[]): string[] {
+export function flattenPermissions(
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): string[] {
   const result: string[] = [];
 
-  // Build the set of toolchain keys to skip (if filtering)
-  let skipKeys: Set<string> | undefined;
+  // Build the set of keys to skip based on toolchain + platform filters.
+  const skipKeys = new Set<string>();
   if (languages !== undefined) {
     const allToolchainKeys = toolchainPermissionKeys();
     const selectedKeys = new Set<string>();
     for (const lang of languages) {
       for (const k of toolchains[lang].permissionKeys) selectedKeys.add(k);
     }
-    skipKeys = new Set([...allToolchainKeys].filter(k => !selectedKeys.has(k)));
+    for (const k of allToolchainKeys) if (!selectedKeys.has(k)) skipKeys.add(k);
+  }
+  if (platformManagers !== undefined) {
+    const allPlatformKeys = platformPermissionKeys();
+    const selectedKeys = new Set<string>();
+    for (const p of platformManagers) {
+      for (const k of platforms[p].permissionKeys) selectedKeys.add(k);
+    }
+    for (const k of allPlatformKeys) if (!selectedKeys.has(k)) skipKeys.add(k);
   }
 
   for (const [cmd, value] of Object.entries(permissions)) {
-    if (skipKeys?.has(cmd)) continue;
+    if (skipKeys.has(cmd)) continue;
     if (Array.isArray(value)) {
       if (value.length === 0) {
         result.push(cmd);

@@ -177,3 +177,170 @@ describe('flattenPermissions', () => {
     expect(result.some(e => e.startsWith('python'))).toBe(false);
   });
 });
+
+describe('flattenPermissions — platform filtering', () => {
+  it('includes brew, apt, apt-cache, dpkg by default (no filter)', () => {
+    const all = flattenPermissions();
+    expect(all).toContain('brew list');
+    expect(all).toContain('apt list --installed');
+    expect(all).toContain('apt-cache search *');
+    expect(all).toContain('dpkg -l');
+  });
+
+  it('filter ["mac"] includes brew, excludes apt/apt-cache/dpkg', () => {
+    const result = flattenPermissions([], ['mac']);
+    expect(result).toContain('brew list');
+    expect(result).toContain('brew --version');
+    expect(result).toContain('brew info *');
+    expect(result.some(e => e.startsWith('apt ') || e === 'apt' || e.startsWith('apt-cache') || e.startsWith('dpkg'))).toBe(false);
+    expect(result).toContain('git status'); // universal still present
+  });
+
+  it('filter ["linux"] includes apt/apt-cache/dpkg, excludes brew', () => {
+    const result = flattenPermissions([], ['linux']);
+    expect(result).toContain('apt list');
+    expect(result).toContain('apt-cache search *');
+    expect(result).toContain('dpkg -l');
+    expect(result.some(e => e.startsWith('brew'))).toBe(false);
+  });
+
+  it('filter [] (empty platforms) excludes all platform-scoped managers', () => {
+    const result = flattenPermissions([], []);
+    expect(result.some(e => e.startsWith('brew'))).toBe(false);
+    expect(result.some(e => e.startsWith('apt ') || e === 'apt' || e.startsWith('apt-cache'))).toBe(false);
+    expect(result.some(e => e.startsWith('dpkg'))).toBe(false);
+    expect(result).toContain('git status');
+  });
+
+  it('platform filter is independent of language filter', () => {
+    const result = flattenPermissions(['python'], ['mac']);
+    expect(result).toContain('brew list');
+    expect(result).toContain('uv --version');
+    expect(result.some(e => e.startsWith('apt-cache'))).toBe(false);
+    expect(result.some(e => e.startsWith('cargo'))).toBe(false);
+  });
+});
+
+describe('flattenPermissions — mutating package-manager commands are NOT auto-allowed', () => {
+  const all = flattenPermissions();
+
+  it('does not auto-allow brew install/uninstall/upgrade/reinstall/update/cleanup/tap with arg', () => {
+    expect(all).not.toContain('brew install *');
+    expect(all).not.toContain('brew uninstall *');
+    expect(all).not.toContain('brew upgrade *');
+    expect(all).not.toContain('brew reinstall *');
+    expect(all).not.toContain('brew update');
+    expect(all).not.toContain('brew cleanup *');
+    expect(all).not.toContain('brew tap *');
+    expect(all.some(e => /^brew (install|uninstall|upgrade|reinstall|cleanup|update|tap) /.test(e))).toBe(false);
+  });
+
+  it('does not auto-allow apt install/remove/upgrade/update/purge/autoremove', () => {
+    expect(all).not.toContain('apt install *');
+    expect(all).not.toContain('apt remove *');
+    expect(all).not.toContain('apt upgrade *');
+    expect(all).not.toContain('apt update');
+    expect(all).not.toContain('apt purge *');
+    expect(all).not.toContain('apt autoremove');
+    expect(all.some(e => /^apt (install|remove|upgrade|update|purge|autoremove)/.test(e))).toBe(false);
+  });
+
+  it('does not auto-allow dpkg -i / -r / -P (install/remove/purge)', () => {
+    expect(all).not.toContain('dpkg -i *');
+    expect(all).not.toContain('dpkg --install *');
+    expect(all).not.toContain('dpkg -r *');
+    expect(all).not.toContain('dpkg -P *');
+    expect(all).not.toContain('dpkg --remove *');
+    expect(all).not.toContain('dpkg --purge *');
+  });
+
+  it('does not auto-allow uv global installs, uv remove, uv run, uv self update, uv publish', () => {
+    expect(all).not.toContain('uv tool install *');
+    expect(all).not.toContain('uv tool uninstall *');
+    expect(all).not.toContain('uv tool upgrade *');
+    expect(all).not.toContain('uv python install *');
+    expect(all).not.toContain('uv python uninstall *');
+    expect(all).not.toContain('uv remove *');
+    expect(all).not.toContain('uv self update');
+    expect(all).not.toContain('uv publish *');
+    expect(all.some(e => e.startsWith('uv run'))).toBe(false);
+  });
+
+  it('does not auto-allow cargo install/uninstall/publish/login/logout/owner/yank/remove', () => {
+    expect(all).not.toContain('cargo install *');
+    expect(all).not.toContain('cargo uninstall *');
+    expect(all).not.toContain('cargo publish *');
+    expect(all).not.toContain('cargo publish');
+    expect(all).not.toContain('cargo login');
+    expect(all).not.toContain('cargo logout');
+    expect(all).not.toContain('cargo owner *');
+    expect(all).not.toContain('cargo yank *');
+    expect(all).not.toContain('cargo remove *');
+  });
+});
+
+describe('flattenPermissions — cargo dependency management additions', () => {
+  it('includes cargo add/update/fetch/generate-lockfile/package/vendor under rust toolchain', () => {
+    const result = flattenPermissions(['rust']);
+    expect(result).toContain('cargo add *');
+    expect(result).toContain('cargo update');
+    expect(result).toContain('cargo update *');
+    expect(result).toContain('cargo fetch');
+    expect(result).toContain('cargo fetch *');
+    expect(result).toContain('cargo generate-lockfile');
+    expect(result).toContain('cargo package');
+    expect(result).toContain('cargo vendor');
+  });
+
+  it('includes cargo query commands under rust toolchain', () => {
+    const result = flattenPermissions(['rust']);
+    expect(result).toContain('cargo --version');
+    expect(result).toContain('cargo search *');
+    expect(result).toContain('cargo info *');
+    expect(result).toContain('cargo pkgid');
+    expect(result).toContain('cargo locate-project');
+    expect(result).toContain('cargo verify-project');
+  });
+
+  it('preserves pre-existing cargo entries under rust toolchain', () => {
+    const result = flattenPermissions(['rust']);
+    expect(result).toContain('cargo build *');
+    expect(result).toContain('cargo test *');
+    expect(result).toContain('cargo fmt *');
+    expect(result).toContain('cargo clippy *');
+  });
+});
+
+describe('flattenPermissions — uv permissions', () => {
+  it('includes uv project-dep commands when python toolchain is selected', () => {
+    const result = flattenPermissions(['python']);
+    expect(result).toContain('uv --version');
+    expect(result).toContain('uv add *');
+    expect(result).toContain('uv sync');
+    expect(result).toContain('uv sync *');
+    expect(result).toContain('uv lock');
+    expect(result).toContain('uv pip install *');
+    expect(result).toContain('uv pip install -r *');
+    expect(result).toContain('uv pip freeze');
+    expect(result).toContain('uv pip list');
+    expect(result).toContain('uv venv');
+  });
+
+  it('excludes uv entries when python toolchain is not selected', () => {
+    const nodeOnly = flattenPermissions(['node']);
+    expect(nodeOnly.some(e => e.startsWith('uv '))).toBe(false);
+  });
+});
+
+describe('flattenPermissions — regression guard for existing install auto-allows', () => {
+  it('keeps existing project-dep install auto-allows intact', () => {
+    const all = flattenPermissions();
+    expect(all).toContain('npm install');
+    expect(all).toContain('npm ci');
+    expect(all).toContain('pip install *');
+    expect(all).toContain('pip install -r *');
+    expect(all).toContain('python -m pip install *');
+    expect(all).toContain('python -m pip install -r *');
+    expect(all).toContain('nodenv install *');
+  });
+});
