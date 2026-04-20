@@ -21,6 +21,7 @@
 import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { preflight, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
@@ -55,6 +56,17 @@ const { values } = parseArgs({
 });
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
+
+// Resolve the baselines directory relative to this source file so baseline
+// lookups work regardless of process cwd (matching the pattern used by
+// `strike-scenario.ts` for YAML loading). Without this, invoking the
+// orchestrator via `tsx evals/run-evals.ts` from outside the repo root would
+// silently skip baseline checks because `loadBaseline`'s default resolves
+// `evals/baselines/` against `process.cwd()`.
+const baselinesDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'baselines',
+);
 
 // Only treat --timeout as an override when the user explicitly passed it.
 // When omitted, `scenario.timeout` stays undefined so the runner's
@@ -218,7 +230,7 @@ for (const scenario of finalScenarios) {
     // (malformed JSON, missing required fields) propagate to the existing
     // "Validation error" branch below — they indicate a scenario authoring
     // bug, not a runtime failure.
-    const baseline = loadBaseline(scenario.name);
+    const baseline = loadBaseline(scenario.name, baselinesDir);
     if (baseline !== null) {
       baselineChecks = compareToBaseline(output.extracted_text, baseline);
     }
