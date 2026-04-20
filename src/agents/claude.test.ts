@@ -152,9 +152,9 @@ describe('deploy', () => {
     const skillMd = path.join(tmpDir, '.claude', 'skills', 'smithy.pr-review', 'SKILL.md');
     const content = fs.readFileSync(skillMd, 'utf8');
     expect(content).toContain('allowed-tools:');
-    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/find-pr.sh)');
-    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/get-comments.sh *)');
-    expect(content).toContain('Bash(bash *smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
   });
 
   it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
