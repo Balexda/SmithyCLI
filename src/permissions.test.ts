@@ -61,6 +61,14 @@ describe('flattenPermissions', () => {
     expect(result).toContain('gh --version');
   });
 
+  it('includes safe tmux read-only flags', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('tmux -V');
+    expect(result).toContain('tmux -h');
+    // No wildcard — other tmux verbs must still require approval.
+    expect(result).not.toContain('tmux *');
+  });
+
   it('flattens gh repo view with bare and wildcard variants', () => {
     const result = flattenPermissions();
     expect(result).toContain('gh repo view');
