@@ -27,10 +27,12 @@
 import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { preflight, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import { loadBaseline, compareToBaseline } from './lib/baseline.js';
 import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
 import { strikeScenario } from './lib/strike-scenario.js';
 import { scoutScenario } from './lib/scout-scenario.js';
@@ -60,6 +62,17 @@ const { values } = parseArgs({
 });
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
+
+// Resolve the baselines directory relative to this source file so baseline
+// lookups work regardless of process cwd (matching the pattern used by
+// `strike-scenario.ts` for YAML loading). Without this, invoking the
+// orchestrator via `tsx evals/run-evals.ts` from outside the repo root would
+// silently skip baseline checks because `loadBaseline`'s default resolves
+// `evals/baselines/` against `process.cwd()`.
+const baselinesDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'baselines',
+);
 
 // Only treat --timeout as an override when the user explicitly passed it.
 // When omitted, `scenario.timeout` stays undefined so the runner's
@@ -201,6 +214,7 @@ for (const scenario of finalScenarios) {
 
   let structuralChecks: CheckResult[];
   let subAgentChecks: CheckResult[] = [];
+  let baselineChecks: CheckResult[] = [];
   try {
     structuralChecks = validateStructure(
       output.extracted_text,
@@ -215,6 +229,17 @@ for (const scenario of finalScenarios) {
         scenario.sub_agent_evidence,
       );
     }
+
+    // Baseline comparison (FR-009; AS 10.1, 10.2, 10.3). Convention-based: the
+    // loader returns `null` when `evals/baselines/<scenario.name>.json` does
+    // not exist, which keeps this feature opt-in per scenario. Loader errors
+    // (malformed JSON, missing required fields) propagate to the existing
+    // "Validation error" branch below — they indicate a scenario authoring
+    // bug, not a runtime failure.
+    const baseline = loadBaseline(scenario.name, baselinesDir);
+    if (baseline !== null) {
+      baselineChecks = compareToBaseline(output.extracted_text, baseline);
+    }
   } catch (err) {
     console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -222,7 +247,7 @@ for (const scenario of finalScenarios) {
 
   console.log('');
   console.log('Checks:');
-  for (const check of [...structuralChecks, ...subAgentChecks]) {
+  for (const check of [...structuralChecks, ...subAgentChecks, ...baselineChecks]) {
     if (check.passed) {
       console.log(`  [PASS] ${check.check_name}`);
     } else {
@@ -234,7 +259,7 @@ for (const scenario of finalScenarios) {
   console.log('');
 
   results.push(
-    scenarioRunToResult(scenario, output, structuralChecks, subAgentChecks),
+    scenarioRunToResult(scenario, output, structuralChecks, subAgentChecks, baselineChecks),
   );
 }
 

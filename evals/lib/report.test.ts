@@ -699,3 +699,313 @@ describe('formatReport', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Baseline checks wiring (US10 Slice 2)
+// ---------------------------------------------------------------------------
+
+describe('baseline checks wiring', () => {
+  const passingBaselineCheck: CheckResult = {
+    check_name: "has baseline heading '## Summary'",
+    passed: true,
+    actual: 'found',
+  };
+
+  const failingBaselineCheck: CheckResult = {
+    check_name: "has baseline heading '## Approach'",
+    passed: false,
+    actual: 'not found',
+  };
+
+  // -----------------------------------------------------------------------
+  // scenarioRunToResult: baseline_checks population
+  // -----------------------------------------------------------------------
+  describe('scenarioRunToResult baseline_checks population', () => {
+    it('populates baseline_checks when given a non-empty array', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const baselineChecks = [passingBaselineCheck];
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        baselineChecks,
+      );
+
+      expect(result.baseline_checks).toEqual(baselineChecks);
+    });
+
+    it('omits baseline_checks when not provided', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(scenario, output, [passingCheck]);
+
+      expect('baseline_checks' in result).toBe(false);
+    });
+
+    it('omits baseline_checks when provided as an empty array', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [],
+      );
+
+      expect('baseline_checks' in result).toBe(false);
+    });
+
+    it('omits baseline_checks when provided as undefined explicitly', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        undefined,
+      );
+
+      expect('baseline_checks' in result).toBe(false);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // scenarioRunToResult: status precedence
+  // -----------------------------------------------------------------------
+  describe('scenarioRunToResult status precedence with baseline checks', () => {
+    it('returns fail when any baseline check fails and no other failure reason', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [passingBaselineCheck, failingBaselineCheck],
+      );
+
+      expect(result.status).toBe('fail');
+      expect(result.error).toBeUndefined();
+    });
+
+    it('returns pass when all baseline checks pass and structural checks pass', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [passingBaselineCheck],
+      );
+
+      expect(result.status).toBe('pass');
+    });
+
+    it('timeout takes precedence over a failing baseline check', () => {
+      const scenario = makeScenario();
+      const output = makeOutput({ timed_out: true });
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [failingBaselineCheck],
+      );
+
+      expect(result.status).toBe('timeout');
+      expect(result.error).toBeDefined();
+    });
+
+    it('error (non-zero exit_code) takes precedence over a failing baseline check', () => {
+      const scenario = makeScenario();
+      const output = makeOutput({ exit_code: 1 });
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [failingBaselineCheck],
+      );
+
+      expect(result.status).toBe('error');
+      expect(result.error).toBeDefined();
+    });
+
+    it('combines structural failure and baseline failure as fail', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [failingCheck],
+        undefined,
+        [failingBaselineCheck],
+      );
+
+      expect(result.status).toBe('fail');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // scenarioRunToResult: purity
+  // -----------------------------------------------------------------------
+  describe('scenarioRunToResult purity (baseline)', () => {
+    it('does not mutate the baseline_checks input array', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const baselineChecks: CheckResult[] = [passingBaselineCheck];
+      const before = JSON.stringify(baselineChecks);
+      scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        baselineChecks,
+      );
+      expect(JSON.stringify(baselineChecks)).toBe(before);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // formatReport: no baseline present anywhere
+  // -----------------------------------------------------------------------
+  describe('formatReport with no baseline_checks anywhere', () => {
+    it('renders per-case lines byte-identical to pre-slice behavior', () => {
+      const results: EvalResult[] = [
+        makeResult({ scenario_name: 'alpha', duration_ms: 111 }),
+        makeResult({ scenario_name: 'beta', duration_ms: 222, status: 'fail' }),
+      ];
+      const report = buildReport(results, 400);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      // Per-case lines must not contain 'baseline:' marker.
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      const betaLine = lines.find((l) => l.includes('beta'));
+      expect(alphaLine).toBeDefined();
+      expect(betaLine).toBeDefined();
+      expect(alphaLine!).not.toContain('baseline:');
+      expect(betaLine!).not.toContain('baseline:');
+
+      // Exact line shape preserved from US9.
+      expect(alphaLine!).toBe('  [PASS] alpha (111ms)');
+      expect(betaLine!).toBe('  [FAIL] beta (222ms)');
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // formatReport: at least one result has baseline_checks
+  // -----------------------------------------------------------------------
+  describe('formatReport with at least one result carrying baseline_checks', () => {
+    it('renders baseline: PASS for results with all-passing baseline checks', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          baseline_checks: [passingBaselineCheck],
+        }),
+      ];
+      const report = buildReport(results, 500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      expect(alphaLine).toBeDefined();
+      expect(alphaLine!).toContain('baseline: PASS');
+      expect(alphaLine!).not.toContain('baseline: FAIL');
+      expect(alphaLine!).not.toContain('baseline: n/a');
+    });
+
+    it('renders baseline: FAIL for results with any failing baseline check', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          status: 'fail',
+          baseline_checks: [passingBaselineCheck, failingBaselineCheck],
+        }),
+      ];
+      const report = buildReport(results, 500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      expect(alphaLine).toBeDefined();
+      expect(alphaLine!).toContain('baseline: FAIL');
+      expect(alphaLine!).not.toContain('baseline: PASS');
+    });
+
+    it('renders baseline: n/a for results without baseline_checks when other results have them', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          baseline_checks: [passingBaselineCheck],
+        }),
+        makeResult({ scenario_name: 'beta' }),
+      ];
+      const report = buildReport(results, 500);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      const betaLine = lines.find((l) => l.includes('beta'));
+      expect(alphaLine).toBeDefined();
+      expect(betaLine).toBeDefined();
+
+      expect(alphaLine!).toContain('baseline: PASS');
+      expect(betaLine!).toContain('baseline: n/a');
+    });
+
+    it('keeps Total elapsed: and Result: summary lines unchanged when baseline markers are present', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          baseline_checks: [passingBaselineCheck],
+        }),
+        makeResult({ scenario_name: 'beta' }),
+      ];
+      const report = buildReport(results, 750);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const totalLine = lines.find((l) => l.startsWith('Total elapsed:'));
+      expect(totalLine).toBeDefined();
+      expect(totalLine!).toBe('Total elapsed: 750ms');
+
+      const finalLine = lines[lines.length - 1] ?? '';
+      expect(finalLine).toBe('Result: PASS (2/2 passed, 2 total)');
+    });
+
+    it('renders baseline markers on all per-case lines when any result has baseline_checks', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          baseline_checks: [passingBaselineCheck],
+        }),
+        makeResult({
+          scenario_name: 'beta',
+          status: 'fail',
+          baseline_checks: [failingBaselineCheck],
+        }),
+        makeResult({ scenario_name: 'gamma' }),
+      ];
+      const report = buildReport(results, 1000);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      const betaLine = lines.find((l) => l.includes('beta'));
+      const gammaLine = lines.find((l) => l.includes('gamma'));
+      expect(alphaLine).toBeDefined();
+      expect(betaLine).toBeDefined();
+      expect(gammaLine).toBeDefined();
+
+      expect(alphaLine!).toContain('baseline: PASS');
+      expect(betaLine!).toContain('baseline: FAIL');
+      expect(gammaLine!).toContain('baseline: n/a');
+    });
+  });
+});

@@ -1,0 +1,13 @@
+{
+  "scenario_name": "strike-health-check",
+  "captured_at": "2026-04-19T00:00:00Z",
+  "headings": [
+    "## Summary",
+    "## Approach",
+    "## Risks",
+    "## Conflicts (from competing plans — need your input)"
+  ],
+  "tables": [
+    { "columns": ["Risk", "Mitigation"] }
+  ]
+}

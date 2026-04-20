@@ -67,7 +67,7 @@
 
 ### Tasks
 
-- [ ] **Thread baseline checks through `scenarioRunToResult` and `formatReport`**
+- [x] **Thread baseline checks through `scenarioRunToResult` and `formatReport`**
 
   Extend `scenarioRunToResult` in `evals/lib/report.ts` to accept an additional optional `baselineChecks` argument and populate `EvalResult.baseline_checks` when the array is non-empty (mirroring the existing handling of `sub_agent_checks`). Extend the status-precedence rule so that a failing baseline check rolls into `fail` status alongside structural and sub-agent failures — timeout/error precedence from US9 is unchanged. Update `formatReport` so that when any `EvalResult` has populated `baseline_checks`, the per-case line expands to include a compact baseline marker (e.g., `baseline: PASS` / `baseline: FAIL`) and the final summary line still exposes the single overall status from US9. Do not remove or reshape any existing output produced by US9 — additions only.
 
@@ -78,7 +78,7 @@
   - `formatReport` renders the baseline marker only when at least one result in the report has non-empty `baseline_checks` (AS 10.3 — absence of a baseline must not clutter output)
   - Existing US9 unit tests in `evals/lib/report.test.ts` continue to pass; new tests cover baseline-pass, baseline-fail, and baseline-absent paths
 
-- [ ] **Invoke `loadBaseline` and `compareToBaseline` from `run-evals.ts`**
+- [x] **Invoke `loadBaseline` and `compareToBaseline` from `run-evals.ts`**
 
   In `evals/run-evals.ts`, after the existing `validateStructure` / `verifySubAgents` block and before the `scenarioRunToResult` call, attempt `loadBaseline(scenario.name)`. When the loader returns `null`, set `baselineChecks = []` and proceed (AS 10.3). When it returns a `Baseline`, call `compareToBaseline(output.extracted_text, baseline)` and capture the resulting check array. Print the baseline results into the existing `Checks:` block using the same `[PASS]` / `[FAIL]` formatting and pass the array as the new fifth argument to `scenarioRunToResult`. Loader errors (malformed JSON, missing required fields) must surface through the existing "Validation error" exit path — they are a scenario authoring bug, not a runtime failure.
 
@@ -90,7 +90,7 @@
   - No duplication of the status precedence rule — orchestrator continues to delegate to `scenarioRunToResult`
   - `npm run test:evals` and the smoke path through `npm run eval` remain functional
 
-- [ ] **Seed `evals/baselines/strike-health-check.json` from a known-good strike run**
+- [x] **Seed `evals/baselines/strike-health-check.json` from a known-good strike run**
 
   Create the `evals/baselines/` directory and commit an initial baseline JSON for the strike scenario. The file must conform to the `Baseline` type declared in Slice 1 and should capture the headings and tables observed in the known-good strike output already documented in `evals/spike/FINDINGS.md` and exercised by `strike-scenario.ts`. Populate `headings` from the structural markers `strikeScenario.structural_expectations.required_headings` already asserts (e.g., `## Summary`, `## Approach`, `## Risks`) augmented with any additional stable headings visible in the spike capture. Populate `captured_at` with a real ISO 8601 timestamp reflecting when the baseline was authored. This file is data, not code — it is expected to be regenerated manually whenever the strike template legitimately changes.
 
