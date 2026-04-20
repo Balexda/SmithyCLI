@@ -13,9 +13,15 @@
  * lands in US7 — this wiring keeps the scenario list as a typed array so the
  * migration to YAML replaces only the list-construction step.
  *
+ * Sub-agent verification (FR-016) runs on every scenario whose YAML declares
+ * `sub_agent_evidence`: strike carries entries for plan, reconcile, and
+ * clarify (AS 6.2–6.4), and the standalone scout scenario carries one for
+ * smithy-scout (AS 6.1). Both paths reuse the same
+ * `extractSubAgentDispatches` → `verifySubAgents` pipeline below.
+ *
  * Addresses: FR-003 (fail-fast on startup), FR-005, FR-006, FR-008, FR-009,
- * FR-010, FR-012; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3,
- * 8.1, 8.2, 9.1, 9.2, 9.3
+ * FR-010, FR-012, FR-016; Acceptance Scenarios 3.3, 4.1, 4.2, 4.3, 5.1, 5.2,
+ * 5.3, 6.1, 6.2, 6.3, 6.4, 8.1, 8.2, 9.1, 9.2, 9.3
  */
 
 import { parseArgs } from 'node:util';

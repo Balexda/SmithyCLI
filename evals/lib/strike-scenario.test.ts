@@ -6,7 +6,15 @@
  * expectations or the real-world strike sample surfaces immediately under
  * `npm run test:evals`, without requiring a live `claude` invocation.
  *
- * Addresses: FR-005, FR-006, FR-012; Acceptance Scenarios 5.1, 5.2, 5.3
+ * The `sub_agent_evidence` block added for US6 is locked by two additional
+ * assertions: a shape check over the scenario constant (all three agents
+ * present, every pattern is a compilable regex) and a behavioral check that
+ * each pattern fires against the spike capture via the same `verifySubAgents`
+ * entrypoint the orchestrator uses. Together they catch both "someone dropped
+ * an entry" and "someone authored a pattern that never matches real output".
+ *
+ * Addresses: FR-005, FR-006, FR-012, FR-016; Acceptance Scenarios 5.1, 5.2,
+ * 5.3, 6.2, 6.3, 6.4
  */
 
 import { describe, it, expect } from 'vitest';
@@ -14,8 +22,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { validateStructure } from './structural.js';
+import { validateStructure, verifySubAgents } from './structural.js';
 import { strikeScenario } from './strike-scenario.js';
+import type { AgentDispatch } from './types.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const spikeOutputPath = path.resolve(here, '..', 'spike', 'output-strike.txt');
@@ -105,5 +114,56 @@ describe('strikeScenario', () => {
       (r) => r.check_name === "has '## Summary' heading",
     );
     expect(summaryCheck!.passed).toBe(false);
+  });
+
+  it('declares sub-agent evidence for plan, reconcile, and clarify (FR-016; AS 6.2, 6.3, 6.4)', () => {
+    // Shape check: all three strike sub-agents that the spike confirmed
+    // dispatch must carry an evidence entry, and each pattern must be a
+    // compilable regex. scout is intentionally excluded — strike does not
+    // dispatch it (AS 6.1 is covered by the standalone scout scenario).
+    const evidence = strikeScenario.sub_agent_evidence;
+    expect(evidence, 'strikeScenario.sub_agent_evidence must be defined').toBeDefined();
+    expect(evidence!.length).toBe(3);
+
+    const agents = evidence!.map((e) => e.agent).sort();
+    expect(agents).toEqual(['smithy-clarify', 'smithy-plan', 'smithy-reconcile']);
+
+    // Every pattern must compile — catches authoring typos (e.g. an unclosed
+    // group) before a live `claude -p` run.
+    for (const entry of evidence!) {
+      expect(
+        () => new RegExp(entry.pattern),
+        `pattern for ${entry.agent} must compile: ${entry.pattern}`,
+      ).not.toThrow();
+    }
+  });
+
+  it('matches every sub-agent evidence pattern against the spike capture', () => {
+    // Behavioral check: the configured patterns must actually fire against
+    // the real strike output. Running through the same `verifySubAgents`
+    // function the orchestrator uses — with an empty dispatches array —
+    // exercises only the extracted-text path, which is the lowest-friction
+    // signal for the three strike sub-agents (plan lens labels appear in
+    // the plan body, reconcile and clarify phrases appear in assistant text).
+    const dispatches: AgentDispatch[] = [];
+    const results = verifySubAgents(
+      spikeOutput,
+      dispatches,
+      strikeScenario.sub_agent_evidence!,
+    );
+
+    const failed = results.filter((r) => !r.passed);
+    expect(
+      failed,
+      `expected all sub-agent evidence to match the spike capture, got:\n${JSON.stringify(failed, null, 2)}`,
+    ).toHaveLength(0);
+
+    // Sanity: confirm each agent produced a named check so a future edit that
+    // drops an entry fails this test immediately instead of silently reducing
+    // coverage.
+    const checkNames = results.map((r) => r.check_name);
+    expect(checkNames).toContain('smithy-plan evidence present');
+    expect(checkNames).toContain('smithy-reconcile evidence present');
+    expect(checkNames).toContain('smithy-clarify evidence present');
   });
 });
