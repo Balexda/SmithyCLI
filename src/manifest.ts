@@ -20,6 +20,12 @@ export interface SmithyManifest {
   /** Whether the Claude Code session-title UserPromptSubmit hook was deployed. */
   sessionTitles?: boolean;
   languages?: string[] | undefined;
+  /**
+   * Platform package managers that were active when the manifest was written
+   * (e.g. `['mac']`, `['linux']`). Stored for debugging/introspection only —
+   * `update` re-detects from `process.platform` rather than round-tripping.
+   */
+  platforms?: string[] | undefined;
   files: Record<string, string[]>;  // agent name → relative file paths
 }
 
@@ -95,6 +101,7 @@ export interface WriteManifestOptions {
   issueTemplates: boolean;
   sessionTitles?: boolean;
   languages?: string[] | undefined;
+  platforms?: string[] | undefined;
   files: Record<string, string[]>;
 }
 
@@ -114,6 +121,7 @@ export function writeManifest(opts: WriteManifestOptions): void {
     issueTemplates: opts.issueTemplates,
     ...(opts.sessionTitles !== undefined ? { sessionTitles: opts.sessionTitles } : {}),
     ...(opts.languages !== undefined ? { languages: opts.languages } : {}),
+    ...(opts.platforms !== undefined ? { platforms: opts.platforms } : {}),
     files: opts.files,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));

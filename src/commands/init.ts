@@ -8,7 +8,8 @@ import {
   promptToolchains,
 } from '../interactive.js';
 import { detectLanguages } from '../language-detect.js';
-import type { LanguageToolchain } from '../permissions.js';
+import { detectPlatforms } from '../platform-detect.js';
+import type { LanguageToolchain, PlatformPackageManager } from '../permissions.js';
 import {
   copyDirSync,
   issueTemplatesSrcDir,
@@ -35,6 +36,12 @@ export interface InitOptions {
    */
   sessionTitles?: boolean;
   languages?: LanguageToolchain[] | undefined;
+  /**
+   * Platform-scoped package managers (brew on macOS, apt/dpkg on Linux) to
+   * include in auto-allowed permissions. When omitted, `initAction` calls
+   * `detectPlatforms()` to infer from `process.platform`.
+   */
+  platforms?: PlatformPackageManager[] | undefined;
   targetDir?: string;
   yes?: boolean;
   /** When true, suppresses the welcome banner and uses "Upgrade" in the completion message. */
@@ -93,6 +100,14 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     }
   }
 
+  // 5c. Platform-scoped package managers (brew on macOS, apt/dpkg on Linux).
+  // Auto-detected silently from `process.platform` — no interactive prompt.
+  // Pass `opts.platforms` to override (e.g. from an integration test).
+  let platformManagers: PlatformPackageManager[] | undefined;
+  if (deployPermissions) {
+    platformManagers = opts.platforms ?? detectPlatforms();
+  }
+
   // 5b. Session-title hook (Claude only). Default on; opt out via --no-session-titles.
   const deploySessionTitles = opts.sessionTitles ?? true;
 
@@ -124,11 +139,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
-      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo', languages);
+      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo', languages, platformManagers);
     } else if (a === 'claude') {
       deployedFiles['claude'] = await claude.deploy(targetDir, 'none', deployLocation);
       if (deployPermissions) {
-        claude.writePermissions(targetDir, deployLocation, languages);
+        claude.writePermissions(targetDir, deployLocation, languages, platformManagers);
       }
       if (deploySessionTitles) {
         const hookRel = claude.deploySessionTitleHookScript(targetDir, deployLocation);
@@ -156,6 +171,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     issueTemplates: deployIssueTemplates,
     sessionTitles: deploySessionTitles,
     languages,
+    platforms: platformManagers,
     files: deployedFiles,
   });
 

@@ -2,13 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, parseFrontmatterName } from '../templates.js';
-import { flattenPermissions, type LanguageToolchain } from '../permissions.js';
+import { flattenPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
 /**
  * Deploy Gemini templates. Returns the list of deployed file paths (relative to targetDir).
  */
-export async function deploy(targetDir: string, initPermissions: boolean, languages?: LanguageToolchain[]): Promise<string[]> {
+export async function deploy(
+  targetDir: string,
+  initPermissions: boolean,
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): Promise<string[]> {
   const destDir = path.join(targetDir, '.gemini');
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
@@ -31,7 +36,7 @@ export async function deploy(targetDir: string, initPermissions: boolean, langua
   for (const [, content] of templates.prompts) deployAsSkill(content);
 
   if (initPermissions) {
-    writePermissions(destDir, languages);
+    writePermissions(destDir, languages, platformManagers);
   }
 
   return deployedFiles;
@@ -60,13 +65,20 @@ export function removeLegacy(targetDir: string): number {
  * Build Gemini's allowed tool list from the shared permissions.
  * Wraps each flattened command in run_shell_command(...) format.
  */
-export function buildGeminiAllowList(languages?: LanguageToolchain[]): string[] {
-  return flattenPermissions(languages).map(cmd => `run_shell_command(${cmd})`);
+export function buildGeminiAllowList(
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): string[] {
+  return flattenPermissions(languages, platformManagers).map(cmd => `run_shell_command(${cmd})`);
 }
 
-function writePermissions(destDir: string, languages?: LanguageToolchain[]): void {
+function writePermissions(
+  destDir: string,
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): void {
   const settingsPath = path.join(destDir, 'settings.json');
-  const allowList = buildGeminiAllowList(languages);
+  const allowList = buildGeminiAllowList(languages, platformManagers);
 
   type GeminiSettings = { tools?: { allowed?: string[]; [k: string]: unknown }; [k: string]: unknown };
 
