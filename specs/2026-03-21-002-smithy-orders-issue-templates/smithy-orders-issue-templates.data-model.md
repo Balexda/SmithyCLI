@@ -2,11 +2,13 @@
 
 ## Overview
 
-This model defines the issue-body templates that live in `.smithy/` and the placeholder variables that `smithy.orders` interpolates when creating GitHub issues. Four template files are in scope — one per orders-eligible artifact type — and they coexist in `.smithy/` with the CLI-owned `smithy-manifest.json` without conflict.
+This model defines the issue-body templates that `smithy.orders` consumes and the placeholder variables it interpolates when creating GitHub issues. The templates live under a deploy-location-aware directory: `<manifestDir>/templates/orders/<type>.md`, where `<manifestDir>` is resolved by `resolveManifestDir(deployLocation)` in `src/manifest.ts:32-37` — `.smithy/` (relative to the target repo) when `smithy init` was run with `--location repo`, and `~/.smithy/` when run with `--location user`.
+
+Four template files are in scope — one per orders-eligible artifact type. They are siblings of each other inside `<manifestDir>/templates/orders/`, and peers (through the shared `<manifestDir>` root) of the CLI-owned `<manifestDir>/smithy-manifest.json`, which is owned by the manifest flow in `src/manifest.ts` and is not a template. The `templates/` subtree is reserved for user-customisable template families; future families (`<manifestDir>/templates/artifacts/…` for planning-doc templates invoked by `smithy.mark`, `smithy.ignite`, etc.) are out of scope here but will follow the same convention.
 
 ## Entities
 
-### 1) Issue Template (`.smithy/<type>.md`)
+### 1) Issue Template (`<manifestDir>/templates/orders/<type>.md`)
 
 Purpose: Defines the body structure for GitHub issues created by `orders` for a specific artifact type.
 
@@ -18,11 +20,11 @@ Purpose: Defines the body structure for GitHub issues created by `orders` for a 
 Scope:
 - Each of the four files defines the **child** issue body for its artifact type: `rfc.md` is used for per-milestone issues, `features.md` for per-feature issues, `spec.md` for per-user-story issues, `tasks.md` for per-slice issues.
 - The RFC **parent** tracking issue (created once per `.rfc.md`) is not user-overridable through this feature; its body remains hardcoded in `smithy.orders`.
-- `.strike.md`, `.prd.md`, `.data-model.md`, and `.contracts.md` are not orders-eligible and have no corresponding template. `smithy init` does not create files for them and `smithy.orders` never consults `.smithy/` on their behalf.
+- `.strike.md`, `.prd.md`, `.data-model.md`, and `.contracts.md` are not orders-eligible and have no corresponding template. `smithy init` does not create files for them and `smithy.orders` never consults `<manifestDir>/templates/orders/` on their behalf.
 
-Non-template files in `.smithy/`:
-- `smithy-manifest.json` is owned by the CLI manifest flow (`src/manifest.ts`) and is **not** a template. The resolver ignores it; init must never modify it while provisioning templates.
-- Any other file a user drops into `.smithy/` (README drafts, backups, etc.) is similarly ignored by both resolution and provisioning.
+Non-template files under `<manifestDir>`:
+- `<manifestDir>/smithy-manifest.json` is owned by the CLI manifest flow (`src/manifest.ts`) and is **not** a template. The resolver only looks under `<manifestDir>/templates/orders/`, so the manifest is never read as a template; init must never modify it while provisioning templates.
+- Any other file a user drops into `<manifestDir>/templates/orders/` (README drafts, backups, etc.) is ignored by resolution (only the four canonical `<type>.md` files are consulted) and preserved by provisioning.
 
 Validation rules:
 - File must be valid markdown.
@@ -75,25 +77,26 @@ Validation rules:
 
 - Issue Template 1:N Template Variable — each template contains multiple placeholders.
 - Issue Template 1:1 Artifact Type — each template corresponds to exactly one of the four orders-eligible types.
-- Built-in Default 1:1 Issue Template — each artifact type has one built-in fallback and at most one `.smithy/` override.
+- Built-in Default 1:1 Issue Template — each artifact type has one built-in fallback and at most one `<manifestDir>/templates/orders/<type>.md` override.
 
 ## State Transitions
 
 ### Content Lifecycle
 
 1. `absent` → `created`
-   - Trigger: User accepts template creation during `smithy init`.
-   - Effects: The four template files are written into `.smithy/`. The `smithy-manifest.json` in the same directory is untouched.
+   - Trigger: `smithy init` runs and no `<manifestDir>/templates/orders/<type>.md` files exist. Init provisions the four defaults unconditionally as part of standard setup (there is no opt-in prompt).
+   - Effects: The four template files are written into `<manifestDir>/templates/orders/`, creating the `templates/` and `orders/` subdirectories as needed. `<manifestDir>/smithy-manifest.json` and any other `<manifestDir>` siblings are untouched.
 
 2. `created` → `customized`
    - Trigger: User manually edits template files.
    - Effects: `orders` uses modified templates; smithy does not track edits.
 
 3. `created` / `customized` → `overwritten`
-   - Trigger: User accepts the overwrite prompt during `smithy init` when one or more of the four template files already exist.
-   - Effects: The four known template files are replaced with current defaults; extra files in `.smithy/` (including `smithy-manifest.json` and any user extras) are preserved.
+   - Trigger: User accepts the overwrite prompt during `smithy init` when one or more of the four template files already exist at their resolved paths.
+   - Effects: The four known template files are replaced with current defaults; extra files inside `<manifestDir>/templates/orders/` and every sibling of `<manifestDir>/templates/` (including `smithy-manifest.json`) are preserved.
 
 ## Identity & Uniqueness
 
-- Templates are uniquely identified by their file name within `.smithy/`, which maps 1:1 to artifact type.
+- Templates are uniquely identified by the pair `(<manifestDir>, <type>)`: the file name maps 1:1 to artifact type within a given `<manifestDir>`.
+- Under `--location user`, identity is global to the machine — every repo that reads the shared `~/.smithy/` sees the same template set. Under `--location repo`, identity is per-repo. Switching `deployLocation` between `smithy init` runs effectively addresses a different template set; cross-location migration is out of scope for this feature.
 - There is no versioning — the file on disk is the current template.
