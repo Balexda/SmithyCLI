@@ -46,6 +46,35 @@ smithy status [--root <path>]
 4. Per-artifact status markers (`DONE`, `N/M`, `not started`, or an `unknown` warning).
 5. Inline next-action suggestions for non-done artifacts (one per topmost actionable chain).
 
+**`--graph` text mode**: When `--graph` is combined with the default text format,
+the tree view is replaced by a layer-oriented view. Each topological layer is
+rendered as a labelled block; nodes within a layer are listed with the same
+tree connectors (`├─`, `└─`) used by the default view. Nodes are labelled by
+fully-qualified ID (`<artifact-path>#<row-id>`) followed by the title from
+their dependency-order row; per-node status markers (`DONE`, `N/M`,
+`not started`, `unknown`) are shown inline. Blocked nodes include a short
+`(blocked by <ids>)` suffix listing the same-layer-or-earlier dependencies
+that gated their layer assignment. Layers where every node is `done` collapse
+by default to a single `Layer N: DONE (M items)` line and expand under
+`--all`. Cycles and dangling references are rendered beneath the layer blocks
+as separate `Cycles:` / `Dangling refs:` sections. Example shape:
+
+```
+Layer 0 — ready to work (2 items)
+├─ specs/.../foo.spec.md#US1 — Scan Artifacts and Classify Status [in-progress 1/3]
+└─ specs/.../foo.spec.md#US8 — Deterministic Dependency Order Format [not started]
+
+Layer 1 (1 item)
+└─ specs/.../foo.spec.md#US2 — Render a Hierarchical Status View [not started] (blocked by US1)
+
+Layer 2 — DONE (0 items)
+```
+
+Rendering is plain UTF-8 text with the tree connectors already used
+elsewhere; Mermaid or Graphviz-style output is out of scope for v1. When
+`--no-color` / `--ascii` is passed, the connectors fall back to ASCII
+(`|-`, `'-`) identically to the default view.
+
 **JSON mode** (`--format json`): A single JSON object written to stdout with this shape:
 
 ```json
