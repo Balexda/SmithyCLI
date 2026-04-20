@@ -43,7 +43,7 @@
 
 ## Slice 2: Build the Cross-Artifact Dependency Graph
 
-**Goal**: A new pure module `src/status/graph.ts` exports `buildDependencyGraph(records: ArtifactRecord[]): DependencyGraph` that unions every artifact's `DependencyOrderTable` into a single cross-artifact DAG, assigns topological layers, detects cycles, and reports unresolvable `depends_on` references. Fully covered by unit tests and re-exported from the module entry point. No caller wires it yet — CLI output is unchanged.
+**Goal**: A new pure module `src/status/graph.ts` exports `buildDependencyGraph(records: ArtifactRecord[]): DependencyGraph` that unions every artifact's `DependencyOrderTable` into a single cross-artifact directed graph, assigns topological layers when the graph is acyclic (and for the acyclic portion when cycles exist), detects cycles, and reports unresolvable `depends_on` references. Fully covered by unit tests and re-exported from the module entry point. No caller wires it yet — CLI output is unchanged.
 
 **Justification**: The graph algorithm is the core intellectual work of US10 and has four acceptance scenarios riding on it (AS 10.1, 10.2, 10.3, 10.6). Isolating it in a dedicated pure module — alongside the existing one-concern-per-module layout (`tree.ts`, `collapse.ts`, `filter.ts`, `render.ts`) — keeps scanner I/O, classification, and graph construction independently testable. Sequencing this before the consumer slice lets the function be validated exhaustively before any rendering or CLI wiring touches it.
 
