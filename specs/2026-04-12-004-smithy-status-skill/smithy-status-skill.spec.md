@@ -236,7 +236,7 @@ As a Smithy user with multiple in-progress artifacts, I want `smithy status` to 
 | US7  | Summary Roll-up Header                                                     | US1            | `specs/2026-04-12-004-smithy-status-skill/07-summary-roll-up-header.tasks.md` |
 | US8  | Deterministic Dependency Order Format Across All Artifacts                 | —              | `specs/2026-04-12-004-smithy-status-skill/08-deterministic-dependency-order-format.tasks.md` |
 | US9  | Scanner Classifies Without Relying on Dependency-Order Checkboxes          | US1, US8       | `specs/2026-04-12-004-smithy-status-skill/09-scanner-classifies-without-checkboxes.tasks.md` |
-| US10 | Visualize the Dependency Graph for Parallel Work                           | US8, US9       | —        |
+| US10 | Visualize the Dependency Graph for Parallel Work                           | US8, US9       | `specs/2026-04-12-004-smithy-status-skill/10-visualize-dependency-graph-for-parallel-work.tasks.md` |
 
 Rows whose `Artifact` cell is `—` have not been cut yet; `smithy.cut` populates each row's path as its tasks file is created (e.g., US1 and US8 have been cut and carry their tasks-file paths; the remaining rows are still `—`). Parallelizable work surfaces directly from the `Depends On` column: at the start of implementation, `US1` and `US8` form Layer 0 and can be worked in parallel. US9 must land in the same release as US8 so the scanner's classification rules (FR-005/FR-006) remain correct after the template migration.
 
