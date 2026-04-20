@@ -162,7 +162,7 @@ As a developer with a straightforward idea, I want to go from idea to implementa
 **Acceptance Scenarios**:
 
 1. **Given** a simple feature description, **When** I run `smithy.strike "description"`, **Then** the agent interactively plans and implements in one session.
-2. **Given** a strike session, **When** the `.strike.md` is produced, **Then** it is self-contained (summary, requirements, data model, contracts, single slice, validation plan) and contains exactly one slice.
+2. **Given** a strike session, **When** the `.strike.md` is produced, **Then** it is self-contained (summary, requirements, data model, contracts, single slice) and contains exactly one slice.
 3. **Given** a strike session, **When** implementation begins, **Then** the agent asks clarifying questions before writing code (no YOLO).
 4. **Given** a completed strike, **When** the `.strike.md` is written, **Then** it is saved to `specs/strikes/<YYYY-MM-DD>-<slug>.strike.md`.
 
@@ -182,7 +182,7 @@ As a developer, I want to audit any smithy artifact and get a tailored review so
 2. **Given** a `.features.md` file, **When** I run `smithy.audit path/to/file.features.md`, **Then** the audit checks feature coverage, gaps, and overlap.
 3. **Given** a `.spec.md` file, **When** I run `smithy.audit path/to/file.spec.md`, **Then** the audit checks requirement traceability, acceptance coverage, and data model consistency.
 4. **Given** a `.tasks.md` file, **When** I run `smithy.audit path/to/file.tasks.md`, **Then** the audit checks slice scoping, testability, and edge case coverage.
-5. **Given** a `.strike.md` file, **When** I run `smithy.audit path/to/file.strike.md`, **Then** the audit checks requirement completeness, slice scoping, validation plan coverage, and that data model/contracts sections are present.
+5. **Given** a `.strike.md` file, **When** I run `smithy.audit path/to/file.strike.md`, **Then** the audit checks requirement completeness, slice scoping, and that data model/contracts sections are present.
 6. **Given** I am on a forge branch implementing a slice, **When** I run `smithy.audit` without a file argument, **Then** the audit reviews the code changes using the slice and feature spec as context.
 7. **Given** an audit finding, **When** the review is complete, **Then** findings are presented but the artifact is NOT modified (unlike repeat-command refinement).
 
@@ -243,7 +243,7 @@ As a developer, I want to point `smithy.orders` at any artifact and have it crea
 - **FR-007**: `render` output MUST be co-located with its source RFC in `docs/rfcs/<YYYY-NNN-slug>/` as `<NN>-<milestone-slug>.features.md`, where `<NN>` is the zero-padded milestone number.
 - **FR-008**: `mark` output MUST be written to `specs/<YYYY-MM-DD-NNN-slug>/` with spec, data-model, and contracts files.
 - **FR-009**: `cut` operates on a single user story from a spec and MUST write its output as `<NN>-<story-slug>.tasks.md` in the same spec folder, where `<NN>` is the zero-padded user story number (01-99).
-- **FR-010**: `strike` MUST produce a self-contained `.strike.md` with exactly one slice, including inline requirements, data model, contracts, and a validation plan.
+- **FR-010**: `strike` MUST produce a self-contained `.strike.md` with exactly one slice, including inline requirements, data model, and contracts.
 - **FR-011**: `cut` output (`.tasks.md`) MUST reference its source spec artifacts and user story, contain slices as H2 sections numbered sequentially, each with FR/acceptance scenario traceability, a standalone goal, and ordered task checklists.
 - **FR-012**: `audit` MUST adapt its checklist based on the artifact file extension.
 - **FR-013**: `audit` on a forge branch (no file argument) MUST review code changes using the slice and feature spec as context.

@@ -97,11 +97,9 @@ Purpose: Self-contained planning + execution artifact for small, fast-track chan
 | `contracts` | String | No | Inline, minimal, only if needed |
 | `decisions` | String[] | Yes | Important decisions and tradeoffs |
 | `slice` | Slice | Yes | Exactly one slice with tasks checklist |
-| `validation_plan` | Checklist | Yes | How to verify the strike worked |
 
 Validation rules:
 - Must contain exactly one slice (H2 `## Single Slice`).
-- Must include a validation plan section.
 - Data model and contracts sections are optional but the headings should be present with "N/A" or minimal content if not needed.
 
 ## Relationships

@@ -169,11 +169,6 @@ _If no debt items, write: "None — all ambiguities resolved."_
 - [ ] Task 3: ...
 
 **PR Outcome**: <What the PR delivers when merged.>
-
-## Validation Plan
-
-- [ ] <Step to verify the strike worked>
-- [ ] <Step to verify the strike worked>
 ```
 
 Create the `specs/strikes/` directory if it doesn't exist.

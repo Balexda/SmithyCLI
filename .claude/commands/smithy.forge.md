@@ -257,8 +257,6 @@ suite against the **current HEAD** (which includes any maid auto-fix commits):
 - Lint
 - Tests
 
-For `.strike.md` mode: also run through the **Validation Plan** checklist from the strike document and check off each item.
-
 Include the command output summary in your final response so reviewers know what passed locally.
 
 ---
@@ -287,7 +285,7 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
   - **Tasks completed**: Checklist of what was implemented
   - **Review**: Auto-fixes applied, notes for reviewer (important/minor findings)
   - **Documentation**: Maid findings — auto-fixes applied and items flagged for review (omit section if clean)
-  - **Validation**: Summary of commands run and their results, plus Validation Plan outcomes (run after all code and doc fixes are committed)
+  - **Validation**: Summary of commands run and their results (run after all code and doc fixes are committed)
 
 ---
 
