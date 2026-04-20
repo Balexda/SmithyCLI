@@ -186,6 +186,49 @@ After writing the strike document, commit it, push the strike branch, and
 create a PR — do not stop for user approval. The forge handoff is a
 suggestion in the terminal output, not an interactive branching gate.
 
+### Plan-Review Pass
+
+After writing the strike document to disk and before committing, dispatch the
+**smithy-plan-review** sub-agent to perform a self-consistency review. Pass it:
+
+- **artifact_paths** — the repo-relative path to the strike document just
+  written (for strike: the single `.strike.md` file at
+  `specs/strikes/YYYY-MM-DD-<slug>.strike.md`).
+- **artifact_type** — `strike`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table from the contracts:
+
+| Severity  | Confidence | Action                                                                                                |
+|-----------|------------|-------------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the strike document on disk. Note the fix in the PR body.                 |
+| Critical  | Low        | Do not apply. Append to the strike's `## Specification Debt` section. Flag in PR for the reviewer.    |
+| Important | High       | Apply the `proposed_fix` to the strike document on disk.                                              |
+| Important | Low        | Do not apply. Append to the strike's `## Specification Debt` section.                                 |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                               |
+
+For each Low-confidence finding routed to debt, append a new row to the
+`## Specification Debt` table with the next available `SD-NNN` identifier
+(continue numbering from whatever clarify already wrote during Phase 2 — do
+not reset). Use the finding's `description` for the Description column, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), copy severity into Impact and
+confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+
+For each High-confidence finding routed to auto-fix, edit the strike document
+in place using the `proposed_fix`. The commit immediately below will capture
+both the original artifact and the applied fixes in the same diff.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the PR body so the reviewer can confirm the
+assumption itself rather than silently accepting an applied fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by strike.
+
+### Commit and create the PR
+
 1. **Commit the strike document** on the `strike/<slug>` branch with a
    message referencing the strike goal.
 2. **Push the branch** with `git push -u origin strike/<slug>`.

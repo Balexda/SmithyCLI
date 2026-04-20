@@ -183,14 +183,60 @@ After the sub-agent returns its summary:
    to apply. Do not pause for user approval before writing.
 2. Route any low-confidence findings returned in `debt_items` into the RFC's
    `## Specification Debt` section.
-3. Commit the refinement diff and create a PR for the refinement using the
+3. Run the **Plan-Review Pass** described below on the refined RFC file
+   before committing. Plan-review runs after refine has applied its changes
+   and before the commit below, so any High-confidence fixes it proposes are
+   captured in the same refinement commit.
+4. Commit the refinement diff and create a PR for the refinement using the
    forge `gh pr create` pattern (the same pattern Phase 4 uses below).
-4. Render the one-shot output block (the format defined in the
+5. Render the one-shot output block (the format defined in the
    `one-shot-output` shared snippet, inlined into Phase 4 below) as the
    terminal contract for the refinement pass, treating the refinement diff
    as the artifact produced. Do **not** pause for user approval of the
    refinement diff before creating the PR — Phase 0 is non-interactive like
    the first-pass flow.
+
+#### Plan-Review Pass (Phase 0c)
+
+After refine applies its changes to the RFC file and before committing,
+dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
+review of the refined artifact. Pass it:
+
+- **artifact_paths** — the repo-relative path to the refined RFC file
+  (`docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
+- **artifact_type** — `rfc`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table:
+
+| Severity  | Confidence | Action                                                                                              |
+|-----------|------------|-----------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the RFC on disk. Note the fix in the PR body.                           |
+| Critical  | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| Important | High       | Apply the `proposed_fix` to the RFC on disk.                                                        |
+| Important | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                  |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+
+For each Low-confidence finding routed to debt, append a new row to the RFC's
+`## Specification Debt` table with the next available `SD-NNN` identifier
+(continue numbering from whatever refine or prior clarify passes already
+wrote — do not reset). Use the finding's `description` for the Description
+column, set `Source Category` to `plan-review:<finding category>`, copy
+severity into Impact and confidence into Confidence, set Status to `open`,
+and leave Resolution as `—`.
+
+For each High-confidence finding, edit the RFC file in place using the
+`proposed_fix`. The Phase 0c commit below captures both the refine diff and
+the plan-review fixes in the same commit.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the refinement PR body so the reviewer can
+confirm the underlying assumption rather than silently accepting the applied
+fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by ignite.
 
 ---
 
@@ -643,17 +689,61 @@ the RFC artifact, and render the one-shot output snippet as the terminal
 contract. Do **not** pause for user approval of the RFC before creating the
 PR — the snippet's PR link is the handoff point, not an interactive gate.
 
+### Plan-Review Pass
+
+After the RFC file is fully on disk (following Phase 3 in agent mode, or
+after writing it in the default branch below) and before the commit step,
+dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
+review. Pass it:
+
+- **artifact_paths** — the repo-relative path to the RFC file
+  (`docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
+- **artifact_type** — `rfc`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table from the contracts:
+
+| Severity  | Confidence | Action                                                                                              |
+|-----------|------------|-----------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the RFC on disk. Note the fix in the PR body.                           |
+| Critical  | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| Important | High       | Apply the `proposed_fix` to the RFC on disk.                                                        |
+| Important | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                  |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+
+For each Low-confidence finding routed to debt, append a new row to the RFC's
+`## Specification Debt` table with the next available `SD-NNN` identifier
+(continue numbering from whatever clarify / Phase 3 already wrote — do not
+reset). Use the finding's `description` for the Description column, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), copy severity into Impact and
+confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+
+For each High-confidence finding, edit the RFC file in place using the
+`proposed_fix`. The commit below captures the RFC and the applied fixes in
+the same diff.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the PR body so the reviewer can confirm the
+underlying assumption rather than silently accepting the applied fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by ignite.
+
 {{#ifAgent}}
 Phase 3 already created the RFC folder, wrote the file piecewise through
 sub-phases 3a–3f, and harmonized it in sub-phase 3g. Skip folder creation
-and file write — proceed directly to commit and PR:
+and file write — proceed directly through plan-review, commit, and PR:
 
-1. Commit the RFC file on the feature branch.
-2. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
+1. Run the Plan-Review Pass described above on the harmonized RFC file.
+2. Commit the RFC file on the feature branch (capturing both the harmonized
+   content and any plan-review fixes in the same diff).
+3. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
    - **Title**: the RFC title, under 70 characters, descriptive text only.
    - **Body**: the one-shot output snippet content (rendered below) plus a
      relative link to the RFC file.
-3. Render the one-shot output snippet as the terminal contract. For an
+4. Render the one-shot output snippet as the terminal contract. For an
    RFC-only run, use the RFC folder as the spec folder and substitute
    milestone counts where the snippet asks for user stories / functional
    requirements. Copy the clarify return's `assumptions` into the
@@ -667,12 +757,15 @@ and file write — proceed directly to commit and PR:
 {{else}}
 1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
 2. Write the RFC to `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
-3. Commit the RFC file on the feature branch.
-4. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
+3. Run the Plan-Review Pass described above on the RFC file that was just
+   written.
+4. Commit the RFC file on the feature branch (capturing both the original
+   RFC content and any plan-review fixes in the same diff).
+5. Create a PR for the RFC artifact using the forge `gh pr create` pattern:
    - **Title**: the RFC title, under 70 characters, descriptive text only.
    - **Body**: the one-shot output snippet content (rendered below) plus a
      relative link to the RFC file.
-5. Render the one-shot output snippet as the terminal contract. For an
+6. Render the one-shot output snippet as the terminal contract. For an
    RFC-only run, use the RFC folder as the spec folder and substitute
    milestone counts where the snippet asks for user stories / functional
    requirements. Copy the clarify return's `assumptions` into the

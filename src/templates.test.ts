@@ -934,7 +934,12 @@ describe('getComposedTemplates', () => {
   it('strike default does not contain competing plan dispatch', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
-    expect(strike).not.toContain('smithy-plan');
+    // Negative-lookahead regex so this assertion fires only when the
+    // `smithy-plan` sub-agent itself is referenced — `smithy-plan-review` is
+    // unconditional per Story 4 Slice 4 and must not trip this check. A plain
+    // `\b`-boundary regex is insufficient because `-` is a non-word character,
+    // so `\bsmithy-plan\b` matches inside `smithy-plan-review`.
+    expect(strike).not.toMatch(/smithy-plan(?!-review)/);
     expect(strike).not.toContain('smithy-reconcile');
     expect(strike).not.toContain('Competing Plan Lenses');
     expect(strike).toContain('What files you\'d change');
@@ -1092,7 +1097,12 @@ describe('getComposedTemplates', () => {
   it('ignite default does not contain competing plan dispatch', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
-    expect(ignite).not.toContain('smithy-plan');
+    // Negative-lookahead regex so this assertion fires only when the
+    // `smithy-plan` sub-agent itself is referenced — `smithy-plan-review` is
+    // unconditional per Story 4 Slice 4 and must not trip this check. A plain
+    // `\b`-boundary regex is insufficient because `-` is a non-word character,
+    // so `\bsmithy-plan\b` matches inside `smithy-plan-review`.
+    expect(ignite).not.toMatch(/smithy-plan(?!-review)/);
     expect(ignite).not.toContain('smithy-reconcile');
     expect(ignite).not.toContain('Competing Plan Lenses');
     // Default (non-agent) path retains the unconditional file-write instruction
@@ -1181,7 +1191,12 @@ describe('getComposedTemplates', () => {
   it('render default does not contain competing plan dispatch', () => {
     const render = composed.commands.get('smithy.render.md')!;
     expect(render).toBeDefined();
-    expect(render).not.toContain('smithy-plan');
+    // Negative-lookahead regex so this assertion fires only when the
+    // `smithy-plan` sub-agent itself is referenced — `smithy-plan-review` is
+    // unconditional per Story 4 Slice 4 and must not trip this check. A plain
+    // `\b`-boundary regex is insufficient because `-` is a non-word character,
+    // so `\bsmithy-plan\b` matches inside `smithy-plan-review`.
+    expect(render).not.toMatch(/smithy-plan(?!-review)/);
     expect(render).not.toContain('smithy-reconcile');
     expect(render).not.toContain('Competing Plan Lenses');
   });
@@ -1200,7 +1215,12 @@ describe('getComposedTemplates', () => {
   it('mark default does not contain competing plan dispatch', () => {
     const mark = composed.commands.get('smithy.mark.md')!;
     expect(mark).toBeDefined();
-    expect(mark).not.toContain('smithy-plan');
+    // Negative-lookahead regex so this assertion fires only when the
+    // `smithy-plan` sub-agent itself is referenced — `smithy-plan-review` is
+    // unconditional per Story 4 Slice 4 and must not trip this check. A plain
+    // `\b`-boundary regex is insufficient because `-` is a non-word character,
+    // so `\bsmithy-plan\b` matches inside `smithy-plan-review`.
+    expect(mark).not.toMatch(/smithy-plan(?!-review)/);
     expect(mark).not.toContain('smithy-reconcile');
     expect(mark).not.toContain('Competing Plan Lenses');
   });
@@ -1493,6 +1513,130 @@ describe('getComposedTemplates', () => {
       expect(tpl, `${name} should be in the composed commands map`).toBeDefined();
       expect(tpl!, `${name} should not contain "STOP and ask"`).not.toMatch(/STOP and ask/i);
       expect(tpl!, `${name} should not contain "STOP and wait"`).not.toMatch(/STOP and wait/i);
+    }
+  });
+
+  // Story 4 Slice 4: `smithy-plan-review` must be dispatched by every planning
+  // command after artifact write and before PR creation so the plan-review loop
+  // is active end-to-end. These cross-command assertions lock the wiring down
+  // so a future regression that drops the dispatch — or inverts its ordering
+  // relative to `gh pr create` — fails here immediately.
+  const planningCommands = [
+    'smithy.strike.md',
+    'smithy.ignite.md',
+    'smithy.mark.md',
+    'smithy.render.md',
+    'smithy.cut.md',
+  ];
+
+  // Compose the claude variant once and reuse for every per-command test so
+  // we don't re-render every template per iteration (would scale O(N × M)).
+  let claudeComposed: ComposedTemplates;
+  beforeAll(async () => {
+    claudeComposed = await getComposedTemplates('claude');
+  });
+
+  // Helper: every literal `gh pr create` invocation (not a pattern forward
+  // reference like "the forge `gh pr create` pattern") must be preceded by
+  // at least one plan-review dispatch earlier in the template. Scanning every
+  // occurrence — not just the last — prevents a regression where a later
+  // phase (e.g., Phase 4 first-pass) retains the dispatch but an earlier
+  // phase (e.g., Phase 0c refinement) silently loses it.
+  function assertEveryPrCreatePrecededByPlanReview(tpl: string, label: string) {
+    // Find every `gh pr create` INVOCATION — exclude the "pattern" phrase
+    // that commands use when pointing at forge's helper. A pattern reference
+    // reads "the forge `gh pr create` pattern" or "the same `gh pr create`
+    // pattern"; a real invocation is the bare command (often preceded by
+    // "Run" / "run" / a step number) without the trailing word "pattern".
+    const invocations: number[] = [];
+    const re = /gh pr create/gi;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(tpl)) !== null) {
+      // Look ahead for the word "pattern" within the next ~40 chars to
+      // detect "the ... `gh pr create` pattern" references; skip those.
+      const tail = tpl.slice(match.index, match.index + 40).toLowerCase();
+      if (/\bpattern\b/.test(tail)) continue;
+      invocations.push(match.index);
+    }
+    expect(
+      invocations.length,
+      `${label} must contain at least one gh pr create invocation`,
+    ).toBeGreaterThan(0);
+
+    // Every invocation position must have a plan-review dispatch earlier
+    // in the template. Using the last plan-review position before the
+    // invocation: if even one invocation has no preceding plan-review, the
+    // invariant fails.
+    const planReviewPositions: number[] = [];
+    const prRe = /smithy-plan-review/g;
+    let pm: RegExpExecArray | null;
+    while ((pm = prRe.exec(tpl)) !== null) planReviewPositions.push(pm.index);
+    expect(
+      planReviewPositions.length,
+      `${label} must reference smithy-plan-review`,
+    ).toBeGreaterThan(0);
+
+    for (const invIdx of invocations) {
+      const precedingPlanReview = planReviewPositions.find((p) => p < invIdx);
+      expect(
+        precedingPlanReview,
+        `${label}: gh pr create at offset ${invIdx} must be preceded by a smithy-plan-review dispatch`,
+      ).toBeDefined();
+    }
+  }
+
+  for (const name of planningCommands) {
+    it(`${name} default variant dispatches smithy-plan-review before every PR creation`, () => {
+      const tpl = composed.commands.get(name);
+      expect(tpl, `${name} should be in the composed commands map`).toBeDefined();
+      // Every literal `gh pr create` invocation must be preceded by a
+      // plan-review dispatch — not just the last one. This catches a
+      // regression where the Phase 0c refinement PR flow loses plan-review
+      // while the first-pass PR flow retains it.
+      assertEveryPrCreatePrecededByPlanReview(tpl!, name);
+    });
+
+    it(`${name} claude variant dispatches smithy-plan-review before every PR creation`, () => {
+      const tpl = claudeComposed.commands.get(name);
+      expect(tpl, `${name} should be in the claude composed commands map`).toBeDefined();
+      assertEveryPrCreatePrecededByPlanReview(tpl!, `${name} (claude)`);
+    });
+  }
+
+  it('planning commands never grant smithy-plan-review write tools', () => {
+    // The plan-review agent is read-only (US4 Slice 2). Planning commands must
+    // not describe granting it Edit/Write/Bash inside any dispatch block —
+    // the invariant has to hold for every plan-review mention, not just the
+    // first, because several commands now reference plan-review from more
+    // than one phase (Phase 0c + Phase 4/5/6).
+    for (const variant of [composed, claudeComposed]) {
+      for (const name of planningCommands) {
+        const tpl = variant.commands.get(name);
+        expect(tpl, `${name} should be composed`).toBeDefined();
+        const positions: number[] = [];
+        const re = /smithy-plan-review/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(tpl!)) !== null) positions.push(m.index);
+        expect(
+          positions.length,
+          `${name} should reference smithy-plan-review`,
+        ).toBeGreaterThan(0);
+        // Window each occurrence separately: 200 chars before the mention
+        // and 600 chars after captures the inline dispatch block.
+        for (const idx of positions) {
+          const window = tpl!.slice(Math.max(0, idx - 200), idx + 600);
+          // Match both the literal prose phrases and YAML-style tool-list
+          // grants. A forge-style dispatch could leak in through either
+          // surface: prose "use the Edit tool to…" or YAML-list
+          // "tools:\n  - Edit".
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/\bEdit tool\b/);
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/\bWrite tool\b/);
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/\bBash tool\b/);
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/^\s*-\s+Edit\b/m);
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/^\s*-\s+Write\b/m);
+          expect(window, `${name} dispatch at offset ${idx} must be read-only`).not.toMatch(/^\s*-\s+Bash\b/m);
+        }
+      }
     }
   });
 
