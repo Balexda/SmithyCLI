@@ -26,7 +26,6 @@ import { fileURLToPath } from 'node:url';
 
 import { compareToBaseline, loadBaseline } from './baseline.js';
 import { loadScenarioFromFile } from './scenario-loader.js';
-import type { Baseline } from './types.js';
 
 // Resolve paths relative to this source file so tests pass regardless of cwd
 // (same approach used in strike-scenario.ts and strike-scenario.test.ts).
@@ -91,14 +90,11 @@ describe('strike-health-check baseline seed', () => {
   });
 
   it('compareToBaseline against the spike capture produces an all-pass result (AS 10.1)', () => {
-    const baseline = loadBaseline(
-      'strike-health-check',
-      baselinesDir,
-    ) as Baseline;
+    const baseline = loadBaseline('strike-health-check', baselinesDir);
     expect(baseline).not.toBeNull();
 
     const spikeOutput = fs.readFileSync(spikeOutputPath, 'utf8');
-    const results = compareToBaseline(spikeOutput, baseline);
+    const results = compareToBaseline(spikeOutput, baseline!);
 
     const failed = results.filter((r) => !r.passed);
     expect(
@@ -115,14 +111,11 @@ describe('strike-health-check baseline seed', () => {
   });
 
   it('each baseline table entry matches a row in the spike output', () => {
-    const baseline = loadBaseline(
-      'strike-health-check',
-      baselinesDir,
-    ) as Baseline;
+    const baseline = loadBaseline('strike-health-check', baselinesDir);
     expect(baseline).not.toBeNull();
 
     const spikeOutput = fs.readFileSync(spikeOutputPath, 'utf8');
-    const results = compareToBaseline(spikeOutput, baseline);
+    const results = compareToBaseline(spikeOutput, baseline!);
 
     const tableChecks = results.filter((r) =>
       r.check_name.startsWith('has baseline table with columns:'),
