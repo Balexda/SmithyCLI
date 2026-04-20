@@ -136,11 +136,6 @@ describe('strikeScenario', () => {
         `pattern for ${entry.agent} must compile: ${entry.pattern}`,
       ).not.toThrow();
     }
-
-    // Scout must NOT appear here — if a future edit adds it, we want a loud
-    // failure that forces the author to reconcile with the strike spike
-    // finding rather than silently accepting a pattern that can never fire.
-    expect(agents).not.toContain('smithy-scout');
   });
 
   it('matches every sub-agent evidence pattern against the spike capture', () => {

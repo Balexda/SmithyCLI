@@ -35,23 +35,30 @@ structural_expectations:
 # confirmed strike does not dispatch scout, so scout coverage is delivered by
 # the standalone `scoutScenario` rather than by extending strike.
 #
-# `Simplification` is deliberately omitted from the plan-lens alternation:
-# the spike artifacts contain only `Separation of Concerns` and `Robustness`
-# attribution markers (e.g., `[via Robustness]`). Adding a label that never
-# appears in real output would weaken the check without improving coverage.
+# `Simplification` is kept in the plan-lens alternation alongside the other
+# two lenses even though the checked-in spike capture shows only the
+# `[via Robustness]` attribution marker. Strike dispatches all three lenses
+# (see src/templates/agent-skills/snippets/competing-lenses-implementation.md),
+# and which one's attribution survives reconciliation varies per run —
+# excluding `Simplification` would produce a false failure on any run where
+# reconcile surfaces only that lens. The `\[via ...\]` anchor keeps the
+# pattern specific to plan's actual attribution marker so incidental prose
+# containing a lens word cannot satisfy the check.
 sub_agent_evidence:
-  # smithy-plan: strike runs plan under competing lenses and the reconciled
-  # plan output carries `[via <Lens>]` attribution markers. Matching either
-  # label catches the case where plan was dispatched but reconcile collapsed
-  # to a single-lens view.
+  # smithy-plan: strike runs plan under three competing lenses and the
+  # reconciled plan body carries `[via <Lens>]` attribution markers. The
+  # `\[via ...\]` anchor ensures sub-agent evidence only passes when plan
+  # output actually surfaces through reconciliation — a bare lens word in
+  # unrelated prose will not false-trigger the check.
   - agent: smithy-plan
-    pattern: 'Separation of Concerns|Robustness'
-  # smithy-reconcile: the reconcile agent announces itself both in the
-  # dispatch line (`**smithy-reconcile** agent`) and in the heading above its
-  # output (`reconciled plan`). The alternation covers both surfaces — if
-  # future strike revisions rename the heading, the dispatch line still fires.
+    pattern: '\[via (Separation of Concerns|Robustness|Simplification)\]'
+  # smithy-reconcile: per FR-016's guidance, target the dispatch phrasing in
+  # assistant text rather than a generic output heading ("reconciled plan"
+  # could appear without a real dispatch). This mirrors the clarify pattern
+  # below and matches the spike capture line `Now dispatching the
+  # **smithy-reconcile** agent to synthesize them.`
   - agent: smithy-reconcile
-    pattern: 'reconciled plan|smithy-reconcile'
+    pattern: 'dispatching.*smithy-reconcile'
   # smithy-clarify: per FR-016's guidance, target the dispatch phrasing in
   # assistant text rather than agent-name presence alone. The `.*` here is
   # safe because the dispatch message is a single-line assistant string
