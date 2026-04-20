@@ -59,7 +59,7 @@ The resolver only considers files matching `<type>.md` for one of the four suppo
 3. If found, replace with the content value (may be multi-line markdown).
 4. If not found, leave the `{{variable}}` literal in place.
 
-The variable namespace per artifact type is defined in `smithy-orders-issue-templates.data-model.md`. Examples include `{{rfc_path}}` and `{{milestone_number}}` for rfc templates; `{{milestone_number}}` and `{{feature_description}}` for features; `{{spec_folder}}` and `{{story_number}}` for spec; `{{slice_number}}` and `{{task_checklist}}` for tasks.
+The variable namespace per artifact type is defined in `smithy-orders-issue-templates.data-model.md`. Examples include `{{rfc_path}}` and `{{milestone_number}}` for rfc templates; `{{milestone_number}}` and `{{feature_description}}` for features; `{{spec_folder}}` and `{{user_story_number}}` for spec; `{{slice_number}}` and `{{slice_tasks}}` for tasks.
 
 #### Inputs
 
