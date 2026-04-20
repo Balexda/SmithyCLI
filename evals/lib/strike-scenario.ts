@@ -5,7 +5,7 @@
  * `structural_expectations` — live in `evals/cases/strike-health-check.yaml`
  * as the single declarative source of truth. This module loads that specific
  * file via `loadScenarioFromFile` and re-exports the resulting `EvalScenario`
- * under the historical `strikeScenario` name so existing consumers
+ * under the historical `strikeScenario` name so the existing consumer
  * (`evals/lib/strike-scenario.test.ts`) continues to import the same symbol
  * unchanged. `run-evals.ts` now calls `loadScenarios` directly and no longer
  * imports `strikeScenario`; this file exists solely to preserve the

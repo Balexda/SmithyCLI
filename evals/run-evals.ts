@@ -144,12 +144,23 @@ try {
 
 if (loadedScenarios.length === 0) {
   console.error(
-    `Error: No scenario files found in ${casesDir}. Add at least one *.yaml case file and re-run.`,
+    `Error: No valid scenarios found in ${casesDir}. Add at least one valid *.yaml case file and re-run. Scenario files may have been skipped as invalid or duplicates; check stderr for skip reasons.`,
   );
   process.exit(1);
 }
 
-const baseScenarios: EvalScenario[] = [...loadedScenarios, scoutScenario];
+// Scout is appended unless a YAML case has already claimed its name. Without
+// the guard, a future `evals/cases/scout-fixture-shallow.yaml` would coexist
+// with the TS-declared scout and `--case scout-fixture-shallow` would match
+// (and run) both — making case selection ambiguous and double-billing the
+// report. Skipping the append (rather than skipping the YAML) lets a future
+// scout-in-YAML migration take precedence over the TS shim with no further
+// orchestrator changes.
+const baseScenarios: EvalScenario[] = loadedScenarios.some(
+  (s) => s.name === scoutScenario.name,
+)
+  ? loadedScenarios
+  : [...loadedScenarios, scoutScenario];
 
 // --case filter (FR-008, AS 7.2). Filtering happens post-load so the filter
 // operates over the same concrete scenario list the default run would
