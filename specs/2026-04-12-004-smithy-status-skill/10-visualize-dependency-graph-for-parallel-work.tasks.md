@@ -63,11 +63,13 @@
 
 - [ ] **Stitch cross-artifact edges and emit dangling-reference diagnostics**
 
-  Extend `buildDependencyGraph` so the unioned graph spans the full RFC → features → spec → tasks lineage. A child record's root nodes are blocked by the parent row referencing them (per data-model §Relationships, via `parent_path` + `parent_row_id`). Any `depends_on` ID that cannot be resolved against nodes in the same artifact's table contributes a `{ source_id, missing_id }` entry to `graph.dangling_refs` (with fully-qualified IDs) and is dropped from the edge set. Virtual records (`virtual: true`) participate as normal graph nodes with their rolled-up `not-started` status — synthetic tree sentinels (`ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, `ORPHANED_TASKS_PATH`) are excluded from graph construction.
+  Extend `buildDependencyGraph` so the unioned graph spans the full RFC → features → spec → tasks lineage. A child record's root nodes are blocked by the parent row referencing them (per data-model §Relationships, via `parent_path` + `parent_row_id`). Because the current `parseDependencyTable` drops unresolved intra-table `depends_on` IDs and only records them as warning strings, this task also extends the parse path so each `ArtifactRecord` (or its `DependencyOrderTable`) retains unresolved references in a structured field — the builder must consume that structured metadata (not stringly-typed warnings) to emit `{ source_id, missing_id }` entries in `graph.dangling_refs` with fully-qualified IDs, and to drop those missing edges from the edge set. Virtual records (`virtual: true`) participate as normal graph nodes with their rolled-up `not-started` status — synthetic tree sentinels (`ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, `ORPHANED_TASKS_PATH`) are excluded from graph construction.
 
   _Acceptance criteria:_
   - AS 10.2 holds: a tasks-file slice node cannot land in Layer 0 unless its parent spec row is in Layer 0, which in turn requires its parent feature row to be in Layer 0, etc.
   - AS 10.6 holds: an unresolved `depends_on` ID appears exactly once in `dangling_refs` with both `source_id` and `missing_id` fully-qualified; the edge is dropped; remaining valid edges are layered normally.
+  - Unresolved `depends_on` IDs are preserved in a structured form on parsed records (or on the parsed `DependencyOrderTable`) so `buildDependencyGraph` does not infer `dangling_refs` by parsing `ArtifactRecord.warnings` strings.
+  - Existing parser behavior is preserved end-to-end: the corresponding warning on the owning `ArtifactRecord` continues to be emitted (data-model §4 / §6 both require this dual surfacing).
   - Virtual records contribute to the graph using their rolled-up `not-started` status; tree sentinel records never appear as graph nodes.
   - Cross-artifact edges are derived exclusively from `parent_path` + `parent_row_id` (populated by the scanner from `artifact_path` links) — never from filename convention.
 
