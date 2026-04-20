@@ -607,20 +607,19 @@ One-shot mode: do **not** stop to ask the user to review or approve the
 refinements. The refinement diff is the review surface, and the one-shot PR
 below is how the user sees it.
 
-**No-op check**: if refine returned an empty `refinements` list and no new
-`debt_items`, and `git status --porcelain` reports a clean worktree, this
-pass had nothing to change. Skip the plan-review, commit, push, and
-PR-creation steps below. Render the one-shot output snippet with an explicit
-"no-op" note in `## Summary` ("Artifacts produced: 0 files — refine found
-no changes") and reuse the branch's existing PR URL if one exists (fall back
-to "No PR — nothing to change" otherwise). Do not fail with "nothing to
-commit".
+Plan-review runs unconditionally on the spec artifact set after refine —
+even when refine returned an empty `refinements` list. Refine and
+plan-review audit different categories, so plan-review can surface issues
+refine did not identify (internal contradictions, logical gaps,
+assumption-output drift, brittle references). The no-op check below fires
+only when both sub-agents produced nothing and the worktree is still clean.
 
 #### Plan-Review Pass (Phase 0c)
 
 After refine applies its changes to the spec, data-model, and/or contracts
-files and before committing, dispatch the **smithy-plan-review** sub-agent
-to perform a self-consistency review of the refined artifact set. Pass it:
+files (or declines to) and before the no-op check below, dispatch the
+**smithy-plan-review** sub-agent to perform a self-consistency review of
+the spec artifact set. Pass it:
 
 - **artifact_paths** — the repo-relative paths to the refined spec artifacts
   (`<slug>.spec.md`, `<slug>.data-model.md`, `<slug>.contracts.md`).
@@ -657,6 +656,16 @@ fix.
 
 The review agent never modifies files itself — all on-disk changes are made
 here, by mark.
+
+**No-op check** (runs after refine and plan-review): if refine returned an
+empty `refinements` list, plan-review returned no High-confidence fixes and
+no new debt rows, and `git status --porcelain` reports a clean worktree,
+this pass had nothing to change. Skip the commit, push, and PR-creation
+steps below. Render the one-shot output snippet with an explicit "no-op"
+note in `## Summary` ("Artifacts produced: 0 files — refine and plan-review
+found no changes") and reuse the branch's existing PR URL if one exists
+(fall back to "No PR — nothing to change" otherwise). Do not fail with
+"nothing to commit".
 
 1. Stage and commit the refinement diff on the current branch (the spec
    folder's branch). The commit message should describe the refinements
