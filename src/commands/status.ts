@@ -235,13 +235,24 @@ export function statusAction(opts: StatusOptions = {}): void {
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
   // 6.3 context without any renderer change. `--root` is a no-op
   // here (the scan was already narrowed above); we pass it through
-  // for signature symmetry. `summarize(records)` and
-  // `buildDependencyGraph(records)` both stay above the filter call so
-  // the `ScanSummary` / header AND the `DependencyGraph` remain
-  // aggregate over the full scan per SD-010 — `--status` / `--type`
-  // narrow the rendered tree view but never the graph shape.
+  // for signature symmetry. `summarize(records)` stays above the
+  // filter call so the `ScanSummary` / header remains aggregate over
+  // the full scan per SD-010 — `--status` / `--type` narrow the
+  // rendered tree view but never the summary header.
+  //
+  // The {@link DependencyGraph} is built lazily — only the JSON
+  // payload and the `--graph` text branch consume it, and computing
+  // it for the default text view (which doesn't reference it) would
+  // walk every record's dependency-order rows for nothing. Builds
+  // happen on first read via `getGraph()` below; the closure captures
+  // the result so the second consumer (if any) reuses the first
+  // build. Pre-filter records remain the input per SD-010.
   const summary = summarize(records);
-  const graph = buildDependencyGraph(records);
+  let cachedGraph: DependencyGraph | null = null;
+  const getGraph = (): DependencyGraph => {
+    if (cachedGraph === null) cachedGraph = buildDependencyGraph(records);
+    return cachedGraph;
+  };
   // Build a sparse options object — `exactOptionalPropertyTypes` in
   // tsconfig forbids assigning `undefined` to optional fields, so we
   // only set each key when Commander actually populated it.
@@ -261,7 +272,7 @@ export function statusAction(opts: StatusOptions = {}): void {
       summary,
       records: filteredRecords,
       tree: buildTree(filteredRecords),
-      graph,
+      graph: getGraph(),
     };
     console.log(JSON.stringify(payload, null, 2));
     return;
@@ -272,6 +283,51 @@ export function statusAction(opts: StatusOptions = {}): void {
     console.log(
       'No Smithy artifacts found. Run `smithy.ignite` or `smithy.mark` to create one.',
     );
+    return;
+  }
+
+  const theme = buildTheme({
+    noColor: opts.color === false,
+    ascii: opts.ascii === true,
+  });
+
+  // US10 Slice 3: `--graph` swaps the tree pipeline for the layered
+  // view from `renderGraph`. The summary header still prints first so
+  // users keep the per-type counts (FR-016). The `Next:` hint is
+  // suppressed under `--graph` because the layered view already
+  // surfaces actionable next steps inline on every node line — a
+  // single `Next:` summary would just duplicate the topmost Layer-0
+  // hint and add visual noise. The graph itself is built pre-filter
+  // (above), so when `--status` / `--type` retain no records we still
+  // print the same friendly "no match" hint as the default path —
+  // consistency wins over rendering an unfiltered graph behind a
+  // filtered summary.
+  //
+  // Branch on `opts.graph` BEFORE the default-path tree pipeline so
+  // `buildTree` / `collapseTree` / `pickTopNextAction` only run for
+  // the default view that actually consumes them. Otherwise large
+  // repos would pay for an unused tree build on every `--graph`
+  // invocation.
+  if (opts.graph === true) {
+    console.log(formatSummaryHeader(summary, theme, null));
+    if (filteredRecords.length === 0) {
+      console.log('No artifacts match the current filter.');
+      return;
+    }
+    const renderedGraph = renderGraph(getGraph(), {
+      theme,
+      all: opts.all === true,
+      // Thread the pre-filter record set so each node line can carry a
+      // per-row next-action hint (`→ smithy.<cmd> <args>`) instead of
+      // the dim FQ id. Mirrors the `Next:` line in the summary header
+      // and the per-record hints under `renderTree`. SD-010 keeps the
+      // record set pre-filter so the hints reflect the full scan, in
+      // line with the graph itself.
+      records,
+    });
+    if (renderedGraph.length > 0) {
+      console.log(renderedGraph);
+    }
     return;
   }
 
@@ -296,48 +352,10 @@ export function statusAction(opts: StatusOptions = {}): void {
   // `collapseTree` drops their descendants before `renderTree` sees
   // them. The `--format json` branch above is untouched — this flag
   // only affects text-mode output (SD-016).
-  const theme = buildTheme({
-    noColor: opts.color === false,
-    ascii: opts.ascii === true,
-  });
   const tree = collapseTree(buildTree(filteredRecords), {
     all: opts.all === true,
   });
   const topNextAction = pickTopNextAction(tree);
-
-  // US10 Slice 3: `--graph` swaps the tree pipeline for the layered
-  // view from `renderGraph`. The summary header still prints first so
-  // users keep the per-type counts (FR-016). The `Next:` hint is
-  // suppressed under `--graph` because the layered view already
-  // surfaces actionable next steps inline on every node line — a
-  // single `Next:` summary would just duplicate the topmost Layer-0
-  // hint and add visual noise. The graph itself is built pre-filter
-  // (above), so when `--status` / `--type` retain no records we still
-  // print the same friendly "no match" hint as the default path —
-  // consistency wins over rendering an unfiltered graph behind a
-  // filtered summary.
-  if (opts.graph === true) {
-    console.log(formatSummaryHeader(summary, theme, null));
-    if (filteredRecords.length === 0) {
-      console.log('No artifacts match the current filter.');
-      return;
-    }
-    const renderedGraph = renderGraph(graph, {
-      theme,
-      all: opts.all === true,
-      // Thread the pre-filter record set so each node line can carry a
-      // per-row next-action hint (`→ smithy.<cmd> <args>`) instead of
-      // the dim FQ id. Mirrors the `Next:` line in the summary header
-      // and the per-record hints under `renderTree`. SD-010 keeps the
-      // record set pre-filter so the hints reflect the full scan, in
-      // line with the graph itself.
-      records,
-    });
-    if (renderedGraph.length > 0) {
-      console.log(renderedGraph);
-    }
-    return;
-  }
 
   console.log(formatSummaryHeader(summary, theme, topNextAction));
   const rendered = renderTree(tree, {
