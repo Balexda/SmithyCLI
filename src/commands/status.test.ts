@@ -720,6 +720,34 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('(unresolved)');
   });
 
+  // --- friendly hints: empty repo and no-match-filter under --graph ---
+
+  it('--graph on an empty repo prints the no-artifacts hint, not an empty graph block', () => {
+    // Empty `root`: no fixture written. The empty-repo guard must fire
+    // before the graph branch so users do not see a stray summary
+    // header followed by silence.
+    const exitCodeBefore = process.exitCode;
+    statusAction({ root, graph: true });
+    expect(process.exitCode).toBe(exitCodeBefore);
+    const stdout = captured();
+    expect(stdout).toContain('No Smithy artifacts found');
+    expect(stdout).not.toContain('Layer ');
+    expect(stdout).not.toContain('Smithy Status');
+  });
+
+  it('--graph with --status filter that matches nothing prints the no-match hint, not an empty graph block', () => {
+    writeAllDoneFixture();
+    // Every record rolls up to `done`, so `--status in-progress`
+    // retains zero records. The summary header still surfaces (full
+    // scan, SD-010), but the graph branch must defer to the no-match
+    // hint rather than rendering against the unfiltered graph.
+    statusAction({ root, graph: true, status: 'in-progress' });
+    const stdout = captured();
+    expect(stdout).toContain(' Smithy Status');
+    expect(stdout).toContain('No artifacts match the current filter.');
+    expect(stdout).not.toContain('Layer ');
+  });
+
   // --- regression: default text path unchanged ---
 
   it('default text path (no --graph) still routes through renderTree, not renderGraph', () => {
