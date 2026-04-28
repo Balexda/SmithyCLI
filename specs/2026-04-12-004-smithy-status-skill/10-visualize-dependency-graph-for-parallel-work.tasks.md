@@ -121,7 +121,7 @@
   - The default text path (no `--graph`) is unchanged: summary header, tree, collapse behavior, empty-repo hint all match current output.
   - The `StatusOptions.graph` JSDoc no longer describes the option as a "stub".
 
-- [ ] **Audit `node_ids` vs `ids` across code and flag the spec-text drift**
+- [x] **Audit `node_ids` vs `ids` across code and flag the spec-text drift**
 
   Sweep every implementation reference (the new `DependencyGraph` type, `graph.ts`, `renderGraph.ts`, and `src/commands/status.ts`) to confirm the canonical `node_ids` field name is used everywhere — `.ids` must not appear on any layer object in any code path. The spec-level drift in AS 10.5 (which reads `ids: string[]`) is tracked as SD-012 and surfaced in the PR description so the author can reconcile the spec prose in a follow-up; this task does not silently edit the spec.
 
