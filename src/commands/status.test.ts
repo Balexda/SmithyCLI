@@ -647,13 +647,48 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('Layer 0 — ready to work');
     expect(stdout).toContain('Layer 1');
     expect(stdout).toContain('Layer 2');
-    // US1 + US4 belong to layer 0; US2 to layer 1; US3 to layer 2.
-    expect(stdout).toContain('specs/sample/sample.spec.md#US1');
-    expect(stdout).toContain('specs/sample/sample.spec.md#US4');
-    expect(stdout).toContain('specs/sample/sample.spec.md#US2');
-    expect(stdout).toContain('specs/sample/sample.spec.md#US3');
+    // Each layer's stories surface by their row title (the new
+    // title-first layout). Layer assignment proven by the relative
+    // ordering of titles in the rendered output.
+    const us1Pos = stdout.indexOf('First story');
+    const us4Pos = stdout.indexOf('Fourth story');
+    const us2Pos = stdout.indexOf('Second story');
+    const us3Pos = stdout.indexOf('Third story');
+    expect(us1Pos).toBeGreaterThanOrEqual(0);
+    expect(us4Pos).toBeGreaterThan(us1Pos); // both in Layer 0
+    expect(us2Pos).toBeGreaterThan(us4Pos); // Layer 0 < Layer 1
+    expect(us3Pos).toBeGreaterThan(us2Pos); // Layer 1 < Layer 2 (or 3)
     // The summary header still prints above the graph view (FR-016).
     expect(stdout).toContain(' Smithy Status');
+  });
+
+  it('AS 10.5: JSON `graph` carries the canonical fully-qualified node IDs regardless of text-mode formatting', () => {
+    // The text-mode renderer now substitutes a per-row `→ smithy.<cmd>`
+    // hint for the dim FQ id suffix when records are supplied. Lock
+    // the FQ ids to the JSON payload so machine consumers still have
+    // the canonical reference for every node, decoupled from text-mode
+    // styling decisions.
+    writeFourStoryFixture();
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeDefined();
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US2']).toBeDefined();
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US3']).toBeDefined();
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US4']).toBeDefined();
+  });
+
+  it('--graph node lines surface a `→ smithy.<cmd>` per-row action hint instead of the dim FQ id', () => {
+    writeFourStoryFixture();
+    statusAction({ root, graph: true, all: true });
+    const stdout = captured();
+    // Per-row hints derive from the row's downstream record's
+    // next_action (real or virtual). For US4 (whose tasks file is
+    // not-started) the hint is `smithy.forge specs/sample/04-fourth.tasks.md`
+    // — the downstream tasks file's own next_action.
+    expect(stdout).toContain('→ smithy.forge specs/sample/04-fourth.tasks.md');
+    // Slice rows synthesise per-slice forge hints with the slice
+    // number as the second arg, mirroring `smithy.forge <tasks> <N>`.
+    expect(stdout).toContain('→ smithy.forge specs/sample/04-fourth.tasks.md 1');
   });
 
   it('--graph default mode hides done members and surfaces a `done hidden` suffix on the affected layer', () => {

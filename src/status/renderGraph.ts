@@ -36,9 +36,14 @@
  *   the primary, scannable label,
  * - a trailing status marker mirroring the icon mapping used by the
  *   default tree renderer (`✓` / `◐` / `○` / `⚠`), and
- * - the fully-qualified node id (`<artifact-path>#<row-id>`) as a
- *   trailing, dim-painted suffix so reviewers can still copy/paste the
- *   ID without fighting it for visual weight.
+ * - either a per-row next-action hint (`→ smithy.<cmd> <args>`) when
+ *   the caller passes {@link RenderGraphOptions.records}, or the
+ *   fully-qualified node id (`<artifact-path>#<row-id>`) as a
+ *   trailing, dim-painted suffix when no records are supplied. The
+ *   action hint mirrors the `Next:` line in the summary header and the
+ *   per-record hints under `renderTree` so the graph view is visually
+ *   consistent with the rest of `smithy status`. Done / unknown
+ *   downstreams yield no hint; their lines fall back to the dim FQ id.
  *
  * #### Done-item hiding and layer collapsing (AS 10.4)
  *
@@ -90,8 +95,16 @@
  * returns the empty string, matching the {@link renderTree} convention.
  */
 
+import path from 'node:path';
+
+import { formatNextAction } from './suggester.js';
 import { createTheme, type Theme } from './theme.js';
-import type { DependencyGraph, DependencyNode } from './types.js';
+import type {
+  ArtifactRecord,
+  DependencyGraph,
+  DependencyNode,
+  NextAction,
+} from './types.js';
 
 /**
  * Options accepted by {@link renderGraph}. A default theme (UTF-8
@@ -113,6 +126,151 @@ export interface RenderGraphOptions {
    * behavior (AS 10.4).
    */
   all?: boolean;
+  /**
+   * Optional record set used to enrich each node line with a per-row
+   * next-action hint (e.g. `→ smithy.cut <spec-folder> 1`) instead of
+   * the dim fully-qualified id. When provided, the renderer mirrors the
+   * `→ <command> <args>` shape that `renderTree` and the summary
+   * header's `Next:` line use, so the graph view is visually
+   * consistent with the rest of `smithy status`. When omitted, the
+   * suffix falls back to the dim FQ id — keeps unit tests that exercise
+   * just the graph algorithm light.
+   *
+   * Per-row resolution: a node's hint comes from (a) the downstream
+   * record claimed by the row's `artifact_path` (looked up by
+   * `parent_path` + `parent_row_id` so virtual records emitted by the
+   * scanner participate too) when that record carries a non-null
+   * `next_action`; or (b) a synthesized hint based on the owning
+   * record's type and the row's numeric suffix when no downstream
+   * record exists (slice rows in tasks files, or rows whose owner is
+   * itself the actionable level). Done-status downstreams yield no
+   * hint and the line falls back to the dim FQ id.
+   */
+  records?: ArtifactRecord[];
+}
+
+/**
+ * Internal lookup tables built once per `renderGraph` call from the
+ * caller-supplied {@link RenderGraphOptions.records}. Both maps are
+ * O(1) so per-node action derivation stays cheap even on large repos.
+ */
+interface RecordLookup {
+  /** Records keyed by their canonical `path`. */
+  byPath: Map<string, ArtifactRecord>;
+  /**
+   * Records keyed by `<parent_path>#<parent_row_id>` — the inverse
+   * lineage edge. Lets a graph node look up the record claimed by the
+   * row that owns it without re-deriving the naming convention.
+   */
+  byParentSlot: Map<string, ArtifactRecord>;
+}
+
+function buildRecordLookup(records: ArtifactRecord[]): RecordLookup {
+  const byPath = new Map<string, ArtifactRecord>();
+  const byParentSlot = new Map<string, ArtifactRecord>();
+  for (const record of records) {
+    byPath.set(record.path, record);
+    if (
+      typeof record.parent_path === 'string' &&
+      record.parent_path.length > 0 &&
+      typeof record.parent_row_id === 'string' &&
+      record.parent_row_id.length > 0
+    ) {
+      byParentSlot.set(
+        `${record.parent_path}#${record.parent_row_id}`,
+        record,
+      );
+    }
+  }
+  return { byPath, byParentSlot };
+}
+
+/**
+ * Derive the per-row {@link NextAction} for a graph node, mirroring the
+ * `→ smithy.<cmd> <args>` shape that `renderTree` and the summary
+ * header surface. Returns `null` when the row has no actionable next
+ * step (the downstream record is `done` or the lookup table cannot
+ * find an owning record).
+ *
+ * The per-row variant is intentionally distinct from the per-record
+ * `suggestNextAction`: a spec record carries one collapsed
+ * `smithy.cut` hint (the first virtual story), but each user-story
+ * row in that spec wants its OWN `smithy.cut <spec> <N>` hint so the
+ * graph view tells the user exactly which story to act on. We resolve
+ * by looking up the downstream record (real or virtual) via the
+ * `byParentSlot` map — the scanner-populated `parent_row_id` link is
+ * authoritative — and falling back to a synthesised hint only when the
+ * row has no downstream record (slice rows in tasks files; certain
+ * pathological cases).
+ */
+function deriveRowAction(
+  node: DependencyNode,
+  lookup: RecordLookup,
+): NextAction | null {
+  // Preferred path: the downstream record (real or virtual) carries
+  // the action via the suggester's per-record rules. Virtual records
+  // emitted by the scanner already produce `smithy.cut <folder> <N>`
+  // for unstarted stories — exactly the per-row hint we want — so a
+  // simple lookup avoids re-implementing that logic here.
+  const downstreamKey = `${node.record_path}#${node.row.id}`;
+  const downstream = lookup.byParentSlot.get(downstreamKey);
+  if (downstream !== undefined) {
+    return downstream.next_action ?? null;
+  }
+
+  // Fallback path: the row has no downstream record. This happens for
+  // slice rows in tasks files (slices have no separate files, so the
+  // scanner never emits a child record), and as a defensive default
+  // when the lookup misses for any other reason. Synthesise a hint
+  // from the owning record's type so the view stays uniformly
+  // actionable.
+  const owning = lookup.byPath.get(node.record_path);
+  if (owning === undefined) return null;
+  if (owning.status === 'done' || owning.status === 'unknown') return null;
+
+  const digits = node.row.id.match(/[0-9]+$/)?.[0];
+
+  switch (owning.type) {
+    case 'tasks': {
+      // Slice rows always land here. `smithy.forge <tasks-path> <N>`
+      // routes forge to the specific slice, matching the per-row
+      // signal a graph reader expects.
+      const args =
+        digits !== undefined ? [owning.path, digits] : [owning.path];
+      return {
+        command: 'smithy.forge',
+        arguments: args,
+        reason: `${node.row.title} is an open slice; run smithy.forge to implement it.`,
+      };
+    }
+    case 'spec': {
+      // Defensive: a spec row whose downstream lookup missed. The
+      // suggester's per-record rule (`smithy.cut <folder> <digits>`)
+      // is the right shape.
+      if (digits === undefined) return null;
+      const folder = path.dirname(owning.path);
+      return {
+        command: 'smithy.cut',
+        arguments: [folder, digits],
+        reason: `${node.row.title} has no tasks file yet; run smithy.cut to decompose it.`,
+      };
+    }
+    case 'features': {
+      if (digits === undefined) return null;
+      return {
+        command: 'smithy.mark',
+        arguments: [owning.path, digits],
+        reason: `${node.row.title} has no spec yet; run smithy.mark to produce one.`,
+      };
+    }
+    case 'rfc': {
+      return {
+        command: 'smithy.render',
+        arguments: [owning.path],
+        reason: `${node.row.title} has no features map yet; run smithy.render to produce one.`,
+      };
+    }
+  }
 }
 
 /**
@@ -145,12 +303,14 @@ export function renderGraph(
 
   const theme = options.theme ?? DEFAULT_THEME;
   const all = options.all === true;
+  const lookup =
+    options.records !== undefined ? buildRecordLookup(options.records) : null;
   const blocks: string[] = [];
 
   if (graph.cycles.length > 0) {
-    blocks.push(formatCycleFallback(graph, theme));
+    blocks.push(formatCycleFallback(graph, theme, lookup));
   } else {
-    const layered = formatLayeredView(graph, theme, all);
+    const layered = formatLayeredView(graph, theme, all, lookup);
     if (layered.length > 0) blocks.push(layered);
   }
 
@@ -171,11 +331,12 @@ function formatLayeredView(
   graph: DependencyGraph,
   theme: Theme,
   all: boolean,
+  lookup: RecordLookup | null,
 ): string {
   if (graph.layers.length === 0) return '';
   const blocks: string[] = [];
   for (const layer of graph.layers) {
-    blocks.push(formatLayerBlock(layer, graph, theme, all));
+    blocks.push(formatLayerBlock(layer, graph, theme, all, lookup));
   }
   return blocks.join('\n\n');
 }
@@ -200,6 +361,7 @@ function formatLayerBlock(
   graph: DependencyGraph,
   theme: Theme,
   all: boolean,
+  lookup: RecordLookup | null,
 ): string {
   const total = layer.node_ids.length;
 
@@ -239,7 +401,7 @@ function formatLayerBlock(
     const node = graph.nodes[id];
     if (node === undefined) continue;
     const isLast = i === visibleIds.length - 1;
-    lines.push(formatNodeLine(id, node, isLast, theme));
+    lines.push(formatNodeLine(id, node, isLast, theme, lookup));
   }
   return lines.join('\n');
 }
@@ -277,20 +439,33 @@ function formatLayerHeading(
 /**
  * Format a single node line under a layer / fallback heading. The line
  * leads with the row's title (the scannable label), then the status
- * marker, then a dim-painted fully-qualified id suffix so reviewers can
- * still copy/paste the canonical reference without fighting it for
- * visual weight.
+ * marker, then either a per-row next-action hint (when a record
+ * lookup is available and the row resolves to an action) or the
+ * dim-painted fully-qualified id (the fallback so the line still
+ * carries a copy/paste-able referent).
+ *
+ * The action hint mirrors `formatNextAction`'s `→ <command> <args>`
+ * shape so the graph view is visually consistent with the `Next:`
+ * line in the summary header and the per-record hints under
+ * `renderTree`. When the row has no action (done/unknown downstream,
+ * or no records were supplied), the dim FQ id keeps the line useful
+ * for navigation.
  */
 function formatNodeLine(
   id: string,
   node: DependencyNode,
   isLast: boolean,
   theme: Theme,
+  lookup: RecordLookup | null,
 ): string {
   const connector = isLast ? theme.glyphs.lastBranch : theme.glyphs.branch;
   const marker = formatStatusMarker(node, theme);
-  const dimId = theme.paint.dim(id);
-  return `${connector}${node.row.title}  ${marker}  ${dimId}`;
+  const action = lookup !== null ? deriveRowAction(node, lookup) : null;
+  const suffix =
+    action !== null
+      ? formatNextAction(action, theme.glyphs.arrow)
+      : theme.paint.dim(id);
+  return `${connector}${node.row.title}  ${marker}  ${suffix}`;
 }
 
 /**
@@ -325,7 +500,11 @@ function formatStatusMarker(node: DependencyNode, theme: Theme): string {
  * nodes are intentionally excluded from the flat listing — they
  * already appear on the cycle lines above.
  */
-function formatCycleFallback(graph: DependencyGraph, theme: Theme): string {
+function formatCycleFallback(
+  graph: DependencyGraph,
+  theme: Theme,
+  lookup: RecordLookup | null,
+): string {
   const lines: string[] = [];
   lines.push(
     theme.paint.error(
@@ -376,7 +555,7 @@ function formatCycleFallback(graph: DependencyGraph, theme: Theme): string {
       const node = graph.nodes[id];
       if (node === undefined) continue;
       const isLast = i === flatIds.length - 1;
-      flatLines.push(formatNodeLine(id, node, isLast, theme));
+      flatLines.push(formatNodeLine(id, node, isLast, theme, lookup));
     }
     lines.push(...flatLines);
   }

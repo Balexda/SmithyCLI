@@ -322,6 +322,13 @@ export function statusAction(opts: StatusOptions = {}): void {
     const renderedGraph = renderGraph(graph, {
       theme,
       all: opts.all === true,
+      // Thread the pre-filter record set so each node line can carry a
+      // per-row next-action hint (`→ smithy.<cmd> <args>`) instead of
+      // the dim FQ id. Mirrors the `Next:` line in the summary header
+      // and the per-record hints under `renderTree`. SD-010 keeps the
+      // record set pre-filter so the hints reflect the full scan, in
+      // line with the graph itself.
+      records,
     });
     if (renderedGraph.length > 0) {
       console.log(renderedGraph);

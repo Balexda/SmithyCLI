@@ -604,6 +604,139 @@ describe('renderGraph — ASCII fallback', () => {
   });
 });
 
+describe('renderGraph — per-row action hints from records', () => {
+  // When `RenderGraphOptions.records` is supplied, each visible node
+  // line surfaces a `→ smithy.<cmd> <args>` hint derived from the row's
+  // downstream record (real or virtual) instead of the dim FQ id.
+  // Done downstreams yield no hint and the line falls back to the
+  // dim FQ id so it still carries a referent.
+  const SPEC_PATH = 'specs/sample/sample.spec.md';
+
+  function makeSpecRowsRecord(): ArtifactRecord {
+    return makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', [], { title: 'Unstarted story', artifact_path: null }),
+          row('US2', ['US1'], {
+            title: 'In-progress story',
+            artifact_path: 'specs/sample/02-second.tasks.md',
+          }),
+        ],
+      },
+      next_action: null,
+    });
+  }
+
+  function makeVirtualUS1Tasks(): ArtifactRecord {
+    return makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'not-started',
+      virtual: true,
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US1',
+      next_action: {
+        command: 'smithy.cut',
+        arguments: ['specs/sample', '1'],
+        reason: 'US1 has no tasks file yet.',
+      },
+    });
+  }
+
+  function makeRealUS2Tasks(): ArtifactRecord {
+    return makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/02-second.tasks.md',
+      status: 'in-progress',
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US2',
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/sample/02-second.tasks.md'],
+        reason: 'US2 has open slices.',
+      },
+    });
+  }
+
+  it("surfaces the downstream record's next_action as an arrow-prefixed smithy.<cmd> suffix", () => {
+    const records = [
+      makeSpecRowsRecord(),
+      makeVirtualUS1Tasks(),
+      makeRealUS2Tasks(),
+    ];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, { theme: utf8Theme, records });
+    expect(output).toContain('→ smithy.cut specs/sample 1');
+    expect(output).toContain('→ smithy.forge specs/sample/02-second.tasks.md');
+    expect(output).not.toContain(`${SPEC_PATH}#US1`);
+    expect(output).not.toContain(`${SPEC_PATH}#US2`);
+  });
+
+  it('falls back to the dim FQ id for nodes whose downstream is done (next_action null)', () => {
+    const spec = makeSpecRowsRecord();
+    const doneTasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/02-second.tasks.md',
+      status: 'done',
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US2',
+      next_action: null,
+    });
+    const records = [spec, makeVirtualUS1Tasks(), doneTasks];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, {
+      theme: utf8Theme,
+      records,
+      all: true,
+    });
+    expect(output).toContain(`${SPEC_PATH}#US2`);
+    expect(output).not.toContain('→ smithy.forge specs/sample/02-second.tasks.md');
+  });
+
+  it('synthesises per-slice smithy.forge <tasks> <N> hints for slice rows in tasks files', () => {
+    const tasksRecord = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [
+          row('S1', [], { title: 'First slice' }),
+          row('S2', ['S1'], { title: 'Second slice' }),
+        ],
+      },
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/sample/01-first.tasks.md'],
+        reason: '',
+      },
+    });
+    const graph = buildDependencyGraph([tasksRecord]);
+    const output = renderGraph(graph, {
+      theme: utf8Theme,
+      records: [tasksRecord],
+    });
+    expect(output).toContain('→ smithy.forge specs/sample/01-first.tasks.md 1');
+    expect(output).toContain('→ smithy.forge specs/sample/01-first.tasks.md 2');
+  });
+
+  it('keeps the dim FQ id fallback when records option is omitted (legacy callers)', () => {
+    const spec = makeSpecRowsRecord();
+    const graph = buildDependencyGraph([spec, makeVirtualUS1Tasks()]);
+    const output = renderGraph(graph, { theme: utf8Theme });
+    expect(output).toContain(`${SPEC_PATH}#US1`);
+    expect(output).toContain(`${SPEC_PATH}#US2`);
+    expect(output).not.toContain('→ smithy.cut');
+    expect(output).not.toContain('→ smithy.forge');
+  });
+});
+
 describe('renderGraph — default theme', () => {
   it('uses a UTF-8 no-color theme when options are omitted', () => {
     const spec = makeRecord({
