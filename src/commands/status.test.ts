@@ -571,6 +571,41 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     );
   }
 
+  /**
+   * Identical-shape fixture to {@link writeFourStoryFixture} but with
+   * NO done items — every tasks file has at least one unchecked
+   * checkbox. Used by tests that need the AS 10.1 static-topology
+   * layering (`US1+US4` in Layer 0, `US2` in Layer 1, `US3` in
+   * Layer 2) without the "done predecessors don't block" rule
+   * promoting blocked rows forward.
+   */
+  function writeNoDoneFourStoryFixture(): void {
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | — | specs/sample/01-first.tasks.md |\n` +
+        `| US2 | Second story | US1 | specs/sample/02-second.tasks.md |\n` +
+        `| US3 | Third story | US2 | specs/sample/03-third.tasks.md |\n` +
+        `| US4 | Fourth story | — | specs/sample/04-fourth.tasks.md |\n`,
+    );
+    write(
+      'specs/sample/01-first.tasks.md',
+      `# US1 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/02-second.tasks.md',
+      `# US2 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/03-third.tasks.md',
+      `# US3 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/04-fourth.tasks.md',
+      `# US4 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+  }
+
   // --- AS 10.5: JSON graph populated unconditionally ---
 
   it('AS 10.5: JSON `graph` is populated from buildDependencyGraph (multi-row spec)', () => {
@@ -633,14 +668,16 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
 
   // --- AS 10.1 / AS 10.4: text path renders layered view via renderGraph ---
 
-  it('AS 10.1: --graph --all prints layered headings with US1/US4 in Layer 0 and US2/US3 in later layers', () => {
-    writeFourStoryFixture();
-    // Use `--all` here so the fixture's `done` US1 row surfaces in
-    // the rendered output. Default mode hides done members from the
-    // listing (covered separately below) — this assertion is about the
-    // builder's layer membership, which we want to read straight off
-    // the rendered output without the hide-done filter in play.
-    statusAction({ root, graph: true, all: true });
+  it('AS 10.1: --graph prints layered headings with US1/US4 in Layer 0 and US2/US3 in later layers', () => {
+    // AS 10.1 describes the static topology: US1+US4 in Layer 0, US2
+    // in Layer 1, US3 in Layer 2. Under the "done predecessors don't
+    // block" layering rule, those layer assignments only hold when no
+    // upstream node is `done` (otherwise blocked work promotes
+    // forward). The four-story fixture sets US1's tasks file to done,
+    // which would promote US2 to Layer 0; use a fresh no-done fixture
+    // here so the test asserts AS 10.1 as-written.
+    writeNoDoneFourStoryFixture();
+    statusAction({ root, graph: true });
     const stdout = captured();
     // Layer 0 leads with the "ready to work" copy (renderGraph
     // contract). Subsequent layers use the simpler heading form.
@@ -649,7 +686,8 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('Layer 2');
     // Each layer's stories surface by their row title (the new
     // title-first layout). Layer assignment proven by the relative
-    // ordering of titles in the rendered output.
+    // ordering of titles in the rendered output: US1 + US4 in Layer 0,
+    // US2 in Layer 1, US3 in Layer 2.
     const us1Pos = stdout.indexOf('First story');
     const us4Pos = stdout.indexOf('Fourth story');
     const us2Pos = stdout.indexOf('Second story');
@@ -657,7 +695,7 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(us1Pos).toBeGreaterThanOrEqual(0);
     expect(us4Pos).toBeGreaterThan(us1Pos); // both in Layer 0
     expect(us2Pos).toBeGreaterThan(us4Pos); // Layer 0 < Layer 1
-    expect(us3Pos).toBeGreaterThan(us2Pos); // Layer 1 < Layer 2 (or 3)
+    expect(us3Pos).toBeGreaterThan(us2Pos); // Layer 1 < Layer 2
     // The summary header still prints above the graph view (FR-016).
     expect(stdout).toContain(' Smithy Status');
   });
@@ -719,19 +757,18 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     writeFourStoryFixture();
     statusAction({ root, graph: true });
     const stdout = captured();
-    // The four-story fixture has US1's tasks file fully checked, so
-    // the tasks-file slice node carries `status: done` and is hidden
-    // from its layer's listing in default mode. (User-story nodes
-    // share the spec record's rolled-up `in-progress` status, so they
-    // do not individually trigger the filter — separate from this
-    // assertion.) At least one layer must therefore show the
-    // `done hidden` suffix.
-    expect(stdout).toMatch(/Layer \d+ \(\d+ items, \d+ done hidden\)/);
-    // The hidden tasks-file slice's FQ id must NOT appear under the
-    // layered view in default mode (the user-story FQ id still does,
-    // since user-story nodes are not individually `done` in this
-    // fixture).
+    // The four-story fixture carries done items: US1's tasks file is
+    // fully checked, US1's user-story node rolls up to done from its
+    // downstream, and the tasks-file slice for US1 is also done. With
+    // the "done predecessors don't block" layering rule, those done
+    // items end up in Layer 0 (no remaining blockers) and get hidden
+    // by the default-mode filter — surfacing as `, N done hidden` in
+    // the Layer 0 heading.
+    expect(stdout).toContain('done hidden');
+    // The hidden user-story FQ id and tasks-file slice FQ id must NOT
+    // appear in the rendered output; they're filtered out.
     expect(stdout).not.toContain('specs/sample/01-first.tasks.md#S1');
+    expect(stdout).not.toContain('specs/sample/sample.spec.md#US1');
   });
 
   it('--graph --all surfaces every member regardless of status (including done items hidden in default mode)', () => {

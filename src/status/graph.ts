@@ -232,6 +232,23 @@ export function buildDependencyGraph(
     }
   }
 
+  // Edges are wired with a "done predecessors don't block" rule: an
+  // edge `source → target` is included in the layering graph only
+  // when `source.status !== 'done'`. The reasoning: a done node is no
+  // longer a blocker for downstream work, so a not-done target whose
+  // only blockers are done is genuinely ready to work on right now
+  // (Layer 0). This makes "Layer N" mean "this many hops of *remaining*
+  // work blocks it", not the static topological depth of the unioned
+  // graph — which is what users intuit when they see a layered
+  // "ready-to-work" view.
+  //
+  // Done-only cycles (cycles where every node is `done`) become
+  // undetectable as a side-effect — every edge in such a cycle is
+  // skipped, so the residual is empty and Tarjan's finds nothing. In
+  // practice that's fine: a cycle of finished work is moot. Cycles
+  // involving any not-done node retain their edges (the not-done
+  // node's outgoing edges still count) and continue to surface.
+
   // Second pass: wire intra-table edges. Re-walks records so this stays
   // a single top-level loop; per-row work is O(depends_on.length).
   for (const record of eligible) {
@@ -246,6 +263,9 @@ export function buildDependencyGraph(
         // inside the same table. Anything else was a parse-time
         // dangling reference and was dropped before reaching us.
         if (!(sourceId in nodes)) continue;
+        // Skip edges from done predecessors — see the "done predecessors
+        // don't block" preamble above.
+        if (nodes[sourceId]?.status === 'done') continue;
         addEdge(sourceId, targetId, outgoing, inDegree, seenEdges);
       }
     }
@@ -272,6 +292,10 @@ export function buildDependencyGraph(
     if (typeof parentRowId !== 'string' || parentRowId.length === 0) continue;
     const parentNodeId = nodeId(parentPath, parentRowId);
     if (!(parentNodeId in nodes)) continue;
+    // Skip cross-artifact edges from done parents — see the
+    // "done predecessors don't block" preamble above. A child whose
+    // only blocker is a done parent row is genuinely ready right now.
+    if (nodes[parentNodeId]?.status === 'done') continue;
 
     for (const row of record.dependency_order.rows) {
       // Only "root" rows (no intra-table predecessors) are pinned to the

@@ -251,9 +251,11 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     expect(output).toContain('specs/a/a.spec.md#US1');
     expect(output).toContain('specs/b/b.spec.md#US2');
     expect(output).toContain('specs/c/c.spec.md#US3');
-    // Layer headings still use the canonical "ready to work" form for
-    // layer 0 and the simple form for subsequent layers.
-    expect(output).toContain('Layer 0 — ready to work (1 item)');
+    // Under the "done predecessors don't block" layering rule, c#US3
+    // (whose only predecessor b#US2 is done) promotes to Layer 0
+    // alongside a#US1; b#US2 itself sits in Layer 1 (still blocked by
+    // a#US1's in-progress status).
+    expect(output).toContain('Layer 0 — ready to work (2 items)');
     expect(output).toContain('Layer 1 (1 item)');
   });
 
