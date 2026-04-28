@@ -109,7 +109,7 @@
   - The function is pure (no I/O, no mutation of `graph`), matches the `renderTree(tree, options) → string` signature pattern, and is exported from `src/status/index.ts`.
   - Layer entries read membership via the canonical `node_ids` key (SD-012 reconciliation).
 
-- [ ] **Wire `buildDependencyGraph` and `renderGraph` into `statusAction`**
+- [x] **Wire `buildDependencyGraph` and `renderGraph` into `statusAction`**
 
   Update `statusAction` in `src/commands/status.ts` so `buildDependencyGraph(records)` is called once per invocation (using the pre-filter record set per SD-010 / existing `summarize()` convention) and its result serves both consumer surfaces: (a) the JSON payload's `graph` field is populated unconditionally, replacing the zero-value stub; (b) in text mode, `opts.graph === true` routes through `renderGraph(graph, { all: opts.all === true })` instead of the tree pipeline. The existing tree pipeline is untouched when `--graph` is absent. Update the `StatusOptions.graph` JSDoc to reflect the now-wired state.
 

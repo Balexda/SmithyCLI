@@ -1,8 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from 'vitest';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   formatSummaryHeader,
   pickTopNextAction,
+  statusAction,
   type StatusJsonPayload,
 } from './status.js';
 import type {
@@ -451,5 +468,277 @@ describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
     expect(payload.graph.layers).toEqual([]);
     expect(payload.graph.cycles).toEqual([]);
     expect(payload.graph.dangling_refs).toEqual([]);
+  });
+});
+
+/**
+ * US10 Slice 3 integration tests: assert that `statusAction` wires
+ * `buildDependencyGraph` into the JSON payload unconditionally and
+ * routes `--graph` text mode through `renderGraph` with summary header
+ * preserved, done-layer collapsing honoring `--all`, cycle fallback,
+ * and dangling-ref diagnostics. Each test builds a synthetic repo
+ * under `os.tmpdir()` (mirroring `scanner.test.ts`'s pattern), invokes
+ * `statusAction` with `--root` pointed at it, and captures stdout via
+ * `vi.spyOn(console, 'log')`.
+ */
+describe('statusAction --graph integration (US10 Slice 3)', () => {
+  const TABLE_HEADER =
+    '| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|';
+
+  let root: string;
+  let logSpy: MockInstance<(...args: unknown[]) => void>;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'smithy-status-graph-'));
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      /* swallow stdout during tests */
+    });
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    if (root) rmSync(root, { recursive: true, force: true });
+  });
+
+  function write(relPath: string, contents: string): void {
+    const abs = join(root, relPath);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, contents);
+  }
+
+  function captured(): string {
+    return logSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+  }
+
+  /**
+   * Write the AS 10.1 fixture: a single spec with four user stories
+   * where US1 + US4 are independent, US2 depends on US1, and US3
+   * depends on US2. Tasks files are emitted as `done` / `in-progress`
+   * / `not-started` so the rolled-up spec status is `in-progress`.
+   */
+  function writeFourStoryFixture(): void {
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | — | specs/sample/01-first.tasks.md |\n` +
+        `| US2 | Second story | US1 | specs/sample/02-second.tasks.md |\n` +
+        `| US3 | Third story | US2 | specs/sample/03-third.tasks.md |\n` +
+        `| US4 | Fourth story | — | specs/sample/04-fourth.tasks.md |\n`,
+    );
+    // US1 done, US2 in-progress, US3/US4 not-started — gives a mixed
+    // spec status (`in-progress`) so the summary header shows
+    // multiple counts.
+    write(
+      'specs/sample/01-first.tasks.md',
+      `# US1 Tasks\n\n## Slice 1: Only\n\n- [x] One\n- [x] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/02-second.tasks.md',
+      `# US2 Tasks\n\n## Slice 1: Only\n\n- [x] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/03-third.tasks.md',
+      `# US3 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/04-fourth.tasks.md',
+      `# US4 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+  }
+
+  /**
+   * Fixture where every spec row + tasks-file row in the graph rolls
+   * up to `done`. Both spec rows have all-checked tasks files, so the
+   * spec itself rolls up to `done`, and every node in the graph
+   * carries `status: 'done'`. In default mode every layer therefore
+   * collapses to `Layer N: DONE (M items)`; under `--all`, every
+   * layer expands and every node id surfaces.
+   */
+  function writeAllDoneFixture(): void {
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | — | specs/sample/01-first.tasks.md |\n` +
+        `| US2 | Second story | US1 | specs/sample/02-second.tasks.md |\n`,
+    );
+    write(
+      'specs/sample/01-first.tasks.md',
+      `# US1 Tasks\n\n## Slice 1: Only\n\n- [x] One\n- [x] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+    write(
+      'specs/sample/02-second.tasks.md',
+      `# US2 Tasks\n\n## Slice 1: Only\n\n- [x] One\n- [x] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
+    );
+  }
+
+  // --- AS 10.5: JSON graph populated unconditionally ---
+
+  it('AS 10.5: JSON `graph` is populated from buildDependencyGraph (multi-row spec)', () => {
+    writeFourStoryFixture();
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    // Nodes contains every fully-qualified row.
+    expect(Object.keys(payload.graph.nodes).length).toBeGreaterThan(0);
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeDefined();
+    // Layers carry node_ids, not `ids`.
+    expect(payload.graph.layers.length).toBeGreaterThan(0);
+    const firstLayer = payload.graph.layers[0]!;
+    expect(firstLayer.node_ids).toBeDefined();
+    expect(Array.isArray(firstLayer.node_ids)).toBe(true);
+    expect(firstLayer.node_ids.length).toBeGreaterThan(0);
+    // cycles / dangling_refs are arrays even when empty.
+    expect(Array.isArray(payload.graph.cycles)).toBe(true);
+    expect(Array.isArray(payload.graph.dangling_refs)).toBe(true);
+  });
+
+  it('AS 10.5: JSON layer objects use the canonical `node_ids` field name (no `.ids` drift, SD-012)', () => {
+    writeFourStoryFixture();
+    statusAction({ root, format: 'json' });
+    const stdout = captured();
+    // None of the emitted layer objects may carry an `ids` key — the
+    // canonical name is `node_ids`. The check is a literal substring
+    // assertion against the JSON, since `JSON.stringify` quotes object
+    // keys.
+    expect(stdout).not.toContain('"ids":');
+    expect(stdout).toContain('"node_ids":');
+  });
+
+  it('AS 10.5: JSON `graph` is the canonical zero-value shape on an empty repo', () => {
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.graph).toEqual<DependencyGraph>({
+      nodes: {},
+      layers: [],
+      cycles: [],
+      dangling_refs: [],
+    });
+  });
+
+  it('AS 10.5: JSON `graph` reflects the pre-filter scan even when --status excludes some records (SD-010)', () => {
+    writeFourStoryFixture();
+    // US1's tasks file is fully checked → US1 rolls up to `done`.
+    // Filtering by --status=in-progress would exclude it from the
+    // `records` field, but the `graph` is built pre-filter so it must
+    // still carry the US1 node.
+    statusAction({ root, format: 'json', status: 'in-progress' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    // The filter dropped done records from `payload.records`...
+    const filteredHasUs1 = payload.records.some(
+      (r) => r.path === 'specs/sample/01-first.tasks.md',
+    );
+    expect(filteredHasUs1).toBe(false);
+    // ...but the graph (built from the unfiltered scan) still does.
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeDefined();
+  });
+
+  // --- AS 10.1 / AS 10.4: text path renders layered view via renderGraph ---
+
+  it('AS 10.1: --graph prints layered headings with US1/US4 in Layer 0 and US2/US3 in later layers', () => {
+    writeFourStoryFixture();
+    statusAction({ root, graph: true });
+    const stdout = captured();
+    // Layer 0 leads with the "ready to work" copy (renderGraph
+    // contract). Subsequent layers use the simpler heading form.
+    expect(stdout).toContain('Layer 0 — ready to work');
+    expect(stdout).toContain('Layer 1');
+    expect(stdout).toContain('Layer 2');
+    // US1 + US4 belong to layer 0; US2 to layer 1; US3 to layer 2.
+    expect(stdout).toContain('specs/sample/sample.spec.md#US1');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US4');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US2');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US3');
+    // The summary header still prints above the graph view (FR-016).
+    expect(stdout).toContain(' Smithy Status');
+  });
+
+  it('AS 10.4: --graph collapses fully-done layers to `Layer N: DONE (M items)` and drops member IDs in default mode', () => {
+    writeAllDoneFixture();
+    statusAction({ root, graph: true });
+    const stdout = captured();
+    // Every node in the fixture rolls up to `done`, so every layer
+    // collapses. At least one collapsed layer line must surface, and
+    // none of the spec's row IDs can appear (they would only surface
+    // as expanded layer-member lines).
+    expect(stdout).toMatch(/Layer \d+: DONE \(\d+ items?\)/);
+    expect(stdout).not.toContain('specs/sample/sample.spec.md#US1');
+    expect(stdout).not.toContain('specs/sample/sample.spec.md#US2');
+  });
+
+  it('AS 10.4: --graph --all expands every layer regardless of status', () => {
+    writeAllDoneFixture();
+    statusAction({ root, graph: true, all: true });
+    const stdout = captured();
+    // No collapse line — every layer is fully expanded.
+    expect(stdout).not.toMatch(/Layer \d+: DONE/);
+    // Both spec-row members surface as full node lines now.
+    expect(stdout).toContain('specs/sample/sample.spec.md#US1');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US2');
+  });
+
+  // --- AS 10.3: cycle fallback ---
+
+  it('AS 10.3: --graph emits a cycle warning and Cycle: line when the graph is not a DAG', () => {
+    // US1 depends on US2, US2 depends on US1 → mutual cycle.
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | US2 | — |\n` +
+        `| US2 | Second story | US1 | — |\n`,
+    );
+    const exitCodeBefore = process.exitCode;
+    statusAction({ root, graph: true });
+    // No exception thrown above (we'd never reach here otherwise) and
+    // process.exitCode is not bumped to a failure value.
+    expect(process.exitCode).toBe(exitCodeBefore);
+    const stdout = captured();
+    expect(stdout).toContain('WARNING: dependency graph contains cycle');
+    expect(stdout).toContain('Cycle: ');
+    // Both cyclic IDs appear in the Cycle: line.
+    expect(stdout).toContain('specs/sample/sample.spec.md#US1');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US2');
+  });
+
+  // --- AS 10.6: dangling refs ---
+
+  it('AS 10.6: --graph surfaces a Dangling refs: block when a depends_on reference is unresolved', () => {
+    // US2 declares a dep on US99 which does not exist in the table.
+    // The parser drops the edge and records a structured
+    // dangling_refs entry; the graph builder propagates it; the
+    // renderer surfaces it.
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | — | — |\n` +
+        `| US2 | Second story | US1, US99 | — |\n`,
+    );
+    statusAction({ root, graph: true });
+    const stdout = captured();
+    expect(stdout).toContain('Dangling refs:');
+    // The unresolved pair appears with both ends fully-qualified.
+    expect(stdout).toContain('specs/sample/sample.spec.md#US2');
+    expect(stdout).toContain('specs/sample/sample.spec.md#US99');
+    expect(stdout).toContain('(unresolved)');
+  });
+
+  // --- regression: default text path unchanged ---
+
+  it('default text path (no --graph) still routes through renderTree, not renderGraph', () => {
+    writeFourStoryFixture();
+    statusAction({ root });
+    const stdout = captured();
+    // Summary header prints as before.
+    expect(stdout).toContain(' Smithy Status');
+    // No layer headings — proves we did not silently route through
+    // renderGraph. (`Layer ` is the unique prefix renderGraph emits
+    // and renderTree never produces.)
+    expect(stdout).not.toContain('Layer 0 — ready to work');
+    expect(stdout).not.toMatch(/Layer \d+ \(/);
+    // The tree renderer surfaces the spec title (with rolled-up
+    // status icon) and per-task next-action hints — both are unique
+    // to the tree path. `renderGraph` would emit fully-qualified
+    // node IDs (`specs/sample/sample.spec.md#US1`) instead.
+    expect(stdout).toContain('Sample Spec');
+    expect(stdout).toContain('smithy.forge specs/sample/');
+    expect(stdout).not.toContain('specs/sample/sample.spec.md#US');
   });
 });
