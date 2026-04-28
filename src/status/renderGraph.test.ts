@@ -113,35 +113,40 @@ describe('renderGraph — layered view (AS 10.1)', () => {
     expect(output).toContain('Layer 2 (1 item)');
   });
 
-  it('lists each node id under its layer with tree connectors and the row title', () => {
+  it('lists each node line with title-first layout, status marker, and a dim FQ-ID suffix', () => {
     const graph = buildDependencyGraph([spec]);
     const output = renderGraph(graph, { theme: utf8Theme });
-    // Every fully-qualified node id from buildDependencyGraph must
-    // appear in the output exactly once.
+    // Every fully-qualified node id still appears in the output — it
+    // just lives at the tail as a copy/paste reference, not at the head.
     expect(output).toContain(`${SPEC_PATH}#US1`);
     expect(output).toContain(`${SPEC_PATH}#US2`);
     expect(output).toContain(`${SPEC_PATH}#US3`);
     expect(output).toContain(`${SPEC_PATH}#US4`);
-    // Em-dash separator + title from the underlying row.
-    expect(output).toContain(`${SPEC_PATH}#US1 — First`);
-    expect(output).toContain(`${SPEC_PATH}#US2 — Second`);
+    // Title leads each line directly after the connector — the
+    // primary, scannable label.
+    expect(output).toContain('├─ First');
+    expect(output).toContain('└─ Fourth');
+    expect(output).toContain('└─ Second');
+    expect(output).toContain('└─ Third');
     // Tree connectors used to lay out per-layer members.
     expect(output).toMatch(/[├└]─/);
-    // Last-sibling glyph appears for the final entry of the
-    // multi-member Layer 0 (US4).
-    expect(output).toContain(`└─ ${SPEC_PATH}#US4`);
-    // Non-last-sibling glyph appears for the first entry of Layer 0
-    // (US1).
-    expect(output).toContain(`├─ ${SPEC_PATH}#US1`);
+    // The full per-line layout: connector + title + marker + dim id.
+    // (`utf8Theme` has color disabled, so the dim helper is identity
+    // and the FQ id appears verbatim at the tail of the line.)
+    expect(output).toMatch(
+      new RegExp(`└─ Fourth\\s+[○✓◐⚠].*${SPEC_PATH}#US4`),
+    );
   });
 
   it('orders Layer 0 members by their position in graph.layers[0].node_ids', () => {
     const graph = buildDependencyGraph([spec]);
     const output = renderGraph(graph, { theme: utf8Theme });
-    const us1Pos = output.indexOf(`${SPEC_PATH}#US1`);
-    const us4Pos = output.indexOf(`${SPEC_PATH}#US4`);
-    const us2Pos = output.indexOf(`${SPEC_PATH}#US2`);
-    const us3Pos = output.indexOf(`${SPEC_PATH}#US3`);
+    // Match by title ("First" / "Fourth" / "Second" / "Third") rather
+    // than the FQ id — the title is now the leading column.
+    const us1Pos = output.indexOf('├─ First');
+    const us4Pos = output.indexOf('└─ Fourth');
+    const us2Pos = output.indexOf('└─ Second');
+    const us3Pos = output.indexOf('└─ Third');
     expect(us1Pos).toBeGreaterThanOrEqual(0);
     expect(us4Pos).toBeGreaterThan(us1Pos);
     expect(us2Pos).toBeGreaterThan(us4Pos);
@@ -236,9 +241,11 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     expect(output).toContain('Layer 1 (1 item)');
   });
 
-  it('does not collapse a mixed-status layer', () => {
-    // Build a graph where Layer 0 has two members, one done and one
-    // not-started — the layer must NOT collapse.
+  it('hides done members inside a mixed-status layer in default mode and surfaces a `done hidden` suffix', () => {
+    // Layer 0 has two members: recordA (done) and recordB (not-started).
+    // Default mode hides the done member from the listing and tacks
+    // `, 1 done hidden` onto the heading; the not-started member
+    // surfaces normally.
     const recordA = makeRecord({
       type: 'spec',
       path: 'specs/a/a.spec.md',
@@ -246,7 +253,7 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
       dependency_order: {
         id_prefix: 'US',
         format: 'table',
-        rows: [row('US1')],
+        rows: [row('US1', [], { title: 'Already Done' })],
       },
     });
     const recordB = makeRecord({
@@ -256,14 +263,138 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
       dependency_order: {
         id_prefix: 'US',
         format: 'table',
-        rows: [row('US1')],
+        rows: [row('US1', [], { title: 'Still To Do' })],
       },
     });
     const graph = buildDependencyGraph([recordA, recordB]);
     const output = renderGraph(graph, { theme: utf8Theme });
     expect(output).not.toContain('DONE (');
+    // Heading carries the visible-count and the hidden-done suffix.
+    expect(output).toContain('Layer 0 — ready to work (2 items, 1 done hidden)');
+    // The done member's FQ id must NOT appear — it's filtered out.
+    expect(output).not.toContain('specs/a/a.spec.md#US1');
+    // The not-started member surfaces with its title-first line.
+    expect(output).toContain('└─ Still To Do');
+    expect(output).toContain('specs/b/b.spec.md#US1');
+  });
+
+  it('expands hidden done members and drops the suffix under {all: true}', () => {
+    const recordA = makeRecord({
+      type: 'spec',
+      path: 'specs/a/a.spec.md',
+      status: 'done',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Already Done' })],
+      },
+    });
+    const recordB = makeRecord({
+      type: 'spec',
+      path: 'specs/b/b.spec.md',
+      status: 'not-started',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Still To Do' })],
+      },
+    });
+    const graph = buildDependencyGraph([recordA, recordB]);
+    const output = renderGraph(graph, { theme: utf8Theme, all: true });
+    // No hidden-done suffix under --all.
+    expect(output).toContain('Layer 0 — ready to work (2 items)');
+    expect(output).not.toContain('done hidden');
+    // Both members surface, including the done one.
     expect(output).toContain('specs/a/a.spec.md#US1');
     expect(output).toContain('specs/b/b.spec.md#US1');
+    expect(output).toContain('Already Done');
+    expect(output).toContain('Still To Do');
+  });
+
+  it('collapses a layer to `Layer N: DONE (M items)` when every member rolls up to done (parser-driven)', () => {
+    // Sanity check that the legacy collapse rule still fires when the
+    // hide-done filter has nothing left to surface — the entire layer
+    // is `done`. Mirrors AS 10.4 but exercises the new code path.
+    const r1 = makeRecord({
+      type: 'spec',
+      path: 'specs/a/a.spec.md',
+      status: 'done',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1')],
+      },
+    });
+    const r2 = makeRecord({
+      type: 'spec',
+      path: 'specs/b/b.spec.md',
+      status: 'done',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1')],
+      },
+    });
+    const graph = buildDependencyGraph([r1, r2]);
+    const output = renderGraph(graph, { theme: utf8Theme });
+    expect(output).toContain('Layer 0: DONE (2 items)');
+    expect(output).not.toContain('done hidden');
+    // No member listing under a collapsed layer.
+    expect(output).not.toContain('specs/a/a.spec.md#US1');
+    expect(output).not.toContain('specs/b/b.spec.md#US1');
+  });
+
+  it('keeps non-done members (in-progress / not-started / unknown) visible alongside hidden done', () => {
+    // Layer with one done, one in-progress, one not-started, one
+    // unknown. Default mode hides the done; the other three must all
+    // remain visible regardless of status.
+    const done = makeRecord({
+      type: 'spec',
+      path: 'specs/a/done.spec.md',
+      status: 'done',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Finished work' })],
+      },
+    });
+    const wip = makeRecord({
+      type: 'spec',
+      path: 'specs/b/wip.spec.md',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Half-finished work' })],
+      },
+    });
+    const ns = makeRecord({
+      type: 'spec',
+      path: 'specs/c/ns.spec.md',
+      status: 'not-started',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Unstarted work' })],
+      },
+    });
+    const unk = makeRecord({
+      type: 'spec',
+      path: 'specs/d/unk.spec.md',
+      status: 'unknown',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { title: 'Parse-error work' })],
+      },
+    });
+    const graph = buildDependencyGraph([done, wip, ns, unk]);
+    const output = renderGraph(graph, { theme: utf8Theme });
+    expect(output).toContain('Layer 0 — ready to work (4 items, 1 done hidden)');
+    expect(output).not.toContain('Finished work');
+    expect(output).toContain('Half-finished work');
+    expect(output).toContain('Unstarted work');
+    expect(output).toContain('Parse-error work');
   });
 });
 

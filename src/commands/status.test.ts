@@ -633,9 +633,14 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
 
   // --- AS 10.1 / AS 10.4: text path renders layered view via renderGraph ---
 
-  it('AS 10.1: --graph prints layered headings with US1/US4 in Layer 0 and US2/US3 in later layers', () => {
+  it('AS 10.1: --graph --all prints layered headings with US1/US4 in Layer 0 and US2/US3 in later layers', () => {
     writeFourStoryFixture();
-    statusAction({ root, graph: true });
+    // Use `--all` here so the fixture's `done` US1 row surfaces in
+    // the rendered output. Default mode hides done members from the
+    // listing (covered separately below) — this assertion is about the
+    // builder's layer membership, which we want to read straight off
+    // the rendered output without the hide-done filter in play.
+    statusAction({ root, graph: true, all: true });
     const stdout = captured();
     // Layer 0 leads with the "ready to work" copy (renderGraph
     // contract). Subsequent layers use the simpler heading form.
@@ -649,6 +654,36 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('specs/sample/sample.spec.md#US3');
     // The summary header still prints above the graph view (FR-016).
     expect(stdout).toContain(' Smithy Status');
+  });
+
+  it('--graph default mode hides done members and surfaces a `done hidden` suffix on the affected layer', () => {
+    writeFourStoryFixture();
+    statusAction({ root, graph: true });
+    const stdout = captured();
+    // The four-story fixture has US1's tasks file fully checked, so
+    // the tasks-file slice node carries `status: done` and is hidden
+    // from its layer's listing in default mode. (User-story nodes
+    // share the spec record's rolled-up `in-progress` status, so they
+    // do not individually trigger the filter — separate from this
+    // assertion.) At least one layer must therefore show the
+    // `done hidden` suffix.
+    expect(stdout).toMatch(/Layer \d+ \(\d+ items, \d+ done hidden\)/);
+    // The hidden tasks-file slice's FQ id must NOT appear under the
+    // layered view in default mode (the user-story FQ id still does,
+    // since user-story nodes are not individually `done` in this
+    // fixture).
+    expect(stdout).not.toContain('specs/sample/01-first.tasks.md#S1');
+  });
+
+  it('--graph --all surfaces every member regardless of status (including done items hidden in default mode)', () => {
+    writeFourStoryFixture();
+    statusAction({ root, graph: true, all: true });
+    const stdout = captured();
+    // No layer carries the hide-done suffix under --all.
+    expect(stdout).not.toContain('done hidden');
+    // The done tasks-file slice that default mode hides surfaces
+    // here, proving --all bypasses the hide-done filter.
+    expect(stdout).toContain('specs/sample/01-first.tasks.md#S1');
   });
 
   it('AS 10.4: --graph collapses fully-done layers to `Layer N: DONE (M items)` and drops member IDs in default mode', () => {

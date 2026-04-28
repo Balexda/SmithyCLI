@@ -18,11 +18,11 @@
  *
  * ```
  * Layer 0 — ready to work (2 items)
- * ├─ specs/.../foo.spec.md#US1 — Scan Artifacts and Classify Status  ◐
- * └─ specs/.../foo.spec.md#US8 — Deterministic Dependency Order      ○
+ * ├─ Scan Artifacts and Classify Status  ◐  specs/.../foo.spec.md#US1
+ * └─ Deterministic Dependency Order      ○  specs/.../foo.spec.md#US8
  *
  * Layer 1 (1 item)
- * └─ specs/.../foo.spec.md#US2 — Render a Hierarchical Status View   ○
+ * └─ Render a Hierarchical Status View   ○  specs/.../foo.spec.md#US2
  * ```
  *
  * Subsequent layers use the simpler `Layer N (M items)` form. Each node
@@ -32,19 +32,31 @@
  * single blank line.
  *
  * Each node line carries:
- * - the fully-qualified node id (`<artifact-path>#<row-id>`),
- * - an em-dash separator and the title from the underlying
- *   {@link DependencyNode.row.title}, and
+ * - the title from the underlying {@link DependencyNode.row.title} as
+ *   the primary, scannable label,
  * - a trailing status marker mirroring the icon mapping used by the
- *   default tree renderer (`✓` / `◐` / `○` / `⚠`).
+ *   default tree renderer (`✓` / `◐` / `○` / `⚠`), and
+ * - the fully-qualified node id (`<artifact-path>#<row-id>`) as a
+ *   trailing, dim-painted suffix so reviewers can still copy/paste the
+ *   ID without fighting it for visual weight.
  *
- * #### Done-layer collapsing (AS 10.4)
+ * #### Done-item hiding and layer collapsing (AS 10.4)
  *
- * When every node in a layer has `status === 'done'` AND
- * `options.all !== true`, the entire layer collapses to a single
- * `Layer N: DONE (M items)` line with no member listing. Passing
- * `{ all: true }` disables collapsing — every layer is fully expanded
- * regardless of member status.
+ * Default mode aggressively focuses the view on what still needs work:
+ *
+ * - Within a partially-done layer, members with `status === 'done'` are
+ *   hidden from the listing. The layer heading gains a
+ *   `, N done hidden` suffix so the suppressed work is still
+ *   accounted for (e.g. `Layer 0 — ready to work (11 items, 9 done hidden)`).
+ *   Members with any other status (`in-progress`, `not-started`,
+ *   `unknown`) always surface so parse errors and not-yet-started work
+ *   stay visible.
+ * - When every member of a layer is `done` (i.e. nothing actionable
+ *   remains after the filter), the entire layer collapses to a single
+ *   `Layer N: DONE (M items)` line with no member listing.
+ * - Passing `{ all: true }` disables both the hide-done filter and the
+ *   layer collapse — every member of every layer is listed regardless
+ *   of status, and the heading omits the `done hidden` suffix.
  *
  * ### Cycle fallback (AS 10.3 — `graph.cycles.length > 0`)
  *
@@ -170,10 +182,18 @@ function formatLayeredView(
 
 /**
  * Format one layer block: heading line plus, when expanded, one tree-
- * connector line per member node. When every member of a layer is
- * `done` and collapsing is enabled (`all === false`), the heading
- * shifts to the `Layer N: DONE (M items)` form and the member list is
- * suppressed.
+ * connector line per actionable member.
+ *
+ * Default mode (`all === false`) hides members with `status === 'done'`
+ * from the visible listing and tacks a `, N done hidden` suffix on the
+ * heading so the dropped work is still accounted for. When every
+ * member of the layer is `done` (zero actionable remainder), the whole
+ * layer collapses to the uniform `Layer N: DONE (M items)` line with
+ * no member listing.
+ *
+ * `--all` mode (`all === true`) disables both behaviors — every member
+ * surfaces with its full marker, and the heading omits the
+ * `done hidden` suffix.
  */
 function formatLayerBlock(
   layer: { layer: number; node_ids: string[] },
@@ -182,24 +202,43 @@ function formatLayerBlock(
   all: boolean,
 ): string {
   const total = layer.node_ids.length;
-  const allDone =
-    total > 0 &&
-    layer.node_ids.every((id) => graph.nodes[id]?.status === 'done');
 
-  if (allDone && !all) {
-    return formatLayerHeading(layer.layer, total, { collapsedDone: true });
+  // Partition members into actionable (everything that isn't `done`)
+  // and hidden-done. In `--all` mode the partition collapses — every
+  // member is "actionable" for display purposes, so no hiding occurs.
+  const visibleIds: string[] = [];
+  let doneHidden = 0;
+  for (const id of layer.node_ids) {
+    const node = graph.nodes[id];
+    if (all || node === undefined || node.status !== 'done') {
+      visibleIds.push(id);
+    } else {
+      doneHidden += 1;
+    }
+  }
+
+  // Layer with no actionable members → collapse to a single line. This
+  // covers both the legacy "all rows are `done`" case and the new
+  // default-mode hide-done filter (a layer of all-`done` nodes filters
+  // down to zero visible items).
+  if (visibleIds.length === 0 && total > 0) {
+    return formatLayerHeading(layer.layer, total, {
+      collapsedDone: true,
+      doneHidden: 0,
+    });
   }
 
   const heading = formatLayerHeading(layer.layer, total, {
     collapsedDone: false,
+    doneHidden,
   });
   const lines: string[] = [heading];
-  for (let i = 0; i < layer.node_ids.length; i++) {
-    const id = layer.node_ids[i];
+  for (let i = 0; i < visibleIds.length; i++) {
+    const id = visibleIds[i];
     if (id === undefined) continue;
     const node = graph.nodes[id];
     if (node === undefined) continue;
-    const isLast = i === layer.node_ids.length - 1;
+    const isLast = i === visibleIds.length - 1;
     lines.push(formatNodeLine(id, node, isLast, theme));
   }
   return lines.join('\n');
@@ -212,29 +251,35 @@ function formatLayerBlock(
  * `M items` is selected based on the count.
  *
  * `collapsedDone === true` overrides the layer-specific copy with the
- * uniform `Layer N: DONE (M items)` collapse line (AS 10.4) — the
- * caller decides when to flip it.
+ * uniform `Layer N: DONE (M items)` collapse line — the caller decides
+ * when to flip it. `doneHidden > 0` appends a `, N done hidden` suffix
+ * inside the parens so reviewers see that work was suppressed; the
+ * suffix is omitted under `collapsedDone` (the heading already says
+ * `DONE`) and under `doneHidden === 0` (nothing to surface).
  */
 function formatLayerHeading(
   layerIndex: number,
   count: number,
-  opts: { collapsedDone: boolean },
+  opts: { collapsedDone: boolean; doneHidden: number },
 ): string {
   const itemsWord = count === 1 ? 'item' : 'items';
   if (opts.collapsedDone) {
     return `Layer ${layerIndex}: DONE (${count} ${itemsWord})`;
   }
+  const hiddenSuffix =
+    opts.doneHidden > 0 ? `, ${opts.doneHidden} done hidden` : '';
   if (layerIndex === 0) {
-    return `Layer 0 — ready to work (${count} ${itemsWord})`;
+    return `Layer 0 — ready to work (${count} ${itemsWord}${hiddenSuffix})`;
   }
-  return `Layer ${layerIndex} (${count} ${itemsWord})`;
+  return `Layer ${layerIndex} (${count} ${itemsWord}${hiddenSuffix})`;
 }
 
 /**
- * Format a single node line under a layer / fallback heading. Uses the
- * theme's `branch` / `lastBranch` glyphs for the connector, an em-dash
- * to separate the fully-qualified id from the row title, and a trailing
- * status marker.
+ * Format a single node line under a layer / fallback heading. The line
+ * leads with the row's title (the scannable label), then the status
+ * marker, then a dim-painted fully-qualified id suffix so reviewers can
+ * still copy/paste the canonical reference without fighting it for
+ * visual weight.
  */
 function formatNodeLine(
   id: string,
@@ -244,7 +289,8 @@ function formatNodeLine(
 ): string {
   const connector = isLast ? theme.glyphs.lastBranch : theme.glyphs.branch;
   const marker = formatStatusMarker(node, theme);
-  return `${connector}${id} — ${node.row.title}  ${marker}`;
+  const dimId = theme.paint.dim(id);
+  return `${connector}${node.row.title}  ${marker}  ${dimId}`;
 }
 
 /**
