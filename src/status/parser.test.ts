@@ -146,6 +146,55 @@ body
     expect(dangling[0]).toMatch(/US9/);
   });
 
+  it('records dangling depends_on references in a structured dangling_refs field alongside the warning string', () => {
+    // Dual surfacing per data-model §4 / §6: the warning string MUST
+    // continue to be emitted (existing callers key off it), but the
+    // dropped reference MUST also appear in a structured field on the
+    // table so `buildDependencyGraph` can consume it without parsing
+    // strings.
+    const markdown = `## Dependency Order
+
+| ID  | Title | Depends On | Artifact |
+|-----|-------|------------|----------|
+| US1 | A     | —          | —        |
+| US2 | B     | —          | —        |
+| US3 | C     | US2, US9   | —        |
+| US4 | D     | US42       | —        |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    // Warnings are unchanged — both unresolved IDs still produce one
+    // warning each, in source order.
+    const danglingWarnings = result.warnings.filter((w) => /dangling/.test(w));
+    expect(danglingWarnings).toHaveLength(2);
+    expect(danglingWarnings[0]).toMatch(/US3/);
+    expect(danglingWarnings[0]).toMatch(/US9/);
+    expect(danglingWarnings[1]).toMatch(/US4/);
+    expect(danglingWarnings[1]).toMatch(/US42/);
+    // Structured field carries bare (non-fully-qualified) IDs in source
+    // order — the table itself has no path context to fully-qualify
+    // against.
+    expect(result.table.dangling_refs).toEqual([
+      { source_id: 'US3', missing_id: 'US9' },
+      { source_id: 'US4', missing_id: 'US42' },
+    ]);
+    // Surviving valid edges are kept on the row's `depends_on`.
+    expect(result.table.rows[2]?.depends_on).toEqual(['US2']);
+    expect(result.table.rows[3]?.depends_on).toEqual([]);
+  });
+
+  it('omits the dangling_refs field entirely when no references were dropped', () => {
+    const markdown = `## Dependency Order
+
+| ID  | Title | Depends On | Artifact |
+|-----|-------|------------|----------|
+| US1 | A     | —          | —        |
+| US2 | B     | US1        | —        |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toEqual([]);
+    expect(result.table.dangling_refs).toBeUndefined();
+  });
+
   it('coerces absolute Artifact paths to null with a warning', () => {
     const markdown = `## Dependency Order
 
