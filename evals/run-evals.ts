@@ -269,24 +269,41 @@ for (const scenario of finalScenarios) {
   // No-op when --dump was not supplied. Failures here are logged but do not
   // abort the run — a write error in a debug capture must not mask scenario
   // results.
+  //
+  // The scenario loader only requires `name` to be a non-empty string; path
+  // separators, `..` segments, and absolute paths could escape `dumpDir` or
+  // silently skip the write. Reject those before composing the path. Same
+  // rule the baseline loader applies in `evals/lib/baseline.ts`.
   if (dumpDir !== undefined) {
-    const textPath = path.join(dumpDir, `${scenario.name}.txt`);
-    const eventsPath = path.join(dumpDir, `${scenario.name}.events.jsonl`);
-    try {
-      fs.writeFileSync(textPath, output.extracted_text, 'utf8');
-      fs.writeFileSync(
-        eventsPath,
-        output.stream_events.map((e) => JSON.stringify(e)).join('\n') + '\n',
-        'utf8',
-      );
-      console.log(`  Dumped:    ${textPath}`);
-      console.log(`             ${eventsPath}`);
-    } catch (err) {
+    const name = scenario.name;
+    const unsafe =
+      name.includes('/') ||
+      name.includes('\\') ||
+      name.split(/[\\/]/).some((seg) => seg === '..') ||
+      path.isAbsolute(name);
+    if (unsafe) {
       console.error(
-        `  Dump failed for ${scenario.name}: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+        `  Skipping --dump for "${name}": scenario name must not contain path separators, parent-directory segments, or be absolute.`,
       );
+    } else {
+      const textPath = path.join(dumpDir, `${name}.txt`);
+      const eventsPath = path.join(dumpDir, `${name}.events.jsonl`);
+      try {
+        fs.writeFileSync(textPath, output.extracted_text, 'utf8');
+        fs.writeFileSync(
+          eventsPath,
+          output.stream_events.map((e) => JSON.stringify(e)).join('\n') + '\n',
+          'utf8',
+        );
+        console.log(`  Dumped:    ${textPath}`);
+        console.log(`             ${eventsPath}`);
+      } catch (err) {
+        console.error(
+          `  Dump failed for ${name}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
     }
   }
 
