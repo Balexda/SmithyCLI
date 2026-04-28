@@ -507,9 +507,9 @@ function addEdge(
 ): void {
   const key = pairKey(source, target);
   if (seenEdges.has(key)) return;
-  seenEdges.add(key);
   const successors = outgoing.get(source);
   if (successors === undefined) return;
+  seenEdges.add(key);
   successors.push(target);
   inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
 }
