@@ -27,7 +27,7 @@
   - The module-level JSDoc in `types.ts` is updated so the "still owned by User Story 10" note on `DependencyGraph` / `DependencyNode` reads accurately for their new landed state.
   - `npm run typecheck` and `npm test` pass with no new errors.
 
-- [ ] **Re-type `StatusJsonPayload.graph` as `DependencyGraph`**
+- [x] **Re-type `StatusJsonPayload.graph` as `DependencyGraph`**
 
   Replace the local inline type on the `graph` field of `StatusJsonPayload` in `src/commands/status.ts` with the imported `DependencyGraph`. The existing zero-value object literal (`{ nodes: {}, layers: [], cycles: [], dangling_refs: [] }`) already satisfies the new type — the runtime emission is unchanged in this slice. Slice 3 replaces that literal with a live `buildDependencyGraph(records)` call.
 

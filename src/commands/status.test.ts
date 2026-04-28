@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatSummaryHeader, pickTopNextAction } from './status.js';
+import {
+  formatSummaryHeader,
+  pickTopNextAction,
+  type StatusJsonPayload,
+} from './status.js';
 import type {
   ArtifactRecord,
+  DependencyGraph,
   NextAction,
   ScanSummary,
   StatusTree,
@@ -369,5 +374,82 @@ describe('pickTopNextAction', () => {
       ],
     };
     expect(pickTopNextAction(tree)).toEqual(secondAction);
+  });
+});
+
+/**
+ * US10 Slice 1: lock in the type wiring between the JSON payload's
+ * `graph` field and the canonical {@link DependencyGraph} type. The
+ * compile-time assertions below would have failed against the
+ * previous inline structural type (`Record<string, never>` / `[]`
+ * literal tuples) because a populated `DependencyGraph` is not
+ * assignable to that shape. The runtime guard re-checks the
+ * zero-value stub still slots into the new type.
+ */
+describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
+  it('accepts a populated DependencyGraph as the graph field', () => {
+    const fqId = 'specs/sample/sample.spec.md#US1';
+    const populated: DependencyGraph = {
+      nodes: {
+        [fqId]: {
+          record_path: 'specs/sample/sample.spec.md',
+          row: {
+            id: 'US1',
+            title: 'Sample story',
+            depends_on: [],
+            artifact_path: null,
+          },
+          status: 'not-started',
+        },
+      },
+      layers: [{ layer: 0, node_ids: [fqId] }],
+      cycles: [],
+      dangling_refs: [],
+    };
+    // Compile-time assertion: assigning a populated DependencyGraph
+    // to the `graph` field must typecheck. Under the previous inline
+    // type this would have produced TS2322 because `Record<string,
+    // DependencyNode>` is not assignable to `Record<string, never>`.
+    const payload: StatusJsonPayload = {
+      summary: {
+        counts: emptyCounts(),
+        orphan_count: 0,
+        broken_link_count: 0,
+        parse_error_count: 0,
+      },
+      records: [],
+      tree: { roots: [] },
+      graph: populated,
+    };
+    expect(payload.graph.nodes[fqId]?.record_path).toBe(
+      'specs/sample/sample.spec.md',
+    );
+    expect(payload.graph.layers[0]?.node_ids).toEqual([fqId]);
+  });
+
+  it('still accepts the zero-value runtime stub (Slice 1 emission unchanged)', () => {
+    // Mirrors the literal currently emitted by `statusAction` in JSON
+    // mode — Slice 3 swaps it for `buildDependencyGraph(records)`.
+    const stub: DependencyGraph = {
+      nodes: {},
+      layers: [],
+      cycles: [],
+      dangling_refs: [],
+    };
+    const payload: StatusJsonPayload = {
+      summary: {
+        counts: emptyCounts(),
+        orphan_count: 0,
+        broken_link_count: 0,
+        parse_error_count: 0,
+      },
+      records: [],
+      tree: { roots: [] },
+      graph: stub,
+    };
+    expect(payload.graph.nodes).toEqual({});
+    expect(payload.graph.layers).toEqual([]);
+    expect(payload.graph.cycles).toEqual([]);
+    expect(payload.graph.dangling_refs).toEqual([]);
   });
 });
