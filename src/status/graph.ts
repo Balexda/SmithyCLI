@@ -112,6 +112,20 @@ function nodeId(recordPath: string, rowId: string): string {
 }
 
 /**
+ * Unit Separator (US, U+001F). Used as the join character for Map / Set
+ * dedupe keys built from two fully-qualified node IDs. Plain ASCII text
+ * (so the source file stays text-mode and shows up cleanly under `rg`,
+ * `file`, etc.) yet a control character that cannot appear inside a
+ * fully-qualified ID, so the joined key can be split unambiguously.
+ */
+const KEY_SEP = '\u001F';
+
+/** Build a deterministic dedupe key for an `(a, b)` pair. */
+function pairKey(a: string, b: string): string {
+  return `${a}${KEY_SEP}${b}`;
+}
+
+/**
  * Project a flat `ArtifactRecord[]` into a {@link DependencyGraph}. Pure
  * function — does no I/O and does not mutate its input. See the
  * module-level JSDoc for the scoping rules.
@@ -233,7 +247,7 @@ export function buildDependencyGraph(
     for (const ref of tableDangling) {
       const source_id = nodeId(record.path, ref.source_id);
       const missing_id = nodeId(record.path, ref.missing_id);
-      const key = `${source_id} ${missing_id}`;
+      const key = pairKey(source_id, missing_id);
       if (seenDangling.has(key)) continue;
       seenDangling.add(key);
       dangling_refs.push({ source_id, missing_id });
@@ -491,7 +505,7 @@ function addEdge(
   inDegree: Map<string, number>,
   seenEdges: Set<string>,
 ): void {
-  const key = `${source} ${target}`;
+  const key = pairKey(source, target);
   if (seenEdges.has(key)) return;
   seenEdges.add(key);
   const successors = outgoing.get(source);
