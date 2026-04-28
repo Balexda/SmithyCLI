@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add `DependencyGraph` and `DependencyNode` to the status type surface**
+- [x] **Add `DependencyGraph` and `DependencyNode` to the status type surface**
 
   Extend `src/status/types.ts` with `DependencyNode` and `DependencyGraph` per data-model §6. `DependencyNode` carries `record_path`, `row`, and the rolled-up `status`. `DependencyGraph` carries `nodes` (keyed by fully-qualified `<artifact-path>#<row-id>` IDs), `layers`, `cycles`, and `dangling_refs`. The existing `export * from './types.js'` re-export in `src/status/index.ts` picks both up automatically.
 

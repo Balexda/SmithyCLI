@@ -10,8 +10,10 @@
  * The type surface grows incrementally story-by-story. User Story 1 shipped
  * `ArtifactRecord`, `NextAction`, `DependencyRow`, `DependencyOrderTable`,
  * and `ScanSummary`; User Story 2 Slice 1 adds `TreeNode` and `StatusTree`
- * alongside them. `DependencyGraph` / `DependencyNode` are still owned by
- * User Story 10.
+ * alongside them. User Story 10 Slice 1 lands `DependencyNode` and
+ * `DependencyGraph` as the cross-artifact graph type surface — the
+ * builder (`buildDependencyGraph`) and the `--graph` text renderer arrive
+ * in subsequent slices, but the types are now stable for downstream use.
  */
 
 /**
@@ -238,4 +240,65 @@ export interface ScanSummary {
   broken_link_count: number;
   /** Records with `status === 'unknown'`. */
   parse_error_count: number;
+}
+
+/**
+ * One node in the cross-artifact {@link DependencyGraph}. A thin wrapper
+ * carrying the owning {@link ArtifactRecord}'s path, the underlying
+ * {@link DependencyRow}, and the rolled-up {@link Status} that the
+ * classifier computed for that record. Per data-model §6, the `status`
+ * here is the owning record's classified status (derived from the
+ * downstream artifact), not a status synthesized from the row alone.
+ */
+export interface DependencyNode {
+  /** Repo-relative path to the owning {@link ArtifactRecord}. */
+  record_path: string;
+  /** The underlying parsed dependency-order row. */
+  row: DependencyRow;
+  /** Rolled-up status from the owning {@link ArtifactRecord}. */
+  status: ArtifactRecord['status'];
+}
+
+/**
+ * The cross-artifact DAG built by unioning every artifact's
+ * {@link DependencyOrderTable} and stitching nodes together via
+ * `artifact_path` links. Mirrors `smithy-status-skill.data-model.md` §6
+ * exactly.
+ *
+ * Nodes are keyed by fully-qualified ID — `<artifact-path>#<row-id>`
+ * (e.g., `specs/2026-04-12-004-smithy-status-skill/smithy-status-skill.spec.md#US2`).
+ * Fully-qualified IDs allow the same short ID (`US1`) to appear in
+ * multiple specs without collision.
+ *
+ * Per SD-012, the per-layer ID array is canonically named `node_ids`
+ * (the data-model + contracts wording). The AS 10.5 prose reads
+ * `ids: string[]`; that drift is tracked as SD-012 and resolved in
+ * favor of `node_ids` here.
+ */
+export interface DependencyGraph {
+  /**
+   * All nodes in the graph, keyed by fully-qualified
+   * `<artifact-path>#<row-id>` ID.
+   */
+  nodes: Record<string, DependencyNode>;
+  /**
+   * Topological layers. Layer 0 contains nodes with no incoming edges in
+   * the unioned graph; each subsequent layer contains nodes whose
+   * dependencies are all in earlier layers. Used directly by the
+   * `--graph` renderer.
+   */
+  layers: Array<{ layer: number; node_ids: string[] }>;
+  /**
+   * Each inner array is a cycle's participating fully-qualified node IDs
+   * in traversal order. Empty when the graph is a DAG. Non-empty cycles
+   * suppress layer computation for the nodes involved and trigger a
+   * structured warning.
+   */
+  cycles: string[][];
+  /**
+   * Any `depends_on` references the parser could not resolve — surfaced
+   * on the corresponding {@link ArtifactRecord} as warnings but retained
+   * here for JSON consumers.
+   */
+  dangling_refs: Array<{ source_id: string; missing_id: string }>;
 }
