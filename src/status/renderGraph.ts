@@ -357,9 +357,9 @@ function formatLayeredView(
  * Default mode (`all === false`) hides members with `status === 'done'`
  * from the visible listing and tacks a `, N done hidden` suffix on the
  * heading so the dropped work is still accounted for. When every
- * member of the layer is `done` (zero actionable remainder), the whole
- * layer collapses to the uniform `Layer N: DONE (M items)` line with
- * no member listing.
+ * member of the layer is `done` (zero actionable remainder), this
+ * function returns the empty string so the caller omits the layer
+ * entirely from the rendered output.
  *
  * `--all` mode (`all === true`) disables both behaviors — every member
  * surfaces with its full marker, and the heading omits the

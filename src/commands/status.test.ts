@@ -550,9 +550,9 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
    * Fixture where every spec row + tasks-file row in the graph rolls
    * up to `done`. Both spec rows have all-checked tasks files, so the
    * spec itself rolls up to `done`, and every node in the graph
-   * carries `status: 'done'`. In default mode every layer therefore
-   * collapses to `Layer N: DONE (M items)`; under `--all`, every
-   * layer expands and every node id surfaces.
+   * carries `status: 'done'`. In default mode fully-done layers are
+   * omitted entirely; under `--all`, every layer is shown and every
+   * node id surfaces.
    */
   function writeAllDoneFixture(): void {
     write(
