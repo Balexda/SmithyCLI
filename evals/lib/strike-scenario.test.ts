@@ -24,18 +24,38 @@ import { fileURLToPath } from 'node:url';
 
 import { validateStructure, verifySubAgents } from './structural.js';
 import { strikeScenario } from './strike-scenario.js';
-import type { AgentDispatch } from './types.js';
+import {
+  parseStreamString,
+  extractSubAgentDispatches,
+} from './parse-stream.js';
 
+// Pin the scenario against the most recent live capture, not the 2026-04-09
+// spike. The spike is frozen ground-truth for FR-014 (the architectural
+// validation pass) and predates the post-2026-04 strike template overhaul
+// that dropped `## Approach` / `## Risks` / `**Phase N:**` in favor of
+// `## Summary` / `## Assumptions` / `## Specification Debt` / `## PR`.
+// `evals/captures/` carries the rolling canonical capture refreshed each
+// time prompt-template drift forces a scenario refresh — see the
+// "Maintenance — when patterns drift" section of evals/README.md.
 const here = path.dirname(fileURLToPath(import.meta.url));
-const spikeOutputPath = path.resolve(here, '..', 'spike', 'output-strike.txt');
-const spikeOutput = fs.readFileSync(spikeOutputPath, 'utf8');
+const capturesDir = path.resolve(here, '..', 'captures');
+const captureTextPath = path.resolve(capturesDir, 'strike-health-check.txt');
+const captureEventsPath = path.resolve(
+  capturesDir,
+  'strike-health-check.events.jsonl',
+);
+const captureText = fs.readFileSync(captureTextPath, 'utf8');
+const captureEvents = parseStreamString(
+  fs.readFileSync(captureEventsPath, 'utf8'),
+);
+const captureDispatches = extractSubAgentDispatches(captureEvents);
 
 describe('strikeScenario', () => {
-  it('passes every structural check against the checked-in spike capture', () => {
+  it('passes every structural check against the checked-in capture', () => {
     // AS 5.1 / AS 5.3: the real strike output should satisfy the scenario's
     // structural expectations end-to-end.
     const results = validateStructure(
-      spikeOutput,
+      captureText,
       strikeScenario.structural_expectations,
     );
 
@@ -47,8 +67,9 @@ describe('strikeScenario', () => {
     // future edit that drops an assertion is caught here.
     const names = results.map((r) => r.check_name);
     expect(names).toContain("has '## Summary' heading");
-    expect(names).toContain("has '## Approach' heading");
-    expect(names).toContain("has '## Risks' heading");
+    expect(names).toContain("has '## Assumptions' heading");
+    expect(names).toContain("has '## Specification Debt' heading");
+    expect(names).toContain("has '## PR' heading");
     expect(names.some((n) => n.startsWith('required pattern present:'))).toBe(true);
     expect(names.some((n) => n.startsWith('forbidden pattern absent:'))).toBe(true);
   });
@@ -58,7 +79,7 @@ describe('strikeScenario', () => {
     // `^---\r?\n` forbidden pattern must catch this even though the unmodified
     // capture also contains `---` as a mid-document separator.
     const withFrontmatter =
-      '---\ntitle: Strike\nmodel: sonnet\n---\n\n' + spikeOutput;
+      '---\ntitle: Strike\nmodel: sonnet\n---\n\n' + captureText;
 
     const results = validateStructure(
       withFrontmatter,
@@ -76,7 +97,7 @@ describe('strikeScenario', () => {
     // Windows-captured output may use CRLF. The `\r?\n` in the forbidden
     // pattern keeps the check portable across platforms.
     const withCrlfFrontmatter =
-      '---\r\ntitle: Strike\r\nmodel: sonnet\r\n---\r\n\r\n' + spikeOutput;
+      '---\r\ntitle: Strike\r\nmodel: sonnet\r\n---\r\n\r\n' + captureText;
 
     const results = validateStructure(
       withCrlfFrontmatter,
@@ -138,17 +159,17 @@ describe('strikeScenario', () => {
     }
   });
 
-  it('matches every sub-agent evidence pattern against the spike capture', () => {
-    // Behavioral check: the configured patterns must actually fire against
-    // the real strike output. Running through the same `verifySubAgents`
-    // function the orchestrator uses — with an empty dispatches array —
-    // exercises only the extracted-text path, which is the lowest-friction
-    // signal for the three strike sub-agents (plan lens labels appear in
-    // the plan body, reconcile and clarify phrases appear in assistant text).
-    const dispatches: AgentDispatch[] = [];
+  it('matches every sub-agent evidence pattern against the captured run', () => {
+    // Behavioral check: the configured patterns must actually fire against a
+    // real strike run. Current strike output no longer narrates dispatches
+    // inline (verified by inspecting the captured assistant text), so the
+    // patterns target the dispatch-side surfaces — `description` and the
+    // cleaned-up `resultText` — that `extractSubAgentDispatches` exposes from
+    // the captured stream-json events. Feeding those dispatches through
+    // `verifySubAgents` mirrors the orchestrator's wire-up exactly.
     const results = verifySubAgents(
-      spikeOutput,
-      dispatches,
+      captureText,
+      captureDispatches,
       strikeScenario.sub_agent_evidence!,
     );
 

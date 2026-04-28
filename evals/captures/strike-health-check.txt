@@ -1,0 +1,41 @@
+Push failed (no remote configured — this fixture is local-only). Rendering the one-shot output with the PR-failure fallback.
+
+---
+
+## Summary
+
+- **Spec folder**: `specs/strikes/`
+- **Branch**: `strike/health-check-endpoint`
+- **Artifacts produced**: 1 file (`2026-04-27-health-check-endpoint.strike.md`)
+- **Functional requirements**: 5
+- **Tasks**: 5
+
+## Assumptions
+
+- Liveness-only semantics; readiness/dependency checks are explicitly out of scope.
+- HTTP method scope is GET only; Express auto-handles HEAD against GET routes, so no explicit HEAD declaration is needed.
+- Response Content-Type is `application/json`, set implicitly by `res.json()` (matches `users.ts` convention).
+- No CORS or auth middleware applies; fixture has none and the health route inherits the same (none) policy.
+- Mount-order placement above the users mount is organizational only; `/health` and `/api/users` do not overlap so order has no routing effect.
+- Port collision and double-mount are non-issues — `PORT` handling is unchanged and a single `app.use('/health', ...)` cannot self-collide.
+- `tsc --noEmit` plus manual smoke verification is the sufficient gate; `package.json` has no test runner and adding one would violate the atomic-commit/one-shot constraint. [Critical Assumption]
+
+### Plan-review notes (Minor findings, not auto-applied)
+
+- **FR-002 wording** — `users.ts` does not uniformly use the `_req` signature (only the GET `/` list handler does); the strike's task list pins the correct signature for the health handler, but FR-002's parenthetical is slightly imprecise.
+- **`$PORT` resolution** — SC-002 and Task 4 reference `$PORT` without noting the `process.env.PORT || 3000` default in `src/index.ts`; an operator new to the fixture may need to read `index.ts` to infer the default.
+- **Debt symmetry** — the deliberately-deferred app-wide JSON error middleware gap is acknowledged in Decisions and Out of Scope but not recorded as a parallel SD entry alongside SD-001.
+
+## Specification Debt
+
+1 item deferred — see `## Specification Debt` in the artifact.
+
+- Error response shape for `/health` is unspecified. The strike defines only the 200 path; non-2xx responses would fall to Express's default HTML error page, inconsistent with `users.ts`'s `{error: '...'}` JSON convention. Likely acceptable for a liveness probe (any non-2xx = unhealthy) but not explicitly acknowledged in the reconciled decisions. [Impact: Low]
+
+## PR
+
+PR creation failed — artifacts are on disk at `specs/strikes/2026-04-27-health-check-endpoint.strike.md`. Re-run `gh pr create` manually, or retry the command. Error: `fatal: 'origin' does not appear to be a git repository` (no remote configured on this fixture; the working directory is a freshly-initialized local-only git repo). Resolve by adding a remote (`git remote add origin <url>`), pushing the `strike/health-check-endpoint` branch, then running `gh pr create`.
+
+---
+
+**Next step**: when ready to implement, run `smithy-forge` against `specs/strikes/2026-04-27-health-check-endpoint.strike.md`.
