@@ -307,14 +307,17 @@ export function statusAction(opts: StatusOptions = {}): void {
 
   // US10 Slice 3: `--graph` swaps the tree pipeline for the layered
   // view from `renderGraph`. The summary header still prints first so
-  // users keep the per-type counts AND the `Next:` hint that the
-  // default text path surfaces (FR-016). The graph itself is built
-  // pre-filter (above), so when `--status` / `--type` retain no
-  // records we still print the same friendly "no match" hint as the
-  // default path — consistency wins over rendering an unfiltered
-  // graph behind a filtered summary.
+  // users keep the per-type counts (FR-016). The `Next:` hint is
+  // suppressed under `--graph` because the layered view already
+  // surfaces actionable next steps inline on every node line — a
+  // single `Next:` summary would just duplicate the topmost Layer-0
+  // hint and add visual noise. The graph itself is built pre-filter
+  // (above), so when `--status` / `--type` retain no records we still
+  // print the same friendly "no match" hint as the default path —
+  // consistency wins over rendering an unfiltered graph behind a
+  // filtered summary.
   if (opts.graph === true) {
-    console.log(formatSummaryHeader(summary, theme, topNextAction));
+    console.log(formatSummaryHeader(summary, theme, null));
     if (filteredRecords.length === 0) {
       console.log('No artifacts match the current filter.');
       return;

@@ -677,6 +677,30 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(payload.graph.nodes['specs/sample/sample.spec.md#US4']).toBeDefined();
   });
 
+  it('--graph suppresses the `Next:` line in the summary header (the layered view already surfaces actions)', () => {
+    writeFourStoryFixture();
+    statusAction({ root, graph: true });
+    const stdout = captured();
+    // Summary header still prints (per-type counts).
+    expect(stdout).toContain(' Smithy Status');
+    expect(stdout).toContain('Specs');
+    expect(stdout).toContain('Tasks');
+    // `Next:` line is intentionally absent — the graph view's own
+    // Layer 0 hints replace it.
+    expect(stdout).not.toContain('Next:');
+  });
+
+  it('default text mode (no --graph) still prints the `Next:` line in the summary header', () => {
+    // Regression guard: removing `Next:` under `--graph` must not
+    // remove it from the default text path. The default path only
+    // shows one consolidated next action, so the summary's `Next:`
+    // line is the user's primary cue there.
+    writeFourStoryFixture();
+    statusAction({ root });
+    const stdout = captured();
+    expect(stdout).toContain('Next:');
+  });
+
   it('--graph node lines surface a `→ smithy.<cmd>` per-row action hint instead of the dim FQ id', () => {
     writeFourStoryFixture();
     statusAction({ root, graph: true, all: true });
@@ -721,24 +745,29 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('specs/sample/01-first.tasks.md#S1');
   });
 
-  it('AS 10.4: --graph collapses fully-done layers to `Layer N: DONE (M items)` and drops member IDs in default mode', () => {
+  it('AS 10.4: --graph omits fully-done layers entirely from default mode (no heading, no members)', () => {
     writeAllDoneFixture();
     statusAction({ root, graph: true });
     const stdout = captured();
-    // Every node in the fixture rolls up to `done`, so every layer
-    // collapses. At least one collapsed layer line must surface, and
-    // none of the spec's row IDs can appear (they would only surface
-    // as expanded layer-member lines).
-    expect(stdout).toMatch(/Layer \d+: DONE \(\d+ items?\)/);
+    // Every node in the fixture rolls up to `done`. The previous
+    // collapse line (`Layer N: DONE (M items)`) added no actionable
+    // signal, so the whole graph block now drops out of default
+    // mode — no `Layer ` heading, no `DONE (` collapse line, no
+    // member IDs.
+    expect(stdout).not.toContain('Layer ');
+    expect(stdout).not.toContain('DONE (');
     expect(stdout).not.toContain('specs/sample/sample.spec.md#US1');
     expect(stdout).not.toContain('specs/sample/sample.spec.md#US2');
+    // Summary header still surfaces so users see the per-type counts.
+    expect(stdout).toContain(' Smithy Status');
   });
 
   it('AS 10.4: --graph --all expands every layer regardless of status', () => {
     writeAllDoneFixture();
     statusAction({ root, graph: true, all: true });
     const stdout = captured();
-    // No collapse line — every layer is fully expanded.
+    // No collapse line under --all either — every layer is fully
+    // expanded with its members surfaced.
     expect(stdout).not.toMatch(/Layer \d+: DONE/);
     // Both spec-row members surface as full node lines now.
     expect(stdout).toContain('specs/sample/sample.spec.md#US1');

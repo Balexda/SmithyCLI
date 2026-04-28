@@ -214,12 +214,17 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     return [layer0, layer1, layer2];
   }
 
-  it('collapses an all-done layer to a `Layer N: DONE (M items)` line in default mode', () => {
+  it('omits an all-done layer entirely from default mode (no heading, no members)', () => {
     const graph = buildDependencyGraph(buildSpec());
     const output = renderGraph(graph, { theme: utf8Theme });
-    expect(output).toContain('Layer 1: DONE (1 item)');
-    // The collapsed layer must NOT list its members.
+    // No Layer 1 heading at all — the per-layer done count adds no
+    // actionable signal so the whole block is dropped.
+    expect(output).not.toContain('Layer 1');
+    expect(output).not.toContain('DONE (');
     expect(output).not.toContain('specs/b/b.spec.md#US2');
+    // Surrounding non-done layers still surface.
+    expect(output).toContain('Layer 0');
+    expect(output).toContain('Layer 2');
   });
 
   it('expands every layer when {all: true} is passed', () => {
@@ -311,10 +316,10 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     expect(output).toContain('Still To Do');
   });
 
-  it('collapses a layer to `Layer N: DONE (M items)` when every member rolls up to done (parser-driven)', () => {
-    // Sanity check that the legacy collapse rule still fires when the
-    // hide-done filter has nothing left to surface — the entire layer
-    // is `done`. Mirrors AS 10.4 but exercises the new code path.
+  it('omits a fully-done layer entirely (no heading, no members) when every member rolls up to done', () => {
+    // When the hide-done filter has nothing left to surface, the
+    // whole layer block is dropped from default mode rather than
+    // emitting a `Layer N: DONE` collapse line.
     const r1 = makeRecord({
       type: 'spec',
       path: 'specs/a/a.spec.md',
@@ -337,11 +342,9 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     });
     const graph = buildDependencyGraph([r1, r2]);
     const output = renderGraph(graph, { theme: utf8Theme });
-    expect(output).toContain('Layer 0: DONE (2 items)');
-    expect(output).not.toContain('done hidden');
-    // No member listing under a collapsed layer.
-    expect(output).not.toContain('specs/a/a.spec.md#US1');
-    expect(output).not.toContain('specs/b/b.spec.md#US1');
+    // No layer heading and no member listing: an all-done graph
+    // collapses to the empty string in default mode.
+    expect(output).toBe('');
   });
 
   it('keeps non-done members (in-progress / not-started / unknown) visible alongside hidden done', () => {

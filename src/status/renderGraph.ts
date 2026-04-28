@@ -45,7 +45,7 @@
  *   consistent with the rest of `smithy status`. Done / unknown
  *   downstreams yield no hint; their lines fall back to the dim FQ id.
  *
- * #### Done-item hiding and layer collapsing (AS 10.4)
+ * #### Done-item hiding and layer omission (AS 10.4)
  *
  * Default mode aggressively focuses the view on what still needs work:
  *
@@ -57,10 +57,12 @@
  *   `unknown`) always surface so parse errors and not-yet-started work
  *   stay visible.
  * - When every member of a layer is `done` (i.e. nothing actionable
- *   remains after the filter), the entire layer collapses to a single
- *   `Layer N: DONE (M items)` line with no member listing.
+ *   remains after the filter), the entire layer is omitted from the
+ *   rendered output. No `Layer N: DONE` heading is emitted — the per-
+ *   layer done count adds no actionable signal, and the user can
+ *   re-expand via `--all` if they want to see the full graph.
  * - Passing `{ all: true }` disables both the hide-done filter and the
- *   layer collapse — every member of every layer is listed regardless
+ *   layer omission — every member of every layer is listed regardless
  *   of status, and the heading omits the `done hidden` suffix.
  *
  * ### Cycle fallback (AS 10.3 — `graph.cycles.length > 0`)
@@ -336,7 +338,14 @@ function formatLayeredView(
   if (graph.layers.length === 0) return '';
   const blocks: string[] = [];
   for (const layer of graph.layers) {
-    blocks.push(formatLayerBlock(layer, graph, theme, all, lookup));
+    const block = formatLayerBlock(layer, graph, theme, all, lookup);
+    // `formatLayerBlock` returns the empty string for fully-done
+    // layers in default mode (those are omitted from the rendered
+    // view rather than collapsed to a `DONE` heading). Skip them so
+    // adjacent blocks do not get an extra blank line where the
+    // collapse line used to live.
+    if (block.length === 0) continue;
+    blocks.push(block);
   }
   return blocks.join('\n\n');
 }
@@ -379,21 +388,19 @@ function formatLayerBlock(
     }
   }
 
-  // Layer with no actionable members → collapse to a single line. This
-  // covers both the legacy "all rows are `done`" case and the new
-  // default-mode hide-done filter (a layer of all-`done` nodes filters
-  // down to zero visible items).
+  // Layer with no actionable members → omit entirely from default
+  // mode. Earlier slices rendered a `Layer N: DONE (M items)`
+  // collapse line, but that conveyed no actionable information — the
+  // user already knows fully-done layers exist (they show up under
+  // `--all`), and showing per-layer done counts just added noise.
+  // Returning the empty string lets `formatLayeredView` filter the
+  // block out before joining so no blank line is emitted in its
+  // place either.
   if (visibleIds.length === 0 && total > 0) {
-    return formatLayerHeading(layer.layer, total, {
-      collapsedDone: true,
-      doneHidden: 0,
-    });
+    return '';
   }
 
-  const heading = formatLayerHeading(layer.layer, total, {
-    collapsedDone: false,
-    doneHidden,
-  });
+  const heading = formatLayerHeading(layer.layer, total, { doneHidden });
   const lines: string[] = [heading];
   for (let i = 0; i < visibleIds.length; i++) {
     const id = visibleIds[i];
@@ -410,24 +417,20 @@ function formatLayerBlock(
  * Compose the heading line for a layer. Layer 0 leads with the
  * "ready to work" copy from contracts §1; subsequent layers use the
  * simpler `Layer N (M items)` form. Singular `1 item` vs plural
- * `M items` is selected based on the count.
+ * `M items` is selected based on the count. `doneHidden > 0` appends
+ * a `, N done hidden` suffix inside the parens so reviewers see that
+ * work was suppressed by the hide-done filter.
  *
- * `collapsedDone === true` overrides the layer-specific copy with the
- * uniform `Layer N: DONE (M items)` collapse line — the caller decides
- * when to flip it. `doneHidden > 0` appends a `, N done hidden` suffix
- * inside the parens so reviewers see that work was suppressed; the
- * suffix is omitted under `collapsedDone` (the heading already says
- * `DONE`) and under `doneHidden === 0` (nothing to surface).
+ * Note: fully-done layers are omitted from the rendered output
+ * entirely (see `formatLayerBlock`); this function is never called
+ * for them.
  */
 function formatLayerHeading(
   layerIndex: number,
   count: number,
-  opts: { collapsedDone: boolean; doneHidden: number },
+  opts: { doneHidden: number },
 ): string {
   const itemsWord = count === 1 ? 'item' : 'items';
-  if (opts.collapsedDone) {
-    return `Layer ${layerIndex}: DONE (${count} ${itemsWord})`;
-  }
   const hiddenSuffix =
     opts.doneHidden > 0 ? `, ${opts.doneHidden} done hidden` : '';
   if (layerIndex === 0) {
