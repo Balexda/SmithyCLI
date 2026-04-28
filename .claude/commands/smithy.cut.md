@@ -58,13 +58,65 @@ One-shot mode: do **not** stop to ask the user to review or approve the
 refinements. The refinement diff is the review surface and the one-shot PR
 below is how the user sees it.
 
-**No-op check**: if refine returned an empty `refinements` list and no new
-`debt_items`, and `git status --porcelain` reports a clean worktree, this
-pass had nothing to change. Skip the commit, push, and PR-creation steps
-below. Render the one-shot output snippet with an explicit "no-op" note in
-`## Summary` ("Artifacts produced: 0 files — refine found no changes") and
-reuse the branch's existing PR URL if one exists (fall back to "No PR —
-nothing to change" otherwise). Do not fail with "nothing to commit".
+Plan-review runs unconditionally on the tasks file after refine — even
+when refine returned an empty `refinements` list. Refine and plan-review
+audit different categories, so plan-review can surface issues refine did
+not identify (internal contradictions, logical gaps, assumption-output
+drift, brittle references). The no-op check below fires only when both
+sub-agents produced nothing and the worktree is still clean.
+
+#### Plan-Review Pass (Phase 0c)
+
+After refine applies its changes to the tasks file (or declines to) and
+before the no-op check below, dispatch the **smithy-plan-review**
+sub-agent to perform a self-consistency review of the tasks file. Pass it:
+
+- **artifact_paths** — the repo-relative path to the refined tasks file
+  (`specs/<folder>/<NN>-<story-slug>.tasks.md`).
+- **artifact_type** — `tasks`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table:
+
+| Severity  | Confidence | Action                                                                                                    |
+|-----------|------------|-----------------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the tasks file on disk. Note the fix in the PR body.                          |
+| Critical  | Low        | Do not apply. Append to the tasks file's `## Specification Debt` section. Flag in PR for the reviewer.    |
+| Important | High       | Apply the `proposed_fix` to the tasks file on disk.                                                       |
+| Important | Low        | Do not apply. Append to the tasks file's `## Specification Debt` section.                                 |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                                   |
+
+For each Low-confidence finding routed to debt, append a new row to the
+tasks file's `## Specification Debt` table with the next available `SD-NNN`
+identifier (continue numbering from whatever the tasks file already contains,
+including debt inherited from the spec — do not reset). Use the finding's
+`description` for the Description column, set `Source Category` to
+`plan-review:<finding category>` (e.g., `plan-review:Internal
+contradiction`), copy severity into Impact and confidence into Confidence,
+set Status to `open`, and leave Resolution as `—`.
+
+For each High-confidence finding, edit the tasks file in place using the
+`proposed_fix`. The Phase 0c commit below captures both the refine diff and
+the plan-review fixes in the same commit.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the refinement PR body so the reviewer can
+confirm the underlying assumption rather than silently accepting the applied
+fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by cut.
+
+**No-op check** (runs after refine and plan-review): if refine returned an
+empty `refinements` list, plan-review returned no High-confidence fixes and
+no new debt rows, and `git status --porcelain` reports a clean worktree,
+this pass had nothing to change. Skip the commit, push, and PR-creation
+steps below. Render the one-shot output snippet with an explicit "no-op"
+note in `## Summary` ("Artifacts produced: 0 files — refine and plan-review
+found no changes") and reuse the branch's existing PR URL if one exists
+(fall back to "No PR — nothing to change" otherwise). Do not fail with
+"nothing to commit".
 
 1. Stage and commit the refinement diff on the current branch. The commit
    message should describe the refinements applied (e.g.,
@@ -649,6 +701,52 @@ Write-back procedure:
 
 The `Artifact` cell is the single source of truth for "does this user story
 have a tasks file yet".
+
+### Plan-Review Pass
+
+After the tasks file is on disk (and the spec write-back has been performed)
+and before committing, dispatch the **smithy-plan-review** sub-agent to
+perform a self-consistency review. Pass it:
+
+- **artifact_paths** — the repo-relative path to the tasks file just written
+  (for cut: `specs/<folder>/<NN>-<story-slug>.tasks.md`). The spec
+  write-back path is **not** part of the review's `artifact_paths` — the
+  review only audits the new tasks artifact, not the parent spec's
+  dependency-order table.
+- **artifact_type** — `tasks`.
+
+The agent is read-only and returns a `ReviewResult` containing `findings` and a
+`summary`. Process the findings using the shared severity × confidence triage
+table from the contracts:
+
+| Severity  | Confidence | Action                                                                                                    |
+|-----------|------------|-----------------------------------------------------------------------------------------------------------|
+| Critical  | High       | Apply the `proposed_fix` to the tasks file on disk. Note the fix in the PR body.                          |
+| Critical  | Low        | Do not apply. Append to the tasks file's `## Specification Debt` section. Flag in PR for the reviewer.    |
+| Important | High       | Apply the `proposed_fix` to the tasks file on disk.                                                       |
+| Important | Low        | Do not apply. Append to the tasks file's `## Specification Debt` section.                                 |
+| Minor     | Any        | Do not apply. Note in the PR body only.                                                                   |
+
+For each Low-confidence finding routed to debt, append a new row to the
+tasks file's `## Specification Debt` table with the next available `SD-NNN`
+identifier (continue numbering from whatever the tasks file already
+contains, including debt inherited from the spec in Phase 1 and new items
+from cut's own clarify run — do not reset). Use the finding's `description`
+for the Description column, set `Source Category` to `plan-review:<finding
+category>` (e.g., `plan-review:Internal contradiction`), copy severity into
+Impact and confidence into Confidence, set Status to `open`, and leave
+Resolution as `—`.
+
+For each High-confidence finding, edit the tasks file in place using the
+`proposed_fix`. The commit below captures both the original tasks file and
+the applied fixes in the same diff.
+
+If the agent returns drift findings (assumption-output drift category),
+surface them prominently in the PR body so the reviewer can confirm the
+underlying assumption rather than silently accepting the applied fix.
+
+The review agent never modifies files itself — all on-disk changes are made
+here, by cut.
 
 ### Commit and create the PR
 
