@@ -399,6 +399,103 @@ describe('buildDependencyGraph — cross-artifact stitching (AS 10.2)', () => {
   });
 });
 
+describe('buildDependencyGraph — node-status semantics (data-model §6)', () => {
+  // Per data-model §6, `DependencyNode.status` is the rolled-up status
+  // of the row's *downstream artifact*, not of the owning record. A
+  // user-story row whose tasks file is fully done must carry
+  // `status: 'done'` even when the owning spec rolls up to
+  // `in-progress` because *other* rows in the same spec are still
+  // open. Slice rows (which have no downstream record) fall back to
+  // the owning record's status.
+  const SPEC_PATH = 'specs/sample/sample.spec.md';
+
+  it('uses the downstream record status for a row, not the owning record status', () => {
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', [], { artifact_path: 'specs/sample/01-first.tasks.md' }),
+          row('US2', ['US1'], { artifact_path: 'specs/sample/02-second.tasks.md' }),
+        ],
+      },
+    });
+    const tasksDone = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'done',
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US1',
+    });
+    const tasksWip = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/02-second.tasks.md',
+      status: 'in-progress',
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US2',
+    });
+    const graph = buildDependencyGraph([spec, tasksDone, tasksWip]);
+    // US1's tasks file is done → US1 node carries 'done', NOT the
+    // spec's rolled-up 'in-progress'.
+    expect(graph.nodes[`${SPEC_PATH}#US1`]?.status).toBe('done');
+    // US2's tasks file is still in-progress.
+    expect(graph.nodes[`${SPEC_PATH}#US2`]?.status).toBe('in-progress');
+  });
+
+  it('falls back to the owning record status when no downstream record exists (slice rows)', () => {
+    // Slice rows have no downstream child record. The fallback uses
+    // the owning tasks record's rolled-up status — there is no other
+    // signal to surface.
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [row('S1'), row('S2', ['S1'])],
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    expect(graph.nodes['specs/sample/01-first.tasks.md#S1']?.status).toBe(
+      'in-progress',
+    );
+    expect(graph.nodes['specs/sample/01-first.tasks.md#S2']?.status).toBe(
+      'in-progress',
+    );
+  });
+
+  it('reads downstream from parent_path + parent_row_id even when the row\'s own artifact_path is null', () => {
+    // A row with `artifact_path: null` still has a virtual downstream
+    // record (the scanner emits one keyed off parent_path /
+    // parent_row_id). The node should still pick up that virtual
+    // record's status, not the owning record's.
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', [], { artifact_path: null })],
+      },
+    });
+    const virtualDone = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'done',
+      virtual: true,
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US1',
+    });
+    const graph = buildDependencyGraph([spec, virtualDone]);
+    expect(graph.nodes[`${SPEC_PATH}#US1`]?.status).toBe('done');
+  });
+});
+
 describe('buildDependencyGraph — dangling references (AS 10.6)', () => {
   const SPEC_PATH = 'specs/sample/sample.spec.md';
 

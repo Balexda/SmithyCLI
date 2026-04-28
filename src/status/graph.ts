@@ -65,6 +65,23 @@
  * multiple specs without collision, which is essential once
  * cross-artifact stitching is in play.
  *
+ * ## Node status semantics (data-model §6)
+ *
+ * Each `DependencyNode.status` is the rolled-up status of the row's
+ * **downstream artifact**, not the owning record. So a user-story row
+ * `<spec>#US3` whose tasks file is fully done carries `status: 'done'`
+ * even when the owning spec rolls up to `in-progress` because *other*
+ * stories in the same spec are still open. The builder reads the
+ * downstream from `parent_path` + `parent_row_id` (the scanner-
+ * populated inverse-lineage edge) and falls back to the owning
+ * record's status only when no downstream record exists — slice rows
+ * in tasks files are the canonical case there, since slices have no
+ * separate child file and therefore no scanner-emitted record. The
+ * fallback keeps slice nodes meaningful at the cost of inheriting the
+ * tasks-file's rolled-up state rather than per-slice completion (a
+ * future refinement could compute per-slice status from the body
+ * sections directly).
+ *
  * ## Determinism (SD-013)
  *
  * Within-layer node ordering is not specified by data-model §6 or
@@ -155,6 +172,29 @@ export function buildDependencyGraph(
   // never contribute any nodes either way.
   const eligible = records.filter((r) => !SENTINEL_PATHS.has(r.path));
 
+  // Inverse-lineage lookup: every record (real or virtual) the scanner
+  // emits carries `parent_path` + `parent_row_id` pointing at the row
+  // that claimed it. Indexing by `<parent_path>#<parent_row_id>` gives
+  // us, for each graph node `<owner>#<row_id>`, the downstream record
+  // that row corresponds to. Per data-model §6, `DependencyNode.status`
+  // is the *downstream artifact's* rolled-up status — not the owning
+  // record's — so this lookup is what makes the "rolled-up from the
+  // node's downstream" wording true at runtime.
+  const downstreamByParentSlot = new Map<string, ArtifactRecord>();
+  for (const record of eligible) {
+    if (
+      typeof record.parent_path === 'string' &&
+      record.parent_path.length > 0 &&
+      typeof record.parent_row_id === 'string' &&
+      record.parent_row_id.length > 0
+    ) {
+      downstreamByParentSlot.set(
+        `${record.parent_path}#${record.parent_row_id}`,
+        record,
+      );
+    }
+  }
+
   let cursor = 0;
   for (const record of eligible) {
     if (record.dependency_order.format !== 'table') continue;
@@ -169,10 +209,21 @@ export function buildDependencyGraph(
       // the first one wins — the parser already flags this as a
       // warning on the owning record, so the graph need not re-flag it.
       if (id in nodes) continue;
+      // Resolve the row's downstream record (real or virtual) and use
+      // ITS status as the node's rolled-up status. Falls back to the
+      // owning record's status when no downstream record exists —
+      // typically slice rows in tasks files (slices have no separate
+      // file and therefore no scanner-emitted child record). Without
+      // this fallback the row would carry no status at all; with it,
+      // slice rows inherit the tasks-file's rolled-up state, which
+      // matches the only signal the data model gives us at that level.
+      const downstreamSlot = `${record.path}#${row.id}`;
+      const downstream = downstreamByParentSlot.get(downstreamSlot);
+      const rolledUpStatus = downstream?.status ?? record.status;
       nodes[id] = {
         record_path: record.path,
         row,
-        status: record.status,
+        status: rolledUpStatus,
       };
       discoveryOrder.set(id, cursor);
       cursor += 1;

@@ -164,19 +164,27 @@ describe('renderGraph — layered view (AS 10.1)', () => {
 });
 
 describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
-  // Spec with three layers: US1 (Layer 0, in-progress), US2 (Layer 1,
-  // done), US3 (Layer 2, not-started). The Layer 1 collapses by default
-  // because every member is `done`; under `{ all: true }` it expands.
+  // Three-layer cross-artifact graph used to exercise per-layer
+  // omission semantics under the data-model §6 node-status rule (the
+  // node's status is the *downstream* artifact's rolled-up status, not
+  // the owning record's). Specifically:
+  //
+  //   - a.spec.md (in-progress, owns US1 → b)
+  //   - b.spec.md (in-progress, owns US2 → c, lives under a's US1)
+  //   - c.spec.md (done, owns US3, lives under b's US2)
+  //
+  // Resulting graph nodes (status from the downstream record's
+  // rolled-up status, fallback for c#US3 since c has no further child):
+  //
+  //   - a#US1.status = b.status = 'in-progress' (visible in Layer 0)
+  //   - b#US2.status = c.status = 'done'        (hidden, Layer 1 omitted)
+  //   - c#US3.status = c.status (fallback) = 'done' (hidden, Layer 2 omitted)
+  //
+  // So Layer 0 is visible, Layers 1 and 2 are omitted in default mode
+  // — every Layer-1+ node descended from c, which is fully done.
   const SPEC_PATH = 'specs/sample/sample.spec.md';
 
   function buildSpec(): ArtifactRecord[] {
-    // Each row lives in its own record so the rolled-up status varies
-    // per-layer. We synthesise the parent linkage so the cross-artifact
-    // stitcher pins later layers behind earlier ones — but the simplest
-    // recipe is to keep them all in one spec and lean on intra-table
-    // depends_on edges. Status is rolled up from the owning record, so
-    // we model "Layer 1 entirely done" by giving US2's owning record
-    // status: 'done'.
     const layer0 = makeRecord({
       type: 'spec',
       path: 'specs/a/a.spec.md',
@@ -190,7 +198,7 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     const layer1 = makeRecord({
       type: 'spec',
       path: 'specs/b/b.spec.md',
-      status: 'done',
+      status: 'in-progress',
       parent_path: 'specs/a/a.spec.md',
       parent_row_id: 'US1',
       dependency_order: {
@@ -202,7 +210,7 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     const layer2 = makeRecord({
       type: 'spec',
       path: 'specs/c/c.spec.md',
-      status: 'not-started',
+      status: 'done',
       parent_path: 'specs/b/b.spec.md',
       parent_row_id: 'US2',
       dependency_order: {
@@ -214,17 +222,20 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     return [layer0, layer1, layer2];
   }
 
-  it('omits an all-done layer entirely from default mode (no heading, no members)', () => {
+  it('omits layers whose downstream-derived nodes are all done (no heading, no members)', () => {
     const graph = buildDependencyGraph(buildSpec());
     const output = renderGraph(graph, { theme: utf8Theme });
-    // No Layer 1 heading at all — the per-layer done count adds no
-    // actionable signal so the whole block is dropped.
+    // Layer 0 surfaces (a#US1's downstream is b, in-progress).
+    expect(output).toContain('Layer 0');
+    expect(output).toContain('specs/a/a.spec.md#US1');
+    // Layers 1 and 2 are omitted entirely — every node in them rolls
+    // up to `done` via the data-model §6 downstream-status rule, so
+    // there is no actionable content to render.
     expect(output).not.toContain('Layer 1');
+    expect(output).not.toContain('Layer 2');
     expect(output).not.toContain('DONE (');
     expect(output).not.toContain('specs/b/b.spec.md#US2');
-    // Surrounding non-done layers still surface.
-    expect(output).toContain('Layer 0');
-    expect(output).toContain('Layer 2');
+    expect(output).not.toContain('specs/c/c.spec.md#US3');
   });
 
   it('expands every layer when {all: true} is passed', () => {
