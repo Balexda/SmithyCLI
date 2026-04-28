@@ -329,6 +329,50 @@ describe('renderGraph — cycle fallback (AS 10.3)', () => {
     expect(tail).not.toContain(`${SPEC_PATH}#US1`);
     expect(tail).not.toContain(`${SPEC_PATH}#US2`);
   });
+
+  it('lists non-cyclic nodes downstream of a cycle in the flat fallback', () => {
+    // US1 ↔ US2 form a cycle; US3 depends on US1, so Kahn's never
+    // promotes US3 — it is non-cyclic but lives outside `graph.layers`
+    // AND outside `graph.cycles`. The flat fallback must still surface
+    // it so the rendered output covers every node in `graph.nodes`.
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', ['US2']),
+          row('US2', ['US1']),
+          row('US3', ['US1']),
+        ],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    // Sanity guard: US3 really does live outside both layers and
+    // cycles in the builder output. If this invariant ever changes we
+    // want to know — the fallback rule it justifies would shift too.
+    const inAnyLayer = graph.layers.some((l) =>
+      l.node_ids.includes(`${SPEC_PATH}#US3`),
+    );
+    const inAnyCycle = graph.cycles.some((c) =>
+      c.includes(`${SPEC_PATH}#US3`),
+    );
+    expect(inAnyLayer).toBe(false);
+    expect(inAnyCycle).toBe(false);
+    expect(graph.nodes).toHaveProperty(`${SPEC_PATH}#US3`);
+
+    const output = renderGraph(graph, { theme: utf8Theme });
+    const fallbackPos = output.indexOf('Nodes (flat fallback):');
+    expect(fallbackPos).toBeGreaterThan(-1);
+    const tail = output.slice(fallbackPos);
+    expect(tail).toContain(`${SPEC_PATH}#US3`);
+    // Cyclic nodes still stay off the flat list — they only appear on
+    // the `Cycle:` line above.
+    expect(tail).not.toContain(`${SPEC_PATH}#US1`);
+    expect(tail).not.toContain(`${SPEC_PATH}#US2`);
+  });
 });
 
 describe('renderGraph — dangling references (AS 10.6)', () => {

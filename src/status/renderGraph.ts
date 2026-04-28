@@ -271,10 +271,13 @@ function formatStatusMarker(node: DependencyNode, theme: Theme): string {
 /**
  * Format the cycle-warning fallback. Leads with a painted warning line,
  * one `Cycle:` line per cycle entry (closing the loop by repeating the
- * first id), and then a flat listing of the non-cyclic nodes preserved
- * from `graph.layers` in topological order. Cyclic nodes are
- * intentionally excluded from the flat listing — they already appear on
- * the cycle lines above.
+ * first id), and then a flat listing of every non-cyclic node — both
+ * the nodes Kahn's algorithm placed in `graph.layers` AND any nodes
+ * downstream of a cycle that the builder left outside both `layers`
+ * and `cycles` (those nodes never reached in-degree zero, so they are
+ * absent from any layer, but they are not themselves cyclic). Cyclic
+ * nodes are intentionally excluded from the flat listing — they
+ * already appear on the cycle lines above.
  */
 function formatCycleFallback(graph: DependencyGraph, theme: Theme): string {
   const lines: string[] = [];
@@ -283,24 +286,41 @@ function formatCycleFallback(graph: DependencyGraph, theme: Theme): string {
       'WARNING: dependency graph contains cycle(s); falling back to flat listing.',
     ),
   );
+  // Build the set of cyclic IDs once so we can exclude them from the
+  // flat fallback while keeping iteration over `graph.nodes` cheap.
+  const cyclicIds = new Set<string>();
   for (const cycle of graph.cycles) {
     if (cycle.length === 0) continue;
     const first = cycle[0];
     if (first === undefined) continue;
+    for (const id of cycle) cyclicIds.add(id);
     // Close the loop by repeating the first id at the tail so the
     // cycle is visually obvious.
     const closed = [...cycle, first];
     lines.push(`Cycle: ${closed.join(' -> ')}`);
   }
-  // Flat fallback for any non-cyclic nodes still preserved by Kahn's in
-  // `graph.layers`. Cyclic nodes are excluded from every layer entry by
-  // the builder, so iterating layers gives us exactly the set of
-  // non-cyclic nodes in topological order.
+  // Flat fallback covers every non-cyclic node, not just the ones that
+  // ended up inside `graph.layers`. Walk `graph.layers` first so layered
+  // nodes keep their topological ordering, then sweep `graph.nodes` to
+  // catch any node Kahn's left outside both `layers` and `cycles` (i.e.
+  // nodes downstream of a cycle whose in-degree never reached zero).
+  // Without that second pass those nodes would silently disappear from
+  // the rendered output even though the JSON payload reports them.
   const flatIds: string[] = [];
+  const seenFlat = new Set<string>();
   for (const layer of graph.layers) {
     for (const id of layer.node_ids) {
+      if (cyclicIds.has(id)) continue;
+      if (seenFlat.has(id)) continue;
+      seenFlat.add(id);
       flatIds.push(id);
     }
+  }
+  for (const id of Object.keys(graph.nodes)) {
+    if (cyclicIds.has(id)) continue;
+    if (seenFlat.has(id)) continue;
+    seenFlat.add(id);
+    flatIds.push(id);
   }
   if (flatIds.length > 0) {
     const flatLines: string[] = ['', 'Nodes (flat fallback):'];
