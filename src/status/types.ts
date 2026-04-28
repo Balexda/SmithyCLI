@@ -12,10 +12,12 @@
  * and `ScanSummary`; User Story 2 Slice 1 adds `TreeNode` and `StatusTree`
  * alongside them. User Story 10 Slice 1 landed `DependencyNode` and
  * `DependencyGraph` as the cross-artifact graph type surface; Slice 2
- * builds them out — the within-artifact projection is implemented in
- * `graph.ts` (`buildDependencyGraph`) and the cross-artifact / cycle
- * extensions plus the `--graph` text renderer arrive in subsequent
- * tasks. The types are stable for downstream use today.
+ * implements the full builder in `graph.ts` (`buildDependencyGraph`) —
+ * within-artifact topological layering, cross-artifact edge stitching via
+ * `parent_path` / `parent_row_id`, structured dangling-reference reporting,
+ * and cycle detection via Tarjan's SCC algorithm. The types are stable for
+ * downstream use. The `--graph` text renderer and JSON wiring arrive in
+ * Slice 3.
  */
 
 /**
