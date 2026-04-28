@@ -13,9 +13,11 @@
  *      roll-up summary header followed by a hierarchical tree with
  *      next-action hints (default, via {@link renderTree} with
  *      `renderHints: true`). The JSON `tree` field is populated via
- *      {@link buildTree} (US2 Slice 1); the `graph` field is still
- *      stubbed and owned by US10. The top-level JSON shape is stable
- *      from US1 onward so consumers can depend on it today.
+ *      {@link buildTree} (US2 Slice 1); the `graph` field is typed
+ *      as the canonical {@link DependencyGraph} (US10 Slice 1) but
+ *      the runtime still emits a zero-value graph object until the
+ *      builder lands in US10 Slice 3. The top-level JSON shape is
+ *      stable from US1 onward so consumers can depend on it today.
  *   6. On an empty repo (no discovered artifacts), print a friendly hint
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error".
@@ -31,8 +33,8 @@
  * transform inserted between `buildTree` and `renderTree` (US3); JSON
  * mode continues to emit the uncollapsed tree structure
  * unconditionally. Remaining stubs (`--graph`, `--no-color`) are
- * accepted but have no behavioral effect — US10 wires `--graph`; a
- * colored renderer will wire `--no-color`.
+ * accepted but have no behavioral effect — US10 Slice 3 wires
+ * `--graph`; a colored renderer will wire `--no-color`.
  */
 
 import fs from 'node:fs';
@@ -51,6 +53,7 @@ import { buildTheme, type Theme } from '../status/theme.js';
 import type {
   ArtifactRecord,
   ArtifactType,
+  DependencyGraph,
   ScanSummary,
   Status,
   StatusTree,
@@ -89,7 +92,7 @@ export interface StatusOptions {
    * uncollapsed `buildTree(records)` structure.
    */
   all?: boolean;
-  /** Stub: render the cross-artifact graph. Parsed but not wired (US2/US10). */
+  /** Stub: render the cross-artifact graph. Parsed but not wired — US10 Slice 3 wires it. */
   graph?: boolean;
   /**
    * Suppress ANSI colors. Set by Commander's `--no-color` flag (produces
@@ -107,20 +110,19 @@ export interface StatusOptions {
 
 /**
  * Contract-shaped JSON payload emitted by `--format json`. `tree` is
- * now populated by {@link buildTree} (US2 Slice 1); `graph` is still a
- * stub owned by US10. The keys are emitted unconditionally so machine
- * consumers can depend on the top-level shape.
+ * populated by {@link buildTree} (US2 Slice 1); `graph` is typed as the
+ * canonical {@link DependencyGraph} (US10 Slice 1) but the runtime
+ * still emits a zero-value graph object. The graph builder (US10
+ * Slice 2) and live wiring (US10 Slice 3) replace the stub literal
+ * with `buildDependencyGraph(records)` in subsequent slices. The keys
+ * are emitted unconditionally so machine consumers can depend on the
+ * top-level shape.
  */
-interface StatusJsonPayload {
+export interface StatusJsonPayload {
   summary: ScanSummary;
   records: ArtifactRecord[];
   tree: StatusTree;
-  graph: {
-    nodes: Record<string, never>;
-    layers: [];
-    cycles: [];
-    dangling_refs: [];
-  };
+  graph: DependencyGraph;
 }
 
 /**
