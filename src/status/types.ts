@@ -16,8 +16,8 @@
  * within-artifact topological layering, cross-artifact edge stitching via
  * `parent_path` / `parent_row_id`, structured dangling-reference reporting,
  * and cycle detection via Tarjan's SCC algorithm. The types are stable for
- * downstream use. The `--graph` text renderer and JSON wiring arrive in
- * Slice 3.
+ * downstream use. Slice 3 wires the `--graph` text renderer (via
+ * `renderGraph.ts`) and populates the JSON `graph` field unconditionally.
  */
 
 /**

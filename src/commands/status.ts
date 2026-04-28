@@ -1,50 +1,64 @@
 /**
  * `smithy status` subcommand — thin CLI wiring around the status scanner.
  *
- * This module composes the pieces already built in US1 and US2 Slice 1:
+ * This module composes the pieces already built in US1, US2, and US10:
  *
  *   1. Resolve `--root` (defaults to `process.cwd()`).
  *   2. Hard-fail with exit 2 if the resolved path does not exist or is not
  *      a directory, matching the "non-existent `--root`" row of the
  *      contracts error table.
  *   3. Call {@link scan} to build the fully-classified `ArtifactRecord[]`.
- *   4. Derive a {@link ScanSummary} from the records.
+ *   4. Derive a {@link ScanSummary} from the records and a
+ *      {@link DependencyGraph} via {@link buildDependencyGraph} — both
+ *      computed from the pre-filter record set per SD-010 so they
+ *      reflect the full scan even when `--status` / `--type` narrow
+ *      the rendered tree view.
  *   5. Emit either contract-shaped JSON (`--format json`) or a per-type
  *      roll-up summary header followed by a hierarchical tree with
  *      next-action hints (default, via {@link renderTree} with
  *      `renderHints: true`). The JSON `tree` field is populated via
- *      {@link buildTree} (US2 Slice 1); the `graph` field is typed
- *      as the canonical {@link DependencyGraph} (US10 Slice 1) but
- *      the runtime still emits a zero-value graph object until the
- *      builder lands in US10 Slice 3. The top-level JSON shape is
- *      stable from US1 onward so consumers can depend on it today.
+ *      {@link buildTree} (US2 Slice 1); the JSON `graph` field is
+ *      populated via {@link buildDependencyGraph} (US10 Slice 3) and
+ *      always carries the canonical four keys (`nodes`, `layers`,
+ *      `cycles`, `dangling_refs`) so machine consumers can depend on
+ *      the top-level shape. `--graph` (US10 Slice 3) routes text
+ *      mode through {@link renderGraph}, printing topological layers
+ *      with done-layer collapsing, a cycle-warning fallback, and
+ *      dangling-ref diagnostics. The summary header still prints
+ *      above the graph view so users keep the per-type counts and
+ *      `Next:` hint they get in the default text path.
  *   6. On an empty repo (no discovered artifacts), print a friendly hint
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
- *      contracts treat this as "not an error".
+ *      contracts treat this as "not an error". The empty-repo hint
+ *      wins over `--graph` so users do not see an empty graph block
+ *      under it.
  *
  * `--status`, `--type`, and `--root` are wired end-to-end (US6):
  * `--root` is honored by `scan(resolvedRoot)` upstream, and
  * `filterRecords` applies the status / type predicates between the
  * scan and the tree / JSON emission with ancestor retention so AS 6.1
- * and AS 6.3 render correctly. `ScanSummary` is deliberately computed
- * from the pre-filter record set so the `summary` block keeps its
- * aggregate-scan framing (see SD-010). `--all` now disables
+ * and AS 6.3 render correctly. `ScanSummary` and the JSON `graph`
+ * are deliberately computed from the pre-filter record set so they
+ * keep their aggregate-scan framing (see SD-010). `--all` disables
  * done-subtree collapsing in text mode via the pure `collapseTree`
- * transform inserted between `buildTree` and `renderTree` (US3); JSON
- * mode continues to emit the uncollapsed tree structure
- * unconditionally. Remaining stubs (`--graph`, `--no-color`) are
- * accepted but have no behavioral effect — US10 Slice 3 wires
- * `--graph`; a colored renderer will wire `--no-color`.
+ * transform inserted between `buildTree` and `renderTree` (US3) and
+ * also disables done-layer collapsing inside {@link renderGraph}
+ * (US10); JSON mode continues to emit the uncollapsed tree structure
+ * unconditionally. `--no-color` is honored via {@link buildTheme}'s
+ * `noColor` flag (also picked up from the ambient `NO_COLOR` env
+ * var) so every painted surface respects it.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  buildDependencyGraph,
   buildTree,
   collapseTree,
   filterRecords,
   formatNextAction,
+  renderGraph,
   renderTree,
   scan,
 } from '../status/index.js';
@@ -92,7 +106,16 @@ export interface StatusOptions {
    * uncollapsed `buildTree(records)` structure.
    */
   all?: boolean;
-  /** Stub: render the cross-artifact graph. Parsed but not wired — US10 Slice 3 wires it. */
+  /**
+   * Render the cross-artifact dependency graph as topological layers in
+   * text mode. Routes through {@link renderGraph} instead of the default
+   * `buildTree` / `collapseTree` / `renderTree` pipeline; the summary
+   * header (with the `Next:` hint) still prints above the graph view.
+   * Honors `--all` for done-layer collapsing the same way the default
+   * text path honors it for done-subtree collapsing. Has no effect on
+   * `--format json` output, which always emits the populated graph
+   * regardless of this flag.
+   */
   graph?: boolean;
   /**
    * Suppress ANSI colors. Set by Commander's `--no-color` flag (produces
@@ -110,13 +133,15 @@ export interface StatusOptions {
 
 /**
  * Contract-shaped JSON payload emitted by `--format json`. `tree` is
- * populated by {@link buildTree} (US2 Slice 1); `graph` is typed as the
- * canonical {@link DependencyGraph} (US10 Slice 1) but the runtime
- * still emits a zero-value graph object. The graph builder (US10
- * Slice 2) and live wiring (US10 Slice 3) replace the stub literal
- * with `buildDependencyGraph(records)` in subsequent slices. The keys
- * are emitted unconditionally so machine consumers can depend on the
- * top-level shape.
+ * populated by {@link buildTree} (US2 Slice 1) over the post-filter
+ * record set; `graph` is populated by {@link buildDependencyGraph}
+ * (US10 Slice 3) over the *pre-filter* record set per SD-010 so the
+ * graph reflects the full scan even when `--status` / `--type` are
+ * present. All four `graph` keys (`nodes`, `layers`, `cycles`,
+ * `dangling_refs`) are emitted unconditionally — including for an
+ * empty repo, where they collapse to `{ nodes: {}, layers: [],
+ * cycles: [], dangling_refs: [] }` — so machine consumers can depend
+ * on the top-level shape.
  */
 export interface StatusJsonPayload {
   summary: ScanSummary;
@@ -211,9 +236,23 @@ export function statusAction(opts: StatusOptions = {}): void {
   // 6.3 context without any renderer change. `--root` is a no-op
   // here (the scan was already narrowed above); we pass it through
   // for signature symmetry. `summarize(records)` stays above the
-  // filter call so `ScanSummary` / the header remain aggregate over
-  // the full scan per SD-010.
+  // filter call so the `ScanSummary` / header remains aggregate over
+  // the full scan per SD-010 — `--status` / `--type` narrow the
+  // rendered tree view but never the summary header.
+  //
+  // The {@link DependencyGraph} is built lazily — only the JSON
+  // payload and the `--graph` text branch consume it, and computing
+  // it for the default text view (which doesn't reference it) would
+  // walk every record's dependency-order rows for nothing. Builds
+  // happen on first read via `getGraph()` below; the closure captures
+  // the result so the second consumer (if any) reuses the first
+  // build. Pre-filter records remain the input per SD-010.
   const summary = summarize(records);
+  let cachedGraph: DependencyGraph | null = null;
+  const getGraph = (): DependencyGraph => {
+    if (cachedGraph === null) cachedGraph = buildDependencyGraph(records);
+    return cachedGraph;
+  };
   // Build a sparse options object — `exactOptionalPropertyTypes` in
   // tsconfig forbids assigning `undefined` to optional fields, so we
   // only set each key when Commander actually populated it.
@@ -225,18 +264,15 @@ export function statusAction(opts: StatusOptions = {}): void {
   // JSON mode: always emit a valid JSON payload, even on an empty
   // repo. Machine consumers (CI, the smithy.status agent skill) parse
   // stdout as JSON unconditionally, so a plain-text empty-repo hint
-  // would break them.
+  // would break them. The `graph` field is populated unconditionally
+  // from the pre-filter scan per SD-010 — for an empty repo the
+  // builder returns the canonical zero-value shape itself.
   if (opts.format === 'json') {
     const payload: StatusJsonPayload = {
       summary,
       records: filteredRecords,
       tree: buildTree(filteredRecords),
-      graph: {
-        nodes: {},
-        layers: [],
-        cycles: [],
-        dangling_refs: [],
-      },
+      graph: getGraph(),
     };
     console.log(JSON.stringify(payload, null, 2));
     return;
@@ -247,6 +283,51 @@ export function statusAction(opts: StatusOptions = {}): void {
     console.log(
       'No Smithy artifacts found. Run `smithy.ignite` or `smithy.mark` to create one.',
     );
+    return;
+  }
+
+  const theme = buildTheme({
+    noColor: opts.color === false,
+    ascii: opts.ascii === true,
+  });
+
+  // US10 Slice 3: `--graph` swaps the tree pipeline for the layered
+  // view from `renderGraph`. The summary header still prints first so
+  // users keep the per-type counts (FR-016). The `Next:` hint is
+  // suppressed under `--graph` because the layered view already
+  // surfaces actionable next steps inline on every node line — a
+  // single `Next:` summary would just duplicate the topmost Layer-0
+  // hint and add visual noise. The graph itself is built pre-filter
+  // (above), so when `--status` / `--type` retain no records we still
+  // print the same friendly "no match" hint as the default path —
+  // consistency wins over rendering an unfiltered graph behind a
+  // filtered summary.
+  //
+  // Branch on `opts.graph` BEFORE the default-path tree pipeline so
+  // `buildTree` / `collapseTree` / `pickTopNextAction` only run for
+  // the default view that actually consumes them. Otherwise large
+  // repos would pay for an unused tree build on every `--graph`
+  // invocation.
+  if (opts.graph === true) {
+    console.log(formatSummaryHeader(summary, theme, null));
+    if (filteredRecords.length === 0) {
+      console.log('No artifacts match the current filter.');
+      return;
+    }
+    const renderedGraph = renderGraph(getGraph(), {
+      theme,
+      all: opts.all === true,
+      // Thread the pre-filter record set so each node line can carry a
+      // per-row next-action hint (`→ smithy.<cmd> <args>`) instead of
+      // the dim FQ id. Mirrors the `Next:` line in the summary header
+      // and the per-record hints under `renderTree`. SD-010 keeps the
+      // record set pre-filter so the hints reflect the full scan, in
+      // line with the graph itself.
+      records,
+    });
+    if (renderedGraph.length > 0) {
+      console.log(renderedGraph);
+    }
     return;
   }
 
@@ -271,14 +352,11 @@ export function statusAction(opts: StatusOptions = {}): void {
   // `collapseTree` drops their descendants before `renderTree` sees
   // them. The `--format json` branch above is untouched — this flag
   // only affects text-mode output (SD-016).
-  const theme = buildTheme({
-    noColor: opts.color === false,
-    ascii: opts.ascii === true,
-  });
   const tree = collapseTree(buildTree(filteredRecords), {
     all: opts.all === true,
   });
   const topNextAction = pickTopNextAction(tree);
+
   console.log(formatSummaryHeader(summary, theme, topNextAction));
   const rendered = renderTree(tree, {
     theme,

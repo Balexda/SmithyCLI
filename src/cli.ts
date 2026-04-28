@@ -78,21 +78,16 @@ program
       .choices(['text', 'json'])
       .default('text'),
   )
-  // `--all` is wired (US3) and `--status` / `--type` are wired (US6).
-  // `--graph` and `--no-color` remain stubs that Commander parses so
-  // `smithy status --help` advertises the full surface; `--graph` is
-  // owned by US10 and `--no-color` has no effect until a colored
-  // renderer lands.
-  //
-  // `--status` and `--type` deliberately do NOT use Commander
-  // `.choices()` because Commander's invalid-choice handler exits with
-  // code 1, while the contracts mandate exit code 2 for invalid values
-  // on these two flags. `statusAction` validates them manually and
-  // sets `process.exitCode = 2`.
+  // `--all`, `--status`, `--type`, and `--graph` are all wired
+  // end-to-end. `--status` and `--type` deliberately do NOT use
+  // Commander `.choices()` because Commander's invalid-choice handler
+  // exits with code 1, while the contracts mandate exit code 2 for
+  // invalid values on these two flags. `statusAction` validates them
+  // manually and sets `process.exitCode = 2`.
   .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown')
   .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks')
   .option('--all', 'Disable collapsing of done subtrees so every artifact surfaces')
-  .option('--graph', 'Render the cross-artifact dependency graph (stub — wired in US2/US10)')
+  .option('--graph', 'Render the cross-artifact dependency graph as topological layers (text mode)')
   .option('--no-color', 'Suppress ANSI color output')
   .option('--ascii', 'Use ASCII tree connectors and icons (auto when terminal is not UTF-8)')
   .action((opts: Record<string, unknown>) => {
