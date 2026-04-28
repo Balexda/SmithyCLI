@@ -24,5 +24,6 @@ export {
 } from './tree.js';
 export { collapseTree, type CollapseTreeOptions } from './collapse.js';
 export { renderTree, type RenderTreeOptions } from './render.js';
+export { renderGraph, type RenderGraphOptions } from './renderGraph.js';
 export { filterRecords, type FilterRecordsOptions } from './filter.js';
 export { buildDependencyGraph } from './graph.js';

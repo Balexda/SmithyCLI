@@ -97,7 +97,7 @@
 
 ### Tasks
 
-- [ ] **Implement `renderGraph` in a new `src/status/renderGraph.ts` module**
+- [x] **Implement `renderGraph` in a new `src/status/renderGraph.ts` module**
 
   Create `src/status/renderGraph.ts` exporting `renderGraph(graph: DependencyGraph, options?: RenderGraphOptions): string`. The renderer emits one labeled block per layer (`Layer 0 (ready):`, `Layer 1:`, …), listing each node's title and fully-qualified ID under its layer heading. A layer whose members are all `status: 'done'` collapses to a single `Layer N: DONE (M items)` line in the default (non-`--all`) mode. When `graph.cycles` is non-empty, the output leads with a human-readable cycle-warning block listing the participating fully-qualified IDs and renders the non-cyclic nodes in a flat layer-0-style listing instead of the layered view (per AS 10.3 fallback). Dangling references in `graph.dangling_refs` surface as their own warning lines. Re-export from `src/status/index.ts`.
 
