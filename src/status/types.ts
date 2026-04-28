@@ -85,6 +85,31 @@ export interface DependencyOrderTable {
    * the owning `ArtifactRecord`.
    */
   format: 'table' | 'legacy' | 'missing';
+  /**
+   * Structured record of every `depends_on` reference that the parser
+   * dropped during the second-pass dangling-ref resolution. Each entry
+   * carries the `source_id` (the row whose `depends_on` cell named the
+   * missing target) and the `missing_id` (the unresolved ID that did
+   * not match any row in the same table). Entries are recorded in
+   * source order — a row with multiple unresolved deps appears once
+   * per missing ID.
+   *
+   * IDs are bare (e.g., `US3`, `US9`) because the table itself has no
+   * artifact-path context; `buildDependencyGraph` upgrades them to
+   * fully-qualified `<artifact-path>#<id>` form when emitting
+   * `DependencyGraph.dangling_refs`.
+   *
+   * Optional / omitted (rather than empty array) when the parser had
+   * nothing to drop — keeps the in-memory shape cheap for the common
+   * case. Consumers MUST treat `undefined` and `[]` as equivalent.
+   *
+   * Dual surfacing: data-model §4 / §6 require unresolved references to
+   * appear BOTH as a parser warning string on the owning
+   * `ArtifactRecord` AND in this structured form. Do not remove the
+   * warning when populating this field — both surfaces are part of the
+   * contract.
+   */
+  dangling_refs?: Array<{ source_id: string; missing_id: string }>;
 }
 
 /**

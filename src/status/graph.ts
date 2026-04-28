@@ -9,23 +9,46 @@
  * for the same input — the graph is a pure projection of the records
  * supplied to it.
  *
- * ## Scope (US10 Slice 2 Task 1)
+ * ## Scope (US10 Slice 2 Tasks 1 + 2)
  *
- * Only the within-artifact case is implemented here: every node lives
- * inside the table that produced it, and only intra-table `depends_on`
- * edges contribute to layering. Cross-artifact edges (parent rows
- * blocking child roots), structured `dangling_refs`, virtual-record
- * inclusion as graph nodes, and cycle detection are explicitly deferred
- * to Tasks 2 and 3 of this same slice. This task therefore always
- * returns `cycles: []` and `dangling_refs: []`.
+ * Task 1 covered the within-artifact case: every node lives inside the
+ * table that produced it, and only intra-table `depends_on` edges
+ * contribute to layering. Task 2 extends that union with:
+ *
+ *   - Cross-artifact edges via the scanner-populated `parent_path` +
+ *     `parent_row_id` fields. A child record's "root" rows (rows whose
+ *     intra-table `depends_on` is empty) are treated as blocked by the
+ *     fully-qualified parent dep-order row that referenced the child,
+ *     so the unioned graph spans the full RFC → features → spec → tasks
+ *     lineage. Cross-artifact edges are derived exclusively from
+ *     `parent_path` / `parent_row_id` — never from filename convention.
+ *
+ *   - Structured dangling-reference reporting via
+ *     {@link DependencyOrderTable.dangling_refs}. The parser now
+ *     records every `depends_on` ID it dropped during second-pass
+ *     resolution alongside the existing warning string; the builder
+ *     consumes that structured metadata (never parses warnings) and
+ *     emits one fully-qualified `{ source_id, missing_id }` entry per
+ *     unique pair into `graph.dangling_refs`.
+ *
+ *   - Virtual records (`virtual: true`) participate as ordinary graph
+ *     nodes. In practice they have `format: 'missing'` / `rows: []`, so
+ *     they often contribute zero nodes themselves, but cross-artifact
+ *     edges still flow through them via the `parent_row_id` link from
+ *     any further child that references them.
+ *
+ * Cycle detection still defers to Task 3; this module currently always
+ * returns `cycles: []`. If a cross-artifact cycle ever produced one,
+ * the Kahn pass would simply leave the cyclic nodes unplaced and the
+ * `while` loop would terminate early — Task 3 will surface them.
  *
  * ## Node identity
  *
  * Nodes are keyed by fully-qualified ID — `<record.path>#<row.id>`
  * (e.g. `specs/2026-04-12-004-smithy-status-skill/smithy-status-skill.spec.md#US2`).
  * Fully-qualified IDs allow the same short ID (`US1`) to appear in
- * multiple specs without collision, which becomes essential once
- * cross-artifact stitching lands in Task 2.
+ * multiple specs without collision, which is essential once
+ * cross-artifact stitching is in play.
  *
  * ## Determinism (SD-013)
  *
@@ -42,6 +65,9 @@
  *   - Records whose `dependency_order.format !== 'table'` (i.e. legacy
  *     or missing). The owning record is already `status: 'unknown'` in
  *     these cases and contributes nothing meaningful to the graph.
+ *     Virtual records typically fall into this bucket too — they hold
+ *     no rows of their own — but their `parent_path` / `parent_row_id`
+ *     links still inform cross-artifact edges into any further child.
  *   - Records whose `path` matches one of the synthetic tree sentinels
  *     (`ORPHANED_SPECS_PATH`, `BROKEN_LINKS_PATH`, `ORPHANED_TASKS_PATH`).
  *     These exist purely as tree-grouping stand-ins and have no place
@@ -90,10 +116,18 @@ export function buildDependencyGraph(
   // In-degree count per node; nodes with zero in-degree start in the
   // queue.
   const inDegree = new Map<string, number>();
+  // De-duplicating set of cross-artifact edges already wired so
+  // duplicate parent rows (extremely unusual in practice) cannot
+  // double-count a successor's in-degree.
+  const seenEdges = new Set<string>();
+
+  // Filter out sentinel-pathed records up front. We still iterate
+  // `records` for cross-artifact stitching below, but those records
+  // never contribute any nodes either way.
+  const eligible = records.filter((r) => !SENTINEL_PATHS.has(r.path));
 
   let cursor = 0;
-  for (const record of records) {
-    if (SENTINEL_PATHS.has(record.path)) continue;
+  for (const record of eligible) {
     if (record.dependency_order.format !== 'table') continue;
 
     // First pass: register every row as a node. Doing this before
@@ -118,10 +152,9 @@ export function buildDependencyGraph(
     }
   }
 
-  // Second pass: wire edges. We re-walk records so this stays a single
-  // top-level loop; per-row work is O(depends_on.length).
-  for (const record of records) {
-    if (SENTINEL_PATHS.has(record.path)) continue;
+  // Second pass: wire intra-table edges. Re-walks records so this stays
+  // a single top-level loop; per-row work is O(depends_on.length).
+  for (const record of eligible) {
     if (record.dependency_order.format !== 'table') continue;
 
     for (const row of record.dependency_order.rows) {
@@ -129,19 +162,66 @@ export function buildDependencyGraph(
       if (!(targetId in nodes)) continue;
       for (const depId of row.depends_on) {
         const sourceId = nodeId(record.path, depId);
-        // Within-task scope: only intra-table edges are considered. A
-        // depends_on entry whose ID does not name a sibling row in the
-        // same table is silently dropped here — Task 2 will surface
-        // these via structured `dangling_refs`.
+        // Intra-table edges only — `depends_on` may only reference IDs
+        // inside the same table. Anything else was a parse-time
+        // dangling reference and was dropped before reaching us.
         if (!(sourceId in nodes)) continue;
-        const successors = outgoing.get(sourceId);
-        // `outgoing.get` is guaranteed defined because every key in
-        // `nodes` was seeded above; the explicit guard keeps TS happy
-        // without an `as` assertion.
-        if (successors === undefined) continue;
-        successors.push(targetId);
-        inDegree.set(targetId, (inDegree.get(targetId) ?? 0) + 1);
+        addEdge(sourceId, targetId, outgoing, inDegree, seenEdges);
       }
+    }
+  }
+
+  // Third pass: stitch cross-artifact edges. A child record's "root"
+  // rows (rows whose intra-table `depends_on` is empty) are blocked by
+  // the parent row that referenced them. Per the data model
+  // (§Relationships), parent linkage is authoritative via
+  // `parent_path` + `parent_row_id` — populated by the scanner during
+  // Phase 2 — so we read those exclusively rather than re-deriving
+  // anything from filenames.
+  //
+  // Edges are only created when BOTH endpoints exist as graph nodes,
+  // so a missing parent record (or a parent whose dep-order table
+  // dropped the row) silently produces no edge. The child's root rows
+  // simply remain at in-degree 0 and surface as graph roots, which is
+  // the correct behavior for orphaned records.
+  for (const record of eligible) {
+    if (record.dependency_order.format !== 'table') continue;
+    const parentPath = record.parent_path;
+    const parentRowId = record.parent_row_id;
+    if (typeof parentPath !== 'string' || parentPath.length === 0) continue;
+    if (typeof parentRowId !== 'string' || parentRowId.length === 0) continue;
+    const parentNodeId = nodeId(parentPath, parentRowId);
+    if (!(parentNodeId in nodes)) continue;
+
+    for (const row of record.dependency_order.rows) {
+      // Only "root" rows (no intra-table predecessors) are pinned to the
+      // parent — non-root rows are already gated by their intra-table
+      // dependencies, which themselves transitively bottom out at the
+      // record's roots.
+      if (row.depends_on.length > 0) continue;
+      const childNodeId = nodeId(record.path, row.id);
+      if (!(childNodeId in nodes)) continue;
+      addEdge(parentNodeId, childNodeId, outgoing, inDegree, seenEdges);
+    }
+  }
+
+  // Fourth pass: collect structured dangling references from each
+  // table and lift them into the graph's `dangling_refs` field with
+  // fully-qualified IDs. We deliberately consume the parser's
+  // structured field (never the warning strings) so the surfaces stay
+  // independently typed.
+  const dangling_refs: Array<{ source_id: string; missing_id: string }> = [];
+  const seenDangling = new Set<string>();
+  for (const record of eligible) {
+    const tableDangling = record.dependency_order.dangling_refs;
+    if (tableDangling === undefined) continue;
+    for (const ref of tableDangling) {
+      const source_id = nodeId(record.path, ref.source_id);
+      const missing_id = nodeId(record.path, ref.missing_id);
+      const key = `${source_id} ${missing_id}`;
+      if (seenDangling.has(key)) continue;
+      seenDangling.add(key);
+      dangling_refs.push({ source_id, missing_id });
     }
   }
 
@@ -173,10 +253,10 @@ export function buildDependencyGraph(
       }
     }
     if (layerNodeIds.length === 0) {
-      // Within-task scope cannot produce cycles for this slice (every
-      // edge is intra-table and the parser drops dangling refs), but
-      // breaking out defensively avoids an infinite loop if a future
-      // change introduces them. Cycle handling lands in Task 3.
+      // Cycle detection lands in Task 3. For now, breaking out
+      // defensively avoids an infinite loop if a cross-artifact cycle
+      // were ever introduced — the cyclic nodes simply remain
+      // unplaced.
       break;
     }
     for (const id of layerNodeIds) {
@@ -195,6 +275,27 @@ export function buildDependencyGraph(
     nodes,
     layers,
     cycles: [],
-    dangling_refs: [],
+    dangling_refs,
   };
+}
+
+/**
+ * Wire a directed edge `source -> target` in the adjacency + in-degree
+ * maps, de-duplicating against `seenEdges` so the same pair cannot
+ * inflate `target`'s in-degree more than once.
+ */
+function addEdge(
+  source: string,
+  target: string,
+  outgoing: Map<string, string[]>,
+  inDegree: Map<string, number>,
+  seenEdges: Set<string>,
+): void {
+  const key = `${source} ${target}`;
+  if (seenEdges.has(key)) return;
+  seenEdges.add(key);
+  const successors = outgoing.get(source);
+  if (successors === undefined) return;
+  successors.push(target);
+  inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
 }

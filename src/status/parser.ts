@@ -190,7 +190,14 @@ export function parseDependencyTable(
 
   // Second pass: resolve dangling depends_on references against the
   // set of valid IDs in this table.
+  //
+  // Dual surfacing per data-model §4 / §6: every dropped reference goes
+  // both onto the parallel `warnings` list (preserved verbatim so
+  // existing callers that key off the warning text keep working) AND
+  // into the structured `dangling_refs` field on the returned table so
+  // `buildDependencyGraph` can consume it without parsing strings.
   const validIds = new Set(partials.map((p) => p.row.id));
+  const dangling_refs: Array<{ source_id: string; missing_id: string }> = [];
   for (const { row, rawDependsOn } of partials) {
     const resolved: string[] = [];
     for (const dep of rawDependsOn) {
@@ -200,14 +207,22 @@ export function parseDependencyTable(
         warnings.push(
           `dependency_order: ${row.id} depends on dangling ID '${dep}' — dropped`,
         );
+        dangling_refs.push({ source_id: row.id, missing_id: dep });
       }
     }
     row.depends_on = resolved;
     rows.push(row);
   }
 
+  // Only emit `dangling_refs` when there is something to surface — keeps
+  // the table shape cheap for the common (clean) case.
+  const table: DependencyOrderTable =
+    dangling_refs.length > 0
+      ? { rows, id_prefix, format: 'table', dangling_refs }
+      : { rows, id_prefix, format: 'table' };
+
   return {
-    table: { rows, id_prefix, format: 'table' },
+    table,
     warnings,
   };
 }
