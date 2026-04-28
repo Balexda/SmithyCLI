@@ -499,3 +499,158 @@ describe('buildDependencyGraph — dangling references (AS 10.6)', () => {
     expect(graph.dangling_refs).toEqual([]);
   });
 });
+
+describe('buildDependencyGraph — cycle detection (AS 10.3)', () => {
+  const SPEC_PATH = 'specs/sample/sample.spec.md';
+
+  it('detects a two-node mutual cycle and excludes both nodes from layers', () => {
+    // US1 depends on US2 and US2 depends on US1 — mutual cycle.
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1', ['US2']), row('US2', ['US1'])],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    expect(graph.cycles.length).toBe(1);
+    const cycle = graph.cycles[0];
+    expect(cycle).toBeDefined();
+    if (cycle === undefined) return;
+    // The cycle entry contains exactly both fully-qualified node IDs;
+    // ordering is deterministic by traversal from the smallest seed.
+    expect([...cycle].sort()).toEqual(
+      [`${SPEC_PATH}#US1`, `${SPEC_PATH}#US2`].sort(),
+    );
+    // The builder does not throw, and neither cyclic node lands in any
+    // layer.
+    for (const layer of graph.layers) {
+      expect(layer.node_ids).not.toContain(`${SPEC_PATH}#US1`);
+      expect(layer.node_ids).not.toContain(`${SPEC_PATH}#US2`);
+    }
+  });
+
+  it('reports cycles as an empty array for a pure DAG (regression)', () => {
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1'), row('US2', ['US1']), row('US3', ['US2'])],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    expect(graph.cycles).toEqual([]);
+  });
+
+  it('detects a three-node cycle (A→B→C→A) with all three IDs in one entry', () => {
+    // US1 → US2 → US3 → US1 means each row's depends_on points to its
+    // predecessor in the cycle.
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', ['US3']),
+          row('US2', ['US1']),
+          row('US3', ['US2']),
+        ],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    expect(graph.cycles.length).toBe(1);
+    const cycle = graph.cycles[0];
+    expect(cycle).toBeDefined();
+    if (cycle === undefined) return;
+    expect([...cycle].sort()).toEqual(
+      [
+        `${SPEC_PATH}#US1`,
+        `${SPEC_PATH}#US2`,
+        `${SPEC_PATH}#US3`,
+      ].sort(),
+    );
+    expect(graph.layers).toEqual([]);
+  });
+
+  it('layers non-cyclic nodes correctly while excluding cyclic ones from layers', () => {
+    // US1 ↔ US2 form a cycle; US3 is independent and US4 depends on US3.
+    // Both US3 and US4 must be layered correctly while US1 and US2 are
+    // excluded.
+    const spec = makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', ['US2']),
+          row('US2', ['US1']),
+          row('US3'),
+          row('US4', ['US3']),
+        ],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    expect(graph.cycles.length).toBe(1);
+    expect(graph.layers).toEqual([
+      { layer: 0, node_ids: [`${SPEC_PATH}#US3`] },
+      { layer: 1, node_ids: [`${SPEC_PATH}#US4`] },
+    ]);
+  });
+
+  it('detects a cross-artifact cycle defensively (parent ↔ child via parent_row_id)', () => {
+    // Defensive case: spec US1 references tasks S1 as its child via the
+    // parent_path / parent_row_id linkage; we engineer a depends_on inside
+    // the spec table that points at... well, we cannot point a spec row at
+    // a tasks row through depends_on (intra-table only). Instead we craft
+    // two spec records where each declares the other as its parent, so
+    // their root rows pin each other across the cross-artifact stitch.
+    const SPEC_A = 'specs/a/a.spec.md';
+    const SPEC_B = 'specs/b/b.spec.md';
+    const specA = makeRecord({
+      type: 'spec',
+      path: SPEC_A,
+      status: 'in-progress',
+      parent_path: SPEC_B,
+      parent_row_id: 'US1',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1')],
+      },
+    });
+    const specB = makeRecord({
+      type: 'spec',
+      path: SPEC_B,
+      status: 'in-progress',
+      parent_path: SPEC_A,
+      parent_row_id: 'US1',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [row('US1')],
+      },
+    });
+    const graph = buildDependencyGraph([specA, specB]);
+    expect(graph.cycles.length).toBe(1);
+    const cycle = graph.cycles[0];
+    expect(cycle).toBeDefined();
+    if (cycle === undefined) return;
+    expect([...cycle].sort()).toEqual(
+      [`${SPEC_A}#US1`, `${SPEC_B}#US1`].sort(),
+    );
+    // Neither cyclic node lands in any layer.
+    for (const layer of graph.layers) {
+      expect(layer.node_ids).not.toContain(`${SPEC_A}#US1`);
+      expect(layer.node_ids).not.toContain(`${SPEC_B}#US1`);
+    }
+  });
+});

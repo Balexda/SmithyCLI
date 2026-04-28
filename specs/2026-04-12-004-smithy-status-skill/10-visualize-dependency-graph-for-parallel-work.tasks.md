@@ -73,7 +73,7 @@
   - Virtual records contribute to the graph using their rolled-up `not-started` status; tree sentinel records never appear as graph nodes.
   - Cross-artifact edges are derived exclusively from `parent_path` + `parent_row_id` (populated by the scanner from `artifact_path` links) — never from filename convention.
 
-- [ ] **Detect cycles and exclude cyclic nodes from layer assignment**
+- [x] **Detect cycles and exclude cyclic nodes from layer assignment**
 
   Extend `buildDependencyGraph` so cycles in the unioned graph are recorded in `graph.cycles` as arrays of participating fully-qualified node IDs in traversal order. Nodes involved in any cycle are excluded from every entry in `graph.layers` (layer computation is undefined for cyclic subgraphs per data-model §6). The exact algorithm is left to the implementer; SD-011 (below) records the recommended approach.
 

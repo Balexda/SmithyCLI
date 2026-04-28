@@ -9,7 +9,7 @@
  * for the same input — the graph is a pure projection of the records
  * supplied to it.
  *
- * ## Scope (US10 Slice 2 Tasks 1 + 2)
+ * ## Scope (US10 Slice 2 Tasks 1 + 2 + 3)
  *
  * Task 1 covered the within-artifact case: every node lives inside the
  * table that produced it, and only intra-table `depends_on` edges
@@ -37,10 +37,25 @@
  *     edges still flow through them via the `parent_row_id` link from
  *     any further child that references them.
  *
- * Cycle detection still defers to Task 3; this module currently always
- * returns `cycles: []`. If a cross-artifact cycle ever produced one,
- * the Kahn pass would simply leave the cyclic nodes unplaced and the
- * `while` loop would terminate early — Task 3 will surface them.
+ * Task 3 closes the AS 10.3 loop with cycle detection:
+ *
+ *   - When Kahn's algorithm terminates, any node still carrying
+ *     non-zero in-degree is part of a cycle. The residual subgraph is
+ *     decomposed into strongly-connected components (Tarjan-style DFS),
+ *     and each non-trivial SCC (size ≥ 2, or a singleton with a
+ *     self-loop) becomes one entry in `graph.cycles` listing the
+ *     participating fully-qualified node IDs in DFS traversal order.
+ *   - Cyclic nodes are excluded from every entry in `graph.layers`;
+ *     non-cyclic nodes downstream of a cyclic node are also excluded
+ *     because their predecessors never reach in-degree zero. This
+ *     matches data-model §6's "layer computation is undefined for
+ *     cyclic subgraphs" wording — the renderer falls back to a flat
+ *     listing for cyclic graphs.
+ *   - Determinism: SCCs are sorted by their lexicographically smallest
+ *     fully-qualified ID; within each SCC, traversal starts from that
+ *     smallest node so the participating-IDs order is stable.
+ *   - Self-loops are handled gracefully (treated as a singleton SCC
+ *     cycle) even though real parser output should never produce one.
  *
  * ## Node identity
  *
@@ -253,10 +268,12 @@ export function buildDependencyGraph(
       }
     }
     if (layerNodeIds.length === 0) {
-      // Cycle detection lands in Task 3. For now, breaking out
-      // defensively avoids an infinite loop if a cross-artifact cycle
-      // were ever introduced — the cyclic nodes simply remain
-      // unplaced.
+      // No zero-in-degree nodes remain but `placed.size <
+      // orderedIds.length` — every unplaced node is part of (or blocked
+      // by) at least one cycle. Stop layering; cycle extraction below
+      // turns the residual subgraph into `graph.cycles`. Anything
+      // unplaced is excluded from the layered output entirely, per
+      // data-model §6.
       break;
     }
     for (const id of layerNodeIds) {
@@ -271,12 +288,195 @@ export function buildDependencyGraph(
     layerIndex += 1;
   }
 
+  // Cycle extraction. Any node not placed by Kahn's belongs to the
+  // residual subgraph — either inside a cycle or downstream of one.
+  // Run Tarjan's SCC algorithm on that residual to recover the cycles
+  // themselves; nodes that are merely downstream of a cycle (singleton
+  // SCC with no self-loop) are dropped on the floor — they are
+  // excluded from layers because their predecessor never resolved, but
+  // they are not themselves cyclic.
+  const residual = orderedIds.filter((id) => !placed.has(id));
+  const cycles =
+    residual.length === 0 ? [] : extractCycles(residual, outgoing);
+
   return {
     nodes,
     layers,
-    cycles: [],
+    cycles,
     dangling_refs,
   };
+}
+
+/**
+ * Run Tarjan's strongly-connected-components algorithm on the residual
+ * subgraph (the nodes Kahn's algorithm could not place) and return one
+ * entry per non-trivial SCC. A singleton SCC qualifies only if the node
+ * has a self-loop; otherwise it is a non-cyclic node that simply got
+ * stuck behind a cycle and is excluded from the result.
+ *
+ * Determinism: SCCs are sorted by their lexicographically smallest
+ * fully-qualified ID. Within each SCC, the seed for DFS traversal is
+ * that smallest ID, so the emitted ordering is stable across runs.
+ *
+ * The implementation uses an iterative Tarjan to avoid blowing the call
+ * stack on long cycle chains.
+ */
+function extractCycles(
+  residual: string[],
+  outgoing: Map<string, string[]>,
+): string[][] {
+  const residualSet = new Set(residual);
+  const index = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  let counter = 0;
+  const sccs: string[][] = [];
+
+  // Iterative Tarjan: each work-stack frame tracks the node and the
+  // index of the next successor to visit.
+  type Frame = { node: string; childIdx: number };
+
+  // Drive the outer loop in deterministic order so the seed for each
+  // unvisited SCC is the lexicographically smallest residual node not
+  // yet visited. This stabilizes the participating-IDs ordering inside
+  // each SCC and the order in which SCCs are emitted.
+  const sortedResidual = [...residual].sort();
+  for (const seed of sortedResidual) {
+    if (index.has(seed)) continue;
+    const work: Frame[] = [{ node: seed, childIdx: 0 }];
+    index.set(seed, counter);
+    lowlink.set(seed, counter);
+    counter += 1;
+    stack.push(seed);
+    onStack.add(seed);
+
+    while (work.length > 0) {
+      const frame = work[work.length - 1];
+      if (frame === undefined) break;
+      // Successor list is filtered to the residual subgraph and sorted
+      // for deterministic traversal.
+      const successors = (outgoing.get(frame.node) ?? [])
+        .filter((s) => residualSet.has(s))
+        .sort();
+      if (frame.childIdx < successors.length) {
+        const next = successors[frame.childIdx];
+        frame.childIdx += 1;
+        if (next === undefined) continue;
+        if (!index.has(next)) {
+          index.set(next, counter);
+          lowlink.set(next, counter);
+          counter += 1;
+          stack.push(next);
+          onStack.add(next);
+          work.push({ node: next, childIdx: 0 });
+        } else if (onStack.has(next)) {
+          const current = lowlink.get(frame.node) ?? 0;
+          const candidate = index.get(next) ?? 0;
+          lowlink.set(frame.node, Math.min(current, candidate));
+        }
+      } else {
+        // Frame exhausted — fold its lowlink into its parent (if any)
+        // and emit an SCC if this frame is a root.
+        const nodeLow = lowlink.get(frame.node) ?? 0;
+        const nodeIdx = index.get(frame.node) ?? 0;
+        if (nodeLow === nodeIdx) {
+          // SCC root — pop stack until we re-emerge at this node.
+          const component: string[] = [];
+          while (stack.length > 0) {
+            const popped = stack.pop();
+            if (popped === undefined) break;
+            onStack.delete(popped);
+            component.push(popped);
+            if (popped === frame.node) break;
+          }
+          // A singleton component is a real cycle only if the node has
+          // a self-loop. Multi-node components are always cycles.
+          if (component.length > 1) {
+            sccs.push(component);
+          } else if (component.length === 1) {
+            const only = component[0];
+            if (only !== undefined) {
+              const hasSelfLoop = (outgoing.get(only) ?? []).includes(only);
+              if (hasSelfLoop) {
+                sccs.push(component);
+              }
+            }
+          }
+        }
+        work.pop();
+        if (work.length > 0) {
+          const parent = work[work.length - 1];
+          if (parent !== undefined) {
+            const parentLow = lowlink.get(parent.node) ?? 0;
+            lowlink.set(parent.node, Math.min(parentLow, nodeLow));
+          }
+        }
+      }
+    }
+  }
+
+  // Reorder each SCC's IDs in DFS-traversal order starting from the
+  // smallest seed inside it. Tarjan's pop order is reverse-DFS, so we
+  // do an explicit DFS from the seed restricted to the SCC's node set
+  // to produce the documented "participating IDs in traversal order"
+  // shape.
+  const traversed = sccs.map((component) => orderByDfs(component, outgoing));
+
+  // Sort SCC entries by the lexicographically smallest fully-qualified
+  // ID inside each component so the outer ordering is deterministic.
+  traversed.sort((a, b) => {
+    const aMin = a[0] ?? '';
+    const bMin = b[0] ?? '';
+    return aMin < bMin ? -1 : aMin > bMin ? 1 : 0;
+  });
+
+  return traversed;
+}
+
+/**
+ * Walk the nodes of a single SCC in DFS order starting from its
+ * lexicographically smallest member, restricted to edges that stay
+ * inside the component. Used so each cycle entry's participating IDs
+ * appear in a stable traversal order rather than Tarjan's reverse-DFS
+ * pop order.
+ */
+function orderByDfs(
+  component: string[],
+  outgoing: Map<string, string[]>,
+): string[] {
+  if (component.length <= 1) return [...component];
+  const members = new Set(component);
+  const sorted = [...component].sort();
+  const seed = sorted[0];
+  if (seed === undefined) return [...component];
+  const visited = new Set<string>();
+  const order: string[] = [];
+  const stack: string[] = [seed];
+  while (stack.length > 0) {
+    const id = stack.pop();
+    if (id === undefined) continue;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    order.push(id);
+    // Push successors in reverse-sorted order so the smallest one is
+    // popped (and visited) first, matching the documented seed-from-
+    // smallest determinism.
+    const successors = (outgoing.get(id) ?? [])
+      .filter((s) => members.has(s))
+      .sort()
+      .reverse();
+    for (const successor of successors) {
+      if (!visited.has(successor)) stack.push(successor);
+    }
+  }
+  // Defensive: any component members not reachable from the seed (in
+  // theory shouldn't happen for a true SCC) get appended in sorted
+  // order so we never drop nodes.
+  for (const id of sorted) {
+    if (!visited.has(id)) order.push(id);
+  }
+  return order;
 }
 
 /**
