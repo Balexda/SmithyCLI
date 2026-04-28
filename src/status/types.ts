@@ -10,10 +10,12 @@
  * The type surface grows incrementally story-by-story. User Story 1 shipped
  * `ArtifactRecord`, `NextAction`, `DependencyRow`, `DependencyOrderTable`,
  * and `ScanSummary`; User Story 2 Slice 1 adds `TreeNode` and `StatusTree`
- * alongside them. User Story 10 Slice 1 lands `DependencyNode` and
- * `DependencyGraph` as the cross-artifact graph type surface — the
- * builder (`buildDependencyGraph`) and the `--graph` text renderer arrive
- * in subsequent slices, but the types are now stable for downstream use.
+ * alongside them. User Story 10 Slice 1 landed `DependencyNode` and
+ * `DependencyGraph` as the cross-artifact graph type surface; Slice 2
+ * builds them out — the within-artifact projection is implemented in
+ * `graph.ts` (`buildDependencyGraph`) and the cross-artifact / cycle
+ * extensions plus the `--graph` text renderer arrive in subsequent
+ * tasks. The types are stable for downstream use today.
  */
 
 /**

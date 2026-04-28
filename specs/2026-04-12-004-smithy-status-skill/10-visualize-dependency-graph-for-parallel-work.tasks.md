@@ -51,7 +51,7 @@
 
 ### Tasks
 
-- [ ] **Implement single-artifact topological layering in `buildDependencyGraph`**
+- [x] **Implement single-artifact topological layering in `buildDependencyGraph`**
 
   Create `src/status/graph.ts` exporting `buildDependencyGraph(records): DependencyGraph`. In this task, the function handles the within-artifact case: each record's `dependency_order.rows` contribute nodes keyed `<record.path>#<row.id>` whose `status` is the rolled-up status from the owning record, and intra-table `depends_on` edges are unioned into the graph. Topological layering uses Kahn's algorithm so Layer 0 contains nodes with no incoming edges. Export the function from `src/status/index.ts`.
 
