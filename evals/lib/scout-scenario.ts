@@ -46,15 +46,18 @@ import type { EvalScenario } from './types.js';
  *
  * - `required_patterns`: one regex matching at least one data row in either
  *   the Warnings or Conflicts markdown table (AS 8.1). A data row starts with
- *   `|`, has whitespace padding, and the first cell is a file path — which
- *   always begins with a lowercase letter, `.`, or `/`. Header rows begin
- *   with `File` (capital F) and separator rows begin with `-`, so neither
- *   can false-trigger the check. Anchoring on `\n\|` (newline + pipe) keeps
- *   the match working without the multiline flag (`validateStructure` compiles
- *   patterns via `new RegExp(pattern)` with no flags — see `structural.ts`).
- *   Because the regex matches *any* row shape rather than specific planted
- *   text, AS 8.2 holds automatically: adding new plants later extends
- *   coverage without requiring a scenario edit.
+ *   `|`, a single space, an optional Markdown inline-code backtick, and then
+ *   a file path — which always begins with a lowercase letter, `.`, or `/`.
+ *   The optional backtick is required because scout wraps file paths in
+ *   inline code spans by default (e.g., `` | `/tmp/.../users.ts` | ``),
+ *   captured at /tmp/eval-captures/scout-fixture-shallow.txt. Header rows
+ *   begin with `File` (capital F) and separator rows begin with `-`, so
+ *   neither can false-trigger the check. Anchoring on `\n\|` (newline +
+ *   pipe) keeps the match working without the multiline flag
+ *   (`validateStructure` compiles patterns via `new RegExp(pattern)` with no
+ *   flags — see `structural.ts`). Because the regex matches *any* row shape
+ *   rather than specific planted text, AS 8.2 holds automatically: adding
+ *   new plants later extends coverage without requiring a scenario edit.
  *
  * - `forbidden_patterns`: generic refusal patterns listed in FR-012
  *   ("I'd be happy to help", "Sure, here's") and a leading YAML frontmatter
@@ -62,14 +65,18 @@ import type { EvalScenario } from './types.js';
  *   any of these indicates scout did not trigger or frontmatter leaked
  *   through.
  *
- * - `sub_agent_evidence`: a single entry for `smithy-scout`. Per FR-016 the
- *   pattern is authored to match the dispatch message Claude emits in
- *   assistant text when routing work to the sub-agent (e.g., "dispatching
- *   the smithy-scout sub-agent"), mirroring the FR-016 example for
- *   smithy-clarify. The pattern also matches the agent's report output
- *   (`## Scout Report`) indirectly because dispatch resultText contains the
- *   report; the dispatch phrasing is the primary, lowest-false-negative
- *   signal.
+ * - `sub_agent_evidence`: a single entry for `smithy-scout`. The 2026-04
+ *   spike's "dispatching the smithy-scout" narration is no longer emitted
+ *   in current claude output (verified at
+ *   /tmp/eval-captures/scout-fixture-shallow.events.jsonl — the dispatch
+ *   happens via the Agent tool but is not narrated in assistant text).
+ *   The pattern instead targets scout's template-driven report header
+ *   (`## Scout Report\n\n**Depth**:`), which appears in the dispatch
+ *   resultText (cleaned-up by `extractToolResults` to preserve real
+ *   newlines) and also in the extracted text when scout's report surfaces
+ *   to the parent agent's output. Per FR-016 the pattern still requires a
+ *   match somewhere — the framework does not auto-pass on subagent_type
+ *   alone.
  *
  * `timeout` is intentionally unset so the framework default (120s, per
  * FR-004) applies and the orchestrator's `--timeout` CLI override takes
@@ -93,13 +100,15 @@ export const scoutScenario: EvalScenario = {
     ],
     required_patterns: [
       // At least one data row in the Warnings or Conflicts markdown table.
-      // A data row starts with `\n|`, has optional padding, and its first cell
-      // begins with a lowercase letter, `.`, or `/` — i.e., a file path.
-      // Header rows start with `File` (capital F) and separator rows start
-      // with `-`, so neither satisfies the character class. `validateStructure`
-      // compiles patterns without the multiline flag, so the explicit `\n`
-      // anchor is required to avoid matching mid-cell text.
-      '\\n\\|\\s*[a-z./]',
+      // A data row starts with `\n|`, a single space, an optional inline-code
+      // backtick, and a file-path lead character (lowercase letter, `.`, or
+      // `/`). Scout wraps file paths in inline code spans by default — see
+      // /tmp/eval-captures/scout-fixture-shallow.txt for the captured
+      // formatting. Header rows start with `File` (capital F) and separator
+      // rows start with `-`, so neither satisfies the character class.
+      // `validateStructure` compiles patterns without the multiline flag, so
+      // the explicit `\n` anchor is required to avoid matching mid-cell text.
+      '\\n\\| `?[a-z./]',
     ],
     forbidden_patterns: [
       // Generic refusals / non-skill responses (FR-012).
@@ -114,15 +123,14 @@ export const scoutScenario: EvalScenario = {
   sub_agent_evidence: [
     {
       agent: 'smithy-scout',
-      // Matches the dispatch phrasing in assistant text (FR-016 example
-      // style, mirroring the smithy-clarify guidance). Also matches the
-      // sub-agent's report output when it appears in dispatch resultText.
-      // `validateStructure` compiles patterns via `new RegExp(pattern)` with
-      // no flags, so `.` does not match newlines and matching is
-      // case-sensitive. `[Dd]` tolerates a sentence-initial capital and
-      // `[\s\S]*` bridges any line breaks the model may insert between
-      // "the" and the agent name.
-      pattern: '[Dd]ispatching the[\\s\\S]*smithy-scout',
+      // Matches scout's template-driven report header. Appears in the
+      // dispatch resultText (now cleaned up by extractToolResults to
+      // preserve real newlines) and in the extracted text when the report
+      // surfaces verbatim to the parent agent. The previous spike-era
+      // pattern (`[Dd]ispatching the[\s\S]*smithy-scout`) is no longer
+      // emitted by current claude output — see scout-fixture-shallow.txt
+      // and .events.jsonl in the captures directory.
+      pattern: '## Scout Report\\n\\n\\*\\*Depth\\*\\*',
     },
   ],
 };

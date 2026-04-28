@@ -21,12 +21,19 @@ import type { AgentDispatch } from './types.js';
 // ---------------------------------------------------------------------------
 
 /**
- * A structurally complete Scout Report containing all four required headings
- * plus populated Warnings and Conflicts tables. Each table has at least one
+ * A structurally complete Scout Report containing all four required headings,
+ * the template-driven `**Depth**:` metadata line that follows the top heading,
+ * and populated Warnings and Conflicts tables. Each table has at least one
  * data row whose first cell begins with a lowercase file path, satisfying the
- * `\n\|\s*[a-z./]` required-pattern regex (AS 8.1).
+ * `\n\| \`?[a-z./]` required-pattern regex (AS 8.1). The `**Depth**:` line is
+ * required for the `sub_agent_evidence` pattern to match — its anchor
+ * (`## Scout Report\n\n\*\*Depth\*\*`) targets scout's template output marker
+ * (see scout-scenario.ts).
  */
 const positiveSample = `## Scout Report
+
+**Depth**: shallow
+**Files scanned**: 3 (cap reached: no)
 
 ### Clean
 

@@ -65,9 +65,29 @@ const { values } = parseArgs({
     fixture: { type: 'string', default: 'evals/fixture' },
     timeout: { type: 'string' },
     case: { type: 'string' },
+    dump: { type: 'string' },
   },
   strict: false,
 });
+
+// Optional output capture directory. When set, after each scenario completes
+// the orchestrator writes the canonical extracted text and the raw stream-json
+// events to `<dir>/<scenario>.txt` and `<dir>/<scenario>.events.jsonl`. This
+// is the supported way to inspect what a skill actually emitted when triaging
+// drift between authored expectations and live model output (see the
+// "Maintenance — when patterns drift" section of evals/README.md).
+let dumpDir: string | undefined;
+const dumpFlag = values['dump'];
+if (dumpFlag !== undefined) {
+  if (typeof dumpFlag !== 'string' || dumpFlag.length === 0) {
+    console.error(
+      'Error: --dump requires a directory path (e.g. --dump /tmp/eval-captures).',
+    );
+    process.exit(1);
+  }
+  dumpDir = path.resolve(process.cwd(), dumpFlag);
+  fs.mkdirSync(dumpDir, { recursive: true });
+}
 
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
 const casesDir = path.resolve(process.cwd(), 'evals/cases');
@@ -244,6 +264,31 @@ for (const scenario of finalScenarios) {
   if (output.exit_code !== 0) console.log(`  Exit code: ${output.exit_code}`);
   console.log(`  Text length: ${output.extracted_text.length} chars`);
   console.log(`  Stream events: ${output.stream_events.length}`);
+
+  // --dump <dir>: persist the canonical text and raw NDJSON events for triage.
+  // No-op when --dump was not supplied. Failures here are logged but do not
+  // abort the run — a write error in a debug capture must not mask scenario
+  // results.
+  if (dumpDir !== undefined) {
+    const textPath = path.join(dumpDir, `${scenario.name}.txt`);
+    const eventsPath = path.join(dumpDir, `${scenario.name}.events.jsonl`);
+    try {
+      fs.writeFileSync(textPath, output.extracted_text, 'utf8');
+      fs.writeFileSync(
+        eventsPath,
+        output.stream_events.map((e) => JSON.stringify(e)).join('\n') + '\n',
+        'utf8',
+      );
+      console.log(`  Dumped:    ${textPath}`);
+      console.log(`             ${eventsPath}`);
+    } catch (err) {
+      console.error(
+        `  Dump failed for ${scenario.name}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Structural validation (FR-005, FR-006)

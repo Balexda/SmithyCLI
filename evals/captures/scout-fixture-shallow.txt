@@ -1,0 +1,37 @@
+## Scout Report
+
+**Depth**: shallow
+**Files scanned**: 3 (cap reached: no)
+**Context**: planning a health check endpoint for this Express API fixture
+
+---
+
+### Clean
+
+2 files scanned with no inconsistencies.
+
+- `/tmp/smithy-eval-xy4eIi/src/index.ts` — clean
+- `/tmp/smithy-eval-xy4eIi/src/types.ts` — clean
+
+---
+
+### Warnings
+
+Minor inconsistencies unlikely to derail planning:
+
+| File | Line | Warning | Details |
+|------|------|---------|---------|
+| `/tmp/smithy-eval-xy4eIi/src/routes/users.ts` | 14 | Stale doc comment | Comment says "get user by email address" but the route implementation looks up by numeric `id` via `req.params.id` parsed with `parseInt`. The route parameter and lookup are both by `id`, not email. |
+| `/tmp/smithy-eval-xy4eIi/src/routes/users.ts` | 25 | TODO marker | "add request validation before creating user (reject empty name/email, enforce email format)" — known instability in the POST handler; no validation is currently applied before writing to the in-memory store. |
+
+---
+
+### Conflicts
+
+No conflicts detected.
+
+---
+
+**Planning notes for the parent agent:**
+
+The codebase is minimal and stable enough to plan a health check endpoint against. The only structural observation relevant to the planned artifact: `src/index.ts` mounts a single router at `/api/users` and exports nothing — the health check endpoint would need to be registered directly on `app` in `src/index.ts` before or after the existing `app.use` call, or via a new dedicated router file following the same pattern as `src/routes/users.ts`. No existing code conflicts with that addition.

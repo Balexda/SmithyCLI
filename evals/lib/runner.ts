@@ -271,8 +271,13 @@ export async function runScenario(
       : DEFAULT_TIMEOUT_MS;
 
     // FR-001 / FR-003: Spawn claude in stream-json mode.
+    // `--verbose` is required by the claude CLI when combining `-p` with
+    // `--output-format stream-json` (verified in evals/spike/FINDINGS.md and
+    // re-confirmed against claude 2.1.121: without it, claude exits 1 with
+    // "Error: When using --print, --output-format=stream-json requires --verbose"
+    // before emitting any events).
     const result = await spawnClaude(
-      ['--output-format', 'stream-json', '-p', invocation],
+      ['--output-format', 'stream-json', '--verbose', '-p', invocation],
       tmpDir,
       timeoutMs,
     );

@@ -98,6 +98,25 @@ export function extractToolUses(events: StreamEvent[]): ToolUse[] {
 
 /**
  * Extract tool results from user messages.
+ *
+ * `tool_result.content` arrives in one of two shapes from the claude CLI:
+ *
+ * 1. A plain string (typical for `Bash`, `Read`, etc.) — kept verbatim.
+ * 2. An array of content blocks (typical for `Agent` tool dispatches and any
+ *    sub-agent that returns structured content) — each `{type: "text", text}`
+ *    block's `text` field is concatenated with newlines, mirroring how
+ *    `extractText` flattens assistant messages. Non-text blocks are ignored.
+ *
+ * Returning the concatenated text (rather than a JSON-stringified array) lets
+ * scenario authors write regex patterns against the actual output — newline
+ * handling is consistent with `extracted_text`, and the trailing
+ * `agentId: ... <usage>` metadata footer that claude appends to Agent results
+ * stays out of the way (it's a separate text block, but it doesn't double-
+ * escape `\n` characters into the literal `\n` substring that pollutes
+ * pattern matching).
+ *
+ * As a last resort — for genuinely opaque content shapes (objects, etc.) —
+ * the value is JSON-stringified to keep the field a string.
  */
 export function extractToolResults(events: StreamEvent[]): ToolResult[] {
   const results: ToolResult[] = [];
@@ -107,12 +126,20 @@ export function extractToolResults(events: StreamEvent[]): ToolResult[] {
     for (const block of content) {
       if (block['type'] === 'tool_result') {
         const blockContent = block['content'];
+        let text: string;
+        if (typeof blockContent === 'string') {
+          text = blockContent;
+        } else if (Array.isArray(blockContent)) {
+          text = (blockContent as Array<Record<string, unknown>>)
+            .filter((b) => b['type'] === 'text' && typeof b['text'] === 'string')
+            .map((b) => b['text'] as string)
+            .join('\n');
+        } else {
+          text = JSON.stringify(blockContent);
+        }
         results.push({
           tool_use_id: block['tool_use_id'] as string,
-          content:
-            typeof blockContent === 'string'
-              ? blockContent
-              : JSON.stringify(blockContent),
+          content: text,
           is_error: (block['is_error'] as boolean) ?? false,
         });
       }

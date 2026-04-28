@@ -138,4 +138,40 @@ describe('extractSubAgentDispatches', () => {
       resultText: 'Agent result text',
     });
   });
+
+  it('flattens array-shaped tool_result content into clean text', () => {
+    // Live `Agent` tool dispatches return content as an array of text blocks
+    // (the agent's actual output, plus a metadata footer). The extractor must
+    // join those text fields directly so regex patterns match real newlines —
+    // not JSON-stringify the whole array, which would turn `\n` into the
+    // literal substring `\\n` and double-escape pattern matching.
+    const arrayResultEvent: StreamEvent = {
+      type: 'user',
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'tool_456',
+            content: [
+              { type: 'text', text: '## Plan\n\n**Directive**: keep it simple' },
+              { type: 'text', text: 'agentId: abc123 <usage>tokens: 100</usage>' },
+            ],
+          },
+        ],
+      },
+    };
+
+    const events: StreamEvent[] = [
+      agentToolUseEvent('tool_456', 'plan agent', 'plan it'),
+      arrayResultEvent,
+    ];
+
+    const dispatches = extractSubAgentDispatches(events);
+    expect(dispatches).toHaveLength(1);
+    expect(dispatches[0]!.resultText).toBe(
+      '## Plan\n\n**Directive**: keep it simple\nagentId: abc123 <usage>tokens: 100</usage>',
+    );
+    // Real newline (0x0A) survives — pattern `## Plan\n\n\\*\\*Directive\\*\\*` matches.
+    expect(/## Plan\n\n\*\*Directive\*\*/.test(dispatches[0]!.resultText)).toBe(true);
+  });
 });
