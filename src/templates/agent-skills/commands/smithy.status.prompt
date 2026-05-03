@@ -90,8 +90,7 @@ The three error conditions to expect are:
    meant.
 3. **CLI output is unexpectedly empty** — return the empty output as-is and
    add at most one sentence noting that the repo may contain no Smithy
-   artifacts (the CLI itself prints a hint pointing at `smithy.ignite` /
-   `smithy.mark` in this case; let that hint stand on its own if present).
+   artifacts.
 
 In every error case, the CLI's own message is the authoritative report.
 
