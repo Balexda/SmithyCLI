@@ -97,7 +97,7 @@
 
 ### Tasks
 
-- [ ] **Implement `renderGraph` in a new `src/status/renderGraph.ts` module**
+- [x] **Implement `renderGraph` in a new `src/status/renderGraph.ts` module**
 
   Create `src/status/renderGraph.ts` exporting `renderGraph(graph: DependencyGraph, options?: RenderGraphOptions): string`. The renderer emits one labeled block per layer (`Layer 0 (ready):`, `Layer 1:`, …), listing each node's title and fully-qualified ID under its layer heading. A layer whose members are all `status: 'done'` collapses to a single `Layer N: DONE (M items)` line in the default (non-`--all`) mode. When `graph.cycles` is non-empty, the output leads with a human-readable cycle-warning block listing the participating fully-qualified IDs and renders the non-cyclic nodes in a flat layer-0-style listing instead of the layered view (per AS 10.3 fallback). Dangling references in `graph.dangling_refs` surface as their own warning lines. Re-export from `src/status/index.ts`.
 
@@ -109,7 +109,7 @@
   - The function is pure (no I/O, no mutation of `graph`), matches the `renderTree(tree, options) → string` signature pattern, and is exported from `src/status/index.ts`.
   - Layer entries read membership via the canonical `node_ids` key (SD-012 reconciliation).
 
-- [ ] **Wire `buildDependencyGraph` and `renderGraph` into `statusAction`**
+- [x] **Wire `buildDependencyGraph` and `renderGraph` into `statusAction`**
 
   Update `statusAction` in `src/commands/status.ts` so `buildDependencyGraph(records)` is called once per invocation (using the pre-filter record set per SD-010 / existing `summarize()` convention) and its result serves both consumer surfaces: (a) the JSON payload's `graph` field is populated unconditionally, replacing the zero-value stub; (b) in text mode, `opts.graph === true` routes through `renderGraph(graph, { all: opts.all === true })` instead of the tree pipeline. The existing tree pipeline is untouched when `--graph` is absent. Update the `StatusOptions.graph` JSDoc to reflect the now-wired state.
 
@@ -121,7 +121,7 @@
   - The default text path (no `--graph`) is unchanged: summary header, tree, collapse behavior, empty-repo hint all match current output.
   - The `StatusOptions.graph` JSDoc no longer describes the option as a "stub".
 
-- [ ] **Audit `node_ids` vs `ids` across code and flag the spec-text drift**
+- [x] **Audit `node_ids` vs `ids` across code and flag the spec-text drift**
 
   Sweep every implementation reference (the new `DependencyGraph` type, `graph.ts`, `renderGraph.ts`, and `src/commands/status.ts`) to confirm the canonical `node_ids` field name is used everywhere — `.ids` must not appear on any layer object in any code path. The spec-level drift in AS 10.5 (which reads `ids: string[]`) is tracked as SD-012 and surfaced in the PR description so the author can reconcile the spec prose in a follow-up; this task does not silently edit the spec.
 
