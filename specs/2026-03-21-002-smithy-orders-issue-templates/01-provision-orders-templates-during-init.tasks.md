@@ -112,7 +112,7 @@
 
 - [ ] **Add CLI integration tests for unconditional provisioning**
 
-  Extend `src/cli.test.ts` with cases that run `init` against a fresh temp directory and assert the four files exist with default content, that the manifest is byte-identical before and after re-running provisioning under "decline overwrite", and that overwrite preserves non-canonical neighbors. The `--location user` case must isolate the user's real `~/.smithy/` from the test (e.g., by overriding `HOME` in the spawned process environment) — see SD-001 for the open mechanism question.
+  Extend `src/cli.test.ts` with cases that run `init` against a fresh temp directory and assert the four files exist with default content, that the manifest is byte-identical before and after re-running provisioning under "decline overwrite", and that overwrite preserves non-canonical neighbors. The `--location user` case must isolate the user's real `~/.smithy/` from the test — the isolation mechanism is left to implementation; see SD-001 for the open portability question.
 
   _Acceptance criteria:_
   - Coverage spans US1 AS 1, AS 2, AS 3, AS 4, and AS 5.
