@@ -294,7 +294,7 @@ describe('one-shot-output snippet', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(10);
+    expect(byCategory.commands).toHaveLength(11);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
     expect(byCategory.skills).toHaveLength(1);
@@ -317,6 +317,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.fix.md');
     expect(commands).toContain('smithy.orders.md');
     expect(commands).toContain('smithy.spark.md');
+    expect(commands).toContain('smithy.status.md');
   });
 
   it('prompts includes guidance and titles', () => {
@@ -407,6 +408,7 @@ describe('getComposedTemplates', () => {
   it('categorizes templates correctly', () => {
     expect(composed.commands.has('smithy.strike.md')).toBe(true);
     expect(composed.commands.has('smithy.audit.md')).toBe(true);
+    expect(composed.commands.has('smithy.status.md')).toBe(true);
     expect(composed.prompts.has('smithy.guidance.md')).toBe(true);
     expect(composed.prompts.has('smithy.titles.md')).toBe(true);
     expect(composed.agents.has('smithy.clarify.md')).toBe(true);
@@ -426,6 +428,34 @@ describe('getComposedTemplates', () => {
     expect(audit).toContain('Audit Checklist (.spec.md)');
     expect(audit).toContain('Audit Checklist (.tasks.md)');
     expect(audit).toContain('Audit Checklist (.strike.md)');
+  });
+
+  // User Story 5 Slice 1: smithy.status is a thin shell-delegation skill that
+  // shells out to the `smithy status` CLI and surfaces output and errors
+  // verbatim. These assertions back-stop the contract at the template level so
+  // a future regression that drops the shell-out instruction, the argument
+  // forwarding token, or the verbatim-error wording fails the suite.
+  it('status template shells out to `smithy status` and forwards $ARGUMENTS', () => {
+    const status = composed.commands.get('smithy.status.md')!;
+    expect(status).toBeDefined();
+    // AS 5.1 (shell-out to the CLI subcommand) and AS 5.3 (forward the
+    // user's arguments unchanged). AS 5.2 (no-args default to cwd) is
+    // implicit in unchanged $ARGUMENTS forwarding — the skill never
+    // synthesizes a default path.
+    expect(status).toContain('smithy status');
+    expect(status).toContain('$ARGUMENTS');
+  });
+
+  it('status template surfaces CLI failures verbatim in the Errors section', () => {
+    const status = composed.commands.get('smithy.status.md')!;
+    expect(status).toBeDefined();
+    // AS 5.4: the skill must surface CLI failures verbatim rather than
+    // paraphrase them or reconstruct the status view from first principles.
+    // Pair the `verbatim` substring with an Errors-section anchor so the
+    // assertion provably ties verbatim wording to error handling, not to
+    // generic prose elsewhere in the template.
+    expect(status).toContain('verbatim');
+    expect(status).toContain('## Errors');
   });
 
   it('audit template preserves frontmatter after partial resolution', () => {

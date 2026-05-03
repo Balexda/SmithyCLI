@@ -27,7 +27,7 @@ intermediate commit.
 
 ### Tasks
 
-- [ ] **Author `smithy.status.prompt` shell-delegation skill template**
+- [x] **Author `smithy.status.prompt` shell-delegation skill template**
 
   Add a new command template at `src/templates/agent-skills/commands/smithy.status.prompt`.
   The YAML frontmatter and Markdown body must implement the thin shell-delegation
@@ -54,7 +54,7 @@ intermediate commit.
     `$ARGUMENTS` is left as a literal token (e.g., under Gemini), consistent
     with the fallback pattern used by sibling command templates.
 
-- [ ] **Extend template-suite assertions to cover the new command**
+- [x] **Extend template-suite assertions to cover the new command**
 
   Update the hardcoded counts and membership lists in `src/templates.test.ts`
   so the composition and categorization tests recognize the new
