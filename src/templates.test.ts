@@ -454,11 +454,14 @@ describe('getComposedTemplates', () => {
     expect(status).toBeDefined();
     // AS 5.4: the skill must surface CLI failures verbatim rather than
     // paraphrase them or reconstruct the status view from first principles.
-    // Pair the `verbatim` substring with an Errors-section anchor so the
-    // assertion provably ties verbatim wording to error handling, not to
-    // generic prose elsewhere in the template.
-    expect(status).toContain('verbatim');
+    // Anchor on (a) the Errors heading and (b) the contract-specific phrase
+    // `stderr verbatim`, which appears only inside the Errors section's
+    // non-zero-exit bullet and mirrors the contracts §2 obligation. The
+    // word `verbatim` alone appears in the description, output, and rules
+    // prose, so it would not prove the Errors section enforces verbatim
+    // surfacing.
     expect(status).toContain('## Errors');
+    expect(status).toContain('stderr verbatim');
   });
 
   it('audit template preserves frontmatter after partial resolution', () => {
