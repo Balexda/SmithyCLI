@@ -441,9 +441,12 @@ describe('getComposedTemplates', () => {
     // AS 5.1 (shell-out to the CLI subcommand) and AS 5.3 (forward the
     // user's arguments unchanged). AS 5.2 (no-args default to cwd) is
     // implicit in unchanged $ARGUMENTS forwarding — the skill never
-    // synthesizes a default path.
-    expect(status).toContain('smithy status');
-    expect(status).toContain('$ARGUMENTS');
+    // synthesizes a default path. Match on the combined `smithy status
+    // $ARGUMENTS` substring rather than the two tokens independently, so a
+    // regression that drops the argument-forwarding token from the bash
+    // command — but keeps `$ARGUMENTS` in the surrounding prose — still
+    // fails the suite.
+    expect(status).toContain('smithy status $ARGUMENTS');
   });
 
   it('status template surfaces CLI failures verbatim in the Errors section', () => {
