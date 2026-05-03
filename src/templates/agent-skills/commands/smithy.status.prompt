@@ -55,10 +55,12 @@ output through any filter.
 
 ## Output
 
-Return the CLI's stdout to the user **as-is, byte-for-byte**, with at most a
-single short framing sentence (for example, "Here is the current status:").
-Any framing must be one sentence at most — never multiple sentences, never a
-summary, never a re-render of the tree.
+Return the CLI's stdout to the user **unmodified** — do not rewrite, summarize,
+re-format, or re-render any part of it. You may optionally precede the stdout
+with a single short framing sentence on its own line (for example, "Here is
+the current status:"), but the framing is additive and must not alter the
+stdout content itself. Never use multiple framing sentences, never replace the
+stdout with a summary, and never re-render the tree.
 
 - Do **not** re-filter the CLI's output. If the user wanted a filter, they
   passed (or should pass) `--status`, `--type`, or `--root` to the CLI; the
