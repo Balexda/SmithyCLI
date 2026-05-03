@@ -40,6 +40,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy.fix** — Minimal-diff bug fix from a GitHub issue
 - **smithy.audit** — Audit a Smithy artifact against its checklist
 - **smithy.orders** — Show available Smithy commands and their usage
+- **smithy.status** — Show the current status of every Smithy planning artifact in the repo. Shells out to `smithy status` and returns the CLI output verbatim with no LLM interpretation.
 
 ### Sub-Agents (not user-invocable)
 

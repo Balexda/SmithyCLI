@@ -19,6 +19,7 @@ Deployed to:
 | `smithy.fix` | Minimal-diff bug fix from a GitHub issue | (none) |
 | `smithy.audit` | Audit a Smithy artifact against its checklist | (none) |
 | `smithy.orders` | Show available Smithy commands and their usage | (none) |
+| `smithy.status` | Show the current status of every Smithy planning artifact in the repo | (none) |
 
 ## Conventions
 
