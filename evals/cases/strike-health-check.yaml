@@ -9,6 +9,14 @@
 # Spec:       specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.spec.md
 # Data model: specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.data-model.md
 # Contracts:  specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.contracts.md
+#
+# Expectations are grounded in the captured output at /tmp/eval-captures/
+# (see evals/README.md "Maintenance — when patterns drift" for how to refresh).
+# Strike's output structure is the consolidated post-2026-04 form:
+#   ## Summary  →  ## Assumptions  →  ## Specification Debt  →  ## PR
+# with no inline narration of sub-agent dispatches; verification of plan,
+# reconcile, and clarify dispatches relies on the cleaned-up Agent
+# tool_result text exposed via `extractSubAgentDispatches`.
 
 name: strike-health-check
 skill: /smithy.strike
@@ -16,11 +24,15 @@ prompt: add a health check endpoint
 structural_expectations:
   required_headings:
     - '## Summary'
-    - '## Approach'
-    - '## Risks'
+    - '## Assumptions'
+    - '## Specification Debt'
+    - '## PR'
   required_patterns:
-    # `**Phase N: <Label>**` — bold workflow-stage markers emitted by strike.
-    - '\*\*Phase \d+: [^*]+\*\*'
+    # Strike's Summary section always emits a `**Spec folder**: ...` bullet at
+    # the top — a template-driven marker that every successful strike run
+    # produces. This catches the case where strike emits `## Summary` alone
+    # but the body has drifted to a different shape.
+    - '\*\*Spec folder\*\*'
   forbidden_patterns:
     # Generic refusals / non-skill responses (FR-012).
     - "I'd be happy to help"
@@ -29,40 +41,43 @@ structural_expectations:
     - '^---\r?\n'
 # Sub-agent invocation evidence (FR-016; Acceptance Scenarios 6.2, 6.3, 6.4).
 #
-# Patterns are grounded in evals/spike/FINDINGS.md and verified against the
-# checked-in spike capture (evals/spike/output-strike.txt), not speculative.
+# The 2026-04-09 spike captured strike emitting "dispatching the X agent"
+# narration in assistant text; the current strike template no longer narrates
+# its dispatches inline (verified by the captured stream at
+# /tmp/eval-captures/strike-health-check.events.jsonl, which shows 6 Agent
+# tool calls with subagent_type set but no matching narration in the canonical
+# text). Patterns therefore target each sub-agent's template-driven output
+# marker, matched against the cleaned-up dispatch resultText that
+# extractSubAgentDispatches now returns (parse-stream.ts).
+#
 # AS 6.1 (smithy-scout evidence) is intentionally NOT listed here — the spike
 # confirmed strike does not dispatch scout, so scout coverage is delivered by
 # the standalone `scoutScenario` rather than by extending strike.
-#
-# `Simplification` is kept in the plan-lens alternation alongside the other
-# two lenses even though the checked-in spike capture shows only the
-# `[via Robustness]` attribution marker. Strike dispatches all three lenses
-# (see src/templates/agent-skills/snippets/competing-lenses-implementation.md),
-# and which one's attribution survives reconciliation varies per run —
-# excluding `Simplification` would produce a false failure on any run where
-# reconcile surfaces only that lens. The `\[via ...\]` anchor keeps the
-# pattern specific to plan's actual attribution marker so incidental prose
-# containing a lens word cannot satisfy the check.
 sub_agent_evidence:
-  # smithy-plan: strike runs plan under three competing lenses and the
-  # reconciled plan body carries `[via <Lens>]` attribution markers. The
-  # `\[via ...\]` anchor ensures sub-agent evidence only passes when plan
-  # output actually surfaces through reconciliation — a bare lens word in
-  # unrelated prose will not false-trigger the check.
+  # smithy-plan: every plan-template invocation begins its output with
+  # `## Plan\n\n**Directive**: ...`. This is template-stable across all three
+  # competing lenses (Simplification / Separation of Concerns / Robustness)
+  # and matches against the dispatch resultText.
   - agent: smithy-plan
-    pattern: '\[via (Separation of Concerns|Robustness|Simplification)\]'
-  # smithy-reconcile: per FR-016's guidance, target the dispatch phrasing in
-  # assistant text rather than a generic output heading ("reconciled plan"
-  # could appear without a real dispatch). This mirrors the clarify pattern
-  # below and matches the spike capture line `Now dispatching the
-  # **smithy-reconcile** agent to synthesize them.`
+    pattern: '## Plan\n\n\*\*Directive\*\*'
+  # smithy-reconcile: reconcile's resultText is prose-driven (no fixed
+  # template heading), so we match its dispatch description, which the LLM
+  # populates from strike's instruction to "use the smithy-reconcile
+  # sub-agent". `^[Rr]econcil` anchors the match to the description start
+  # and tolerates "Reconcile competing plans", "reconcile", "Reconciliation
+  # pass", etc. The `^` anchor keeps incidental prose elsewhere from false-
+  # triggering — descriptions are short summary strings that begin with
+  # the dispatch verb.
   - agent: smithy-reconcile
-    pattern: 'dispatching.*smithy-reconcile'
-  # smithy-clarify: per FR-016's guidance, target the dispatch phrasing in
-  # assistant text rather than agent-name presence alone. The `.*` here is
-  # safe because the dispatch message is a single-line assistant string
-  # (`Now dispatching the **smithy-clarify** agent for ambiguity scanning.`);
-  # no newline appears between "the" and the agent name in the spike capture.
+    pattern: '^[Rr]econcil'
+  # smithy-clarify: clarify returns a structured `ClarifyResult` with no
+  # fixed Markdown heading (the captured 2026-04-27 run wrote
+  # `## Step 1: Scan Assessment` in resultText, but a later run only
+  # emitted the structured fields — ClarifyResult formatting is not
+  # template-locked). The dispatch description is the stable signal —
+  # the LLM's summary phrase always opens with a clarify form
+  # ("Clarify reconciled plan", "clarify the strike doc", etc.) when
+  # routing to smithy-clarify. `^[Cc]larif` matches Clarify, clarify, and
+  # Clarification while staying anchored at description start.
   - agent: smithy-clarify
-    pattern: 'dispatching the.*smithy-clarify'
+    pattern: '^[Cc]larif'

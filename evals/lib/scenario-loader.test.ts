@@ -76,8 +76,9 @@ describe('loadScenarios', () => {
       expect(strike!.prompt).toBe('add a health check endpoint');
       expect(strike!.structural_expectations.required_headings).toEqual([
         '## Summary',
-        '## Approach',
-        '## Risks',
+        '## Assumptions',
+        '## Specification Debt',
+        '## PR',
       ]);
     });
 
