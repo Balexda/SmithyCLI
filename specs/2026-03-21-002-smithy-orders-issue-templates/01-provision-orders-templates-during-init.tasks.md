@@ -80,7 +80,7 @@
 
 - [ ] **Add `src/orders-templates.ts` with default bodies and a provisioner**
 
-  Create one flat module under `src/` (matching the repo's existing `permissions.ts` / `language-detect.ts` / `manifest.ts` convention) that exports the four default body strings keyed by artifact type (`rfc`, `features`, `spec`, `tasks`) with content matching the spec's Default Template Content section verbatim, plus a `provisionOrdersTemplates` function that ensures `<manifestDir>/templates/orders/` exists and writes any missing defaults. Centralizing both in one module lets US4's built-in fallback import the same defaults later without a follow-up extraction. The function must use the actual two-arg `resolveManifestDir(targetDir, location)` from `src/manifest.ts` (the spec's `resolveManifestDir(deployLocation)` shorthand does not match the real signature).
+  Create one flat module under `src/` (matching the repo's existing `permissions.ts` / `language-detect.ts` / `manifest.ts` convention) that exports the four default body strings keyed by artifact type (`rfc`, `features`, `spec`, `tasks`) with content matching the spec's Default Template Content section verbatim, plus a `provisionOrdersTemplates` function that ensures `<manifestDir>/templates/orders/` exists and writes any missing defaults. Centralizing both in one module lets US4's built-in fallback import the same defaults later without a follow-up extraction. Resolve `<manifestDir>` through the existing manifest-directory helper in `src/manifest.ts` so deploy-location semantics match the rest of init.
 
   _Acceptance criteria:_
   - Default bodies match `smithy-orders-issue-templates.spec.md` "Default Template Content" verbatim for all four types.
