@@ -51,6 +51,7 @@ jobs:
             core.setOutput('run_url', run.html_url);
             core.setOutput('run_conclusion', run.conclusion);
             core.setOutput('head_branch', run.head_branch);
+            core.setOutput('head_sha', run.head_sha);
 
       - name: Comment on PR pinging @copilot
         uses: actions/github-script@v7
@@ -59,12 +60,35 @@ jobs:
             const prNumber = Number('${{ steps.pr.outputs.number }}');
             const runUrl = '${{ steps.pr.outputs.run_url }}';
             const headBranch = '${{ steps.pr.outputs.head_branch }}';
+            const headSha = '${{ steps.pr.outputs.head_sha }}';
+
+            // Idempotency: a marker scoped to the head SHA prevents
+            // re-pinging on workflow re-runs of the same commit. A new
+            // commit on the branch (Dependabot rebase, or a Copilot
+            // fix-up) produces a new SHA and is allowed to ping again.
+            const marker = `<!-- smithy-fallback:ping-for-sha-${headSha} -->`;
+            const existing = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                per_page: 100,
+              },
+            );
+            if (existing.some(c => c.body && c.body.includes(marker))) {
+              core.info(`Already pinged @copilot for ${headSha}; skipping.`);
+              return;
+            }
+
             const body = [
+              marker,
               '@copilot the `Smithy CLI CI` workflow failed on this Dependabot bump.',
               '',
               'Please investigate the failing checks and push a fix commit to this branch (`' + headBranch + '`).',
               '',
               `- Failed run: ${runUrl}`,
+              `- Head SHA: \`${headSha}\``,
               '',
               'If the dependency change itself is sound but tests need adjusting, update the tests.',
               'If the change introduces a real regression that needs a human decision, comment here so a maintainer can take over.',
