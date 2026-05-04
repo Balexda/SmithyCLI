@@ -35,6 +35,13 @@ export async function deploy(
   for (const [, content] of templates.commands) deployAsSkill(content);
   for (const [, content] of templates.prompts) deployAsSkill(content);
 
+  // Skills (`.claude/skills/<name>/SKILL.md` for Claude) are also surfaced to
+  // Gemini as plain skills. Scripts under `<name>/scripts/` use the
+  // Claude-specific `${CLAUDE_SKILL_DIR}` env var and are intentionally not
+  // mirrored here — skills whose body assumes those scripts will document
+  // their own cross-agent limits.
+  for (const [, skill] of templates.skills) deployAsSkill(skill.prompt);
+
   if (initPermissions) {
     writePermissions(destDir, languages, platformManagers);
   }

@@ -294,15 +294,16 @@ describe('one-shot-output snippet', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(11);
+    expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(1);
+    expect(byCategory.skills).toHaveLength(2);
   });
 
-  it('skills includes smithy.pr-review', () => {
+  it('skills includes smithy.pr-review and smithy.status', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
+    expect(skills).toContain('smithy.status');
   });
 
   it('commands includes expected template files', () => {
@@ -317,7 +318,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.fix.md');
     expect(commands).toContain('smithy.orders.md');
     expect(commands).toContain('smithy.spark.md');
-    expect(commands).toContain('smithy.status.md');
+    expect(commands).not.toContain('smithy.status.md');
   });
 
   it('prompts includes guidance and titles', () => {
@@ -408,7 +409,8 @@ describe('getComposedTemplates', () => {
   it('categorizes templates correctly', () => {
     expect(composed.commands.has('smithy.strike.md')).toBe(true);
     expect(composed.commands.has('smithy.audit.md')).toBe(true);
-    expect(composed.commands.has('smithy.status.md')).toBe(true);
+    expect(composed.commands.has('smithy.status.md')).toBe(false);
+    expect(composed.skills.has('smithy.status')).toBe(true);
     expect(composed.prompts.has('smithy.guidance.md')).toBe(true);
     expect(composed.prompts.has('smithy.titles.md')).toBe(true);
     expect(composed.agents.has('smithy.clarify.md')).toBe(true);
@@ -430,13 +432,17 @@ describe('getComposedTemplates', () => {
     expect(audit).toContain('Audit Checklist (.strike.md)');
   });
 
-  // User Story 5 Slice 1: smithy.status is a thin shell-delegation skill that
-  // shells out to the `smithy status` CLI and surfaces output and errors
-  // verbatim. These assertions back-stop the contract at the template level so
-  // a future regression that drops the shell-out instruction, the argument
-  // forwarding token, or the verbatim-error wording fails the suite.
-  it('status template shells out to `smithy status` and forwards $ARGUMENTS', () => {
-    const status = composed.commands.get('smithy.status.md')!;
+  // smithy.status is deployed as a Claude Code skill (auto-activated on
+  // natural-language status questions and explicitly invocable via
+  // `/smithy.status` with CLI flags). The skill operates in two modes:
+  // pass-through (shells out to `smithy status` with the user's flags
+  // unchanged) and question (runs `smithy status --format json` and answers
+  // the question from the parsed JSON). These assertions back-stop both
+  // halves of the contract so a future regression that drops the shell-out
+  // instruction, the argument forwarding token, the JSON question-mode
+  // invocation, or the verbatim-error wording fails the suite.
+  it('status skill shells out to `smithy status` and forwards $ARGUMENTS', () => {
+    const status = composed.skills.get('smithy.status')!.prompt;
     expect(status).toBeDefined();
     // AS 5.1 (shell-out to the CLI subcommand) and AS 5.3 (forward the
     // user's arguments unchanged). AS 5.2 (no-args default to cwd) is
@@ -449,8 +455,20 @@ describe('getComposedTemplates', () => {
     expect(status).toContain('smithy status $ARGUMENTS');
   });
 
-  it('status template surfaces CLI failures verbatim in the Errors section', () => {
-    const status = composed.commands.get('smithy.status.md')!;
+  it('status skill answers natural-language questions via --format json', () => {
+    const status = composed.skills.get('smithy.status')!.prompt;
+    expect(status).toBeDefined();
+    // Question mode (auto-activation surface): the skill must instruct the
+    // agent to consult the deterministic CLI in JSON form rather than
+    // reconstructing answers from training data or unrelated file reads.
+    // Anchor on `smithy status --format json` so a regression that removes
+    // the JSON branch entirely — collapsing the skill back to a pure
+    // verbatim wrapper — fails the suite.
+    expect(status).toContain('smithy status --format json');
+  });
+
+  it('status skill surfaces CLI failures verbatim in the Errors section', () => {
+    const status = composed.skills.get('smithy.status')!.prompt;
     expect(status).toBeDefined();
     // AS 5.4: the skill must surface CLI failures verbatim rather than
     // paraphrase them or reconstruct the status view from first principles.

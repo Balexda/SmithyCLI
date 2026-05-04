@@ -39,6 +39,7 @@
       ".claude/skills/smithy.pr-review/scripts/find-pr.sh",
       ".claude/skills/smithy.pr-review/scripts/get-comments.sh",
       ".claude/skills/smithy.pr-review/scripts/reply-comment.sh",
+      ".claude/skills/smithy.status/SKILL.md",
       ".claude/hooks/smithy-session-title.mjs"
     ]
   }
