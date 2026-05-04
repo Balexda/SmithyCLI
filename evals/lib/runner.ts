@@ -202,11 +202,13 @@ export function preflight(): void {
 
   // (b) Verify that at least one auth path is configured.
   if (process.env['ANTHROPIC_API_KEY']) {
-    // API key is set — accept it as a valid auth method.
+    return;
+  }
+  if (process.env['CLAUDE_CODE_OAUTH_TOKEN']) {
     return;
   }
 
-  // No API key — probe whether OAuth is active.
+  // No env-var credential — probe whether OAuth is active.
   try {
     const result = execFileSync('claude', ['auth', 'status'], {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -221,7 +223,7 @@ export function preflight(): void {
   } catch {
     throw new Error(
       'No API key or OAuth login found. ' +
-      'Set ANTHROPIC_API_KEY or run `claude login`.',
+      'Set ANTHROPIC_API_KEY, set CLAUDE_CODE_OAUTH_TOKEN, or run `claude login`.',
     );
   }
 }

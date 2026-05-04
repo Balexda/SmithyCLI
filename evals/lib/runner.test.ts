@@ -343,13 +343,18 @@ describe('runScenario', () => {
 
 describe('preflight', () => {
   const savedApiKey = process.env['ANTHROPIC_API_KEY'];
+  const savedOauthToken = process.env['CLAUDE_CODE_OAUTH_TOKEN'];
 
   afterEach(() => {
-    // Restore original API key state.
     if (savedApiKey !== undefined) {
       process.env['ANTHROPIC_API_KEY'] = savedApiKey;
     } else {
       delete process.env['ANTHROPIC_API_KEY'];
+    }
+    if (savedOauthToken !== undefined) {
+      process.env['CLAUDE_CODE_OAUTH_TOKEN'] = savedOauthToken;
+    } else {
+      delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
     }
   });
 
@@ -363,17 +368,43 @@ describe('preflight', () => {
 
   it('passes when ANTHROPIC_API_KEY is set', () => {
     process.env['ANTHROPIC_API_KEY'] = 'sk-ant-test-key';
+    delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
 
     vi.mocked(execFileSync).mockReturnValue(Buffer.from('1.0.0'));
 
     expect(() => preflight()).not.toThrow();
   });
 
-  it('passes when no API key but OAuth is active', () => {
+  it('passes when CLAUDE_CODE_OAUTH_TOKEN is set without invoking auth status', () => {
     delete process.env['ANTHROPIC_API_KEY'];
+    process.env['CLAUDE_CODE_OAUTH_TOKEN'] = 'oat-test-token';
 
     vi.mocked(execFileSync).mockImplementation(
-      (command: string, args?: readonly string[]) => {
+      (_command: string, args?: readonly string[]) => {
+        if (args && args[0] === '--version') {
+          return Buffer.from('1.0.0');
+        }
+        // Reaching `auth status` with the token set means the explicit branch
+        // is missing — fail the test.
+        throw new Error('auth status should not have been called');
+      },
+    );
+
+    expect(() => preflight()).not.toThrow();
+
+    const calls = vi.mocked(execFileSync).mock.calls;
+    const sawAuthStatus = calls.some(
+      ([, args]) => Array.isArray(args) && args[0] === 'auth' && args[1] === 'status',
+    );
+    expect(sawAuthStatus).toBe(false);
+  });
+
+  it('passes when no env credential but OAuth is active', () => {
+    delete process.env['ANTHROPIC_API_KEY'];
+    delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
+
+    vi.mocked(execFileSync).mockImplementation(
+      (_command: string, args?: readonly string[]) => {
         if (args && args[0] === '--version') {
           return Buffer.from('1.0.0');
         }
@@ -387,21 +418,21 @@ describe('preflight', () => {
     expect(() => preflight()).not.toThrow();
   });
 
-  it('throws when neither API key nor OAuth is configured', () => {
+  it('throws when no env credential and no OAuth login', () => {
     delete process.env['ANTHROPIC_API_KEY'];
+    delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
 
     vi.mocked(execFileSync).mockImplementation(
-      (command: string, args?: readonly string[]) => {
+      (_command: string, args?: readonly string[]) => {
         if (args && args[0] === '--version') {
           return Buffer.from('1.0.0');
         }
-        // auth status fails — no OAuth login.
         throw new Error('not logged in');
       },
     );
 
     expect(() => preflight()).toThrow(
-      'No API key or OAuth login found',
+      /CLAUDE_CODE_OAUTH_TOKEN/,
     );
   });
 });

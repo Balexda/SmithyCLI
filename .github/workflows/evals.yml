@@ -1,0 +1,64 @@
+name: Smithy Evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: 'Scenario name to filter (blank = run all)'
+        required: false
+        type: string
+      timeout:
+        description: 'Per-scenario timeout in seconds'
+        required: false
+        type: string
+        default: '600'
+
+concurrency:
+  group: smithy-evals
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Verify claude CLI
+        run: claude --version
+
+      - name: Run evals
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.case }}" ]; then
+            ARGS+=(--case "${{ inputs.case }}")
+          fi
+          ARGS+=(--timeout "${{ inputs.timeout }}")
+          ARGS+=(--dump /tmp/eval-captures)
+          npm run eval -- "${ARGS[@]}"
+
+      - name: Upload eval captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-captures
+          path: |
+            /tmp/eval-captures
+            evals/captures
+          retention-days: 14
