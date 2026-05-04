@@ -42,7 +42,7 @@ The fallback is best-effort. Copilot may resolve the failure cleanly, may make a
 
 ## Setup (one-time, per repo)
 
-Two settings must be toggled by hand. Neither can be configured in code.
+Three settings must be toggled by hand. None can be configured in code.
 
 1. **Enable Dependabot security updates.**
    `Settings → Code security → Dependabot security updates → Enable`.
