@@ -10,8 +10,8 @@ on:
       timeout:
         description: 'Per-scenario timeout in seconds'
         required: false
-        type: string
-        default: '600'
+        type: number
+        default: 600
 
 concurrency:
   group: smithy-evals
