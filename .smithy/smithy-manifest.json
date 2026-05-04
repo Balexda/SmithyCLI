@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "smithyVersion": "0.3.4",
+  "smithyVersion": "0.4.0",
   "deployLocation": "repo",
   "agents": [
     "claude"

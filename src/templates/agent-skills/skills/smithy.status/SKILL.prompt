@@ -32,29 +32,34 @@ You operate in one of two modes, decided from the user's input:
 Arguments forwarded from the user (when invoked via `/smithy.status`): $ARGUMENTS
 
 If `$ARGUMENTS` is left as the literal token `$ARGUMENTS` (under an agent
-that does not perform argument substitution, such as Gemini), or if the
-skill was auto-activated by a natural-language question and there are no
-explicit arguments, treat the user's most recent question as the input and
-use **question mode**.
+that does not perform argument substitution, such as Gemini), treat it the
+same as empty input and follow the empty-input branch of the mode-selection
+rules below — never feed the literal token to the shell. The literal-token
+default is **pass-through with no flags**, mirroring the original
+slash-command contract; question mode kicks in only when the user actually
+asked a natural-language question.
 
 ### Mode selection
 
 Choose **pass-through mode** when:
 
-- The user invoked the skill with CLI flags only — `$ARGUMENTS` is non-empty
-  and every whitespace-separated token starts with `-` (e.g.,
-  `--status not-started`, `--root path/`, `--graph --no-color`,
-  `--type spec --all`).
+- `$ARGUMENTS` is empty, OR `$ARGUMENTS` is the literal token `$ARGUMENTS`,
+  OR the skill was invoked with the bare intent of "show me the status
+  report" (e.g., `/smithy.status` with no further question). Run the CLI
+  with no arguments.
+- The user invoked the skill with CLI flags. The discriminator is "the
+  first whitespace-separated token starts with `-`" — examples include
+  `--status not-started` (one flag plus its value), `--root path/`,
+  `--graph --no-color`, `--type spec --all`. Subsequent value tokens
+  (`not-started`, `path/`, `spec`) do **not** need to start with `-`;
+  they are positional arguments to the preceding flag and are forwarded
+  unchanged.
 
-Choose **question mode** when:
-
-- The user asked a natural-language question (the input contains a `?`, or
-  starts with words like "what", "which", "how", "is", "are", "show",
-  "list", "next", "remaining", "left", "blocked", "done"); OR
-- The skill was auto-activated by a relevant user message and there is no
-  explicit `$ARGUMENTS`; OR
-- `$ARGUMENTS` is empty and the user's request was clearly a question
-  rather than a bare "give me the status report" trigger.
+Choose **question mode** when the user asked a natural-language question:
+the input contains a `?`, or starts with words like "what", "which", "how",
+"is", "are", "show", "list", "next", "remaining", "left", "blocked",
+"done"; or the skill was auto-activated by such a question that did not
+arrive through `/smithy.status` at all.
 
 If the user's intent is genuinely ambiguous between the two modes, prefer
 **pass-through** — it preserves the most predictable behavior and lets the
@@ -105,9 +110,13 @@ The CLI's text renderer is authoritative.
      `done` / `in-progress` / `not-started` / `unknown`, plus
      `orphan_count`, `broken_link_count`, `parse_error_count`.
    - `records` — every `ArtifactRecord` discovered, with `type`, `path`,
-     `title`, `status`, `parent_path`, and `next_action`. The
-     `next_action.command` and `next_action.args` fields are the
-     authoritative "what to do next" hint for that artifact.
+     `title`, `status`, `parent_path`, optional `completed` / `total`
+     (slice counts on `tasks` records), and `next_action`. The
+     `next_action.command` and `next_action.arguments` fields are the
+     authoritative "what to do next" hint for that artifact, and
+     `next_action.suppressed_by_ancestor` (when present) marks a hint that
+     was suppressed in the rendered tree because an ancestor is itself
+     not-started.
    - `tree` — hierarchical view (`roots: TreeNode[]`).
    - `graph` — cross-artifact dependency graph with `nodes`, `layers`
      (topological), `cycles`, and `dangling_refs`.
@@ -119,16 +128,24 @@ The CLI's text renderer is authoritative.
    Examples:
    - **"what's next?"** → cite the first actionable record from the lowest
      non-empty `graph.layers[]` (or scan `records` in order, picking the
-     first whose `next_action` is non-null and not suppressed). Return its
-     `next_action.command` plus `next_action.args`, along with the
-     artifact's title and path.
+     first whose `next_action` is non-null and `next_action.suppressed_by_ancestor`
+     is not `true`). Return its `next_action.command` plus
+     `next_action.arguments`, along with the artifact's title and path.
    - **"how many slices for this tasks file?"** → find the matching `tasks`
-     record from `records`, count its child slice rows.
+     record from `records` and quote its `total` (and, when relevant, its
+     `completed`) field. The CLI emits one `ArtifactRecord` per file — there
+     are no per-slice child records in the JSON; slice progress is rolled
+     up into `total` / `completed` on the tasks record itself.
    - **"which user stories are left for this spec?"** → list `spec`-type
      records under that spec folder whose `status` is not `done`, with
      their paths.
-   - **"what's blocked?"** → list records whose `next_action` is suppressed
-     by an unmet dependency, citing the blocker IDs from the `graph`.
+   - **"what's blocked?"** → walk `graph.nodes` and, for each node whose
+     owning record is not yet `done`, list it together with the IDs in
+     `node.row.depends_on` whose corresponding nodes still have a non-`done`
+     `status`. Those `depends_on` IDs are the actual blockers. (The
+     `next_action.suppressed_by_ancestor` flag only marks suppression by a
+     not-started ancestor in the rendered tree — it is not a
+     dependency-blocked signal.)
    - **"how many tasks are done?"** → quote `summary.counts.tasks.done`
      directly.
 
