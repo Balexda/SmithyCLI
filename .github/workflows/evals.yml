@@ -44,12 +44,14 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INPUT_CASE: ${{ inputs.case }}
+          INPUT_TIMEOUT: ${{ inputs.timeout }}
         run: |
           ARGS=()
-          if [ -n "${{ inputs.case }}" ]; then
-            ARGS+=(--case "${{ inputs.case }}")
+          if [ -n "$INPUT_CASE" ]; then
+            ARGS+=(--case "$INPUT_CASE")
           fi
-          ARGS+=(--timeout "${{ inputs.timeout }}")
+          ARGS+=(--timeout "$INPUT_TIMEOUT")
           ARGS+=(--dump /tmp/eval-captures)
           npm run eval -- "${ARGS[@]}"
 
