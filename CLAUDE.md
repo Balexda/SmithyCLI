@@ -107,6 +107,10 @@ node dist/cli.js update  # Test update flow
 
 **Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.
 
+## Automated Maintenance
+
+Dependency updates run hands-off via Dependabot, with GitHub Copilot Coding Agent as a fallback when CI fails on a Dependabot PR. See [docs/automated-dependency-updates.md](docs/automated-dependency-updates.md) for the flow, the one-time repo settings needed, and how to replicate the pattern in other repos.
+
 ## Testing
 
 Smithy has three testing tiers, each tested differently:
