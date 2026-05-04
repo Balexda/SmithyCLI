@@ -20,13 +20,10 @@ Purpose: A single eval case. Defined in `evals/lib/types.ts` as the `EvalScenari
 | `structural_expectations` | StructuralExpectations | Yes | Required headings, patterns, tables, forbidden patterns. Anchored to the producing template's literal output code-fence per FR-014. |
 | `sub_agent_evidence` | SubAgentEvidence[] | No | Per-agent evidence patterns. Required for spark, ignite, render, mark, cut per the Sub-Agent Evidence Matrix in the spec. Omitted for audit. |
 
-Validation rules (existing, unchanged):
+Validation:
 
-- `name` MUST NOT contain path separators or absolute path segments.
-- `skill` MUST be non-empty (audit's slash command satisfies this; scout's TS-shim continues to bypass via `evals/lib/scout-scenario.ts`).
-- `structural_expectations.required_headings` MUST be non-empty.
-- `structural_expectations.required_patterns` and `forbidden_patterns` MUST be valid JavaScript regex strings (compiled via `new RegExp(pattern)` with no flags).
-- `sub_agent_evidence` entries' `pattern` field MUST match either canonical text OR an Agent dispatch's description/resultText (FR-016 of the original evals spec).
+- **Loader-enforced** (existing, unchanged): `name` is a non-empty string and unique across loaded files; `skill` is a non-empty string; `structural_expectations.required_headings` is non-empty; `structural_expectations.required_patterns` / `forbidden_patterns` strings are compiled via `new RegExp(pattern)` (invalid regex throws at run-time inside `validateStructure`).
+- **Authoring conventions** (not loader-enforced): `name` SHOULD NOT contain path separators or absolute path segments (the orchestrator's `--dump` writer rejects unsafe names, and `loadBaseline` independently rejects unsafe names; new scenarios stay clear of those edge cases by following the convention); `sub_agent_evidence[].pattern` SHOULD match either canonical text OR an Agent dispatch's description/resultText (FR-016 of the original evals spec — implementer-side guidance, not a load-time check).
 
 ### 2) PlantedArtifact (new role for an existing artifact type)
 
@@ -53,7 +50,7 @@ Purpose: A scenario-isolated subfolder under `evals/fixture/{prds,rfcs,specs}/`.
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `path` | repo-relative directory path | Yes | One of `evals/fixture/prds/<scenario-slug>/`, `evals/fixture/rfcs/<scenario-slug>/`, `evals/fixture/specs/<scenario-slug>/`. |
-| `scenario_slug` | string | Yes | Matches the consuming scenario's `name`. Examples: `mark-eval/`, `cut-eval/`, `audit-eval/`, `render-eval/`, `ignite-eval/`. (Spark requires no plants; spark's directory MUST NOT exist.) |
+| `scenario_slug` | string | Yes | A short directory-naming label derived from the consuming scenario's command (not equal to the scenario's full `name`). Convention: `<command>-eval`. Examples (with their consuming scenarios): `mark-eval/` ← `mark-from-features`, `cut-eval/` ← `cut-from-spec`, `audit-eval/` ← `audit-flawed-spec`, `render-eval/` ← `render-from-rfc`, `ignite-eval/` ← `ignite-from-prd`. (Spark requires no plants; no `spark-eval/` directory is created.) |
 | `owner` | string | Yes | Single `EvalScenario.name`. |
 
 Validation rules:

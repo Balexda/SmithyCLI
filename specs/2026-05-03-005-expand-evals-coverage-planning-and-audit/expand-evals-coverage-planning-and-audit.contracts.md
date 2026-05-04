@@ -24,7 +24,7 @@ This feature adds **new instances** to two existing contracts (the YAML scenario
 name: <kebab-case-string>             # required, unique across cases
 skill: /<smithy-command>              # required, non-empty
 prompt: <argument-string>             # required
-timeout: <integer-seconds>            # optional; required for mark/cut/render/ignite (FR-010)
+timeout: <seconds>                    # optional; positive finite number of seconds (runner multiplies by 1000); required for mark/cut/render/ignite (FR-010)
 structural_expectations:
   required_headings:                  # required, non-empty array
     - '## ...'
@@ -45,7 +45,7 @@ sub_agent_evidence:                   # required for spark/ignite/render/mark/cu
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Kebab-case identifier; matches `[a-z0-9-]+`. Unique across `evals/cases/*.yaml`. |
+| `name` | string | Yes | Non-empty unique identifier across `evals/cases/*.yaml` (loader-enforced). Authoring convention: kebab-case `[a-z0-9-]+` for readability and to stay clear of the `--dump` and `loadBaseline` unsafe-name guards. |
 | `skill` | string | Yes | Non-empty slash-command form. The runner's `runScenario` composes the headless invocation as `${skill} ${prompt}` before spawning `claude`. |
 | `prompt` | string | Yes | For scenarios consuming a plant, MUST be an exact repo-relative path; for spark, free-text idea. |
 | `timeout` | number | Conditional | In seconds. Required when the empirical run-time is known to exceed the runner's 120s default. |

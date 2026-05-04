@@ -59,7 +59,7 @@ As a Smithy maintainer, I want an automated eval that runs `/smithy.mark` agains
 
 1. **Given** the planted features-map and at least one feature whose `Artifact` cell is `—`, **When** the scenario runs with prompt `evals/fixture/rfcs/mark-eval/01-core.features.md 1`, **Then** mark's terminal output contains the one-shot snippet's mandatory headings (`## Summary`, `## Assumptions`, `## Specification Debt`, `## PR`) and a `**Spec folder**:` bullet pointing into a temp-dir-relative `specs/...` path.
 2. **Given** the scenario's `sub_agent_evidence` lists smithy-scout, smithy-plan, smithy-clarify, smithy-refine, and smithy-plan-review, **When** the run completes, **Then** every listed pattern matches against either the canonical text or a dispatched-agent record.
-3. **Given** the planted features-map references a feature number that is out of range, **When** the prompt is corrected to a valid number, **Then** the scenario PASSES on rerun without source fixture changes (FR-011 source-fixture checksum invariant from the original evals spec is preserved).
+3. **Given** the planted features-map references a feature number that is out of range, **When** the prompt is corrected to a valid number, **Then** the scenario PASSES on rerun without source fixture changes (the source-fixture checksum invariant established by the original evals spec is preserved; in this spec see FR-013).
 4. **Given** mark dispatches `git checkout -b` and `gh pr create` during its workflow, **When** the scenario runs in the temp fixture copy, **Then** the scenario PASSES even if `gh` authentication is absent — the structural expectations match against either the success or PR-creation-failure branch of the one-shot snippet.
 
 ---
