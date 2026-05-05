@@ -5,8 +5,11 @@ headless `claude` CLI against a static reference fixture, then validates the
 captured output structurally (headings, tables, regex patterns, sub-agent
 dispatch evidence, baseline drift).
 
-The evals framework is decoupled from `npm test`. It costs real model tokens and
-takes minutes per scenario, so it runs locally on demand only — never in CI.
+The evals framework is decoupled from `npm test`. It costs real model tokens
+and takes minutes per scenario, so it does not gate `push` or `pull_request`
+CI. It runs locally on demand, or — for unattended runs — via the
+`Smithy Evals` GitHub Actions workflow (`workflow_dispatch` only, see
+[Running in CI](#running-in-ci)).
 
 > Status — the framework is operational end-to-end (fixture copy, skills
 > deployment, headless invocation, stream-json parsing, structural / sub-agent /
@@ -19,9 +22,11 @@ takes minutes per scenario, so it runs locally on demand only — never in CI.
 
 ## Prerequisites
 
-1. **`claude` CLI** in `PATH` and authenticated. Either path works:
-   - `ANTHROPIC_API_KEY` env var, or
-   - Interactive OAuth login: `claude login`
+1. **`claude` CLI** in `PATH` and authenticated. Any of:
+   - `ANTHROPIC_API_KEY` env var (pay-per-token API access), or
+   - `CLAUDE_CODE_OAUTH_TOKEN` env var (long-lived subscription token,
+     generated via `claude setup-token`), or
+   - Interactive OAuth login: `claude login`.
 2. **Node** + the project's npm dependencies: `npm install` from the repo root.
 3. **Built CLI**: `npm run eval` and `npm run test:evals` both pre-build via tsup
    (`preeval` / `pretest:evals` hooks). No manual `npm run build` needed.
@@ -66,6 +71,34 @@ Runs every `evals/**/*.test.ts` via vitest — covers the parser, runner (mocked
 `claude`), structural validator, scenario loader, baseline library, report
 formatter, and the strike + scout scenario shapes. Fast and free; run it any
 time you touch `evals/lib/`.
+
+## Running in CI
+
+The `Smithy Evals` workflow (`.github/workflows/evals.yml`) runs the same
+suite on a GitHub-hosted runner. It is **`workflow_dispatch` only** —
+intentionally not wired to `push` or `pull_request`, because every run costs
+model tokens or subscription minutes. Trigger it from
+`Actions → Smithy Evals → Run workflow`. Inputs:
+
+- `case` — optional scenario filter (matches `EvalScenario.name`,
+  e.g. `strike-health-check` or `scout-fixture-shallow`). Blank runs all.
+- `timeout` — per-scenario timeout in seconds. Defaults to `600`, which
+  comfortably covers the strike pipeline (~440s observed).
+
+The workflow reads two repository secrets and exposes both to `npm run eval`;
+the `claude` CLI prefers the OAuth token when both are present:
+
+| Secret | Auth path | Notes |
+|---|---|---|
+| `CLAUDE_CODE_OAUTH_TOKEN` | Long-lived OAuth token | Generate locally with `claude setup-token`. Uses your Pro/Max subscription, ~1 year validity, no per-token cost. Rotate by re-running `claude setup-token` and updating the secret. |
+| `ANTHROPIC_API_KEY` | Anthropic API key | Pay-per-token. Optional fallback for when the OAuth token has expired or you want billed-API behavior. |
+
+Each run uploads `/tmp/eval-captures` (canonical text + raw stream-json
+events from `--dump`) and `evals/captures/` as the `eval-captures` artifact
+on the workflow run, regardless of pass/fail. Download it from the run's
+summary page when triaging a failure — the same workflow you'd use locally
+in [Maintenance — when patterns drift](#maintenance--when-patterns-drift),
+just sourced from the CI artifact instead of `/tmp`.
 
 ## Output
 
@@ -327,8 +360,9 @@ Per the feature spec — defer until structural evals prove valuable:
 - **Rubric grading / LLM-as-judge** (v2, alongside multi-run statistical analysis).
 - **Docker isolation** (v2 if cross-case contamination becomes a real problem;
   temp dir + checksum is sufficient for v1).
-- **CI integration** (evals are local-on-demand only — they cost tokens and
-  minutes).
+- **Automatic CI gating on every PR** (evals cost tokens and minutes; the
+  `Smithy Evals` workflow runs on demand only, see
+  [Running in CI](#running-in-ci)).
 - **`smithy.orders` evals** (needs GitHub API mocking, which needs Docker).
 - **Gemini / Codex evals** (Tier 3 covers Claude Code execution only).
 - **Automatic baseline regeneration** (manual on purpose so structure changes
