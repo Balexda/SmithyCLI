@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenPermissions, denyPermissions } from './permissions.js';
+import { flattenPermissions, askPermissions, denyPermissions, extraPermissions } from './permissions.js';
 
 describe('flattenPermissions', () => {
   it('returns an array of strings', () => {
@@ -122,6 +122,42 @@ describe('flattenPermissions', () => {
   it('denies npm publish', () => {
     expect(denyPermissions).toContain('npm publish');
     expect(denyPermissions).toContain('npm publish *');
+  });
+
+  it('denies force-push without lease', () => {
+    expect(denyPermissions).toContain('git push --force');
+    expect(denyPermissions).toContain('git push --force *');
+    expect(denyPermissions).toContain('git push -f');
+    expect(denyPermissions).toContain('git push -f *');
+  });
+
+  it('asks (does not deny) force-push with lease so rebase pushes can proceed', () => {
+    expect(askPermissions).toContain('git push --force-with-lease');
+    expect(askPermissions).toContain('git push --force-with-lease *');
+    expect(denyPermissions).not.toContain('git push --force-with-lease');
+    expect(denyPermissions).not.toContain('git push --force-with-lease *');
+  });
+
+  it('does NOT include extraPermissions (Claude-only entries that would leak into Gemini)', () => {
+    // Regression guard for PR #290 review feedback: extraPermissions used to
+    // be appended inside flattenPermissions(), which Gemini's allowlist also
+    // consumes — leaking `.claude/...` paths and `:*` argument-suffix syntax
+    // into Gemini. They now live in buildClaudeAllowList() instead.
+    const result = flattenPermissions();
+    for (const entry of extraPermissions) {
+      expect(result).not.toContain(entry);
+    }
+    expect(result).not.toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(result).not.toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
+  });
+
+  it('still exports extraPermissions with the smithy.pr-review entries (consumed by buildClaudeAllowList)', () => {
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/find-pr.sh');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

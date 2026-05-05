@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { deploy, removeLegacy } from './gemini.js';
+import { buildGeminiAllowList, deploy, removeLegacy } from './gemini.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -94,5 +94,28 @@ describe('removeLegacy', () => {
   it('returns 0 when no skills exist to remove', () => {
     const removedCount = removeLegacy(tmpDir);
     expect(removedCount).toBe(0);
+  });
+});
+
+describe('buildGeminiAllowList', () => {
+  it('wraps every entry in run_shell_command(...)', () => {
+    const list = buildGeminiAllowList();
+    for (const entry of list) {
+      expect(entry.startsWith('run_shell_command(')).toBe(true);
+      expect(entry.endsWith(')')).toBe(true);
+    }
+  });
+
+  it('does not leak Claude-only extraPermissions (smithy.pr-review script paths)', () => {
+    // Regression guard for PR #290 review feedback. The pr-review skill is
+    // Claude-only, and its `:*` argument-suffix patterns are Claude syntax.
+    // Gemini's allowlist must remain free of them.
+    const list = buildGeminiAllowList();
+    const joined = list.join('\n');
+    expect(joined).not.toContain('smithy.pr-review/scripts/find-pr.sh');
+    expect(joined).not.toContain('smithy.pr-review/scripts/get-comments.sh');
+    expect(joined).not.toContain('smithy.pr-review/scripts/reply-comment.sh');
+    expect(joined).not.toContain('.claude/skills/');
+    expect(list.some(e => e.includes(':*'))).toBe(false);
   });
 });
