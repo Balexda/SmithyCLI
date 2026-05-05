@@ -297,14 +297,15 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(3);
+    expect(byCategory.skills).toHaveLength(4);
   });
 
-  it('skills includes smithy.pr-review, smithy.status, and smithy.gh-issue', () => {
+  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, and smithy.helper-docker', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
     expect(skills).toContain('smithy.gh-issue');
+    expect(skills).toContain('smithy.helper-docker');
   });
 
   it('commands includes expected template files', () => {
@@ -473,6 +474,20 @@ describe('getComposedTemplates', () => {
     // gh directly for issue creation, search, or linking.
     expect(orders).not.toContain('gh issue create --title');
     expect(orders).not.toContain('gh issue list --search');
+  });
+
+  it('smithy.helper-docker is body-only (no scripts) with frontmatter retained', () => {
+    const skill = composed.skills.get('smithy.helper-docker');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toContain('name: smithy.helper-docker');
+    expect(skill!.prompt).toMatch(/^---\s*\n/);
+    expect(skill!.scripts.size).toBe(0);
+  });
+
+  it('smithy.forge advertises smithy.helper-docker in its operational skills table', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+    expect(forge).toContain('smithy.helper-docker');
   });
 
   it('categorizes templates correctly', () => {

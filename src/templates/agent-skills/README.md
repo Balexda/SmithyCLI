@@ -11,6 +11,8 @@ agent-skills/
   commands/    Slash commands (invocable as /smithy.<name>)
   prompts/     Reference prompts (readable by the AI, not invocable)
   agents/      Sub-agent definitions (dispatched by parent commands)
+  skills/      Lazy-loaded operational skills (frontmatter visible, body
+               loaded on Skill("<name>") invocation only)
   snippets/    Shared Handlebars partials injected via {{>partial-name}}
 ```
 
