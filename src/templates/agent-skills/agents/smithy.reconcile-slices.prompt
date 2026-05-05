@@ -26,9 +26,9 @@ dispatching competing smithy-slice sub-agents.
 
 The parent agent passes you:
 
-1. **Competing decompositions** — the structured outputs from 2 smithy-slice
-   runs, each labeled with the focus lens that produced it (e.g.,
-   "Minimal Path", "Structural Integrity").
+1. **Competing decompositions** — the structured outputs from the parallel
+   smithy-slice runs, each labeled with the focus lens that produced it (e.g.,
+   "Minimal Path", "Structural Integrity", "Independent Slices").
 2. **Context file paths** — the same codebase files that were passed to the
    slice agents, so you can verify findings against actual code.
 3. **User story** — the story title, acceptance scenarios, and traced FRs, for
@@ -42,27 +42,35 @@ The parent agent passes you:
 
 ### Step 1: Compare Slice Strategies
 
-The two decompositions may propose **different slice boundaries** — different
-numbers of slices, different groupings of acceptance scenarios, different
-foundational-vs-additive orderings. This is the most important divergence to
-resolve.
+The competing decompositions may propose **different slice boundaries** —
+different numbers of slices, different groupings of acceptance scenarios,
+different foundational-vs-additive orderings. This is the most important
+divergence to resolve.
 
 1. Map each decomposition's slices to the acceptance scenarios they address.
-2. Identify whether both decompositions cover all acceptance scenarios.
+2. Identify whether all decompositions cover the full set of acceptance
+   scenarios.
 3. Categorize the relationship:
-   - **Same slicing** — both propose the same slice boundaries (possibly with
-     different task details). Proceed to Step 2.
-   - **Different granularity** — one proposes more slices than the other (e.g.,
+   - **Same slicing** — all decompositions propose the same slice boundaries
+     (possibly with different task details). Proceed to Step 2.
+   - **Different granularity** — one proposes more slices than another (e.g.,
      2 vs 3 slices covering the same scenarios). Assess whether the finer
      split produces genuinely independent PRs or just fragments coherent work.
-   - **Different grouping** — both propose the same number of slices but group
-     scenarios differently. Assess which grouping produces more cohesive,
-     independently deliverable PRs.
+   - **Different grouping** — decompositions propose the same number of slices
+     but group scenarios differently. Assess which grouping produces more
+     cohesive, independently deliverable PRs.
 
 For different-granularity or different-grouping cases, read the relevant code
 to assess which slicing better matches the codebase's natural boundaries
 (module structure, test organization, dependency graph). Present the conflict
 with a recommendation (see Step 4).
+
+**Parallelism check.** When one decomposition marks `Depends On = —` and
+another asserts an ordering, verify the dependency exists in the actual data
+or code flow before adopting the ordered version. Convention-driven sequencing
+(e.g., "do scaffolding first, then features") is not a real dependency —
+prefer the parallel-eligible version unless the code or data flow demands
+ordering.
 
 ### Step 2: Reconcile Tasks Within Slices
 
