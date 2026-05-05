@@ -297,13 +297,14 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(2);
+    expect(byCategory.skills).toHaveLength(3);
   });
 
-  it('skills includes smithy.pr-review and smithy.status', () => {
+  it('skills includes smithy.pr-review, smithy.status, and smithy.gh-issue', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
+    expect(skills).toContain('smithy.gh-issue');
   });
 
   it('commands includes expected template files', () => {
@@ -404,6 +405,74 @@ describe('getComposedTemplates', () => {
     expect(script).toContain('repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies');
     expect(script).toContain('--method POST');
     expect(script).toContain('--input "$BODY_FILE"');
+  });
+
+  it('skills map includes smithy.gh-issue with the four expected scripts', () => {
+    const skill = composed.skills.get('smithy.gh-issue');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toBeTruthy();
+    expect(skill!.scripts.size).toBe(4);
+    expect(skill!.scripts.has('check-env.sh')).toBe(true);
+    expect(skill!.scripts.has('search-issues.sh')).toBe(true);
+    expect(skill!.scripts.has('create-issue.sh')).toBe(true);
+    expect(skill!.scripts.has('link-blocked-by.sh')).toBe(true);
+  });
+
+  it('smithy.gh-issue prompt retains frontmatter with allowed-tools for all scripts', () => {
+    const skill = composed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toMatch(/^---\s*\n/);
+    expect(skill.prompt).toContain('name: smithy.gh-issue');
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/search-issues.sh *)');
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/create-issue.sh *)');
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/link-blocked-by.sh *)');
+  });
+
+  it('smithy.gh-issue scripts start with bash shebang and set strict mode', () => {
+    const skill = composed.skills.get('smithy.gh-issue')!;
+    for (const [, content] of skill.scripts) {
+      expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
+      expect(content).toContain('set -euo pipefail');
+    }
+  });
+
+  it('search-issues.sh accepts state, query, and optional limit', () => {
+    const skill = composed.skills.get('smithy.gh-issue')!;
+    const script = skill.scripts.get('search-issues.sh')!;
+    expect(script).toContain('gh issue list');
+    expect(script).toContain('--state "$STATE"');
+    expect(script).toContain('--search "$QUERY"');
+    expect(script).toContain('--limit "$LIMIT"');
+    expect(script).toContain('--json number,title,state,body');
+  });
+
+  it('create-issue.sh writes via --body-file and emits JSON with number', () => {
+    const skill = composed.skills.get('smithy.gh-issue')!;
+    const script = skill.scripts.get('create-issue.sh')!;
+    expect(script).toContain('gh issue create --title "$TITLE" --body-file "$BODY_FILE"');
+    expect(script).toContain('jq -n');
+    expect(script).toContain('number: $number');
+  });
+
+  it('link-blocked-by.sh uses addBlockedBy GraphQL mutation', () => {
+    const skill = composed.skills.get('smithy.gh-issue')!;
+    const script = skill.scripts.get('link-blocked-by.sh')!;
+    expect(script).toContain('addBlockedBy');
+    expect(script).toContain('blockingIssueId:$blocker');
+    expect(script).toContain('gh api graphql');
+  });
+
+  it('smithy.orders command delegates GitHub ops to smithy.gh-issue scripts', () => {
+    const orders = composed.commands.get('smithy.orders.md')!;
+    expect(orders).toBeDefined();
+    expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/check-env.sh');
+    expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/search-issues.sh');
+    expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/create-issue.sh');
+    expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh');
+    // The old inline gh invocations should be gone — orders no longer calls
+    // gh directly for issue creation, search, or linking.
+    expect(orders).not.toContain('gh issue create --title');
+    expect(orders).not.toContain('gh issue list --search');
   });
 
   it('categorizes templates correctly', () => {
