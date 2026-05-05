@@ -278,8 +278,21 @@ export async function runScenario(
     // re-confirmed against claude 2.1.121: without it, claude exits 1 with
     // "Error: When using --print, --output-format=stream-json requires --verbose"
     // before emitting any events).
+    //
+    // `--permission-mode bypassPermissions` is required because headless `-p`
+    // mode has no human to approve permission prompts. Without it, any tool
+    // call not covered by the deployed allow-list (e.g. `git init` on a fresh
+    // fixture, or a Write outside an over-narrow glob) silently stalls until
+    // the per-case timeout fires. Each scenario runs in a throwaway temp dir
+    // and the source fixture is checksum-verified before/after (FR-011), so
+    // bypass is appropriate for the eval harness.
     const result = await spawnClaude(
-      ['--output-format', 'stream-json', '--verbose', '-p', invocation],
+      [
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--permission-mode', 'bypassPermissions',
+        '-p', invocation,
+      ],
       tmpDir,
       timeoutMs,
     );
