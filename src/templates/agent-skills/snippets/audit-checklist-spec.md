@@ -4,6 +4,7 @@
 |----------|---------------|
 | **Story Completeness** | Does every user story have acceptance scenarios, priority justification, and an independent test? Are there obvious missing stories? |
 | **Priority Ordering** | Are user stories ordered by priority (all P1 first, then P2, then P3)? If any story appears out of priority order, flag it as a finding. |
+| **Story Independence** | Are user stories that touch disjoint code areas or address functionally independent acceptance scenarios marked as such, so they can be cut in parallel? Is the implied "all of P1 before any of P2" sequencing real, or merely conventional? Flag stories where `Depends On` overstates the actual prerequisite. |
 | **Requirement Traceability** | Does every FR trace to at least one user story? Are there user stories with no supporting requirements? |
 | **Cross-Document Consistency** | Do entities in data-model.md match Key Entities in the spec? Do contracts.md interfaces align with integration-related requirements? |
 | **Edge Case Coverage** | Are edge cases from the spec reflected in acceptance scenarios or requirements? Are there unaddressed failure modes? |
