@@ -20,7 +20,9 @@ const SPEC_FOLDER_RE   = /specs?\/\d{4}-\d{2}-\d{2}-\d{3}-([a-z0-9][a-z0-9-]*)/i
 const PRD_RFC_FOLDER_RE = /docs\/(?:prds|rfcs)\/\d{4}-\d{3}-([a-z0-9][a-z0-9-]*)/i;
 const TASKS_FILE_RE    = /(?:^|[\s/])(\d{1,3})-([a-z0-9][a-z0-9-]*)\.tasks\.md\b/i;
 const FEATURES_FILE_RE = /(?:^|[\s/])\d{1,3}-([a-z0-9][a-z0-9-]*)\.features\.md\b/i;
-const STRIKE_FILE_RE   = /(?:^|[\s/])([a-z0-9][a-z0-9-]*)\.strike\.md\b/i;
+// Strike files live at specs/strikes/YYYY-MM-DD-<slug>.strike.md (per smithy.strike).
+// The date prefix is optional — bare `<slug>.strike.md` is also accepted.
+const STRIKE_FILE_RE   = /(?:^|[\s/])(?:\d{4}-\d{2}-\d{2}-)?([a-z][a-z0-9-]*)\.strike\.md\b/i;
 const TRAILING_INT_RE  = /(?:^|\s)(\d{1,3})\s*$/;
 
 function trailingInt(rest) {

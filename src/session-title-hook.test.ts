@@ -54,6 +54,12 @@ describe('deriveTitle', () => {
       expect(deriveTitle('/smithy.forge feature.strike.md')).toBe('feature-forge');
     });
 
+    it('strips the YYYY-MM-DD prefix from a strike-file slug', () => {
+      expect(
+        deriveTitle('/smithy.forge specs/strikes/2026-03-14-verbose-flag.strike.md'),
+      ).toBe('verbose-flag-forge');
+    });
+
     it('returns null with no arguments', () => {
       expect(deriveTitle('/smithy.forge')).toBeNull();
     });
@@ -66,6 +72,12 @@ describe('deriveTitle', () => {
   describe('strike', () => {
     it('emits <strike-slug>-strike from a .strike.md file (Phase-0 review)', () => {
       expect(deriveTitle('/smithy.strike feature.strike.md')).toBe('feature-strike');
+    });
+
+    it('strips the YYYY-MM-DD prefix from the canonical strikes/ path', () => {
+      expect(
+        deriveTitle('/smithy.strike specs/strikes/2026-03-14-verbose-flag.strike.md'),
+      ).toBe('verbose-flag-strike');
     });
 
     it('returns null for a description argument', () => {
