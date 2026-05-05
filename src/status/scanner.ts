@@ -603,15 +603,15 @@ function findTasksByStoryNumber(
  *     `specs/<YYYY-MM-DD>-<NNN>-<slug>/` but names the spec file after
  *     the bare slug (e.g. `specs/2026-04-05-001-foo/foo.spec.md`).
  *
- * Only canonical filenames are accepted; if the folder contains a
- * non-canonical `.spec.md`, this returns `null` and the scanner emits a
- * virtual record at the folder path instead. Falling back to "first
- * .spec.md found" would make parent linkage depend on `readdirSync`
- * order, which is not stable across filesystems. When both canonical
- * filenames are present in the same folder (extremely unusual), the
- * unprefixed `<folder-leaf>.spec.md` form wins so legacy folders that
- * happen to start with a date-shaped slug still resolve the way they
- * always did.
+ * Only canonical filenames are accepted; if the folder contains no
+ * canonical `.spec.md` (only non-canonical ones, or no `.spec.md` at
+ * all), this returns `null` and the scanner emits a virtual record at
+ * the folder path instead. Falling back to "first .spec.md found"
+ * would make parent linkage depend on `readdirSync` order, which is
+ * not stable across filesystems. When both canonical filenames are
+ * present in the same folder (extremely unusual), the unprefixed
+ * `<folder-leaf>.spec.md` form wins so legacy folders that happen to
+ * start with a date-shaped slug still resolve the way they always did.
  */
 function findSpecInFolder(
   folder: string,
@@ -627,7 +627,6 @@ function findSpecInFolder(
   const canonicalSlugBase =
     datedSlug !== undefined ? `${datedSlug}.spec.md` : null;
 
-  let leafMatch: string | null = null;
   let slugMatch: string | null = null;
   for (const [p, rec] of records) {
     if (rec.type !== 'spec') continue;
@@ -639,12 +638,16 @@ function findSpecInFolder(
     const tail = p.slice(folder.length);
     if (tail.includes('/')) continue;
     if (tail === canonicalLeafBase) {
-      leafMatch = p;
-    } else if (canonicalSlugBase !== null && tail === canonicalSlugBase) {
+      // Leaf form always wins on a tie, so return immediately and skip
+      // the rest of the scan — preserves the early-exit behavior the
+      // function had before slug-form support was added.
+      return p;
+    }
+    if (canonicalSlugBase !== null && tail === canonicalSlugBase) {
       slugMatch = p;
     }
   }
-  return leafMatch ?? slugMatch;
+  return slugMatch;
 }
 
 function makeVirtualRecord(
