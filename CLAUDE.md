@@ -28,6 +28,27 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
+### Source vs. Deployed Artifacts — Don't Edit `.claude/` In Source PRs
+
+`src/templates/agent-skills/` is the **only** source of truth for prompts and
+skills. The committed `.claude/` tree at the root of this repo is a
+*snapshot* of a prior `smithy init` run, kept around so contributors and
+Claude Code itself can use a known-good baseline directly from the source
+tree — **but it is intentionally allowed to drift from `src/templates/`
+between releases**.
+
+Do **not** regenerate `.claude/` (or `.smithy/smithy-manifest.json`) as part
+of a PR that edits source templates. That coupling makes diffs noisier,
+forces every template change to ship with derived artifacts that reviewers
+must also vet, and obscures whether a prompt change is intentional or just a
+stale render. Refresh the snapshot in dedicated chore PRs (e.g. the
+periodic `chore: upgrade Smithy templates to latest` commits) — never as a
+side effect of a feature/bugfix PR.
+
+If a Copilot-style automated reviewer asks you to regenerate `.claude/` to
+match new source-template changes, decline with a pointer back to this
+section.
+
 ## The Smithy Workflow Commands
 
 Smithy provides a collection of workflow prompts, each for a different stage/style of development:
