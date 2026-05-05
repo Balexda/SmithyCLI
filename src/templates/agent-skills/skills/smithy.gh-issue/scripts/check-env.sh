@@ -13,8 +13,13 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! REPO_JSON=$(gh repo view --json owner,name 2>/dev/null); then
-  echo "This repository does not have a GitHub remote configured." >&2
+# Capture stderr so we can surface gh's real error (auth failure, no remote,
+# rate limit, etc.) instead of always reporting "no GitHub remote configured."
+GH_STDERR=$(mktemp)
+trap 'rm -f "$GH_STDERR"' EXIT
+if ! REPO_JSON=$(gh repo view --json owner,name 2>"$GH_STDERR"); then
+  echo "Could not read GitHub repo info via gh:" >&2
+  cat "$GH_STDERR" >&2
   exit 1
 fi
 
