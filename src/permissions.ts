@@ -395,9 +395,13 @@ export const permissions: Record<string, PermissionEntry> = {
 };
 
 /**
- * Extra raw permission strings that don't fit the nested `command -> args` shape
- * of `permissions`. Appended verbatim to the allow list. Use sparingly — most
- * additions belong in `permissions`.
+ * Claude-only raw permission strings that don't fit the nested `command -> args`
+ * shape of `permissions`. Appended verbatim to the Claude allow list by
+ * `buildClaudeAllowList`. **Do not** route through `flattenPermissions()` —
+ * Gemini's `buildGeminiAllowList` also consumes that flattener and would wrap
+ * these in `run_shell_command(...)`, which Gemini neither understands nor
+ * needs (Claude's `:*` argument-suffix syntax is meaningless to Gemini, and
+ * the `.claude/...` paths are Claude assets).
  */
 export const extraPermissions: string[] = [
   // Smithy pr-review skill scripts — belt-and-suspenders for the skill's own
@@ -561,10 +565,6 @@ export function flattenPermissions(
       }
     }
   }
-
-  // Raw entries that don't fit the nested shape (e.g. absolute/relative paths).
-  // Toolchain/platform filters don't apply — these are universal.
-  for (const entry of extraPermissions) result.push(entry);
 
   return result;
 }

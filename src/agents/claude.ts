@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
-import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
+import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
@@ -127,12 +127,15 @@ export function removeLegacy(targetDir: string): number {
 /**
  * Build the Claude Code allow-list from the shared permissions.
  * Wraps each command in Bash(...) and appends Claude-specific tool permissions.
+ * `extraPermissions` is Claude-only and intentionally lives here rather than
+ * inside `flattenPermissions()` so it doesn't leak into Gemini's allowlist.
  */
 export function buildClaudeAllowList(
   languages?: LanguageToolchain[],
   platformManagers?: PlatformPackageManager[],
 ): string[] {
-  const bashPermissions = flattenPermissions(languages, platformManagers).map(cmd => `Bash(${cmd})`);
+  const flat = [...flattenPermissions(languages, platformManagers), ...extraPermissions];
+  const bashPermissions = flat.map(cmd => `Bash(${cmd})`);
   return [...bashPermissions, ...claudeToolPermissions];
 }
 

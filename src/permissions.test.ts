@@ -138,17 +138,26 @@ describe('flattenPermissions', () => {
     expect(denyPermissions).not.toContain('git push --force-with-lease *');
   });
 
-  it('appends extraPermissions (smithy.pr-review script paths) to the flattened allow list', () => {
+  it('does NOT include extraPermissions (Claude-only entries that would leak into Gemini)', () => {
+    // Regression guard for PR #290 review feedback: extraPermissions used to
+    // be appended inside flattenPermissions(), which Gemini's allowlist also
+    // consumes — leaking `.claude/...` paths and `:*` argument-suffix syntax
+    // into Gemini. They now live in buildClaudeAllowList() instead.
     const result = flattenPermissions();
-    // extraPermissions contents must round-trip through flattenPermissions
     for (const entry of extraPermissions) {
-      expect(result).toContain(entry);
+      expect(result).not.toContain(entry);
     }
-    // Specific entries the user expects
-    expect(result).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
-    expect(result).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
-    expect(result).toContain('*/smithy.pr-review/scripts/find-pr.sh');
-    expect(result).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
+    expect(result).not.toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(result).not.toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
+  });
+
+  it('still exports extraPermissions with the smithy.pr-review entries (consumed by buildClaudeAllowList)', () => {
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/find-pr.sh');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

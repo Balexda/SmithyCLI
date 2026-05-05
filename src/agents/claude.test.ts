@@ -375,6 +375,18 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(git push origin claude/*)');
   });
 
+  it('includes Claude-only extraPermissions (smithy.pr-review script paths)', () => {
+    const list = buildClaudeAllowList();
+    // Repo-level relative paths
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
+    // Wildcard fallback for user-level / absolute deploys
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+  });
+
   it('includes multi-language build tool commands', () => {
     const list = buildClaudeAllowList();
     // npm
