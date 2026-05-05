@@ -179,7 +179,7 @@ describe('runScenario', () => {
       // Fixture isolation: spawn must target the temp copy, not the source.
       expect(spawn).toHaveBeenCalledWith(
         'claude',
-        ['--output-format', 'stream-json', '--verbose', '-p', '/smithy.strike do something'],
+        ['--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions', '-p', '/smithy.strike do something'],
         expect.objectContaining({
           cwd: expect.stringContaining('smithy-eval-'),
           stdio: ['ignore', 'pipe', 'pipe'],

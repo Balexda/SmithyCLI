@@ -29,6 +29,7 @@ export const permissions: Record<string, PermissionEntry> = {
   git: {
     "status": [],
     "status -s": [],
+    "init": [],
     "fetch": ["*"],
     "pull": ["*"],
     "pull --rebase": ["*"],
@@ -432,7 +433,7 @@ export const denyPermissions: string[] = [
 export const claudeToolPermissions: string[] = [
   "WebSearch",
   "WebFetch",
-  "Write(//tmp/**)",
+  "Write(/tmp/**)",
   "Skill(smithy.*:*)",
 ];
 

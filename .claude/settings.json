@@ -6,6 +6,7 @@
     "allow": [
       "Bash(git status)",
       "Bash(git status -s)",
+      "Bash(git init)",
       "Bash(git fetch *)",
       "Bash(git pull *)",
       "Bash(git pull --rebase *)",
@@ -218,7 +219,7 @@
       "Bash(unzip -l *)",
       "WebSearch",
       "WebFetch",
-      "Write(//tmp/**)",
+      "Write(/tmp/**)",
       "Skill(smithy.*:*)"
     ],
     "deny": [
