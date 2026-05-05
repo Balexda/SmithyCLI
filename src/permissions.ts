@@ -395,6 +395,39 @@ export const permissions: Record<string, PermissionEntry> = {
 };
 
 /**
+ * Extra raw permission strings that don't fit the nested `command -> args` shape
+ * of `permissions`. Appended verbatim to the allow list. Use sparingly — most
+ * additions belong in `permissions`.
+ */
+export const extraPermissions: string[] = [
+  // Smithy pr-review skill scripts — belt-and-suspenders for the skill's own
+  // `allowed-tools` frontmatter. We enumerate likely deployment paths because
+  // Claude Code's `*` wildcard doesn't reliably span `/` boundaries.
+  // Repo-level deploy invokes scripts via the relative path; user-level deploy
+  // invokes them via an absolute home path that no single pattern can match
+  // without env-var expansion.
+  ".claude/skills/smithy.pr-review/scripts/find-pr.sh",
+  ".claude/skills/smithy.pr-review/scripts/get-comments.sh:*",
+  ".claude/skills/smithy.pr-review/scripts/reply-comment.sh:*",
+  "*/smithy.pr-review/scripts/find-pr.sh",
+  "*/smithy.pr-review/scripts/get-comments.sh:*",
+  "*/smithy.pr-review/scripts/reply-comment.sh:*",
+];
+
+/**
+ * Ask list — Claude Code prompts the user before running a matching command,
+ * even in auto mode. Sits between `allow` (silent auto-approve) and `deny`
+ * (hard block). Use for actions that are sometimes legitimate (e.g. force-push
+ * with lease during a rebase) but always deserve a human in the loop.
+ */
+export const askPermissions: string[] = [
+  // Force-push with lease — safe variant, but still wants explicit confirmation
+  // because it overwrites the remote branch tip.
+  "git push --force-with-lease",
+  "git push --force-with-lease *",
+];
+
+/**
  * Deny list — blocks dangerous subcommands even when the parent is allowed.
  * In Claude Code, deny takes precedence over allow.
  */
@@ -420,6 +453,12 @@ export const denyPermissions: string[] = [
   "git symbolic-ref --message *",
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
+  // Force push WITHOUT lease — clobbers the remote unconditionally. The
+  // `--force-with-lease` variant is in the ask list instead.
+  "git push --force",
+  "git push --force *",
+  "git push -f",
+  "git push -f *",
   // npm publish — requires explicit approval
   "npm publish",
   "npm publish *",
@@ -522,6 +561,10 @@ export function flattenPermissions(
       }
     }
   }
+
+  // Raw entries that don't fit the nested shape (e.g. absolute/relative paths).
+  // Toolchain/platform filters don't apply — these are universal.
+  for (const entry of extraPermissions) result.push(entry);
 
   return result;
 }

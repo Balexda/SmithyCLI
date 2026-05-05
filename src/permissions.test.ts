@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenPermissions, denyPermissions } from './permissions.js';
+import { flattenPermissions, askPermissions, denyPermissions, extraPermissions } from './permissions.js';
 
 describe('flattenPermissions', () => {
   it('returns an array of strings', () => {
@@ -122,6 +122,33 @@ describe('flattenPermissions', () => {
   it('denies npm publish', () => {
     expect(denyPermissions).toContain('npm publish');
     expect(denyPermissions).toContain('npm publish *');
+  });
+
+  it('denies force-push without lease', () => {
+    expect(denyPermissions).toContain('git push --force');
+    expect(denyPermissions).toContain('git push --force *');
+    expect(denyPermissions).toContain('git push -f');
+    expect(denyPermissions).toContain('git push -f *');
+  });
+
+  it('asks (does not deny) force-push with lease so rebase pushes can proceed', () => {
+    expect(askPermissions).toContain('git push --force-with-lease');
+    expect(askPermissions).toContain('git push --force-with-lease *');
+    expect(denyPermissions).not.toContain('git push --force-with-lease');
+    expect(denyPermissions).not.toContain('git push --force-with-lease *');
+  });
+
+  it('appends extraPermissions (smithy.pr-review script paths) to the flattened allow list', () => {
+    const result = flattenPermissions();
+    // extraPermissions contents must round-trip through flattenPermissions
+    for (const entry of extraPermissions) {
+      expect(result).toContain(entry);
+    }
+    // Specific entries the user expects
+    expect(result).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(result).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
+    expect(result).toContain('*/smithy.pr-review/scripts/find-pr.sh');
+    expect(result).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
-import { flattenPermissions, claudeToolPermissions, denyPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
+import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
@@ -144,6 +144,14 @@ export function buildClaudeDenyList(): string[] {
 }
 
 /**
+ * Build the Claude Code ask-list from the shared ask permissions. Claude Code
+ * surfaces these as an explicit prompt even in auto mode.
+ */
+export function buildClaudeAskList(): string[] {
+  return askPermissions.map(cmd => `Bash(${cmd})`);
+}
+
+/**
  * Resolve the settings file path based on the permission level.
  */
 export function resolveSettingsPath(targetDir: string, level: DeployablePermissionLevel): string {
@@ -167,10 +175,11 @@ export function writePermissions(
   const settingsDir = path.dirname(settingsPath);
   if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
   const allowList = buildClaudeAllowList(languages, platformManagers);
+  const askList = buildClaudeAskList();
   const denyList = buildClaudeDenyList();
 
   let config: Record<string, unknown> = {
-    permissions: { allow: allowList, deny: denyList },
+    permissions: { allow: allowList, ask: askList, deny: denyList },
   };
 
   if (fs.existsSync(settingsPath)) {
@@ -178,9 +187,11 @@ export function writePermissions(
       const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
       const existingPerms = existing['permissions'] as Record<string, unknown> | undefined;
       const existingAllow = (existingPerms?.['allow'] ?? []) as string[];
+      const existingAsk = (existingPerms?.['ask'] ?? []) as string[];
       const existingDeny = (existingPerms?.['deny'] ?? []) as string[];
 
       const mergedAllow = [...new Set([...existingAllow, ...allowList])];
+      const mergedAsk = [...new Set([...existingAsk, ...askList])];
       const mergedDeny = [...new Set([...existingDeny, ...denyList])];
 
       config = {
@@ -188,11 +199,12 @@ export function writePermissions(
         permissions: {
           ...(existingPerms ?? {}),
           allow: mergedAllow,
+          ask: mergedAsk,
           deny: mergedDeny,
         },
       };
     } catch {
-      config = { permissions: { allow: allowList, deny: denyList } };
+      config = { permissions: { allow: allowList, ask: askList, deny: denyList } };
     }
   }
 

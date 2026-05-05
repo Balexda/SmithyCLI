@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import {
   buildClaudeAllowList,
+  buildClaudeAskList,
   buildClaudeDenyList,
   deploy,
   deploySessionTitleHookScript,
@@ -153,8 +154,8 @@ describe('deploy', () => {
     const content = fs.readFileSync(skillMd, 'utf8');
     expect(content).toContain('allowed-tools:');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh *)');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
   });
 
   it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
@@ -518,12 +519,17 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git branch --delete *)');
   });
 
-  it('blocks hard reset but not force push (force push requires approval)', () => {
+  it('blocks hard reset and force push without lease, but not force-with-lease', () => {
     const list = buildClaudeDenyList();
     expect(list).toContain('Bash(git reset --hard *)');
-    // Force push is no longer denied — it triggers a user approval prompt instead
-    expect(list).not.toContain('Bash(git push --force *)');
-    expect(list).not.toContain('Bash(git push -f *)');
+    // Force push without lease clobbers the remote — denied outright.
+    expect(list).toContain('Bash(git push --force)');
+    expect(list).toContain('Bash(git push --force *)');
+    expect(list).toContain('Bash(git push -f)');
+    expect(list).toContain('Bash(git push -f *)');
+    // --force-with-lease is intentionally NOT denied — it goes to the ask list
+    // so rebase workflows can still push with a confirmation.
+    expect(list).not.toContain('Bash(git push --force-with-lease)');
     expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
 
@@ -533,6 +539,29 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git checkout .)');
     expect(list).toContain('Bash(git stash drop *)');
     expect(list).toContain('Bash(git stash clear)');
+  });
+});
+
+describe('buildClaudeAskList', () => {
+  it('wraps all ask entries in Bash()', () => {
+    const list = buildClaudeAskList();
+    for (const entry of list) {
+      expect(entry.startsWith('Bash(')).toBe(true);
+    }
+  });
+
+  it('asks before force-push with lease', () => {
+    const list = buildClaudeAskList();
+    expect(list).toContain('Bash(git push --force-with-lease)');
+    expect(list).toContain('Bash(git push --force-with-lease *)');
+  });
+
+  it('does not include the no-lease force push (that is denied)', () => {
+    const list = buildClaudeAskList();
+    expect(list).not.toContain('Bash(git push --force)');
+    expect(list).not.toContain('Bash(git push --force *)');
+    expect(list).not.toContain('Bash(git push -f)');
+    expect(list).not.toContain('Bash(git push -f *)');
   });
 });
 
@@ -568,7 +597,7 @@ describe('writePermissions', () => {
     expect(fs.existsSync(settingsPath)).toBe(true);
   });
 
-  it('uses correct schema with permissions.allow and permissions.deny arrays', () => {
+  it('uses correct schema with permissions.allow, permissions.ask, and permissions.deny arrays', () => {
     writePermissions(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
@@ -576,13 +605,33 @@ describe('writePermissions', () => {
 
     expect(config).toHaveProperty('permissions');
     expect(config.permissions).toHaveProperty('allow');
+    expect(config.permissions).toHaveProperty('ask');
     expect(config.permissions).toHaveProperty('deny');
     expect(Array.isArray(config.permissions.allow)).toBe(true);
+    expect(Array.isArray(config.permissions.ask)).toBe(true);
     expect(Array.isArray(config.permissions.deny)).toBe(true);
     // Deny list should contain destructive git operations
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
+    // Ask list should prompt before force-push with lease
+    expect(config.permissions.ask).toContain('Bash(git push --force-with-lease *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
+  });
+
+  it('seeds the allow list with smithy.pr-review skill script paths', () => {
+    writePermissions(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+
+    // Repo-level relative invocation patterns
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
+    // Wildcard fallback for other deploy locations
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
   });
 
   it('entries are Bash()-wrapped or Claude tool names', () => {
@@ -679,6 +728,10 @@ describe('writePermissions', () => {
     // Check that allow list has no duplicates
     const allowSet = new Set(config.permissions.allow);
     expect(config.permissions.allow.length).toBe(allowSet.size);
+
+    // Check that ask list has no duplicates
+    const askSet = new Set(config.permissions.ask);
+    expect(config.permissions.ask.length).toBe(askSet.size);
 
     // Check that deny list has no duplicates
     const denySet = new Set(config.permissions.deny);
