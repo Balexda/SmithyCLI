@@ -404,6 +404,52 @@ ${TABLE_HEADER}
     expect(virt?.parent_path).toBe('specs/feature-a/feature-a.features.md');
   });
 
+  it('feature-map folder match accepts <slug>.spec.md inside a YYYY-MM-DD-NNN-<slug>/ folder', () => {
+    // Per the smithy.mark convention, spec folders are named
+    // `<YYYY-MM-DD>-<NNN>-<slug>` and the spec file inside is
+    // `<slug>.spec.md` — the bare slug, not the full folder leaf. The
+    // scanner must treat that as a canonical match so the feature row
+    // binds to the real spec instead of emitting a virtual placeholder
+    // at the folder path (which would break parent rollup and make
+    // `smithy status` and `smithy status --graph` disagree on whether
+    // the feature is done).
+    write(
+      'docs/rfcs/demo/01-spawn.features.md',
+      `# Feature Map\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | March CLI Foundation | — | specs/2026-04-05-001-march-cli-foundation/ |\n`,
+    );
+    write(
+      'specs/2026-04-05-001-march-cli-foundation/march-cli-foundation.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Done story | — | specs/2026-04-05-001-march-cli-foundation/01-done.tasks.md |\n`,
+    );
+    write(
+      'specs/2026-04-05-001-march-cli-foundation/01-done.tasks.md',
+      `# Tasks\n\n## Slice 1: Done\n\n- [x] Done task\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Done | — | — |\n`,
+    );
+    const records = scan(root);
+    const real = byPath(
+      records,
+      'specs/2026-04-05-001-march-cli-foundation/march-cli-foundation.spec.md',
+    );
+    expect(real).toBeDefined();
+    expect(real?.virtual).toBeUndefined();
+    expect(real?.parent_path).toBe('docs/rfcs/demo/01-spawn.features.md');
+    expect(real?.parent_row_id).toBe('F1');
+    expect(real?.status).toBe('done');
+    // No virtual placeholder at the folder path should be emitted —
+    // the real spec absorbed the F1 row.
+    const virt = records.find(
+      (r) =>
+        r.type === 'spec' &&
+        r.virtual === true &&
+        r.path === 'specs/2026-04-05-001-march-cli-foundation/',
+    );
+    expect(virt).toBeUndefined();
+    // The feature map rolls up to done because its only child row is
+    // bound to the done spec.
+    const features = byPath(records, 'docs/rfcs/demo/01-spawn.features.md');
+    expect(features?.status).toBe('done');
+  });
+
   it('parent_path collision: a child claimed by two parents keeps the first and warns', () => {
     // Two specs both list the same tasks file in their dep-order
     // tables. The child must keep the first parent_path and append a

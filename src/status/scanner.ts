@@ -592,20 +592,42 @@ function findTasksByStoryNumber(
 }
 
 /**
- * Look up the canonical `<folder-leaf>.spec.md` file inside `folder`
- * within the already-discovered record set. Only the canonical filename
- * is accepted; if the folder contains a non-canonical `.spec.md` (or
- * several), this returns `null` and the scanner emits a virtual record
- * at the folder path instead. Falling back to "first .spec.md found"
- * would make parent linkage depend on `readdirSync` order, which is not
- * stable across filesystems.
+ * Look up the canonical `.spec.md` file inside `folder` within the
+ * already-discovered record set. Two filenames count as canonical:
+ *
+ *   - `<folder-leaf>.spec.md` — used when the folder is named after the
+ *     spec slug directly (e.g. `specs/foo/foo.spec.md`).
+ *   - `<slug>.spec.md` where `<slug>` is `<folder-leaf>` with a
+ *     `<YYYY>-<MM>-<DD>-<NNN>-` prefix stripped — the convention emitted
+ *     by `smithy.mark`, which puts spec folders at
+ *     `specs/<YYYY-MM-DD>-<NNN>-<slug>/` but names the spec file after
+ *     the bare slug (e.g. `specs/2026-04-05-001-foo/foo.spec.md`).
+ *
+ * Only canonical filenames are accepted; if the folder contains no
+ * canonical `.spec.md` (only non-canonical ones, or no `.spec.md` at
+ * all), this returns `null` and the scanner emits a virtual record at
+ * the folder path instead. Falling back to "first .spec.md found"
+ * would make parent linkage depend on `readdirSync` order, which is
+ * not stable across filesystems. When both canonical filenames are
+ * present in the same folder (extremely unusual), the unprefixed
+ * `<folder-leaf>.spec.md` form wins so legacy folders that happen to
+ * start with a date-shaped slug still resolve the way they always did.
  */
 function findSpecInFolder(
   folder: string,
   records: Map<string, ArtifactRecord>,
 ): string | null {
   const folderLeaf = folder.replace(/\/+$/, '').split('/').pop() ?? '';
-  const canonicalBase = `${folderLeaf}.spec.md`;
+  const canonicalLeafBase = `${folderLeaf}.spec.md`;
+  // The smithy.mark convention strips a `<YYYY>-<MM>-<DD>-<NNN>-` prefix
+  // (e.g. `2026-04-05-001-`) from the folder leaf before naming the
+  // spec file after the bare slug. Only compute a second canonical
+  // base when the folder leaf actually carries that prefix.
+  const datedSlug = folderLeaf.match(/^\d{4}-\d{2}-\d{2}-\d{3}-(.+)$/)?.[1];
+  const canonicalSlugBase =
+    datedSlug !== undefined ? `${datedSlug}.spec.md` : null;
+
+  let slugMatch: string | null = null;
   for (const [p, rec] of records) {
     if (rec.type !== 'spec') continue;
     if (!p.startsWith(folder)) continue;
@@ -615,11 +637,17 @@ function findSpecInFolder(
     // match a folder query for `specs/`.
     const tail = p.slice(folder.length);
     if (tail.includes('/')) continue;
-    if (tail === canonicalBase) {
+    if (tail === canonicalLeafBase) {
+      // Leaf form always wins on a tie, so return immediately and skip
+      // the rest of the scan — preserves the early-exit behavior the
+      // function had before slug-form support was added.
       return p;
     }
+    if (canonicalSlugBase !== null && tail === canonicalSlugBase) {
+      slugMatch = p;
+    }
   }
-  return null;
+  return slugMatch;
 }
 
 function makeVirtualRecord(
