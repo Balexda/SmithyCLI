@@ -60,9 +60,9 @@ this information.
 # 1. Status of all containers (running and exited)
 docker ps -a
 
-# 2. The container's full state (exit code, restart count, error message).
-#    Default output is full JSON; pipe through jq to focus on .State.
-docker inspect <name-or-id> | jq '.[0].State'
+# 2. The container's state plus restart count. `RestartCount` is a top-level
+#    field on the inspect object (not nested under `.State`), so pull both.
+docker inspect <name-or-id> | jq '.[0] | {State, RestartCount}'
 
 # 3. Recent logs (last 200 lines, stdout + stderr)
 docker logs --tail 200 <name-or-id>
