@@ -10,6 +10,7 @@ import {
   removeLegacy,
   removeSessionTitleHook,
   resolveSettingsPath,
+  SESSION_TITLE_HOOK_COMMAND,
   SESSION_TITLE_HOOK_FILENAME,
   writePermissions,
   writeSessionTitleHook,
@@ -826,6 +827,46 @@ describe('writeSessionTitleHook', () => {
 
     const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
     expect(config.hooks.UserPromptSubmit[0].hooks[0].command).toContain(SESSION_TITLE_HOOK_FILENAME);
+  });
+
+  it('heals a stale registration in place when the command string is out of date', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    const staleCommand = `node "$CLAUDE_PROJECT_DIR/.claude/hooks/${SESSION_TITLE_HOOK_FILENAME}"`;
+    fs.writeFileSync(settingsPath, JSON.stringify({
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: staleCommand }] },
+        ],
+      },
+    }));
+
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const matching = config.hooks.UserPromptSubmit.flatMap(
+      (entry: { hooks?: { command?: string }[] }) =>
+        entry.hooks?.filter(h => h.command?.includes(SESSION_TITLE_HOOK_FILENAME)) ?? [],
+    );
+    expect(matching.length).toBe(1);
+    expect(matching[0].command).toBe(SESSION_TITLE_HOOK_COMMAND);
+    expect(matching[0].command).not.toBe(staleCommand);
+  });
+
+  it('writes the current wrapped command on a fresh install', () => {
+    writeSessionTitleHook(tmpDir, 'repo');
+    writeSessionTitleHook(tmpDir, 'repo');
+
+    const config = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'),
+    );
+    const matching = config.hooks.UserPromptSubmit.flatMap(
+      (entry: { hooks?: { command?: string }[] }) =>
+        entry.hooks?.filter(h => h.command?.includes(SESSION_TITLE_HOOK_FILENAME)) ?? [],
+    );
+    expect(matching.length).toBe(1);
+    expect(matching[0].command).toBe(SESSION_TITLE_HOOK_COMMAND);
   });
 });
 
