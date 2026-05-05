@@ -26,7 +26,12 @@ If no file path is provided, ask the user which artifact file to create tickets 
 
 ## Phase 1: Validate Environment
 
-Run the `smithy.gh-issue` skill's environment check before doing anything else:
+**First, load the skill** so its scripts and `${CLAUDE_SKILL_DIR}` are available:
+invoke `Skill("smithy.gh-issue")`. Every `${CLAUDE_SKILL_DIR}/scripts/...` block in
+this command (Phases 1, 4, 5, and 6) requires the skill to be loaded — without
+this step `CLAUDE_SKILL_DIR` is unset and the scripts cannot be located.
+
+Then run the environment check:
 
 ```bash
 ${CLAUDE_SKILL_DIR}/scripts/check-env.sh
