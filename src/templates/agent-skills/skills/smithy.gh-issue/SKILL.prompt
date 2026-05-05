@@ -8,8 +8,10 @@ allowed-tools: Bash(*/smithy.gh-issue/scripts/check-env.sh) Bash(*/smithy.gh-iss
 Provides GitHub issue operations via shell scripts bundled in this skill's `scripts/`
 directory. Reference them as `${CLAUDE_SKILL_DIR}/scripts/<script-name>`.
 
-Each script wraps a single, well-understood `gh` API call so the host's permission
-prompt sees one stable command instead of a long, ad-hoc `gh` invocation. This
+Each operation is implemented as a small, stable script with a fixed set of
+`gh` calls (most use one; `link-blocked-by.sh` makes a few — repo lookup, two
+node-id lookups, then the mutation). The host's permission prompt sees one
+stable command per operation instead of a long, ad-hoc `gh` invocation. This
 mirrors the `smithy.pr-review` pattern.
 
 ---
