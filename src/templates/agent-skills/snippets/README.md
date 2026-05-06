@@ -27,7 +27,7 @@ its contents. The snippet file itself is never deployed.
 | `competing-lenses-scoping.md` | Competing plan lenses for scoping | smithy.strike, smithy.ignite, smithy.render, smithy.mark |
 | `one-shot-output.md` | Standardized terminal output format for one-shot planning runs (Summary → Assumptions → Specification Debt → PR), with PR-failure and bail-out fallbacks | smithy.strike, smithy.ignite, smithy.mark, smithy.render, smithy.cut |
 | `pr-create-tool-choice.md` | One-line "prefer GitHub MCP `create_pull_request`, fall back to `gh pr create`" rule, embedded inline at every PR-creation step | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
-| `branch-policy.md` | Worktree-aware branch selection rule: keep the current branch when it is already non-default, only auto-name from the default branch, and never rename the branch during PR creation | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
+| `branch-policy.md` | Worktree-aware branch selection rule: keep the current branch only inside a linked git worktree on a non-default branch, otherwise auto-name as before; never rename the branch during PR creation | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
 
 ## Conventions
 

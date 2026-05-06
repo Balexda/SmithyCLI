@@ -32,9 +32,9 @@ branch), use this auto-naming step:
    "add a --verbose flag" → `verbose-flag`).
 2. Run `git checkout -b strike/<slug>`.
 
-When the policy keeps the existing branch (the current checkout is
-already a non-default branch — common when an orchestrator pre-created
-the worktree), skip the auto-name and continue with the current
+When the policy keeps the existing branch (the current cwd is a linked
+worktree on a non-default branch — typical when an orchestrator
+pre-staged it), skip the auto-name and continue with the current
 checkout. Confirm the resolved branch name to the user and move on.
 
 ---

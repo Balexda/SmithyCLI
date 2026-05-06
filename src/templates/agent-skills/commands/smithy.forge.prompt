@@ -37,7 +37,13 @@ This may be:
   are not all marked complete (`- [x]`). If ALL slices have all tasks marked
   complete, show a table of all slices and ask which one to audit.
 - A **slice number only** — if so, look for a `.tasks.md` file matching the
-  current branch name's spec and story identifiers.
+  current branch name's spec and story identifiers. This requires the
+  current branch to follow the standard forge shape
+  `<NNN>/us-<NN>-<slug>/slice-<N>`. When forge is invoked in a linked
+  worktree on an orchestrator-supplied branch that does not match this
+  shape, the slice-number-only invocation cannot infer the tasks file —
+  ask the user for the explicit tasks file path instead. (`smithy.audit`
+  has the same dependency on this shape and the same fallback.)
 - A **`.strike.md` file path** — single slice, no slice number needed.
 - Empty — if so, ask the user which tasks file and slice to work on.
 
@@ -106,22 +112,26 @@ Before creating the branch, check whether one with this derived name
 already exists. If it does, ask the user whether to continue on it or
 abort. Otherwise create it.
 
-When the policy keeps the existing branch (the current checkout is
-already a non-default branch — common when an orchestrator pre-created
-the worktree on a slice-named branch), skip the derivation and the
+When the policy keeps the existing branch (the current cwd is a linked
+worktree on a non-default branch — typical when an orchestrator
+pre-staged it on a slice-named branch), skip the derivation and the
 `git checkout -b` step entirely and use the existing checkout. The
-slice's PR will be opened against that exact branch name.
+slice's PR will be opened against that exact branch name. In the
+normal main-checkout `mark` → `cut` → `forge` flow the policy falls
+through to auto-naming, so each slice still gets its own
+`<NNN>/us-<NN>-<slug>/slice-<N>` branch as before.
 
 {{>branch-policy}}
 
 ### `.strike.md` mode
 
 Read the `**Branch:** <branch>` field from the strike file header. If the
-current checkout is already on that branch (or on any non-default branch
-that an upstream orchestrator pre-staged for this slice), keep the
-existing checkout — do not switch. Otherwise check out the branch named
-in the strike file header; if that branch does not exist for some
-reason, create it from the repository's default branch.
+current cwd is a linked worktree on any non-default branch (typical when
+an upstream orchestrator pre-staged the worktree for this slice), keep
+the existing checkout — do not switch off the worktree's branch. In the
+main checkout, check out the branch named in the strike file header; if
+that branch does not exist for some reason, create it from the
+repository's default branch.
 
 ---
 

@@ -77,8 +77,14 @@ export const permissions: Record<string, PermissionEntry> = {
     "symbolic-ref HEAD": [],
     "symbolic-ref refs/remotes/origin/HEAD": [],
     "push": [],
-    "push -u origin": ["feature/*", "fix/*", "chore/*", "strike/*", "claude/*"],
-    "push origin": ["feature/*", "fix/*", "chore/*", "strike/*", "claude/*"],
+    // Branch wildcards cover every Smithy auto-naming convention plus the
+    // orchestrator-supplied worktree branch shapes (e.g. `smithy/cut/...`,
+    // `<NNN>/us-<NN>-<slug>/slice-<N>`, `<YYYY-MM-DD>-<NNN>-<slug>`).
+    // Force-push is still blocked: `git push --force` / `-f` are in the deny
+    // list, and `--force-with-lease` requires explicit approval (askPermissions
+    // below).
+    "push -u origin": ["*"],
+    "push origin": ["*"],
   },
 
   // --- Filesystem (read + create, no delete) ---

@@ -53,7 +53,7 @@ describe('flattenPermissions', () => {
     expect(result).toContain('git status -s');
     expect(result).toContain('git checkout *');
     expect(result).toContain('git checkout -b *');
-    expect(result).toContain('git push -u origin feature/*');
+    expect(result).toContain('git push -u origin *');
   });
 
   it('flattens gh --version as a bare command', () => {

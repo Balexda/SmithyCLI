@@ -398,13 +398,13 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(git commit *)');
     expect(list).toContain('Bash(git diff *)');
     expect(list).toContain('Bash(git log *)');
-    expect(list).toContain('Bash(git push -u origin feature/*)');
+    expect(list).toContain('Bash(git push -u origin *)');
   });
 
-  it('includes claude/* branch push patterns', () => {
+  it('allows pushing any branch shape (orchestrator-supplied worktree branches included)', () => {
     const list = buildClaudeAllowList();
-    expect(list).toContain('Bash(git push -u origin claude/*)');
-    expect(list).toContain('Bash(git push origin claude/*)');
+    expect(list).toContain('Bash(git push -u origin *)');
+    expect(list).toContain('Bash(git push origin *)');
   });
 
   it('includes Claude-only extraPermissions (smithy.pr-review script paths)', () => {
