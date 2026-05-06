@@ -85,7 +85,10 @@ This may be:
 
 ### `.tasks.md` mode
 
-Derive the branch name from the tasks file path and slice number using this convention:
+Resolve the working branch using the policy below. When the policy
+creates a new branch (the current checkout is the default branch),
+derive the new branch name from the tasks file path and slice number
+using this convention:
 
 ```
 <NNN>/us-<NN>-<slug>/slice-<N>
@@ -99,14 +102,26 @@ Where:
 
 Example: `001/us-03-bar/slice-2`
 
-Before creating the branch:
-- Check if the branch already exists. If it does, ask the user whether to continue on it or abort.
-- Create the branch from the repository's default branch and check it out.
-  Discover the default branch dynamically (e.g., `git symbolic-ref refs/remotes/origin/HEAD`) rather than assuming `main`.
+Before creating the branch, check whether one with this derived name
+already exists. If it does, ask the user whether to continue on it or
+abort. Otherwise create it.
+
+When the policy keeps the existing branch (the current checkout is
+already a non-default branch — common when an orchestrator pre-created
+the worktree on a slice-named branch), skip the derivation and the
+`git checkout -b` step entirely and use the existing checkout. The
+slice's PR will be opened against that exact branch name.
+
+{{>branch-policy}}
 
 ### `.strike.md` mode
 
-Read the `**Branch:** strike/<slug>` field from the strike file header. Check out that existing branch (it was created by strike's Phase 1). If the branch doesn't exist for some reason, create it from the default branch.
+Read the `**Branch:** <branch>` field from the strike file header. If the
+current checkout is already on that branch (or on any non-default branch
+that an upstream orchestrator pre-staged for this slice), keep the
+existing checkout — do not switch. Otherwise check out the branch named
+in the strike file header; if that branch does not exist for some
+reason, create it from the repository's default branch.
 
 ---
 
@@ -309,6 +324,12 @@ Include the command output summary in your final response so reviewers know what
 ---
 
 ## Pull Request
+
+Push the resolved branch from the Branch step as-is, and create the PR
+against that exact branch name. Do not rename the branch or prepend a
+prefix such as `feature/` — orchestrators that pre-create the worktree
+track the slice by the branch name they chose, and a renamed PR head
+breaks downstream PR discovery.
 
 {{>pr-create-tool-choice}}
 

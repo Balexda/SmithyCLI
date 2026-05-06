@@ -738,9 +738,13 @@ sub-phases 3a–3f, and harmonized it in sub-phase 3g. Skip folder creation
 and file write — proceed directly through plan-review, commit, and PR:
 
 1. Run the Plan-Review Pass described above on the harmonized RFC file.
-2. Commit the RFC file on the feature branch (capturing both the harmonized
-   content and any plan-review fixes in the same diff).
-3. Create a PR for the RFC artifact using the forge `gh pr create` pattern
+2. Commit the RFC file on the current feature branch (capturing both the
+   harmonized content and any plan-review fixes in the same diff). Push
+   the current branch as-is — do not rename it or prepend a prefix such
+   as `feature/`. The PR must be opened against the same branch the
+   operator (or upstream orchestrator) had checked out when ignite was
+   invoked. See the branch policy below.
+3. Create a PR for the RFC artifact using the forge PR-creation pattern
    ({{>pr-create-tool-choice}}):
    - **Title**: the RFC title, under 70 characters, descriptive text only.
    - **Body**: the one-shot output snippet content (rendered below) plus a
@@ -761,9 +765,13 @@ and file write — proceed directly through plan-review, commit, and PR:
 2. Write the RFC to `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
 3. Run the Plan-Review Pass described above on the RFC file that was just
    written.
-4. Commit the RFC file on the feature branch (capturing both the original
-   RFC content and any plan-review fixes in the same diff).
-5. Create a PR for the RFC artifact using the forge `gh pr create` pattern
+4. Commit the RFC file on the current feature branch (capturing both the
+   original RFC content and any plan-review fixes in the same diff). Push
+   the current branch as-is — do not rename it or prepend a prefix such
+   as `feature/`. The PR must be opened against the same branch the
+   operator (or upstream orchestrator) had checked out when ignite was
+   invoked. See the branch policy below.
+5. Create a PR for the RFC artifact using the forge PR-creation pattern
    ({{>pr-create-tool-choice}}):
    - **Title**: the RFC title, under 70 characters, descriptive text only.
    - **Body**: the one-shot output snippet content (rendered below) plus a
@@ -799,3 +807,7 @@ and file write — proceed directly through plan-review, commit, and PR:
 - **DO** ensure milestones are clearly delineated with distinct scope and success criteria.
 - **DO** surface risks during clarification via the clarify return.
 - **DO** keep the RFC concise — a good RFC is a starting point, not a final design.
+
+---
+
+{{>branch-policy}}

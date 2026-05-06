@@ -125,7 +125,11 @@ found no changes") and reuse the branch's existing PR URL if one exists
 1. Stage and commit the refinement diff on the current branch. The commit
    message should describe the refinements applied (e.g.,
    `cut refine: split Slice 2; resolve SD-001`).
-2. Push the branch to `origin`.
+2. Push the current branch to `origin` as-is — do not rename it or
+   prepend a prefix such as `feature/`. Orchestrators that pre-create
+   the worktree track the spec by the branch name they chose, and a
+   renamed PR head breaks downstream PR discovery (see the branch
+   policy below for the full rule).
 3. Check whether the current branch already has an open pull request (for
    example with `mcp__github__list_pull_requests` filtered by `head`, or
    `gh pr view --json url` if MCP is unavailable).
@@ -624,7 +628,12 @@ PR with `head == base` will fail and pollute history.
 
 1. Stage and commit both the new `.tasks.md` file and the spec's
    `## Dependency Order` write-back on the current branch.
-2. Push the branch to `origin`.
+2. Push the current branch to `origin` as-is — do not rename it or
+   prepend a prefix such as `feature/`. The PR must be opened against
+   the same branch name the operator (or upstream orchestrator) had
+   checked out when cut was invoked, so downstream tooling can find
+   the PR by that branch name. The branch policy below states the
+   full rule.
 3. Create a pull request using the same PR-creation pattern that
    `smithy.forge` uses ({{>pr-create-tool-choice}}):
    - **Title**: the user story title, under 70 characters, plain descriptive
@@ -705,6 +714,10 @@ is the contract.
   tasks. See "Prohibitions" in the task authoring guidelines.
 - **DO** express testing requirements as acceptance criteria on the functional
   task, not as separate tasks.
+
+---
+
+{{>branch-policy}}
 
 ---
 
