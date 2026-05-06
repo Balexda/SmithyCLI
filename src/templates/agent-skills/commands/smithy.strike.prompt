@@ -227,16 +227,16 @@ here, by strike.
 1. **Commit the strike document** on the `strike/<slug>` branch with a
    message referencing the strike goal.
 2. **Push the branch** with `git push -u origin strike/<slug>`.
-3. **Create the PR** using the same `gh pr create` pattern as
-   `smithy-forge`:
+3. **Create the PR** using the same PR-creation pattern as `smithy-forge`
+   ({{>pr-create-tool-choice}}):
    - **Title**: the strike goal, concise and under 70 characters.
    - **Body**: include the strike summary, goal, link to the
      `.strike.md` file, and the one-shot output content produced below
      **excluding the `## PR` section**, since the PR URL is only known
-     after `gh pr create` succeeds. Populate the other sections
+     after PR creation succeeds. Populate the other sections
      (`## Summary`, `## Assumptions`, `## Specification Debt`) from the
      run data captured during Phase 2 and Phase 3.
-4. **Capture the PR URL** returned by `gh pr create`.
+4. **Capture the PR URL** returned by the PR-creation call.
 5. **Render the full one-shot output** as the terminal output of this
    run using the shared snippet below. Populate the placeholders from
    the strike run data: `Spec folder` = `specs/strikes/`, `Branch` =
@@ -250,7 +250,7 @@ here, by strike.
    not block on approval. A developer can invoke `smithy-forge` with
    the strike file path when they are ready.
 
-If `gh pr create` fails, follow the snippet's PR-creation-failure fallback:
+If PR creation fails, follow the snippet's PR-creation-failure fallback:
 still render the Summary, Assumptions, and Specification Debt sections, and
 replace the `## PR` section with the failure note so the developer knows
 the artifact is on disk and can retry manually.

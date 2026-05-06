@@ -60,14 +60,15 @@ was recorded.`)
 - **Specification Debt**: copy each item from the clarify return's
   `debt_items` array, including its Impact level. The leading count MUST
   match the number of bullets rendered.
-- **PR**: the `gh pr create` URL captured after the artifact write-out step.
+- **PR**: the URL captured from the PR creation step (see the
+  `pr-create-tool-choice` snippet for which tool ran).
 
 ### Error Fallbacks
 
 Two edge cases change the output shape. Follow these rules rather than
 attempting to render the full format above:
 
-- **PR creation failure**: if `gh pr create` fails (network error, auth
+- **PR creation failure**: if PR creation fails (network error, auth
   failure, missing upstream, etc.), still render the `## Summary`,
   `## Assumptions`, and `## Specification Debt` sections from the captured
   run data, then replace the `## PR` section with:
@@ -75,8 +76,9 @@ attempting to render the full format above:
   ```markdown
   ## PR
 
-  PR creation failed — artifacts are on disk at `<spec folder>`. Re-run `gh
-  pr create` manually, or retry the command. Error: <error message>.
+  PR creation failed — artifacts are on disk at `<spec folder>`. Re-run
+  the PR creation step manually (see `pr-create-tool-choice` for the
+  tool to use), or retry the command. Error: <error message>.
   ```
 
   Never silently drop the PR section; the developer needs to see that PR

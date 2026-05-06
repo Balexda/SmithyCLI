@@ -127,18 +127,19 @@ found no changes") and reuse the branch's existing PR URL if one exists
    `cut refine: split Slice 2; resolve SD-001`).
 2. Push the branch to `origin`.
 3. Check whether the current branch already has an open pull request (for
-   example with `gh pr view --json url` or by querying by head branch).
+   example with `mcp__github__list_pull_requests` filtered by `head`, or
+   `gh pr view --json url` if MCP is unavailable).
    - If a PR already exists for this branch, capture and reuse that PR URL
-     for the one-shot output snippet — do **not** run `gh pr create`
-     again, and do **not** treat the existing PR as a failure.
-   - If no PR exists, create one using the same `gh pr create` pattern
-     that `smithy.forge` uses:
+     for the one-shot output snippet — do **not** create another PR, and
+     do **not** treat the existing PR as a failure.
+   - If no PR exists, create one using the same PR-creation pattern that
+     `smithy.forge` uses ({{>pr-create-tool-choice}}):
      - **Title**: `Refine <user story title> tasks` — under 70 characters.
      - **Body**: the refine summary, a list of refinements applied, and any
        debt items resolved or introduced by this pass.
 4. Capture the resulting or existing PR URL for the one-shot output snippet.
 
-If `gh pr create` fails, fall through to the PR-creation-failure branch of
+If PR creation fails, fall through to the PR-creation-failure branch of
 the one-shot output snippet so the user sees exactly what changed and what
 went wrong.
 
@@ -618,14 +619,14 @@ repository's default branch. Discover the default branch dynamically (e.g.
 `git symbolic-ref refs/remotes/origin/HEAD`) rather than assuming `main`.
 If HEAD is on the default branch, stop with an error telling the user to
 re-run cut from the spec folder's feature branch (the one `smithy.mark`
-created) — pushing planning commits to the default branch and calling
-`gh pr create` with `head == base` will fail and pollute history.
+created) — pushing planning commits to the default branch and creating a
+PR with `head == base` will fail and pollute history.
 
 1. Stage and commit both the new `.tasks.md` file and the spec's
    `## Dependency Order` write-back on the current branch.
 2. Push the branch to `origin`.
-3. Create a pull request using the same `gh pr create` pattern that
-   `smithy.forge` uses:
+3. Create a pull request using the same PR-creation pattern that
+   `smithy.forge` uses ({{>pr-create-tool-choice}}):
    - **Title**: the user story title, under 70 characters, plain descriptive
      text (no FR numbers, no bracketed tags).
    - **Body**: a short summary with the tasks file path, the slice count and
@@ -634,7 +635,7 @@ created) — pushing planning commits to the default branch and calling
      pointer to `smithy.forge` as the next step.
 4. Capture the resulting PR URL for the one-shot output snippet.
 
-If `gh pr create` fails (network error, auth failure, missing upstream,
+If PR creation fails (network error, auth failure, missing upstream,
 etc.), do **not** roll back the written files — they stay on disk. Fall
 through to the PR-creation-failure branch of the one-shot output snippet
 below so the user sees exactly what was produced and what went wrong.

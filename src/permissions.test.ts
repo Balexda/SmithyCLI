@@ -152,6 +152,10 @@ describe('flattenPermissions', () => {
   });
 
   it('still exports extraPermissions with the smithy.pr-review entries (consumed by buildClaudeAllowList)', () => {
+    // The smithy.pr-review skill keeps its `gh`-based shell scripts as a
+    // fallback for hosts without the GitHub MCP server (issue #261). The
+    // script-path entries must stay in extraPermissions so the deployed
+    // Claude allow list lets the scripts run without prompting.
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*');
