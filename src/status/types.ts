@@ -178,6 +178,18 @@ export interface ArtifactRecord {
    */
   total?: number;
   /**
+   * Per-slice breakdown for tasks files. One entry per `## Slice N:`
+   * H2 in the file, in source order. Each entry carries the canonical
+   * `S<N>` id, the title from the heading, and a status derived from
+   * the section's task checkboxes: `done` when every checkbox is
+   * ticked (and at least one exists), `not-started` when no checkbox
+   * is ticked (or the section is empty), `in-progress` for anything in
+   * between. Renderers consume this to surface individual slice ids in
+   * the tree view rather than aggregating them into a `<completed>/<total>`
+   * counter alone. Omitted on non-tasks records.
+   */
+  slices?: SliceSummary[];
+  /**
    * Repo-relative path to the parent artifact. `null` means "no parent"
    * (top-level RFCs, orphans); an omitted field means "unknown".
    */
@@ -218,6 +230,26 @@ export interface ArtifactRecord {
    * array when clean.
    */
   warnings: string[];
+}
+
+/**
+ * Per-slice summary captured from a tasks file's `## Slice N:` H2
+ * sections. The renderer surfaces these as nested children below their
+ * owning tasks record so the slice ids (`S1`, `S2`, …) are visible in
+ * the tree view rather than collapsed into a single counter.
+ */
+export interface SliceSummary {
+  /** Canonical slice id (`S<N>`, no leading zeros) parsed from the H2. */
+  id: string;
+  /** Title text after `## Slice <N>:` on the heading line. */
+  title: string;
+  /**
+   * Status derived from the slice section's task checkboxes. `done` when
+   * every checkbox is ticked and at least one exists; `not-started` when
+   * no checkbox is ticked (or the section has no checkboxes); otherwise
+   * `in-progress`.
+   */
+  status: 'done' | 'in-progress' | 'not-started';
 }
 
 /**

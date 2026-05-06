@@ -614,4 +614,67 @@ Just prose.
     expect(record.completed).toBe(1);
     expect(record.total).toBe(1);
   });
+
+  it('captures per-slice id, title, and status on tasks records', () => {
+    // Mixed slice statuses exercise every branch of the per-slice
+    // status derivation: all-checked → done, partially-checked →
+    // in-progress, none-checked → not-started. The renderer surfaces
+    // each entry with its `S<N>` id so the issue-296 visibility gap
+    // (slice numbers missing from `smithy status`) cannot regress.
+    const markdown = `# Tasks
+
+## Slice 1: Foo
+
+- [x] a
+- [x] b
+
+## Slice 2: Bar
+
+- [x] c
+- [ ] d
+
+## Slice 3: Baz
+
+- [ ] e
+`;
+    const record = parseArtifact('specs/foo/a.tasks.md', markdown);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Foo', status: 'done' },
+      { id: 'S2', title: 'Bar', status: 'in-progress' },
+      { id: 'S3', title: 'Baz', status: 'not-started' },
+    ]);
+  });
+
+  it('normalizes zero-padded slice headings to the canonical `S<N>` id', () => {
+    // `## Slice 01: …` would naively emit `S01`, but the canonical id
+    // form is `S1` (matches the dep-order `ID_REGEX` of
+    // `^(M|F|US|S)[1-9][0-9]*$`). Keep the parsed id consistent with
+    // the dep-order rows that reference it so renderers can join the
+    // two without a normalization step.
+    const markdown = `# Tasks
+
+## Slice 01: Foo
+
+- [x] a
+
+## Slice 002: Bar
+
+- [ ] b
+`;
+    const record = parseArtifact('specs/foo/a.tasks.md', markdown);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Foo', status: 'done' },
+      { id: 'S2', title: 'Bar', status: 'not-started' },
+    ]);
+  });
+
+  it('emits an empty slices array when a tasks file has no slice headings', () => {
+    const record = parseArtifact('specs/foo/a.tasks.md', '# Empty\n');
+    expect(record.slices).toEqual([]);
+  });
+
+  it('omits slices on non-tasks records', () => {
+    const record = parseArtifact('specs/foo/a.spec.md', '# Spec\n');
+    expect(record.slices).toBeUndefined();
+  });
 });

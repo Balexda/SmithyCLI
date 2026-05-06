@@ -122,31 +122,33 @@ describe('renderGraph — layered view (AS 10.1)', () => {
     expect(output).toContain(`${SPEC_PATH}#US2`);
     expect(output).toContain(`${SPEC_PATH}#US3`);
     expect(output).toContain(`${SPEC_PATH}#US4`);
-    // Title leads each line directly after the connector — the
-    // primary, scannable label.
-    expect(output).toContain('├─ First');
-    expect(output).toContain('└─ Fourth');
-    expect(output).toContain('└─ Second');
-    expect(output).toContain('└─ Third');
+    // The row id (`US1`, `US2`, …) leads each line directly after the
+    // connector so slice / milestone / feature / user-story numbers are
+    // visible at a glance, with the title following.
+    expect(output).toContain('├─ US1 First');
+    expect(output).toContain('└─ US4 Fourth');
+    expect(output).toContain('└─ US2 Second');
+    expect(output).toContain('└─ US3 Third');
     // Tree connectors used to lay out per-layer members.
     expect(output).toMatch(/[├└]─/);
-    // The full per-line layout: connector + title + marker + dim id.
-    // (`utf8Theme` has color disabled, so the dim helper is identity
-    // and the FQ id appears verbatim at the tail of the line.)
+    // The full per-line layout: connector + row id + title + marker +
+    // dim id. (`utf8Theme` has color disabled, so the dim helper is
+    // identity and both the row-id prefix and the FQ id appear
+    // verbatim.)
     expect(output).toMatch(
-      new RegExp(`└─ Fourth\\s+[○✓◐⚠].*${SPEC_PATH}#US4`),
+      new RegExp(`└─ US4 Fourth\\s+[○✓◐⚠].*${SPEC_PATH}#US4`),
     );
   });
 
   it('orders Layer 0 members by their position in graph.layers[0].node_ids', () => {
     const graph = buildDependencyGraph([spec]);
     const output = renderGraph(graph, { theme: utf8Theme });
-    // Match by title ("First" / "Fourth" / "Second" / "Third") rather
-    // than the FQ id — the title is now the leading column.
-    const us1Pos = output.indexOf('├─ First');
-    const us4Pos = output.indexOf('└─ Fourth');
-    const us2Pos = output.indexOf('└─ Second');
-    const us3Pos = output.indexOf('└─ Third');
+    // Match by id+title prefix ("US1 First" / "US4 Fourth" / …) rather
+    // than the FQ id — the row id leads each line, then the title.
+    const us1Pos = output.indexOf('├─ US1 First');
+    const us4Pos = output.indexOf('└─ US4 Fourth');
+    const us2Pos = output.indexOf('└─ US2 Second');
+    const us3Pos = output.indexOf('└─ US3 Third');
     expect(us1Pos).toBeGreaterThanOrEqual(0);
     expect(us4Pos).toBeGreaterThan(us1Pos);
     expect(us2Pos).toBeGreaterThan(us4Pos);
@@ -160,6 +162,36 @@ describe('renderGraph — layered view (AS 10.1)', () => {
     // blocks are visually separated rather than smashed together.
     expect(output).toMatch(/\n\nLayer 1 \(1 item\)/);
     expect(output).toMatch(/\n\nLayer 2 \(1 item\)/);
+  });
+
+  it('prefixes every node line with the row id (issue #296)', () => {
+    // Slice / milestone / feature / user-story numbers must appear at
+    // the head of every node line. Regression guard for the issue-296
+    // visibility gap — if the prefix is dropped, the number disappears
+    // entirely on actionable rows (the action hint replaces the dim FQ
+    // id) and is buried at the tail on done rows.
+    const tasksPath = 'specs/sample/sample.tasks.md';
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: tasksPath,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [
+          row('S1', [], { title: 'Migrate Templates' }),
+          row('S2', ['S1'], { title: 'Wire It Up' }),
+        ],
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    const output = renderGraph(graph, { theme: utf8Theme });
+    // The graph builder puts S1 in Layer 0 (no incoming edges) and S2
+    // in Layer 1 (depends on S1). Each layer has a single member, so
+    // both members render with the last-branch connector — but the row
+    // id always leads the title regardless of position.
+    expect(output).toContain('└─ S1 Migrate Templates');
+    expect(output).toContain('└─ S2 Wire It Up');
   });
 });
 
@@ -291,8 +323,8 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
     expect(output).toContain('Layer 0 — ready to work (2 items, 1 done hidden)');
     // The done member's FQ id must NOT appear — it's filtered out.
     expect(output).not.toContain('specs/a/a.spec.md#US1');
-    // The not-started member surfaces with its title-first line.
-    expect(output).toContain('└─ Still To Do');
+    // The not-started member surfaces with its row-id-first line.
+    expect(output).toContain('└─ US1 Still To Do');
     expect(output).toContain('specs/b/b.spec.md#US1');
   });
 

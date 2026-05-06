@@ -11,6 +11,7 @@ import type {
   ArtifactType,
   DependencyOrderTable,
   DependencyRow,
+  SliceSummary,
 } from './types.js';
 
 /**
@@ -292,6 +293,7 @@ export function parseArtifact(
       const counts = countSlices(content);
       record.completed = counts.completed;
       record.total = counts.total;
+      record.slices = counts.slices;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       warnings.push(
@@ -299,6 +301,7 @@ export function parseArtifact(
       );
       record.completed = 0;
       record.total = 0;
+      record.slices = [];
     }
   }
 
@@ -343,22 +346,25 @@ function filenameStem(filePath: string): string {
 }
 
 /**
- * Count slices in a tasks file. Returns `{ total, completed }` where
- * `total` is the number of `## Slice <N>:` H2 sections and `completed`
- * is the number of those slices in which at least one task checkbox
- * exists and every checkbox is ticked. A slice with no checkboxes is
- * never counted as done — a well-formed slice body always lists at
- * least one task, so an empty slice is treated as in-progress/malformed
- * rather than complete. Checkboxes outside a `## Slice <N>:` section
- * (e.g., `## Dependency Order`, appendices) are ignored when resolving
- * per-slice completion.
+ * Count slices in a tasks file. Returns `{ total, completed, slices }`
+ * where `total` is the number of `## Slice <N>:` H2 sections,
+ * `completed` is the number of those slices in which at least one task
+ * checkbox exists and every checkbox is ticked, and `slices` is a
+ * per-slice summary list (canonical id, heading title, derived status)
+ * in source order so renderers can surface slice ids alongside the
+ * aggregate counter. A slice with no checkboxes is never counted as
+ * done — a well-formed slice body always lists at least one task, so
+ * an empty slice is treated as `not-started` rather than complete.
+ * Checkboxes outside a `## Slice <N>:` section (e.g., `## Dependency
+ * Order`, appendices) are ignored when resolving per-slice completion.
  */
 function countSlices(content: string): {
   completed: number;
   total: number;
+  slices: SliceSummary[];
 } {
   const lines = content.split('\n');
-  const sliceHeadingRegex = /^##\s+Slice\s+\d+:/;
+  const sliceHeadingRegex = /^##\s+Slice\s+(\d+):\s*(.*)$/;
   const h2Regex = /^##\s/;
   const checkboxRegex = /^\s*-\s*\[([ xX])\]\s/;
 
@@ -367,24 +373,57 @@ function countSlices(content: string): {
   let insideSlice = false;
   let sliceCheckboxTotal = 0;
   let sliceCheckboxCompleted = 0;
+  let currentSliceId: string | null = null;
+  let currentSliceTitle = '';
+  const slices: SliceSummary[] = [];
 
   const finalizeSlice = (): void => {
     if (!insideSlice) return;
     total += 1;
+    let status: SliceSummary['status'];
     if (
       sliceCheckboxTotal > 0 &&
       sliceCheckboxCompleted === sliceCheckboxTotal
     ) {
       completed += 1;
+      status = 'done';
+    } else if (sliceCheckboxCompleted > 0) {
+      status = 'in-progress';
+    } else {
+      status = 'not-started';
+    }
+    if (currentSliceId !== null) {
+      slices.push({
+        id: currentSliceId,
+        title: currentSliceTitle,
+        status,
+      });
     }
   };
 
   for (const line of lines) {
     if (h2Regex.test(line)) {
       finalizeSlice();
-      insideSlice = sliceHeadingRegex.test(line);
+      const match = sliceHeadingRegex.exec(line);
+      insideSlice = match !== null;
       sliceCheckboxTotal = 0;
       sliceCheckboxCompleted = 0;
+      if (match !== null) {
+        // Normalize through `parseInt` so a zero-padded heading
+        // (`## Slice 01: …`) still yields the canonical `S<N>` form
+        // (`S1`) the rest of the system expects. `SliceSummary.id`
+        // documents the no-leading-zeros invariant and the dep-order
+        // `ID_REGEX` rejects `S01`, so emitting `S01` here would have
+        // hidden every `01`-prefixed slice from any view that joins
+        // slices with dep-order rows.
+        const n = Number.parseInt(match[1] ?? '', 10);
+        currentSliceId = Number.isNaN(n) ? null : `S${n}`;
+        currentSliceTitle = (match[2] ?? '').trim();
+        if (currentSliceId === null) insideSlice = false;
+      } else {
+        currentSliceId = null;
+        currentSliceTitle = '';
+      }
       continue;
     }
     if (!insideSlice) continue;
@@ -398,7 +437,7 @@ function countSlices(content: string): {
   }
   finalizeSlice();
 
-  return { completed, total };
+  return { completed, total, slices };
 }
 
 /**
