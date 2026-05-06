@@ -468,7 +468,15 @@ function formatNodeLine(
     action !== null
       ? formatNextAction(action, theme.glyphs.arrow)
       : theme.paint.dim(id);
-  return `${connector}${node.row.title}  ${marker}  ${suffix}`;
+  // Prefix the title with the row's canonical id (`S1`, `M1`, `F1`,
+  // `US1`) so slice / milestone / feature / user-story numbers are
+  // visible at a glance instead of buried in the dim FQ-id suffix
+  // (when the suffix even shows — the action-hint branch above
+  // replaces the FQ id, which would otherwise hide the row id
+  // entirely for any actionable row). The id paints dim so the title
+  // stays the dominant visual element.
+  const idPrefix = theme.paint.dim(`${node.row.id} `);
+  return `${connector}${idPrefix}${node.row.title}  ${marker}  ${suffix}`;
 }
 
 /**

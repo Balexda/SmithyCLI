@@ -72,7 +72,13 @@ import {
   ORPHANED_SPECS_PATH,
   ORPHANED_TASKS_PATH,
 } from './tree.js';
-import type { ArtifactRecord, Status, StatusTree, TreeNode } from './types.js';
+import type {
+  ArtifactRecord,
+  SliceSummary,
+  Status,
+  StatusTree,
+  TreeNode,
+} from './types.js';
 
 /**
  * Options accepted by {@link renderTree}. A default theme (UTF-8 glyphs,
@@ -164,6 +170,7 @@ function renderRoot(
   // A root's descendants inherit no parent spacer, so the hint line
   // (when enabled) is anchored at column 0 plus the two-space hint pad.
   maybePushHint(node.record, '', lines, renderHints, theme);
+  pushSliceLines(node.record, '', lines, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
     renderChild(
@@ -204,6 +211,13 @@ function renderChild(
   // keeping the hint anchored beneath the record but out of the way of
   // real descendants below it.
   maybePushHint(node.record, nextPrefix, lines, renderHints, theme);
+  // Slices live inline inside a tasks file (not as separate records),
+  // so they cannot reach the tree builder. Render them here as nested
+  // children of their owning tasks record using the same `nextPrefix`
+  // any real child would inherit, so each slice id (`S1`, `S2`, …)
+  // surfaces in the tree view rather than being collapsed into the
+  // tasks record's `<completed>/<total>` counter alone.
+  pushSliceLines(node.record, nextPrefix, lines, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
     renderChild(
@@ -301,6 +315,60 @@ function applyStoryNumber(title: string, rowId: string | undefined): string {
   if (digits === undefined) return stripped;
   const nn = digits.padStart(2, '0');
   return `${nn} ${stripped}`;
+}
+
+/**
+ * Render the per-slice breakdown of a tasks record as nested tree
+ * lines beneath it. Each slice is rendered as a leaf child carrying
+ * its canonical `S<N>` id, the heading title, and a status icon
+ * mirroring the record-level icons (`✓` / `◐` / `○`). No-op for
+ * non-tasks records, for tasks records with no parsed slices, or
+ * during the renderer pipeline's collapsed-done branch (the tasks
+ * record never reaches this function in that case because
+ * `collapseTree` upstream replaces it with a leaf).
+ *
+ * Slices are deliberately rendered here in the tree-renderer rather
+ * than expanded into virtual `ArtifactRecord`s upstream because they
+ * live inline inside a tasks file — they have no path of their own,
+ * no dependency-order section, and no lifecycle independent of their
+ * parent record. Treating them as a renderer-only concern keeps the
+ * scanner / classifier / suggester surface unchanged.
+ */
+function pushSliceLines(
+  record: ArtifactRecord,
+  recordPrefix: string,
+  lines: string[],
+  theme: Theme,
+): void {
+  if (record.type !== 'tasks') return;
+  const slices = record.slices;
+  if (slices === undefined || slices.length === 0) return;
+  for (let i = 0; i < slices.length; i++) {
+    const slice = slices[i];
+    if (slice === undefined) continue;
+    const isLast = i === slices.length - 1;
+    const connector = isLast ? theme.glyphs.lastBranch : theme.glyphs.branch;
+    const marker = formatSliceMarker(slice, theme);
+    lines.push(
+      `${recordPrefix}${connector}${slice.id} ${slice.title}  ${marker}`,
+    );
+  }
+}
+
+/**
+ * Status marker for a {@link SliceSummary} inside the tree view.
+ * Mirrors the icon mapping used by real records (`✓` / `◐` / `○`)
+ * so a row of slice ids reads as a homogeneous progress strip.
+ */
+function formatSliceMarker(slice: SliceSummary, theme: Theme): string {
+  switch (slice.status) {
+    case 'done':
+      return theme.paint.done(theme.icons.done);
+    case 'in-progress':
+      return theme.paint.inProgress(theme.icons.inProgress);
+    case 'not-started':
+      return theme.paint.notStarted(theme.icons.notStarted);
+  }
 }
 
 /**

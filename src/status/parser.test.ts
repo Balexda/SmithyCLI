@@ -614,4 +614,44 @@ Just prose.
     expect(record.completed).toBe(1);
     expect(record.total).toBe(1);
   });
+
+  it('captures per-slice id, title, and status on tasks records', () => {
+    // Mixed slice statuses exercise every branch of the per-slice
+    // status derivation: all-checked → done, partially-checked →
+    // in-progress, none-checked → not-started. The renderer surfaces
+    // each entry with its `S<N>` id so the issue-296 visibility gap
+    // (slice numbers missing from `smithy status`) cannot regress.
+    const markdown = `# Tasks
+
+## Slice 1: Foo
+
+- [x] a
+- [x] b
+
+## Slice 2: Bar
+
+- [x] c
+- [ ] d
+
+## Slice 3: Baz
+
+- [ ] e
+`;
+    const record = parseArtifact('specs/foo/a.tasks.md', markdown);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Foo', status: 'done' },
+      { id: 'S2', title: 'Bar', status: 'in-progress' },
+      { id: 'S3', title: 'Baz', status: 'not-started' },
+    ]);
+  });
+
+  it('emits an empty slices array when a tasks file has no slice headings', () => {
+    const record = parseArtifact('specs/foo/a.tasks.md', '# Empty\n');
+    expect(record.slices).toEqual([]);
+  });
+
+  it('omits slices on non-tasks records', () => {
+    const record = parseArtifact('specs/foo/a.spec.md', '# Spec\n');
+    expect(record.slices).toBeUndefined();
+  });
 });
