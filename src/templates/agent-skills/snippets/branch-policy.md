@@ -79,10 +79,13 @@ Confirm the resolved branch name to the user and proceed.
 ### PR step
 
 The same rule applies during the commit-and-PR step: push the resolved
-branch as-is, and open the PR with `--head <resolved-branch>` if needed.
-**Never create a new branch or rename the current one as part of the
-PR-creation command** (in particular, do not prepend `feature/` to the
-resolved branch). The branch the agent commits and pushes from must be
-the same branch the resulting PR is opened against. This rule applies
-in both the main checkout and a linked worktree — branch renames during
-PR creation are always wrong.
+branch as-is, and pass it as the PR's head when the chosen PR-creation
+tool requires it (e.g. the `head` argument for the GitHub MCP tool, or
+the equivalent flag on the CLI fallback — see the
+`pr-create-tool-choice` snippet for which tool to prefer). **Never
+create a new branch or rename the current one as part of the PR-creation
+command** (in particular, do not prepend `feature/` to the resolved
+branch). The branch the agent commits and pushes from must be the same
+branch the resulting PR is opened against. This rule applies in both
+the main checkout and a linked worktree — branch renames during PR
+creation are always wrong.
