@@ -409,8 +409,17 @@ function countSlices(content: string): {
       sliceCheckboxTotal = 0;
       sliceCheckboxCompleted = 0;
       if (match !== null) {
-        currentSliceId = `S${match[1]}`;
+        // Normalize through `parseInt` so a zero-padded heading
+        // (`## Slice 01: …`) still yields the canonical `S<N>` form
+        // (`S1`) the rest of the system expects. `SliceSummary.id`
+        // documents the no-leading-zeros invariant and the dep-order
+        // `ID_REGEX` rejects `S01`, so emitting `S01` here would have
+        // hidden every `01`-prefixed slice from any view that joins
+        // slices with dep-order rows.
+        const n = Number.parseInt(match[1] ?? '', 10);
+        currentSliceId = Number.isNaN(n) ? null : `S${n}`;
         currentSliceTitle = (match[2] ?? '').trim();
+        if (currentSliceId === null) insideSlice = false;
       } else {
         currentSliceId = null;
         currentSliceTitle = '';

@@ -645,6 +645,29 @@ Just prose.
     ]);
   });
 
+  it('normalizes zero-padded slice headings to the canonical `S<N>` id', () => {
+    // `## Slice 01: …` would naively emit `S01`, but the canonical id
+    // form is `S1` (matches the dep-order `ID_REGEX` of
+    // `^(M|F|US|S)[1-9][0-9]*$`). Keep the parsed id consistent with
+    // the dep-order rows that reference it so renderers can join the
+    // two without a normalization step.
+    const markdown = `# Tasks
+
+## Slice 01: Foo
+
+- [x] a
+
+## Slice 002: Bar
+
+- [ ] b
+`;
+    const record = parseArtifact('specs/foo/a.tasks.md', markdown);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Foo', status: 'done' },
+      { id: 'S2', title: 'Bar', status: 'not-started' },
+    ]);
+  });
+
   it('emits an empty slices array when a tasks file has no slice headings', () => {
     const record = parseArtifact('specs/foo/a.tasks.md', '# Empty\n');
     expect(record.slices).toEqual([]);
