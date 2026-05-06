@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(13);
+    expect(snippets.size).toBe(14);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -117,6 +117,7 @@ describe('loadSnippets', () => {
       'review-protocol.md',
       'one-shot-output.md',
       'pr-create-tool-choice.md',
+      'branch-policy.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -137,6 +138,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-decomposition.md')).toContain('Competing Slice Lenses');
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
+    expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
   });
 });
 

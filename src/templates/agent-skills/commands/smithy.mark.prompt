@@ -90,10 +90,22 @@ When entering Phase 1 from a `.features.md`, carry forward:
      with hyphens, collapse consecutive hyphens, trim leading/trailing
      hyphens. Use the **full** title — do not shorten or abbreviate.
    - Folder name: `<YYYY-MM-DD>-<NNN>-<slug>` (e.g., `2026-03-14-004-webhook-support`).
-4. Create a git branch with the same name as the folder:
+4. Resolve the working branch using the policy below. When the policy
+   creates a new branch (the current checkout is the default branch),
+   name it the same as the spec folder:
+
    ```
    git checkout -b <YYYY-MM-DD>-<NNN>-<slug>
    ```
+
+   When the policy keeps the existing branch (the current cwd is a
+   linked worktree on a non-default branch — typical when an
+   orchestrator pre-staged it), skip the auto-name and use the current
+   checkout. The spec folder still gets the date-numbered name above;
+   only the branch name is preserved.
+
+   {{>branch-policy}}
+
 5. Confirm the branch name and spec folder path to the user and proceed.
 
 ---
@@ -195,7 +207,10 @@ Draft the `<slug>.spec.md` file with this structure:
 # Feature Specification: <Title>
 
 **Spec Folder**: `<YYYY-MM-DD>-<NNN>-<slug>`
-**Branch**: `<YYYY-MM-DD>-<NNN>-<slug>`
+**Branch**: `<resolved-branch>` *(the actual branch resolved in Phase 1
+step 4 — usually `<YYYY-MM-DD>-<NNN>-<slug>` for a fresh main-checkout
+run, but can be the orchestrator's pre-staged branch when mark is
+invoked inside a linked worktree)*
 **Created**: YYYY-MM-DD
 **Status**: Draft
 **Input**: <source — user description or RFC path with summary>
@@ -540,7 +555,10 @@ artifacts. The files are on disk and the PR is the review surface.
    - the three spec artifacts in the new spec folder
    - the updated `.features.md` (if this run performed a feature-map
      write-back)
-2. Push the branch to `origin`.
+2. Push the current branch to `origin` as-is — do not rename it or
+   prepend a prefix such as `feature/`. The branch must match the one
+   resolved in Phase 1 step 4 so downstream tooling can find the PR by
+   that branch name.
 3. Create a pull request using the same PR-creation pattern that
    `smithy.forge` uses ({{>pr-create-tool-choice}}):
    - **Title**: the feature title, under 70 characters, plain descriptive text

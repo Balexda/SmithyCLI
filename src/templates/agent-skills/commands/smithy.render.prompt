@@ -381,8 +381,12 @@ here, by render.
    co-located with the source RFC.
 2. Run the Plan-Review Pass described above on the feature map file that was
    just written.
-3. Commit the feature map file on the feature branch (capturing both the
-   original feature map and any plan-review fixes in the same diff).
+3. Commit the feature map file on the current feature branch (capturing
+   both the original feature map and any plan-review fixes in the same
+   diff). Push the current branch as-is — do not rename it or prepend a
+   prefix such as `feature/`. The PR must be opened against the same
+   branch the operator (or upstream orchestrator) had checked out when
+   render was invoked. See the branch policy below.
 4. Create a PR for the feature map artifact using the forge `gh pr create`
    pattern ({{>pr-create-tool-choice}}):
    - **Title**: `Feature Map: <Milestone Title>`, under 70 characters,
@@ -434,3 +438,7 @@ here, by render.
   comma-separated list of same-table IDs. The `Artifact` column starts as `—`
   and is populated by `smithy.mark` when it creates the spec folder. Do NOT
   use checkboxes in the `## Dependency Order` section.
+
+---
+
+{{>branch-policy}}
