@@ -28,6 +28,27 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
+### Source vs. Deployed Artifacts — Don't Edit `.claude/` In Source PRs
+
+`src/templates/agent-skills/` is the **only** source of truth for prompts and
+skills. The committed `.claude/` tree at the root of this repo is a
+*snapshot* of a prior `smithy init` run, kept around so contributors and
+Claude Code itself can use a known-good baseline directly from the source
+tree — **but it is intentionally allowed to drift from `src/templates/`
+between releases**.
+
+Do **not** regenerate `.claude/` (or `.smithy/smithy-manifest.json`) as part
+of a PR that edits source templates. That coupling makes diffs noisier,
+forces every template change to ship with derived artifacts that reviewers
+must also vet, and obscures whether a prompt change is intentional or just a
+stale render. Refresh the snapshot in dedicated chore PRs (e.g. the
+periodic `chore: upgrade Smithy templates to latest` commits) — never as a
+side effect of a feature/bugfix PR.
+
+If a Copilot-style automated reviewer asks you to regenerate `.claude/` to
+match new source-template changes, decline with a pointer back to this
+section.
+
 ## The Smithy Workflow Commands
 
 Smithy provides a collection of workflow prompts, each for a different stage/style of development:
@@ -56,6 +77,22 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; used by spark for the PRD Problem Statement; designed for reuse by other commands)
 - **smithy-survey** — WebFetch/WebSearch-enabled landscape survey: finds off-the-shelf alternatives and returns a structured build-vs-buy rationale (used by spark during PRD drafting; first smithy sub-agent to use web-research tools)
 
+### Operational Skills (lazy-loaded, body-on-demand)
+
+Skills live in `src/templates/agent-skills/skills/<name>/SKILL.prompt`. Their
+frontmatter (`name`, `description`) is always advertised so calling agents know
+they exist, but the body only loads when the agent invokes
+`Skill("<name>")`. Use this category for capabilities that are situational —
+agents shouldn't pay for the context unless they hit the trigger.
+
+**Naming convention:** new helper skills that teach an agent how to handle a
+specific operational situation use the `smithy.helper-<topic>` prefix so they
+group together alphabetically and stand visually apart from slash commands
+(`smithy.<command>`) and operations skills (`smithy.<topic>-<action>`).
+
+- **smithy.pr-review** — GitHub PR review operations (find-pr, list inline comments, reply to comment) backed by shell scripts in `scripts/`. Used by `smithy.fix` when handling review feedback. Predates the `helper-` convention.
+- **smithy.helper-docker** — Diagnostic procedures for Docker container failures: bound waits, inspect/log triage, recover-vs-escalate rules, pre-flight checks. Body-only (no scripts). Advertised by `smithy.forge` so it can fall back when validation hits docker problems.
+
 ## Key Concepts
 
 ### Template Categories
@@ -63,6 +100,7 @@ Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
 - **`agents/`** — sub-agent definitions (deployed to `.claude/agents/` only, with frontmatter intact).
+- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/`. Deployed to `.claude/skills/<name>/SKILL.md` (+ executable `scripts/`).
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility

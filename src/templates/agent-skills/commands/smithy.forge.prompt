@@ -14,6 +14,17 @@ the final code review. This keeps each sub-agent's context fresh and focused.
 {{/ifAgent}}
 Before running any shell commands, read and follow the `smithy.guidance` prompt for shell best practices.
 
+### Operational Skills
+
+The following skills are available on demand. They are **not** loaded into
+context unless you invoke them — read each description, then call
+`Skill("<name>")` only when its trigger condition fires. Treat this list as
+the canonical set of fallbacks for problems that recur across forge runs.
+
+| Skill | Load when |
+|-------|-----------|
+| `smithy.helper-docker` | A docker command appears stuck (>60s without progress), a container exits unexpectedly, or validation fails with docker-related errors. |
+
 ---
 
 ## Input
