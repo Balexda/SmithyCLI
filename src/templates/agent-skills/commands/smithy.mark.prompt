@@ -541,8 +541,8 @@ artifacts. The files are on disk and the PR is the review surface.
    - the updated `.features.md` (if this run performed a feature-map
      write-back)
 2. Push the branch to `origin`.
-3. Create a pull request using the same `gh pr create` pattern that
-   `smithy.forge` uses:
+3. Create a pull request using the same PR-creation pattern that
+   `smithy.forge` uses ({{>pr-create-tool-choice}}):
    - **Title**: the feature title, under 70 characters, plain descriptive text
      (no FR numbers, no bracketed tags).
    - **Body**: a short summary with the spec folder path, the user story list
@@ -550,7 +550,7 @@ artifacts. The files are on disk and the PR is the review surface.
      (if any), and a one-line pointer to `smithy.cut` as the next step.
 4. Capture the resulting PR URL for the one-shot output snippet.
 
-If `gh pr create` fails (network error, auth failure, missing upstream,
+If PR creation fails (network error, auth failure, missing upstream,
 etc.), do **not** roll back the written files — they stay on disk. Fall
 through to the PR-creation-failure branch of the one-shot output snippet
 below so the user sees exactly what was produced and what went wrong.
@@ -674,18 +674,20 @@ found no changes") and reuse the branch's existing PR URL if one exists
    justification`).
 2. Push the branch to `origin`.
 3. Check whether the current branch already has an open pull request (for
-   example with `gh pr view --json url` or by querying by head branch).
+   example with `mcp__github__list_pull_requests` filtered by `head`, or
+   `gh pr view --json url` if MCP is unavailable).
    - If a PR already exists for this branch, capture and reuse that PR URL
-     for the one-shot output snippet — do **not** run `gh pr create`
-     again, and do **not** treat the existing PR as a failure.
-   - If no PR exists, create one using the same `gh pr create` pattern
-     that `smithy.forge` uses:
+     for the one-shot output snippet — do **not** create another PR, and
+     do **not** treat the existing PR as a failure.
+   - If no PR exists, create one using the same PR-creation pattern that
+     `smithy.forge` uses (see `pr-create-tool-choice` for the MCP-first /
+     `gh`-fallback tool choice):
      - **Title**: `Refine <feature title>` — under 70 characters, plain text.
      - **Body**: the refine summary, a list of refinements applied, and any
        debt items resolved or introduced by this pass.
 4. Capture the resulting or existing PR URL for the one-shot output snippet.
 
-If `gh pr create` fails, fall through to the PR-creation-failure branch of
+If PR creation fails, fall through to the PR-creation-failure branch of
 the one-shot output snippet so the user sees exactly what changed and what
 went wrong.
 

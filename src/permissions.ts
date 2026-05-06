@@ -411,6 +411,11 @@ export const extraPermissions: string[] = [
   // Repo-level deploy invokes scripts via the relative path; user-level deploy
   // invokes them via an absolute home path that no single pattern can match
   // without env-var expansion.
+  //
+  // Issue #261 added the GitHub MCP tools as the preferred path for the skill;
+  // these script entries are the fallback (kept because the GitHub MCP server
+  // isn't always configured — claude.ai web, vanilla Claude Code installs,
+  // etc.). The skill chooses MCP-vs-script per operation at runtime.
   ".claude/skills/smithy.pr-review/scripts/find-pr.sh",
   ".claude/skills/smithy.pr-review/scripts/get-comments.sh:*",
   ".claude/skills/smithy.pr-review/scripts/reply-comment.sh:*",
@@ -472,12 +477,37 @@ export const denyPermissions: string[] = [
 /**
  * Non-Bash tool permissions specific to Claude Code.
  * These are added alongside Bash(...) permissions in settings.json.
+ *
+ * The GitHub MCP entries below are scoped to the exact tools the shipped
+ * smithy templates concretely reference: `create_pull_request` (the PR-
+ * creation step in forge / strike / cut / mark / ignite / render),
+ * `list_pull_requests` (cut/mark "is there an existing PR for this branch"
+ * check + the smithy.pr-review skill's Find Open PR operation),
+ * `pull_request_read` (smithy.pr-review's List Inline Comments operation),
+ * `add_reply_to_pull_request_comment` (smithy.pr-review's Reply to a
+ * Comment operation), and `issue_write` (the example tool the
+ * `guidance-shell` snippet calls out for issue creation).
+ *
+ * Anything broader — destructive operations like `merge_pull_request` /
+ * `delete_file` / `fork_repository` / `create_repository` /
+ * `run_secret_scanning`, mutation tools like `update_pull_request*` and
+ * `pull_request_review_write`, or scope-expanding read tools like
+ * `search_code` / `search_repositories` / `list_branches` /
+ * `list_commits` — is deliberately omitted. Adding more should follow a
+ * concrete template change that needs the tool, not be auto-allowed
+ * speculatively.
  */
 export const claudeToolPermissions: string[] = [
   "WebSearch",
   "WebFetch",
   "Write(/tmp/**)",
   "Skill(smithy.*:*)",
+  // GitHub MCP — exactly the tools the smithy templates invoke.
+  "mcp__github__create_pull_request",
+  "mcp__github__list_pull_requests",
+  "mcp__github__pull_request_read",
+  "mcp__github__add_reply_to_pull_request_comment",
+  "mcp__github__issue_write",
 ];
 
 /**

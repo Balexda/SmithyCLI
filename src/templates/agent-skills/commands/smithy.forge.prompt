@@ -299,7 +299,9 @@ Include the command output summary in your final response so reviewers know what
 
 ## Pull Request
 
-Create the PR using `gh pr create` with:
+{{>pr-create-tool-choice}}
+
+Create the PR with:
 
 - **Title**: `<slice goal>` — concise, under 70 characters, descriptive text only (do NOT reference FR numbers or acceptance scenario IDs in the title — those are spec-internal and meaningless to later readers)
 

@@ -148,12 +148,19 @@ describe('deploy', () => {
     }
   });
 
-  it('deployed SKILL.md contains allowed-tools directive', async () => {
+  it('deployed SKILL.md contains allowed-tools directive listing both the MCP tools and the script fallbacks', async () => {
     await deploy(tmpDir, 'none');
 
     const skillMd = path.join(tmpDir, '.claude', 'skills', 'smithy.pr-review', 'SKILL.md');
     const content = fs.readFileSync(skillMd, 'utf8');
     expect(content).toContain('allowed-tools:');
+    // Issue #261 added the GitHub MCP tools as the preferred path. The
+    // skill keeps the `gh`-CLI shell scripts as a fallback for hosts
+    // without the GitHub MCP server, so the allowed-tools directive
+    // must list **both** paths.
+    expect(content).toContain('mcp__github__list_pull_requests');
+    expect(content).toContain('mcp__github__pull_request_read');
+    expect(content).toContain('mcp__github__add_reply_to_pull_request_comment');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
@@ -193,6 +200,9 @@ describe('deploy', () => {
   });
 
   it('deploys smithy.pr-review skill with all three scripts', async () => {
+    // Issue #261 made the GitHub MCP tools the preferred path, but kept the
+    // three `gh`-CLI shell scripts as a fallback for hosts without the
+    // GitHub MCP server. The deploy step must still ship them.
     await deploy(tmpDir, 'none');
 
     const scriptsDir = path.join(tmpDir, '.claude', 'skills', 'smithy.pr-review', 'scripts');
@@ -346,7 +356,11 @@ describe('buildClaudeAllowList', () => {
     // Every entry is either Bash(...) or a Claude tool permission
     for (const entry of list) {
       expect(
-        entry.startsWith('Bash(') || ['WebSearch', 'WebFetch'].includes(entry) || entry.startsWith('Skill(') || entry.startsWith('Write(')
+        entry.startsWith('Bash(')
+          || ['WebSearch', 'WebFetch'].includes(entry)
+          || entry.startsWith('Skill(')
+          || entry.startsWith('Write(')
+          || entry.startsWith('mcp__github__')
       ).toBe(true);
     }
     // Should have many Bash entries
@@ -358,6 +372,23 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('WebSearch');
     expect(list).toContain('WebFetch');
     expect(list.some(e => e.startsWith('Skill(smithy.'))).toBe(true);
+  });
+
+  it('includes GitHub MCP tool permissions for PR / issue / review actions', () => {
+    const list = buildClaudeAllowList();
+    // Smithy templates prefer the GitHub MCP tools over `gh` for PR creation,
+    // PR review, and issue actions to avoid shell-approval friction. Spot-check
+    // the tools the workflow commands and pr-review skill rely on.
+    expect(list).toContain('mcp__github__create_pull_request');
+    expect(list).toContain('mcp__github__list_pull_requests');
+    expect(list).toContain('mcp__github__pull_request_read');
+    expect(list).toContain('mcp__github__add_reply_to_pull_request_comment');
+    expect(list).toContain('mcp__github__issue_write');
+    // Destructive / scope-broadening tools must NOT be auto-allowed.
+    expect(list).not.toContain('mcp__github__merge_pull_request');
+    expect(list).not.toContain('mcp__github__delete_file');
+    expect(list).not.toContain('mcp__github__fork_repository');
+    expect(list).not.toContain('mcp__github__create_repository');
   });
 
   it('includes git commands wrapped in Bash()', () => {
@@ -655,7 +686,12 @@ describe('writePermissions', () => {
 
     for (const entry of config.permissions.allow) {
       expect(
-        entry.startsWith('Bash(') || entry === 'WebSearch' || entry === 'WebFetch' || entry.startsWith('Skill(') || entry.startsWith('Write(')
+        entry.startsWith('Bash(')
+          || entry === 'WebSearch'
+          || entry === 'WebFetch'
+          || entry.startsWith('Skill(')
+          || entry.startsWith('Write(')
+          || entry.startsWith('mcp__github__')
       ).toBe(true);
     }
   });

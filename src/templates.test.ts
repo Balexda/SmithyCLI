@@ -101,7 +101,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(12);
+    expect(snippets.size).toBe(13);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -116,6 +116,7 @@ describe('loadSnippets', () => {
       'tdd-protocol.md',
       'review-protocol.md',
       'one-shot-output.md',
+      'pr-create-tool-choice.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -366,6 +367,9 @@ describe('getComposedTemplates', () => {
   });
 
   it('skills map includes smithy.pr-review with prompt and scripts', () => {
+    // Issue #261 added the GitHub MCP tools as the preferred path but kept
+    // the three `gh`-CLI shell scripts as the fallback for hosts without
+    // the GitHub MCP server.
     const skill = composed.skills.get('smithy.pr-review');
     expect(skill).toBeDefined();
     expect(skill!.prompt).toBeTruthy();
@@ -383,9 +387,36 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('allowed-tools');
   });
 
+  it('smithy.pr-review allowed-tools lists both the GitHub MCP tools and the script fallbacks', () => {
+    const skill = composed.skills.get('smithy.pr-review')!;
+    // MCP-first path
+    expect(skill.prompt).toContain('mcp__github__list_pull_requests');
+    expect(skill.prompt).toContain('mcp__github__pull_request_read');
+    expect(skill.prompt).toContain('mcp__github__add_reply_to_pull_request_comment');
+    // gh-CLI script fallback (canonical `:*` argument-suffix form)
+    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
+    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
+    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+  });
+
+  it('smithy.pr-review documents the three operations and the MCP-first / script-fallback choice', () => {
+    // Spot-check that the prompt body teaches the three operations and the
+    // dual-path decision rule (try MCP first, fall back to scripts when the
+    // GitHub MCP server is unavailable).
+    const skill = composed.skills.get('smithy.pr-review')!;
+    expect(skill.prompt).toContain('Find Open PR');
+    expect(skill.prompt).toContain('List Inline Comments');
+    expect(skill.prompt).toContain('Reply to a Comment');
+    // MCP method that exposes review threads
+    expect(skill.prompt).toContain('get_review_comments');
+    // The skill must explicitly direct the agent through the dual-path flow.
+    expect(skill.prompt).toMatch(/MCP[^\n]+(first|prefer)/i);
+    expect(skill.prompt).toMatch(/(fall back|fallback)/i);
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = composed.skills.get('smithy.pr-review')!;
-    for (const [filename, content] of skill.scripts) {
+    for (const [, content] of skill.scripts) {
       expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
     }
   });
@@ -1659,51 +1690,54 @@ describe('getComposedTemplates', () => {
     claudeComposed = await getComposedTemplates('claude');
   });
 
-  // Helper: every literal `gh pr create` invocation (not a pattern forward
-  // reference like "the forge `gh pr create` pattern") must be preceded by
-  // at least one plan-review dispatch earlier in the template. Scanning every
-  // occurrence — not just the last — prevents a regression where a later
-  // phase (e.g., Phase 4 first-pass) retains the dispatch but an earlier
-  // phase (e.g., Phase 0c refinement) silently loses it.
+  // Helper: every PR-creation invocation must be preceded by at least one
+  // plan-review dispatch earlier in the template. Scanning every occurrence
+  // — not just the last — prevents a regression where a later phase (e.g.,
+  // Phase 4 first-pass) retains the dispatch but an earlier phase (e.g.,
+  // Phase 0c refinement) silently loses it.
+  //
+  // Marker: `mcp__github__create_pull_request`. After the issue #261
+  // refactor, command templates no longer embed `gh pr create` literally
+  // at the invocation site — the actual PR-creation step pulls in the
+  // shared `pr-create-tool-choice` snippet, whose text is the only place
+  // `mcp__github__create_pull_request` appears in the composed template.
+  // That makes the MCP-tool name a tight, false-positive-free invocation
+  // marker (descriptive prose like "the forge `gh pr create` pattern"
+  // never mentions the MCP tool by name).
   function assertEveryPrCreatePrecededByPlanReview(tpl: string, label: string) {
-    // Find every `gh pr create` INVOCATION — exclude the "pattern" phrase
-    // that commands use when pointing at forge's helper. A pattern reference
-    // reads "the forge `gh pr create` pattern" or "the same `gh pr create`
-    // pattern"; a real invocation is the bare command (often preceded by
-    // "Run" / "run" / a step number) without the trailing word "pattern".
     const invocations: number[] = [];
-    const re = /gh pr create/gi;
+    const re = /mcp__github__create_pull_request/g;
     let match: RegExpExecArray | null;
     while ((match = re.exec(tpl)) !== null) {
-      // Look ahead for the word "pattern" within the next ~40 chars to
-      // detect "the ... `gh pr create` pattern" references; skip those.
-      const tail = tpl.slice(match.index, match.index + 40).toLowerCase();
-      if (/\bpattern\b/.test(tail)) continue;
       invocations.push(match.index);
     }
     expect(
       invocations.length,
-      `${label} must contain at least one gh pr create invocation`,
+      `${label} must contain at least one PR-creation invocation`,
     ).toBeGreaterThan(0);
 
-    // Every invocation position must have a plan-review dispatch earlier
-    // in the template. Using the last plan-review position before the
-    // invocation: if even one invocation has no preceding plan-review, the
-    // invariant fails.
+    // Every invocation position must have a plan-review reference earlier
+    // in the template. Two equivalent markers count as plan-review
+    // references: the literal sub-agent name `smithy-plan-review`, and
+    // the section heading `Plan-Review Pass` that planning-command
+    // templates use as a forward reference to the detailed sub-section.
+    // (Several Phase-0c flows describe step 3 as "Run the Plan-Review
+    // Pass described below" before the literal sub-agent name appears
+    // later in the file — both forms are valid for the ordering check.)
     const planReviewPositions: number[] = [];
-    const prRe = /smithy-plan-review/g;
+    const prRe = /smithy-plan-review|Plan-Review Pass/g;
     let pm: RegExpExecArray | null;
     while ((pm = prRe.exec(tpl)) !== null) planReviewPositions.push(pm.index);
     expect(
       planReviewPositions.length,
-      `${label} must reference smithy-plan-review`,
+      `${label} must reference smithy-plan-review or Plan-Review Pass`,
     ).toBeGreaterThan(0);
 
     for (const invIdx of invocations) {
       const precedingPlanReview = planReviewPositions.find((p) => p < invIdx);
       expect(
         precedingPlanReview,
-        `${label}: gh pr create at offset ${invIdx} must be preceded by a smithy-plan-review dispatch`,
+        `${label}: PR-creation invocation at offset ${invIdx} must be preceded by a smithy-plan-review dispatch`,
       ).toBeDefined();
     }
   }
@@ -1712,10 +1746,10 @@ describe('getComposedTemplates', () => {
     it(`${name} default variant dispatches smithy-plan-review before every PR creation`, () => {
       const tpl = composed.commands.get(name);
       expect(tpl, `${name} should be in the composed commands map`).toBeDefined();
-      // Every literal `gh pr create` invocation must be preceded by a
-      // plan-review dispatch — not just the last one. This catches a
-      // regression where the Phase 0c refinement PR flow loses plan-review
-      // while the first-pass PR flow retains it.
+      // Every PR-creation invocation must be preceded by a plan-review
+      // dispatch — not just the last one. This catches a regression where
+      // the Phase 0c refinement PR flow loses plan-review while the
+      // first-pass PR flow retains it.
       assertEveryPrCreatePrecededByPlanReview(tpl!, name);
     });
 
