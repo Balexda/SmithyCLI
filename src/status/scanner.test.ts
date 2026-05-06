@@ -101,6 +101,114 @@ describe('scan', () => {
     expect(records).toEqual([]);
   });
 
+  it('discovers artifacts under non-canonical layouts (singular spec/, custom dirs)', () => {
+    // Issue #295: a project that uses `spec/` (singular) or any other
+    // custom layout under the resolved --root should still surface its
+    // artifacts. The scanner walks `root` recursively and matches by
+    // suffix, so the directory naming convention does not matter.
+    write(
+      'spec/feature-a.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'lib-streaming/spec/streaming.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'docs/rfc/proposal.rfc.md',
+      `# RFC\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | Milestone | — | — |\n`,
+    );
+    const records = scan(root);
+    expect(records.some((r) => r.path === 'spec/feature-a.spec.md')).toBe(true);
+    expect(
+      records.some((r) => r.path === 'lib-streaming/spec/streaming.spec.md'),
+    ).toBe(true);
+    expect(records.some((r) => r.path === 'docs/rfc/proposal.rfc.md')).toBe(true);
+  });
+
+  it('honors --root pointed at a sub-package containing a singular spec/ directory', () => {
+    // Simulates passing `--root lib-streaming/spec` from the issue.
+    // Artifacts that live exactly under that root must be discoverable
+    // even when they don't sit inside the canonical `specs/` /
+    // `docs/rfcs/` / `specs/strikes/` top-level layout.
+    write(
+      'lib-streaming/spec/streaming.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'lib-streaming/spec/01-first.tasks.md',
+      `# Tasks\n\n## Slice 1: First\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+    const records = scan(join(root, 'lib-streaming/spec'));
+    expect(records.some((r) => r.path === 'streaming.spec.md')).toBe(true);
+    expect(records.some((r) => r.path === '01-first.tasks.md')).toBe(true);
+  });
+
+  it('fast path: skips everything outside the canonical scan dirs when they exist', () => {
+    // Performance: when `specs/` (or any canonical scan dir) is
+    // present, the scanner takes the fast path and never recurses
+    // into sibling subtrees — vendored fixtures in `node_modules/`,
+    // build outputs in `dist/`, hooks in `.git/`, etc. are all
+    // bypassed for free regardless of what they contain.
+    write(
+      'node_modules/some-pkg/fixture.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'dist/build-artifact.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'lib-streaming/spec/streaming.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    // A real artifact under the canonical layout pins the fast path.
+    write(
+      'specs/real.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    const records = scan(root);
+    const paths = records
+      .filter((r) => r.virtual !== true)
+      .map((r) => r.path);
+    expect(paths).toEqual(['specs/real.spec.md']);
+  });
+
+  it('fallback path: skips IGNORED_DIR_NAMES when walking root recursively', () => {
+    // When no canonical scan dir exists, the recursive fallback runs.
+    // It must still skip universally-untouchable dirs (VCS metadata,
+    // dependency caches, build outputs, agent config dirs) so the
+    // fallback stays bounded on a large repo.
+    write(
+      'node_modules/some-pkg/fixture.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      '.git/hooks/sample.tasks.md',
+      `# Tasks\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | x | — | — |\n`,
+    );
+    write(
+      'dist/build-artifact.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      '.smithy/manifest-fixture.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    // Real artifact in a non-canonical location → triggers fallback.
+    write(
+      'lib-streaming/spec/streaming.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    const records = scan(root);
+    const paths = records.map((r) => r.path);
+    expect(paths.some((p) => p.startsWith('node_modules/'))).toBe(false);
+    expect(paths.some((p) => p.startsWith('.git/'))).toBe(false);
+    expect(paths.some((p) => p.startsWith('dist/'))).toBe(false);
+    expect(paths.some((p) => p.startsWith('.smithy/'))).toBe(false);
+    expect(paths).toContain('lib-streaming/spec/streaming.spec.md');
+  });
+
   it('AS 1.1: spec with two done tasks children and one — row', () => {
     // Spec references two existing tasks files (both fully checked)
     // and one — row which must emit a virtual not-started tasks record.

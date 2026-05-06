@@ -6,11 +6,29 @@
  * contract in `smithy-status-skill.data-model.md`. It proceeds in four
  * phases:
  *
- *   1. **Discovery / parse** — walk `specs/`, `docs/rfcs/`, and
- *      `specs/strikes/` under `root`, collect files by suffix
- *      (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`), read their
- *      contents, and call {@link parseArtifact} for each. Symlinks whose
- *      real path escapes `root` are silently skipped.
+ *   1. **Discovery / parse** — collect files by suffix (`.rfc.md`,
+ *      `.features.md`, `.spec.md`, `.tasks.md`), read their contents,
+ *      and call {@link parseArtifact} for each. Discovery uses a
+ *      hybrid strategy:
+ *
+ *        a. **Fast path (canonical layout).** If any of the canonical
+ *           scan dirs (`specs/`, `docs/rfcs/`, `specs/strikes/`) exist
+ *           directly under `root`, walk only those. Conventional repos
+ *           — including monorepos with the canonical layout at their
+ *           top level — pay no scan cost outside those subtrees.
+ *
+ *        b. **Fallback (non-canonical layout).** If none of the
+ *           canonical scan dirs exist under `root`, walk `root`
+ *           recursively. This lets `--root` point at any directory
+ *           containing artifacts — a sub-package, a singular `spec/`
+ *           directory, etc. — without enforcing a fixed top-level
+ *           layout (issue #295). The recursive walker skips
+ *           subdirectories named in {@link IGNORED_DIR_NAMES} (`.git`,
+ *           `node_modules`, build outputs, agent config dirs) so the
+ *           fallback stays bounded even on a large repo.
+ *
+ *      Symlinks whose real path escapes `root` are silently skipped
+ *      under both strategies.
  *
  *   2. **Resolution + virtual emission** — walk every real parent
  *      record's `dependency_order.rows`, match each row to an existing
@@ -70,7 +88,58 @@ import type {
   DependencyRow,
 } from './types.js';
 
+/**
+ * Canonical top-level directories the scanner walks when present.
+ * Conventional repos hit this fast path: walking three known subtrees
+ * is a hard upper bound on scan cost regardless of repo size, so
+ * monorepos with the canonical layout at their top level pay no extra
+ * cost as the repo grows.
+ *
+ * When NONE of these exist directly under `root`, the scanner falls
+ * back to a recursive walk of `root` (filtered by IGNORED_DIR_NAMES)
+ * so non-canonical layouts — a singular `spec/` folder, a sub-package
+ * passed via `--root`, etc. — still surface their artifacts (issue
+ * #295).
+ */
 const SCAN_ROOTS = ['specs', 'docs/rfcs', 'specs/strikes'] as const;
+
+/**
+ * Directory names the recursive fallback refuses to descend into.
+ * Keeps the fallback walk from spelunking into VCS metadata,
+ * dependency caches, build outputs, and agent-config dirs that will
+ * never contain Smithy artifacts. Match is by the leaf directory name
+ * (case-sensitive), applied at every depth — a `node_modules` nested
+ * inside a sub-package is also skipped.
+ *
+ * Only consulted by the fallback (non-canonical layout) walker. The
+ * fast path scans `SCAN_ROOTS` directly and never enters these dirs
+ * to begin with.
+ *
+ * Intentionally narrow: dot-prefixed directories users might actually
+ * keep artifacts in (`.specs/`, `.docs/`) are NOT ignored. The set
+ * covers the universally-untouchable dirs and the agent-config dirs
+ * Smithy itself deploys (`.claude/`, `.gemini/`, `.codex/`).
+ */
+const IGNORED_DIR_NAMES = new Set<string>([
+  '.git',
+  '.hg',
+  '.svn',
+  'node_modules',
+  'dist',
+  'build',
+  'out',
+  'coverage',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '.turbo',
+  '.idea',
+  '.vscode',
+  '.smithy',
+  '.claude',
+  '.gemini',
+  '.codex',
+]);
 
 const SUFFIX_TYPES: Array<readonly [string, ArtifactType]> = [
   ['.rfc.md', 'rfc'],
@@ -100,7 +169,21 @@ export function scan(root: string): ArtifactRecord[] {
   // `specs/` and `specs/strikes/`).
   const visitedDirs = new Set<string>();
 
-  // Phase 1: discover + parse.
+  // Phase 1: discover + parse. Two strategies, chosen by what's
+  // actually present under `realRoot`:
+  //
+  //  - Fast path: walk SCAN_ROOTS that exist. Conventional repos
+  //    (canonical layout at their top level) take this path and pay
+  //    no recursion cost outside the known subtrees, regardless of
+  //    repo size. The fallback walker is never invoked.
+  //
+  //  - Fallback: if NONE of the SCAN_ROOTS exist under `realRoot`,
+  //    walk `realRoot` recursively (skipping IGNORED_DIR_NAMES). This
+  //    is the issue-#295 case — `--root` pointed at a sub-package or
+  //    a layout that doesn't follow the canonical naming, so the
+  //    scanner has to discover artifacts wherever they live under the
+  //    user's chosen root.
+  let scannedAnyCanonical = false;
   for (const scanRoot of SCAN_ROOTS) {
     const startDir = path.join(realRoot, scanRoot);
     let stat: fs.Stats;
@@ -120,6 +203,11 @@ export function scan(root: string): ArtifactRecord[] {
     if (visitedDirs.has(realStart)) continue;
     visitedDirs.add(realStart);
     walkDir(startDir, realRoot, records, visitedDirs);
+    scannedAnyCanonical = true;
+  }
+  if (!scannedAnyCanonical) {
+    visitedDirs.add(realRoot);
+    walkDir(realRoot, realRoot, records, visitedDirs);
   }
 
   // Phase 2: resolve parent/child linkage and emit virtual records.
@@ -344,9 +432,13 @@ function walkDir(
     }
 
     if (stat.isDirectory()) {
-      // Guard against directory cycles introduced by symlinks (and
-      // duplicate descents from overlapping scan roots) by tracking
-      // canonical real paths we have already walked.
+      // Skip universally-untouchable directories (VCS metadata,
+      // dependency caches, build outputs, agent config dirs). Smithy
+      // artifacts never live inside these, and walking them on a
+      // typical repo root would be expensive for no payoff.
+      if (IGNORED_DIR_NAMES.has(name)) continue;
+      // Guard against directory cycles introduced by symlinks by
+      // tracking canonical real paths we have already walked.
       if (visitedDirs.has(realAbs)) continue;
       visitedDirs.add(realAbs);
       walkDir(abs, realRoot, records, visitedDirs);
@@ -386,9 +478,9 @@ function handleFile(
   const type = detectTypeFromSuffix(rel);
   if (type === null) return;
 
-  // Same file visited via two scan roots (e.g., `specs/strikes/` lives
-  // inside `specs/`): the first insert wins and subsequent visits are
-  // no-ops. This keeps the returned record set free of duplicates.
+  // Defensive: if the same repo-relative path is somehow seen twice
+  // (e.g., a symlink that survives the visited-dir cycle guard), the
+  // first insert wins and subsequent visits are no-ops.
   if (records.has(rel)) return;
 
   let content: string;
