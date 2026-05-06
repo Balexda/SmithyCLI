@@ -202,12 +202,12 @@ export function scan(root: string): ArtifactRecord[] {
     if (!isWithinRoot(realStart, realRoot)) continue;
     if (visitedDirs.has(realStart)) continue;
     visitedDirs.add(realStart);
-    walkDir(startDir, realRoot, records, visitedDirs);
+    walkDir(startDir, realRoot, records, visitedDirs, false);
     scannedAnyCanonical = true;
   }
   if (!scannedAnyCanonical) {
     visitedDirs.add(realRoot);
-    walkDir(realRoot, realRoot, records, visitedDirs);
+    walkDir(realRoot, realRoot, records, visitedDirs, true);
   }
 
   // Phase 2: resolve parent/child linkage and emit virtual records.
@@ -400,12 +400,21 @@ export function scan(root: string): ArtifactRecord[] {
  * skipping anything whose real path escapes `realRoot` or that has
  * already been visited (which breaks symlink cycles). Parses every
  * discovered artifact file into `records`.
+ *
+ * `applyIgnoreList` gates the {@link IGNORED_DIR_NAMES} filter and is
+ * the only behavioral difference between the fast path and the
+ * fallback walk. Pass `false` from the canonical-scan-root fast path
+ * so existing `specs/build/`, `specs/dist/`, etc. layouts continue to
+ * surface their artifacts; pass `true` from the recursive fallback so
+ * the scan stays bounded on a non-canonical repo root that may include
+ * VCS metadata, dep caches, build outputs, and agent config dirs.
  */
 function walkDir(
   dir: string,
   realRoot: string,
   records: Map<string, ArtifactRecord>,
   visitedDirs: Set<string>,
+  applyIgnoreList: boolean,
 ): void {
   let entries: string[];
   try {
@@ -432,16 +441,18 @@ function walkDir(
     }
 
     if (stat.isDirectory()) {
-      // Skip universally-untouchable directories (VCS metadata,
-      // dependency caches, build outputs, agent config dirs). Smithy
-      // artifacts never live inside these, and walking them on a
-      // typical repo root would be expensive for no payoff.
-      if (IGNORED_DIR_NAMES.has(name)) continue;
+      // Fallback only: skip universally-untouchable directories (VCS
+      // metadata, dependency caches, build outputs, agent config dirs)
+      // so the recursive walk stays bounded on a non-canonical repo
+      // root. The fast path passes `false` to preserve any legitimate
+      // `specs/build/`, `specs/dist/`, etc. layouts under canonical
+      // scan roots.
+      if (applyIgnoreList && IGNORED_DIR_NAMES.has(name)) continue;
       // Guard against directory cycles introduced by symlinks by
       // tracking canonical real paths we have already walked.
       if (visitedDirs.has(realAbs)) continue;
       visitedDirs.add(realAbs);
-      walkDir(abs, realRoot, records, visitedDirs);
+      walkDir(abs, realRoot, records, visitedDirs, applyIgnoreList);
     } else if (stat.isFile()) {
       handleFile(abs, realRoot, records);
     }

@@ -144,6 +144,36 @@ describe('scan', () => {
     expect(records.some((r) => r.path === '01-first.tasks.md')).toBe(true);
   });
 
+  it('fast path: does NOT prune subdirectories whose leaf name is in IGNORED_DIR_NAMES', () => {
+    // Regression guard: the IGNORED_DIR_NAMES filter is fallback-only.
+    // A repo with the canonical layout that happens to nest a subdir
+    // named `build/`, `dist/`, `coverage/`, etc. under `specs/` MUST
+    // still surface artifacts under it — those folder names are
+    // legitimate domain words inside spec layouts.
+    write(
+      'specs/build/build-feature.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'specs/dist/dist-feature.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    write(
+      'specs/coverage/coverage-feature.spec.md',
+      `# Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Story | — | — |\n`,
+    );
+    const records = scan(root);
+    const paths = records
+      .filter((r) => r.virtual !== true)
+      .map((r) => r.path)
+      .sort();
+    expect(paths).toEqual([
+      'specs/build/build-feature.spec.md',
+      'specs/coverage/coverage-feature.spec.md',
+      'specs/dist/dist-feature.spec.md',
+    ]);
+  });
+
   it('fast path: skips everything outside the canonical scan dirs when they exist', () => {
     // Performance: when `specs/` (or any canonical scan dir) is
     // present, the scanner takes the fast path and never recurses
