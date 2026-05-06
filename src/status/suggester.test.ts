@@ -111,7 +111,11 @@ describe('suggestNextAction — done and unknown short-circuit to null', () => {
 });
 
 describe('suggestNextAction — tasks records', () => {
-  it('suggests smithy.forge for a not-started tasks record', () => {
+  it('suggests smithy.forge with no slice digit when a not-started tasks record has no parsed slices', () => {
+    // Older fixtures (and pathological tasks files with no `## Slice N:`
+    // headings) have no `slices` field on the record, so the suggester
+    // falls back to the legacy single-arg shape rather than fabricate
+    // a `0` digit.
     const record = makeRecord({
       type: 'tasks',
       status: 'not-started',
@@ -126,19 +130,66 @@ describe('suggestNextAction — tasks records', () => {
     expect(action!.suppressed_by_ancestor).toBeUndefined();
   });
 
-  it('suggests smithy.forge for an in-progress tasks record', () => {
+  it('appends the first non-done slice digit on a not-started tasks record with parsed slices', () => {
+    // Real tasks records carry per-slice info (parser populates it from
+    // `## Slice N:` headings). The first non-done slice's digit travels
+    // into `args[1]` so the hint reads `smithy.forge <path> <N>` and
+    // tells the user exactly which slice to pick up next.
+    const record = makeRecord({
+      type: 'tasks',
+      status: 'not-started',
+      path: 'specs/x/01-foo.tasks.md',
+      slices: [
+        { id: 'S1', title: 'Bootstrap', status: 'not-started' },
+        { id: 'S2', title: 'Wire init', status: 'not-started' },
+      ],
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action!.command).toBe('smithy.forge');
+    expect(action!.arguments).toEqual(['specs/x/01-foo.tasks.md', '1']);
+    expect(action!.reason).toContain('S1');
+  });
+
+  it('appends the first non-done slice digit on an in-progress tasks record', () => {
+    // S1 done, S2 in-progress, S3 not-started → next forge target is S2.
+    // The suggester picks the first slice whose status !== 'done', so
+    // an in-progress slice wins over a later not-started one — which
+    // matches "resume mid-flight work" intent.
     const record = makeRecord({
       type: 'tasks',
       status: 'in-progress',
       path: 'specs/x/02-bar.tasks.md',
       completed: 2,
       total: 5,
+      slices: [
+        { id: 'S1', title: 'Foo', status: 'done' },
+        { id: 'S2', title: 'Bar', status: 'in-progress' },
+        { id: 'S3', title: 'Baz', status: 'not-started' },
+      ],
     });
     const action = suggestNextAction(record, [], false);
     expect(action).not.toBeNull();
     expect(action!.command).toBe('smithy.forge');
-    expect(action!.arguments).toEqual(['specs/x/02-bar.tasks.md']);
-    expect(action!.reason.length).toBeGreaterThan(0);
+    expect(action!.arguments).toEqual(['specs/x/02-bar.tasks.md', '2']);
+    expect(action!.reason).toContain('S2');
+  });
+
+  it('falls back to the single-arg shape when every slice is already done', () => {
+    // Pathological for an in-progress/not-started tasks record (would
+    // normally roll up to done), but the suggester must still return
+    // a usable action rather than emit a blank slice digit.
+    const record = makeRecord({
+      type: 'tasks',
+      status: 'in-progress',
+      path: 'specs/x/03-baz.tasks.md',
+      slices: [
+        { id: 'S1', title: 'Foo', status: 'done' },
+        { id: 'S2', title: 'Bar', status: 'done' },
+      ],
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action!.command).toBe('smithy.forge');
+    expect(action!.arguments).toEqual(['specs/x/03-baz.tasks.md']);
   });
 
   it('redirects a virtual tasks record to smithy.cut on its parent spec', () => {
@@ -180,7 +231,37 @@ describe('suggestNextAction — tasks records', () => {
 });
 
 describe('suggestNextAction — rfc records', () => {
-  it('suggests smithy.render for a not-started rfc record', () => {
+  it('suggests smithy.render with the first virtual milestone digit', () => {
+    // M1 already has a feature map (real, in-progress); M2 / M3 do not
+    // (virtual, not-started). The suggester points at M2 — the first
+    // milestone whose feature map has yet to be rendered.
+    const record = makeRecord({
+      type: 'rfc',
+      status: 'in-progress',
+      path: 'docs/rfcs/2026-04-12-foo.rfc.md',
+      dependency_order: {
+        rows: [
+          makeRow('M1', 'docs/rfcs/01-spawn.features.md'),
+          makeRow('M2'),
+          makeRow('M3'),
+        ],
+        id_prefix: 'M',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('in-progress', 'features'),
+      makeRecord({ type: 'features', status: 'not-started', virtual: true }),
+      makeRecord({ type: 'features', status: 'not-started', virtual: true }),
+    ];
+    const action = suggestNextAction(record, children, false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.render');
+    expect(action!.arguments).toEqual(['docs/rfcs/2026-04-12-foo.rfc.md', '2']);
+    expect(action!.reason).toContain('M2');
+  });
+
+  it('falls back to single-arg smithy.render when the rfc has zero milestones', () => {
     const record = makeRecord({
       type: 'rfc',
       status: 'not-started',
@@ -193,14 +274,28 @@ describe('suggestNextAction — rfc records', () => {
     expect(action!.reason.length).toBeGreaterThan(0);
   });
 
-  it('suggests smithy.render for an in-progress rfc record', () => {
+  it('falls back to single-arg smithy.render when every milestone already has a feature map', () => {
+    // No virtual children → no "first virtual not-started" candidate.
+    // Suggester degrades to the bare RFC-path hint rather than picking
+    // an arbitrary milestone digit.
     const record = makeRecord({
       type: 'rfc',
       status: 'in-progress',
       path: 'docs/rfcs/2026-04-12-foo.rfc.md',
+      dependency_order: {
+        rows: [
+          makeRow('M1', 'docs/rfcs/01-spawn.features.md'),
+          makeRow('M2', 'docs/rfcs/02-dispatch.features.md'),
+        ],
+        id_prefix: 'M',
+        format: 'table',
+      },
     });
-    const action = suggestNextAction(record, [], false);
-    expect(action).not.toBeNull();
+    const children: ArtifactRecord[] = [
+      makeChild('done', 'features'),
+      makeChild('in-progress', 'features'),
+    ];
+    const action = suggestNextAction(record, children, false);
     expect(action!.command).toBe('smithy.render');
     expect(action!.arguments).toEqual(['docs/rfcs/2026-04-12-foo.rfc.md']);
   });

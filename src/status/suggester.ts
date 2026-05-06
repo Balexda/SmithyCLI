@@ -10,16 +10,22 @@
  *
  * The rule table mirrors FR-010 in `smithy-status-skill.spec.md` and
  * Acceptance Scenarios 4.1–4.5, extended so every hint represents a
- * command whose on-disk prerequisites are satisfied:
+ * command whose on-disk prerequisites are satisfied AND carries a
+ * trailing row digit pointing at the next actionable child whenever one
+ * is available:
  *
- * - `rfc` → `smithy.render <rfc-path>`
+ * - `rfc` → `smithy.render <rfc-path> <first-virtual-M<N>-digits>` when a
+ *   milestone has no feature map yet; `smithy.render <rfc-path>` when the
+ *   RFC has zero rows or every milestone is already rendered
  * - `features` → `smithy.mark <features-path> <first-virtual-F<N>-digits>`
  *   (only when at least one feature row has no spec file on disk; null
  *   otherwise so per-spec hints below the features map drive the work)
  * - `spec` → `smithy.cut <dirname(spec-path)> <first-virtual-US<N>-digits>`
  *   (only when at least one user-story row has no tasks file on disk;
  *   null otherwise so per-task hints below the spec drive the work)
- * - `tasks` → `smithy.forge <tasks-path>` for real tasks files, or
+ * - `tasks` → `smithy.forge <tasks-path> <first-non-done-S<N>-digits>` for
+ *   real tasks files (degrades to `smithy.forge <tasks-path>` when the
+ *   record carries no parsed slices), or
  *   `smithy.cut <spec-folder> <US<N>-digits>` for virtual tasks
  *   records (where the tasks file does not yet exist)
  *
@@ -40,7 +46,7 @@
 
 import path from 'node:path';
 
-import type { ArtifactRecord, NextAction } from './types.js';
+import type { ArtifactRecord, NextAction, SliceSummary } from './types.js';
 
 /**
  * Extract the numeric suffix from a canonical dep-order row id
@@ -101,6 +107,32 @@ function specFolderFromPath(specPath: string): string {
     return specPath.replace(/\/+$/, '');
   }
   return path.dirname(specPath);
+}
+
+/**
+ * Find the first slice on a real tasks record whose status is not `done`
+ * and return its numeric id suffix (e.g. `S2` → `'2'`). Returns
+ * `undefined` if `slices` is missing/empty or no slice qualifies. Used
+ * to compose `smithy.forge <path> <slice-num>` hints so the user knows
+ * exactly which slice the next forge invocation should pick up.
+ *
+ * Slices are emitted by the parser in source order, which matches the
+ * dep-order column inside a tasks file, so a single forward scan finds
+ * the right candidate. We do not prefer in-progress over not-started:
+ * the first slice that is not `done` IS the next thing to forge,
+ * regardless of whether it is mid-flight or yet to start.
+ */
+function firstNonDoneSliceDigits(
+  slices: SliceSummary[] | undefined,
+): string | undefined {
+  if (slices === undefined || slices.length === 0) return undefined;
+  for (const slice of slices) {
+    if (slice.status !== 'done') {
+      const digits = numericIdSuffix(slice.id);
+      if (digits !== undefined) return digits;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -200,8 +232,21 @@ export function suggestNextAction(
   switch (record.type) {
     case 'rfc': {
       command = 'smithy.render';
-      args = [record.path];
-      reason = `RFC ${record.title} is ${record.status}; run smithy.render to continue drafting it.`;
+      // Mirror the features/spec pattern: surface the next not-yet-rendered
+      // milestone digit so `smithy.render <rfc> <N>` is copy-pasteable. If
+      // every milestone already has a feature map (or the RFC has zero
+      // rows) we fall back to the legacy single-arg shape.
+      const milestoneDigits = firstVirtualNotStartedRowDigits(
+        record,
+        resolvedChildren,
+      );
+      if (milestoneDigits !== undefined) {
+        args = [record.path, milestoneDigits];
+        reason = `RFC ${record.title} has a milestone M${milestoneDigits} with no feature map yet; run smithy.render to produce it.`;
+      } else {
+        args = [record.path];
+        reason = `RFC ${record.title} is ${record.status}; run smithy.render to continue drafting it.`;
+      }
       break;
     }
     case 'features': {
@@ -274,8 +319,19 @@ export function suggestNextAction(
         // suggester stays total.
       }
       command = 'smithy.forge';
-      args = [record.path];
-      reason = `Tasks file ${record.title} is ${record.status}; run smithy.forge to implement its next slice.`;
+      // Append the digit of the first non-done slice so the hint reads
+      // `smithy.forge <path> <N>` and the user can pick up exactly where
+      // the work resumes. Records that don't carry parsed slices (older
+      // fixtures, pathological tasks files) keep the legacy one-arg
+      // shape rather than emit a nonsense `0` digit.
+      const sliceDigits = firstNonDoneSliceDigits(record.slices);
+      if (sliceDigits !== undefined) {
+        args = [record.path, sliceDigits];
+        reason = `Tasks file ${record.title} is ${record.status}; run smithy.forge to implement slice S${sliceDigits}.`;
+      } else {
+        args = [record.path];
+        reason = `Tasks file ${record.title} is ${record.status}; run smithy.forge to implement its next slice.`;
+      }
       break;
     }
   }
