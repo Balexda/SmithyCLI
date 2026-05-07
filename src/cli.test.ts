@@ -1125,10 +1125,14 @@ describe('CLI status', () => {
     // branch of the renderer is exercised in one invocation:
     //
     // 1. A not-started RFC with a virtual features child. The RFC is a
-    //    root (no ancestors) → un-suppressed → its hint line IS
-    //    emitted. The virtual features record below it inherits
-    //    `suppressed_by_ancestor: true` because its parent (the RFC)
-    //    is not-started → its hint line must NOT be emitted.
+    //    root (no ancestors) → un-suppressed → its hint line is
+    //    emitted. The virtual features record below it carries
+    //    `suppressed_by_ancestor: true` on its `next_action` (the RFC
+    //    parent is not-started), but the renderer no longer treats
+    //    that flag as a gate, so its hint line is also emitted —
+    //    every actionable row stays self-describing in the text view.
+    //    The flag still rides along on the JSON payload for machine
+    //    consumers.
     //
     // 2. An independent spec whose only tasks child is fully checked
     //    off → both records classify as `done` → neither emits a hint
@@ -1205,12 +1209,16 @@ describe('CLI status', () => {
     expect(renderHintLines).toHaveLength(1);
     expect(renderHintLines[0]).toContain('docs/rfcs/active.rfc.md');
 
-    // AS 4.5: the suppressed features record emits NO hint line.
-    // There is only one feature-level hint-worthy command
-    // (`smithy.mark`) in the rule table; it must not appear anywhere
-    // in the text output since the only features record in the
-    // fixture is suppressed.
-    expect(textOutput).not.toContain('smithy.mark');
+    // The suppressed-by-ancestor features record still surfaces its own
+    // hint in the text view: every actionable row must be self-describing
+    // even when its parent is `not-started`. The `suppressed_by_ancestor`
+    // flag remains on the JSON payload (asserted above) for machine
+    // consumers, but the renderer no longer treats it as a gate.
+    const markHintLines = lines.filter(
+      (l) => l.includes('→') && l.includes('smithy.mark'),
+    );
+    expect(markHintLines).toHaveLength(1);
+    expect(markHintLines[0]).toContain('docs/rfcs/active.features.md');
 
     // Done records emit no hint line: the finished tasks file is done
     // and must not have an arrow beneath its rendered line.
@@ -1227,10 +1235,11 @@ describe('CLI status', () => {
       break;
     }
 
-    // There must be exactly one hint line in the entire output — the
-    // un-suppressed RFC's. No other arrow characters should appear.
+    // Two hint lines total: the un-suppressed RFC's and the
+    // suppressed-by-ancestor features map's. The done tasks record
+    // emits nothing.
     const allHintLines = lines.filter((l) => l.includes('\u2192'));
-    expect(allHintLines).toHaveLength(1);
+    expect(allHintLines).toHaveLength(2);
   });
 
   describe('US6 filters (--status, --type, --root)', () => {

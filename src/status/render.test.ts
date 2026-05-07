@@ -609,12 +609,14 @@ describe('renderTree — story number prefix', () => {
   });
 });
 
-describe('renderTree — slice rendering for tasks records', () => {
-  it('renders each parsed slice as a nested tree child under its tasks record', () => {
-    // A real tasks record carries per-slice info on `record.slices`.
-    // The renderer surfaces each slice with its `S<N>` id, the
-    // heading title, and a status icon — none of which appears in
-    // the aggregate `<completed>/<total>` counter alone.
+describe('renderTree — slice rows are not rendered', () => {
+  it('omits per-slice tree rows even when the tasks record carries a populated slices array', () => {
+    // The renderer dropped its inline `S<N>` slice rows: the actionable
+    // form of "which slice is next" lives in the parent's
+    // `→ smithy.forge <path> <N>` hint, not in a dedicated row. The
+    // `<completed>/<total>` counter on the tasks marker continues to
+    // surface aggregate slice progress, and the `slices` field stays
+    // on the JSON payload for machine consumers.
     const tasks = makeRecord({
       type: 'tasks',
       path: 'specs/f/01-story.tasks.md',
@@ -635,17 +637,15 @@ describe('renderTree — slice rendering for tasks records', () => {
       { theme: utf8Theme },
     );
     const lines = output.split('\n');
+    expect(lines).toHaveLength(1);
     expect(lines[0]).toBe('01 Story  ◐ 1/3');
-    expect(lines[1]).toBe('├─ S1 Foo  ✓');
-    expect(lines[2]).toBe('├─ S2 Bar  ◐');
-    expect(lines[3]).toBe('└─ S3 Baz  ○');
+    // Slice ids must not appear as their own rows.
+    expect(output).not.toContain('S1 Foo');
+    expect(output).not.toContain('S2 Bar');
+    expect(output).not.toContain('S3 Baz');
   });
 
-  it('omits slice lines when the tasks record has no slices field', () => {
-    // Virtual tasks records emitted by the scanner from a `—` spec
-    // row carry no `slices` field — the underlying tasks file does
-    // not exist yet. The renderer must not synthesize phantom slice
-    // children for them.
+  it('renders virtual tasks records as a single line with no slice rows beneath', () => {
     const virt = makeRecord({
       type: 'tasks',
       path: 'specs/f/04-future.tasks.md',
@@ -660,59 +660,6 @@ describe('renderTree — slice rendering for tasks records', () => {
       { theme: utf8Theme },
     );
     expect(output).toBe('04 Future Story  ○');
-  });
-
-  it('inherits the parent connector spacing for slice connectors', () => {
-    // A spec parent with two children: the first is a tasks record
-    // with slices, the second is another tasks record. The slice
-    // connectors must inherit the vertical-bar spacer from the spec's
-    // first-child column, not the blank-spacer that the spec's
-    // last-child column would imply.
-    const spec = makeRecord({
-      type: 'spec',
-      path: 'specs/f/f.spec.md',
-      title: 'Feature',
-      status: 'in-progress',
-      parent_path: null,
-    });
-    const firstTasks = makeRecord({
-      type: 'tasks',
-      path: 'specs/f/01-a.tasks.md',
-      title: 'A',
-      status: 'in-progress',
-      completed: 1,
-      total: 2,
-      parent_path: 'specs/f/f.spec.md',
-      parent_row_id: 'US1',
-      slices: [
-        { id: 'S1', title: 'first', status: 'done' },
-        { id: 'S2', title: 'second', status: 'in-progress' },
-      ],
-    });
-    const secondTasks = makeRecord({
-      type: 'tasks',
-      path: 'specs/f/02-b.tasks.md',
-      title: 'B',
-      status: 'not-started',
-      completed: 0,
-      total: 0,
-      parent_path: 'specs/f/f.spec.md',
-      parent_row_id: 'US2',
-      slices: [],
-    });
-    const tree = buildTree([spec, firstTasks, secondTasks]);
-    const output = renderTree(tree, { theme: utf8Theme });
-    const lines = output.split('\n');
-    // The first tasks record is a non-last sibling of the spec, so its
-    // slice children carry the vertical-bar spacer (`│  `) inherited
-    // from the spec's first-child column. The orphan-spec heading
-    // wrapping above contributes a leading three-space indent because
-    // the spec's `parent_path` is null. The last slice uses the
-    // last-branch (`└─`) connector and its descendant column would
-    // therefore be blank, but we are at a leaf so no further lines
-    // follow.
-    expect(lines.some((l) => l.endsWith('│  ├─ S1 first  ✓'))).toBe(true);
-    expect(lines.some((l) => l.endsWith('│  └─ S2 second  ◐'))).toBe(true);
   });
 });
 
@@ -801,7 +748,12 @@ describe('renderTree — renderHints option (US4 Slice 2)', () => {
     expect(output).not.toContain('\u2192');
   });
 
-  it('renderHints: true emits no hint line for a suppressed record', () => {
+  it('renderHints: true still emits a hint line for a suppressed-by-ancestor record', () => {
+    // Suppression is preserved on the JSON payload (machine consumers
+    // can tell which hints sit beneath a not-started ancestor) but the
+    // text renderer no longer hides them \u2014 every actionable row carries
+    // its own copy-pasteable hint so nothing reads as a bare `\u25cb` below
+    // a not-started parent.
     const record = makeRecord({
       type: 'tasks',
       path: 'specs/f/01-story.tasks.md',
@@ -810,7 +762,7 @@ describe('renderTree — renderHints option (US4 Slice 2)', () => {
       parent_path: 'specs/f/f.spec.md',
       next_action: {
         command: 'smithy.forge',
-        arguments: ['specs/f/01-story.tasks.md'],
+        arguments: ['specs/f/01-story.tasks.md', '1'],
         reason: 'because',
         suppressed_by_ancestor: true,
       },
@@ -819,9 +771,9 @@ describe('renderTree — renderHints option (US4 Slice 2)', () => {
       { roots: [{ record, children: [] }] },
       { theme: utf8Theme, renderHints: true },
     );
-    expect(output.split('\n')).toHaveLength(1);
-    expect(output).not.toContain('\u2192');
-    expect(output).not.toContain('smithy.forge');
+    const lines = output.split('\n');
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain('\u2192 smithy.forge specs/f/01-story.tasks.md 1');
   });
 
   it('renderHints: true emits a hint line beneath a nested record with the correct tree-prefix inheritance', () => {
@@ -894,7 +846,12 @@ describe('renderTree — renderHints option (US4 Slice 2)', () => {
     expect(lines[1]).not.toMatch(/^\s*\u2192/);
   });
 
-  it('renderHints: true emits a hint line only for records whose next_action is non-null and not suppressed', () => {
+  it('renderHints: true emits a hint line for every actionable record, including suppressed-by-ancestor children', () => {
+    // Ancestor not-started \u2192 children carry `suppressed_by_ancestor:
+    // true` on the JSON payload, but the text renderer surfaces every
+    // hint regardless. A descendant under a not-started parent must
+    // still display its own copy-pasteable hint; otherwise a wall of
+    // `\u25cb` markers leaves the user with nothing to act on.
     const rfc = makeRecord({
       type: 'rfc',
       path: 'docs/rfcs/demo.rfc.md',
@@ -923,9 +880,9 @@ describe('renderTree — renderHints option (US4 Slice 2)', () => {
     const tree = buildTree([rfc, features]);
     const output = renderTree(tree, { theme: utf8Theme, renderHints: true });
     const arrowLines = output.split('\n').filter((l) => l.includes('\u2192'));
-    expect(arrowLines).toHaveLength(1);
+    expect(arrowLines).toHaveLength(2);
     expect(arrowLines[0]).toContain('smithy.render');
-    expect(output).not.toContain('smithy.mark');
+    expect(arrowLines[1]).toContain('smithy.mark');
   });
 });
 

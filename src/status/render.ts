@@ -74,7 +74,6 @@ import {
 } from './tree.js';
 import type {
   ArtifactRecord,
-  SliceSummary,
   Status,
   StatusTree,
   TreeNode,
@@ -95,16 +94,24 @@ export interface RenderTreeOptions {
   theme?: Theme;
   /**
    * When `true`, append an indented next-action hint line beneath every
-   * real record whose `next_action` is non-null and not suppressed by
-   * an ancestor. Defaults to `false` so existing callers (and legacy
-   * tests) continue to see a pure tree with no hint annotations.
+   * real record whose `next_action` is non-null. Defaults to `false` so
+   * existing callers (and legacy tests) continue to see a pure tree with
+   * no hint annotations.
    *
    * The hint line uses the formatter {@link formatNextAction} and is
    * indented with the same tree-prefix the record's descendants would
    * inherit, plus a two-space pad (SD-016) so the hint visually
    * attaches beneath the record line. Done records (whose `next_action`
-   * is `null`) and records carrying `suppressed_by_ancestor: true` emit
-   * no hint line. Group sentinel nodes never emit a hint line.
+   * is `null`) emit no hint line. Group sentinel nodes never emit a
+   * hint line.
+   *
+   * Records carrying `suppressed_by_ancestor: true` still render their
+   * own hint here so each row is self-describing — the suppression flag
+   * is preserved on the JSON payload for machine consumers but is no
+   * longer used as a render gate. Without per-row hints under a
+   * not-started parent, every child row degrades to a bare `○` marker
+   * with no copy-pasteable command, and users had no way to act on
+   * individual stories without scrolling back up to the parent.
    */
   renderHints?: boolean;
 }
@@ -170,7 +177,6 @@ function renderRoot(
   // A root's descendants inherit no parent spacer, so the hint line
   // (when enabled) is anchored at column 0 plus the two-space hint pad.
   maybePushHint(node.record, '', lines, renderHints, theme);
-  pushSliceLines(node.record, '', lines, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
     renderChild(
@@ -211,13 +217,6 @@ function renderChild(
   // keeping the hint anchored beneath the record but out of the way of
   // real descendants below it.
   maybePushHint(node.record, nextPrefix, lines, renderHints, theme);
-  // Slices live inline inside a tasks file (not as separate records),
-  // so they cannot reach the tree builder. Render them here as nested
-  // children of their owning tasks record using the same `nextPrefix`
-  // any real child would inherit, so each slice id (`S1`, `S2`, …)
-  // surfaces in the tree view rather than being collapsed into the
-  // tasks record's `<completed>/<total>` counter alone.
-  pushSliceLines(node.record, nextPrefix, lines, theme);
   const { children } = node;
   for (let i = 0; i < children.length; i++) {
     renderChild(
@@ -240,14 +239,17 @@ function renderChild(
  *   "Orphaned Tasks") — these have no lifecycle and no next action.
  * - The record's `next_action` is `null` or omitted (done and
  *   read-error records, respectively).
- * - `next_action.suppressed_by_ancestor === true` — suppressed hints
- *   are intentionally hidden so only the topmost actionable ancestor's
- *   hint surfaces (FR-011).
  *
  * Otherwise emit a single line of the form
  * `<recordPrefix>  → <command> [args…]` where `recordPrefix` is the
  * same prefix the record's descendants would inherit, and the two
  * spaces after it are the SD-016 hint pad.
+ *
+ * `next_action.suppressed_by_ancestor === true` is intentionally not
+ * gated here. The flag still flows through the JSON payload so machine
+ * consumers can tell which hints are downstream of a not-started
+ * ancestor, but in the text view every actionable record renders its
+ * own copy-pasteable hint so each row is self-describing.
  */
 function maybePushHint(
   record: ArtifactRecord,
@@ -260,7 +262,6 @@ function maybePushHint(
   if (isGroupSentinel(record)) return;
   const action = record.next_action;
   if (action === null || action === undefined) return;
-  if (action.suppressed_by_ancestor === true) return;
   lines.push(
     `${recordPrefix}  ${formatNextAction(action, theme.glyphs.arrow)}`,
   );
@@ -315,60 +316,6 @@ function applyStoryNumber(title: string, rowId: string | undefined): string {
   if (digits === undefined) return stripped;
   const nn = digits.padStart(2, '0');
   return `${nn} ${stripped}`;
-}
-
-/**
- * Render the per-slice breakdown of a tasks record as nested tree
- * lines beneath it. Each slice is rendered as a leaf child carrying
- * its canonical `S<N>` id, the heading title, and a status icon
- * mirroring the record-level icons (`✓` / `◐` / `○`). No-op for
- * non-tasks records, for tasks records with no parsed slices, or
- * during the renderer pipeline's collapsed-done branch (the tasks
- * record never reaches this function in that case because
- * `collapseTree` upstream replaces it with a leaf).
- *
- * Slices are deliberately rendered here in the tree-renderer rather
- * than expanded into virtual `ArtifactRecord`s upstream because they
- * live inline inside a tasks file — they have no path of their own,
- * no dependency-order section, and no lifecycle independent of their
- * parent record. Treating them as a renderer-only concern keeps the
- * scanner / classifier / suggester surface unchanged.
- */
-function pushSliceLines(
-  record: ArtifactRecord,
-  recordPrefix: string,
-  lines: string[],
-  theme: Theme,
-): void {
-  if (record.type !== 'tasks') return;
-  const slices = record.slices;
-  if (slices === undefined || slices.length === 0) return;
-  for (let i = 0; i < slices.length; i++) {
-    const slice = slices[i];
-    if (slice === undefined) continue;
-    const isLast = i === slices.length - 1;
-    const connector = isLast ? theme.glyphs.lastBranch : theme.glyphs.branch;
-    const marker = formatSliceMarker(slice, theme);
-    lines.push(
-      `${recordPrefix}${connector}${slice.id} ${slice.title}  ${marker}`,
-    );
-  }
-}
-
-/**
- * Status marker for a {@link SliceSummary} inside the tree view.
- * Mirrors the icon mapping used by real records (`✓` / `◐` / `○`)
- * so a row of slice ids reads as a homogeneous progress strip.
- */
-function formatSliceMarker(slice: SliceSummary, theme: Theme): string {
-  switch (slice.status) {
-    case 'done':
-      return theme.paint.done(theme.icons.done);
-    case 'in-progress':
-      return theme.paint.inProgress(theme.icons.inProgress);
-    case 'not-started':
-      return theme.paint.notStarted(theme.icons.notStarted);
-  }
 }
 
 /**

@@ -132,9 +132,11 @@ export interface NextAction {
   /** One-line human-readable rationale. */
   reason: string;
   /**
-   * True when an ancestor artifact is itself not-started, meaning this
-   * suggestion was dropped from the rendered output in favor of the
-   * ancestor's suggestion. Retained in the record set for JSON consumers.
+   * True when an ancestor artifact is itself not-started. The text
+   * renderer surfaces the hint regardless — every actionable row stays
+   * self-describing — but this flag remains on the JSON payload so
+   * machine consumers can tell which suggestions sit beneath a
+   * not-started ancestor and treat them as lower priority.
    */
   suppressed_by_ancestor?: boolean;
 }
