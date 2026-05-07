@@ -11,6 +11,9 @@ import {
 import type { SmithyManifest } from '../manifest.js';
 import type { AgentChoice, DeployLocation } from '../interactive.js';
 import { toolchains, type LanguageToolchain } from '../permissions.js';
+import { detectPlatforms } from '../platform-detect.js';
+import { analyzeSettingsDrift, resolveSettingsPath } from '../agents/claude.js';
+import { formatDriftReport, hasDrift, type DriftReport } from '../drift.js';
 
 /** Validate and filter manifest language values against known toolchain keys. */
 function validatedLanguages(raw: string[] | undefined): LanguageToolchain[] | undefined {
@@ -149,6 +152,41 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
       console.log(picocolors.dim(`Skipping ${manifest.deployLocation} manifest update.`));
       continue;
     }
+
+    // Capture drift before the redeploy mutates the file. `writePermissions`
+    // unions canonical entries into the user's settings, so post-merge every
+    // user customization would look like drift — the diff is only meaningful
+    // against the pre-merge state.
+    const drift = collectClaudeDrift(targetDir, location, manifest);
+
     await redeployFromManifest(manifest, targetDir);
+
+    if (drift) {
+      const settingsPath = resolveSettingsPath(targetDir, location);
+      console.log('');
+      console.log(picocolors.yellow(formatDriftReport(drift, settingsPath)));
+    }
   }
+}
+
+/**
+ * Build a Claude drift report for the given target, or `null` if Claude isn't
+ * one of the deployed agents, permissions are disabled, or the settings file
+ * doesn't exist yet.
+ */
+function collectClaudeDrift(
+  targetDir: string,
+  location: DeployLocation,
+  manifest: SmithyManifest,
+): DriftReport | null {
+  if (!manifest.permissions) return null;
+  if (!manifest.agents.includes('claude')) return null;
+  const report = analyzeSettingsDrift(
+    targetDir,
+    location,
+    validatedLanguages(manifest.languages),
+    detectPlatforms(),
+  );
+  if (!report || !hasDrift(report)) return null;
+  return report;
 }

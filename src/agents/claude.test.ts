@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {
+  analyzeSettingsDrift,
   buildClaudeAllowList,
   buildClaudeAskList,
   buildClaudeDenyList,
@@ -16,6 +17,7 @@ import {
   writePermissions,
   writeSessionTitleHook,
 } from './claude.js';
+import { hasDrift } from '../drift.js';
 import { getComposedTemplates, getTemplateFilesByCategory } from '../templates.js';
 import { writeManifest, readManifest, removeStaleFiles } from '../manifest.js';
 
@@ -805,6 +807,81 @@ describe('writePermissions', () => {
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Custom key should be preserved
     expect(config.permissions.someCustomFlag).toBe(true);
+  });
+});
+
+describe('analyzeSettingsDrift', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns null when settings.json does not exist', () => {
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).toBeNull();
+  });
+
+  it('returns null when settings.json is malformed JSON', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), '{ not json');
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).toBeNull();
+  });
+
+  it('reports no drift right after writePermissions writes a fresh file', () => {
+    writePermissions(tmpDir, 'repo');
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(hasDrift(report!)).toBe(false);
+  });
+
+  it('flags an unmanaged user customization in the allow list', () => {
+    writePermissions(tmpDir, 'repo');
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    config.permissions.allow.push('Bash(my-team-tool)');
+    fs.writeFileSync(settingsPath, JSON.stringify(config));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(report!.unmanagedAllow).toContain('Bash(my-team-tool)');
+  });
+
+  it('detects the issue #302 migration where --force-with-lease is in both allow and ask', () => {
+    writePermissions(tmpDir, 'repo');
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    // Simulate a pre-fix install: the entry sits in `ask` (now stale) AND in
+    // `allow` (where the new Smithy version put it).
+    config.permissions.ask = [
+      'Bash(git push --force-with-lease)',
+      'Bash(git push --force-with-lease *)',
+    ];
+    fs.writeFileSync(settingsPath, JSON.stringify(config));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(report!.unmanagedAsk).toContain('Bash(git push --force-with-lease *)');
+    const conflictEntries = report!.crossCategoryConflicts.map(c => c.entry);
+    expect(conflictEntries).toContain('Bash(git push --force-with-lease *)');
+  });
+
+  it('treats a missing permissions object as an empty triple (no drift)', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({ unrelated: true }));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(hasDrift(report!)).toBe(false);
   });
 });
 
