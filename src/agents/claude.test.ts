@@ -661,8 +661,13 @@ describe('writePermissions', () => {
     // Deny list should contain destructive git operations
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Allow list should auto-approve force-push with lease (issue #302) so
-    // AI-driven rebases finish without confirmation prompts.
-    expect(config.permissions.allow).toContain('Bash(git push --force-with-lease *)');
+    // AI-driven rebases finish without confirmation prompts. We assert the
+    // explicit `origin <ref>` form rather than a bare wildcard so the test
+    // doesn't regress alongside the `--force` smuggling fix from PR #304.
+    expect(config.permissions.allow).toContain('Bash(git push --force-with-lease origin *)');
+    // The unrestricted wildcard form must NOT be allowed — see the PR #304
+    // regression guard in permissions.test.ts for the rationale.
+    expect(config.permissions.allow).not.toContain('Bash(git push --force-with-lease *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
   });
@@ -859,8 +864,9 @@ describe('analyzeSettingsDrift', () => {
     writePermissions(tmpDir, 'repo');
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
     const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    // Simulate a pre-fix install: the entry sits in `ask` (now stale) AND in
-    // `allow` (where the new Smithy version put it).
+    // Simulate a pre-fix install: the bare and unrestricted-wildcard entries
+    // sit in `ask` (now stale). The bare form also lives in the new canonical
+    // `allow` list, so it surfaces as a cross-category collision.
     config.permissions.ask = [
       'Bash(git push --force-with-lease)',
       'Bash(git push --force-with-lease *)',
@@ -869,9 +875,14 @@ describe('analyzeSettingsDrift', () => {
 
     const report = analyzeSettingsDrift(tmpDir, 'repo');
     expect(report).not.toBeNull();
+    expect(report!.unmanagedAsk).toContain('Bash(git push --force-with-lease)');
     expect(report!.unmanagedAsk).toContain('Bash(git push --force-with-lease *)');
     const conflictEntries = report!.crossCategoryConflicts.map(c => c.entry);
-    expect(conflictEntries).toContain('Bash(git push --force-with-lease *)');
+    // The bare form is canonical allow → it shows up as a collision.
+    expect(conflictEntries).toContain('Bash(git push --force-with-lease)');
+    // The unrestricted-wildcard form is no longer canonical anywhere — it's
+    // only flagged as unmanaged ask drift, not a cross-category collision.
+    expect(conflictEntries).not.toContain('Bash(git push --force-with-lease *)');
   });
 
   it('treats a missing permissions object as an empty triple (no drift)', () => {

@@ -134,13 +134,35 @@ describe('flattenPermissions', () => {
   it('auto-allows force-push with lease so AI-driven rebases do not block on confirmation', () => {
     const result = flattenPermissions();
     expect(result).toContain('git push --force-with-lease');
-    expect(result).toContain('git push --force-with-lease *');
     expect(result).toContain('git push --force-with-lease origin *');
-    // The lease check is the safety boundary; do not deny or ask.
+    // The lease check is the safety boundary; do not deny or ask the bare /
+    // explicit-origin shapes.
     expect(denyPermissions).not.toContain('git push --force-with-lease');
-    expect(denyPermissions).not.toContain('git push --force-with-lease *');
+    expect(denyPermissions).not.toContain('git push --force-with-lease origin *');
     expect(askPermissions).not.toContain('git push --force-with-lease');
     expect(askPermissions).not.toContain('git push --force-with-lease *');
+  });
+
+  it('does NOT auto-allow an unrestricted wildcard after `--force-with-lease`', () => {
+    // Regression guard for PR #304 review: `Bash(git push --force-with-lease *)`
+    // would match `git push --force-with-lease --force origin <branch>`, which
+    // bypasses the lease check (Git's `--force` overrides `--force-with-lease`).
+    const result = flattenPermissions();
+    expect(result).not.toContain('git push --force-with-lease *');
+  });
+
+  it('denies smuggling `--force` / `-f` after `--force-with-lease`', () => {
+    // Belt-and-suspenders against the same bypass: even if a future allow
+    // change accidentally re-introduces the unrestricted wildcard, the
+    // dangerous combinations stay blocked.
+    expect(denyPermissions).toContain('git push --force-with-lease --force');
+    expect(denyPermissions).toContain('git push --force-with-lease --force *');
+    expect(denyPermissions).toContain('git push --force-with-lease -f');
+    expect(denyPermissions).toContain('git push --force-with-lease -f *');
+    expect(denyPermissions).toContain('git push --force-with-lease origin --force');
+    expect(denyPermissions).toContain('git push --force-with-lease origin --force *');
+    expect(denyPermissions).toContain('git push --force-with-lease origin -f');
+    expect(denyPermissions).toContain('git push --force-with-lease origin -f *');
   });
 
   it('does NOT include extraPermissions (Claude-only entries that would leak into Gemini)', () => {

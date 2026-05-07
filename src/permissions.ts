@@ -82,11 +82,17 @@ export const permissions: Record<string, PermissionEntry> = {
     // `<NNN>/us-<NN>-<slug>/slice-<N>`, `<YYYY-MM-DD>-<NNN>-<slug>`).
     // Force-push is still blocked: `git push --force` / `-f` are in the deny
     // list. `--force-with-lease` is auto-allowed below so AI agents can finish
-    // a rebase without a human in the loop — the `--force-with-lease` lease
-    // check is the safety boundary, not user confirmation.
+    // a rebase without a human in the loop — the lease check is the safety
+    // boundary, not user confirmation. We deliberately do NOT use a trailing
+    // `*` on the bare form, because `Bash(git push --force-with-lease *)`
+    // would also match `git push --force-with-lease --force origin <branch>`
+    // — and `--force` overrides the lease check in Git, silently restoring
+    // unconditional force-push. Only the explicit `origin <ref>` form gets
+    // the wildcard, and the `--force` / `-f` follow-up combinations are
+    // explicitly denied below.
     "push -u origin": ["*"],
     "push origin": ["*"],
-    "push --force-with-lease": ["", "*"],
+    "push --force-with-lease": [""],
     "push --force-with-lease origin": ["*"],
   },
 
@@ -476,6 +482,19 @@ export const denyPermissions: string[] = [
   "git push --force *",
   "git push -f",
   "git push -f *",
+  // Defense in depth: combining `--force-with-lease` with `--force` / `-f`
+  // overrides the lease check in Git, so the result is an unconditional
+  // force-push. Block these explicitly so the wildcard in
+  // `push --force-with-lease origin *` cannot be used to smuggle a `--force`
+  // flag past the deny list.
+  "git push --force-with-lease --force",
+  "git push --force-with-lease --force *",
+  "git push --force-with-lease -f",
+  "git push --force-with-lease -f *",
+  "git push --force-with-lease origin --force",
+  "git push --force-with-lease origin --force *",
+  "git push --force-with-lease origin -f",
+  "git push --force-with-lease origin -f *",
   // npm publish — requires explicit approval
   "npm publish",
   "npm publish *",
