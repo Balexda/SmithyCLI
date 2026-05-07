@@ -180,7 +180,9 @@ function firstVirtualNotStartedRowDigits(
  * 3. Otherwise the record is `not-started` or `in-progress` and the
  *    deterministic rule table from FR-010 applies, with a
  *    prerequisite check so every suggested command is runnable:
- *    - `rfc` → `smithy.render [record.path]`
+ *    - `rfc` → `smithy.render [record.path, <first-virtual-row-digits>]`
+ *      when a milestone has no feature map yet; `smithy.render [record.path]`
+ *      otherwise (zero rows, or every milestone already rendered).
  *    - `features` → `smithy.mark [record.path, <first-virtual-row-digits>]`
  *      when a feature has no spec file yet; `smithy.mark [record.path]`
  *      only when the record has zero rows but is itself `not-started`;
@@ -191,7 +193,9 @@ function firstVirtualNotStartedRowDigits(
  *      only when the record has zero rows but is itself `not-started`;
  *      `null` otherwise (every declared tasks file already exists, so
  *      the per-task hints cover the remaining work).
- *    - `tasks` → `smithy.forge [record.path]` for a real tasks record;
+ *    - `tasks` → `smithy.forge [record.path, <first-non-done-slice-digits>]`
+ *      for a real tasks record carrying parsed slices (degrades to
+ *      `smithy.forge [record.path]` when no slices are present);
  *      `smithy.cut [dirname(parent_path), <parent_row_id-digits>]` for
  *      a virtual tasks record whose file does not yet exist (falling
  *      back to the `smithy.forge` shape when the scanner did not
@@ -206,10 +210,14 @@ function firstVirtualNotStartedRowDigits(
  * @param record             The already-classified record to evaluate.
  * @param resolvedChildren   Children whose `status` is already
  *                           finalized, in the same order as
- *                           `record.dependency_order.rows`. Ignored
- *                           for `rfc` records; also ignored for `tasks`
- *                           records (their virtual/real state lives on
- *                           the record itself).
+ *                           `record.dependency_order.rows`. Consulted
+ *                           for `rfc` / `features` / `spec` records to
+ *                           pick the first virtual not-started row whose
+ *                           digit anchors the appended `<N>` argument.
+ *                           Ignored for `tasks` records — their slice
+ *                           digit is read off `record.slices`, and their
+ *                           virtual/real state lives on the record
+ *                           itself.
  * @param ancestorNotStarted True when any ancestor in the record's
  *                           parent chain has `status: 'not-started'`.
  *                           Drives `suppressed_by_ancestor`.

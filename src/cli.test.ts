@@ -1125,10 +1125,14 @@ describe('CLI status', () => {
     // branch of the renderer is exercised in one invocation:
     //
     // 1. A not-started RFC with a virtual features child. The RFC is a
-    //    root (no ancestors) → un-suppressed → its hint line IS
-    //    emitted. The virtual features record below it inherits
-    //    `suppressed_by_ancestor: true` because its parent (the RFC)
-    //    is not-started → its hint line must NOT be emitted.
+    //    root (no ancestors) → un-suppressed → its hint line is
+    //    emitted. The virtual features record below it carries
+    //    `suppressed_by_ancestor: true` on its `next_action` (the RFC
+    //    parent is not-started), but the renderer no longer treats
+    //    that flag as a gate, so its hint line is also emitted —
+    //    every actionable row stays self-describing in the text view.
+    //    The flag still rides along on the JSON payload for machine
+    //    consumers.
     //
     // 2. An independent spec whose only tasks child is fully checked
     //    off → both records classify as `done` → neither emits a hint
