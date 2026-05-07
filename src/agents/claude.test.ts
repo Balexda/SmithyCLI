@@ -448,7 +448,9 @@ describe('buildClaudeAllowList', () => {
     const list = buildClaudeAllowList();
     const joined = list.join('\n');
     expect(joined).not.toMatch(/\brm\b/);
-    expect(joined).not.toMatch(/--force/);
+    // No unsafe `--force` (i.e. without lease). `--force-with-lease` is
+    // permitted (issue #302) and must not trip this guard.
+    expect(joined).not.toMatch(/--force(?!-with-lease)/);
     expect(joined).not.toMatch(/\bchmod\b/);
     expect(joined).not.toMatch(/\bchown\b/);
     expect(joined).not.toMatch(/\bkill\b/);
@@ -571,8 +573,8 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git push --force *)');
     expect(list).toContain('Bash(git push -f)');
     expect(list).toContain('Bash(git push -f *)');
-    // --force-with-lease is intentionally NOT denied — it goes to the ask list
-    // so rebase workflows can still push with a confirmation.
+    // --force-with-lease is intentionally NOT denied — it is auto-allowed
+    // (issue #302) so AI-driven rebases can finish without prompting.
     expect(list).not.toContain('Bash(git push --force-with-lease)');
     expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
@@ -594,10 +596,10 @@ describe('buildClaudeAskList', () => {
     }
   });
 
-  it('asks before force-push with lease', () => {
+  it('does not gate force-push with lease behind a prompt (issue #302)', () => {
     const list = buildClaudeAskList();
-    expect(list).toContain('Bash(git push --force-with-lease)');
-    expect(list).toContain('Bash(git push --force-with-lease *)');
+    expect(list).not.toContain('Bash(git push --force-with-lease)');
+    expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
 
   it('does not include the no-lease force push (that is denied)', () => {
@@ -656,8 +658,9 @@ describe('writePermissions', () => {
     expect(Array.isArray(config.permissions.deny)).toBe(true);
     // Deny list should contain destructive git operations
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
-    // Ask list should prompt before force-push with lease
-    expect(config.permissions.ask).toContain('Bash(git push --force-with-lease *)');
+    // Allow list should auto-approve force-push with lease (issue #302) so
+    // AI-driven rebases finish without confirmation prompts.
+    expect(config.permissions.allow).toContain('Bash(git push --force-with-lease *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
   });

@@ -81,10 +81,13 @@ export const permissions: Record<string, PermissionEntry> = {
     // orchestrator-supplied worktree branch shapes (e.g. `smithy/cut/...`,
     // `<NNN>/us-<NN>-<slug>/slice-<N>`, `<YYYY-MM-DD>-<NNN>-<slug>`).
     // Force-push is still blocked: `git push --force` / `-f` are in the deny
-    // list, and `--force-with-lease` requires explicit approval (askPermissions
-    // below).
+    // list. `--force-with-lease` is auto-allowed below so AI agents can finish
+    // a rebase without a human in the loop — the `--force-with-lease` lease
+    // check is the safety boundary, not user confirmation.
     "push -u origin": ["*"],
     "push origin": ["*"],
+    "push --force-with-lease": ["", "*"],
+    "push --force-with-lease origin": ["*"],
   },
 
   // --- Filesystem (read + create, no delete) ---
@@ -433,15 +436,13 @@ export const extraPermissions: string[] = [
 /**
  * Ask list — Claude Code prompts the user before running a matching command,
  * even in auto mode. Sits between `allow` (silent auto-approve) and `deny`
- * (hard block). Use for actions that are sometimes legitimate (e.g. force-push
- * with lease during a rebase) but always deserve a human in the loop.
+ * (hard block). Use for actions that are sometimes legitimate but always
+ * deserve a human in the loop. Currently empty: `--force-with-lease` was
+ * promoted to the allow list in #302 because the lease check itself is the
+ * safety boundary and gating it on user confirmation made AI-driven rebases
+ * painful.
  */
-export const askPermissions: string[] = [
-  // Force-push with lease — safe variant, but still wants explicit confirmation
-  // because it overwrites the remote branch tip.
-  "git push --force-with-lease",
-  "git push --force-with-lease *",
-];
+export const askPermissions: string[] = [];
 
 /**
  * Deny list — blocks dangerous subcommands even when the parent is allowed.
@@ -470,7 +471,7 @@ export const denyPermissions: string[] = [
   "git symbolic-ref --delete *",
   "git symbolic-ref -d *",
   // Force push WITHOUT lease — clobbers the remote unconditionally. The
-  // `--force-with-lease` variant is in the ask list instead.
+  // `--force-with-lease` variant is auto-allowed (see permissions.git above).
   "git push --force",
   "git push --force *",
   "git push -f",

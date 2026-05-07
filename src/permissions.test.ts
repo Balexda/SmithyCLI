@@ -131,11 +131,16 @@ describe('flattenPermissions', () => {
     expect(denyPermissions).toContain('git push -f *');
   });
 
-  it('asks (does not deny) force-push with lease so rebase pushes can proceed', () => {
-    expect(askPermissions).toContain('git push --force-with-lease');
-    expect(askPermissions).toContain('git push --force-with-lease *');
+  it('auto-allows force-push with lease so AI-driven rebases do not block on confirmation', () => {
+    const result = flattenPermissions();
+    expect(result).toContain('git push --force-with-lease');
+    expect(result).toContain('git push --force-with-lease *');
+    expect(result).toContain('git push --force-with-lease origin *');
+    // The lease check is the safety boundary; do not deny or ask.
     expect(denyPermissions).not.toContain('git push --force-with-lease');
     expect(denyPermissions).not.toContain('git push --force-with-lease *');
+    expect(askPermissions).not.toContain('git push --force-with-lease');
+    expect(askPermissions).not.toContain('git push --force-with-lease *');
   });
 
   it('does NOT include extraPermissions (Claude-only entries that would leak into Gemini)', () => {
