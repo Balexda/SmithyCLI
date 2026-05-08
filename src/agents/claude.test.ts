@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {
+  analyzeSettingsDrift,
   buildClaudeAllowList,
   buildClaudeAskList,
   buildClaudeDenyList,
@@ -16,6 +17,7 @@ import {
   writePermissions,
   writeSessionTitleHook,
 } from './claude.js';
+import { hasDrift } from '../drift.js';
 import { getComposedTemplates, getTemplateFilesByCategory } from '../templates.js';
 import { writeManifest, readManifest, removeStaleFiles } from '../manifest.js';
 
@@ -448,7 +450,9 @@ describe('buildClaudeAllowList', () => {
     const list = buildClaudeAllowList();
     const joined = list.join('\n');
     expect(joined).not.toMatch(/\brm\b/);
-    expect(joined).not.toMatch(/--force/);
+    // No unsafe `--force` (i.e. without lease). `--force-with-lease` is
+    // permitted (issue #302) and must not trip this guard.
+    expect(joined).not.toMatch(/--force(?!-with-lease)/);
     expect(joined).not.toMatch(/\bchmod\b/);
     expect(joined).not.toMatch(/\bchown\b/);
     expect(joined).not.toMatch(/\bkill\b/);
@@ -571,8 +575,8 @@ describe('buildClaudeDenyList', () => {
     expect(list).toContain('Bash(git push --force *)');
     expect(list).toContain('Bash(git push -f)');
     expect(list).toContain('Bash(git push -f *)');
-    // --force-with-lease is intentionally NOT denied — it goes to the ask list
-    // so rebase workflows can still push with a confirmation.
+    // --force-with-lease is intentionally NOT denied — it is auto-allowed
+    // (issue #302) so AI-driven rebases can finish without prompting.
     expect(list).not.toContain('Bash(git push --force-with-lease)');
     expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
@@ -594,10 +598,10 @@ describe('buildClaudeAskList', () => {
     }
   });
 
-  it('asks before force-push with lease', () => {
+  it('does not gate force-push with lease behind a prompt (issue #302)', () => {
     const list = buildClaudeAskList();
-    expect(list).toContain('Bash(git push --force-with-lease)');
-    expect(list).toContain('Bash(git push --force-with-lease *)');
+    expect(list).not.toContain('Bash(git push --force-with-lease)');
+    expect(list).not.toContain('Bash(git push --force-with-lease *)');
   });
 
   it('does not include the no-lease force push (that is denied)', () => {
@@ -656,8 +660,14 @@ describe('writePermissions', () => {
     expect(Array.isArray(config.permissions.deny)).toBe(true);
     // Deny list should contain destructive git operations
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
-    // Ask list should prompt before force-push with lease
-    expect(config.permissions.ask).toContain('Bash(git push --force-with-lease *)');
+    // Allow list should auto-approve force-push with lease (issue #302) so
+    // AI-driven rebases finish without confirmation prompts. We assert the
+    // explicit `origin <ref>` form rather than a bare wildcard so the test
+    // doesn't regress alongside the `--force` smuggling fix from PR #304.
+    expect(config.permissions.allow).toContain('Bash(git push --force-with-lease origin *)');
+    // The unrestricted wildcard form must NOT be allowed — see the PR #304
+    // regression guard in permissions.test.ts for the rationale.
+    expect(config.permissions.allow).not.toContain('Bash(git push --force-with-lease *)');
     // Should NOT have old format
     expect(config.permissions).not.toHaveProperty('allowed_commands');
   });
@@ -802,6 +812,87 @@ describe('writePermissions', () => {
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Custom key should be preserved
     expect(config.permissions.someCustomFlag).toBe(true);
+  });
+});
+
+describe('analyzeSettingsDrift', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns null when settings.json does not exist', () => {
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).toBeNull();
+  });
+
+  it('returns null when settings.json is malformed JSON', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), '{ not json');
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).toBeNull();
+  });
+
+  it('reports no drift right after writePermissions writes a fresh file', () => {
+    writePermissions(tmpDir, 'repo');
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(hasDrift(report!)).toBe(false);
+  });
+
+  it('flags an unmanaged user customization in the allow list', () => {
+    writePermissions(tmpDir, 'repo');
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    config.permissions.allow.push('Bash(my-team-tool)');
+    fs.writeFileSync(settingsPath, JSON.stringify(config));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(report!.unmanagedAllow).toContain('Bash(my-team-tool)');
+  });
+
+  it('detects the issue #302 migration where --force-with-lease is in both allow and ask', () => {
+    writePermissions(tmpDir, 'repo');
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    // Simulate a pre-fix install: the bare and unrestricted-wildcard entries
+    // sit in `ask` (now stale). The bare form also lives in the new canonical
+    // `allow` list, so it surfaces as a cross-category collision.
+    config.permissions.ask = [
+      'Bash(git push --force-with-lease)',
+      'Bash(git push --force-with-lease *)',
+    ];
+    fs.writeFileSync(settingsPath, JSON.stringify(config));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(report!.unmanagedAsk).toContain('Bash(git push --force-with-lease)');
+    expect(report!.unmanagedAsk).toContain('Bash(git push --force-with-lease *)');
+    const conflictEntries = report!.crossCategoryConflicts.map(c => c.entry);
+    // The bare form is canonical allow → it shows up as a collision.
+    expect(conflictEntries).toContain('Bash(git push --force-with-lease)');
+    // The unrestricted-wildcard form is no longer canonical anywhere — it's
+    // only flagged as unmanaged ask drift, not a cross-category collision.
+    expect(conflictEntries).not.toContain('Bash(git push --force-with-lease *)');
+  });
+
+  it('treats a missing permissions object as an empty triple (no drift)', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({ unrelated: true }));
+
+    const report = analyzeSettingsDrift(tmpDir, 'repo');
+    expect(report).not.toBeNull();
+    expect(hasDrift(report!)).toBe(false);
   });
 });
 

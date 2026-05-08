@@ -5,6 +5,7 @@ import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
 import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
+import { computeDrift, type DriftReport, type PermissionTriple } from '../drift.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
 /** Filename of the deployed Claude Code session-title hook script. */
@@ -221,6 +222,47 @@ export function writePermissions(
 
   fs.writeFileSync(settingsPath, JSON.stringify(config, null, 2));
   console.log(picocolors.blue(`  Added default permissions to ${settingsPath}`));
+}
+
+/**
+ * Inspect a Claude settings.json for drift against the canonical Smithy
+ * permission lists. Returns `null` if the file does not exist or cannot be
+ * parsed (no drift to report on something we can't read). Otherwise returns
+ * a {@link DriftReport} the caller can format and surface to the user.
+ *
+ * Call this *before* `writePermissions` so the comparison sees the user's
+ * pre-merge state — once the merge runs, every customization would look like
+ * drift in the new file.
+ */
+export function analyzeSettingsDrift(
+  targetDir: string,
+  level: DeployablePermissionLevel,
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): DriftReport | null {
+  const settingsPath = resolveSettingsPath(targetDir, level);
+  if (!fs.existsSync(settingsPath)) return null;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch {
+    return null;
+  }
+  const perms = (raw as { permissions?: Record<string, unknown> })?.permissions;
+  const existing: PermissionTriple = {
+    allow: Array.isArray(perms?.allow) ? (perms!.allow as string[]) : [],
+    ask: Array.isArray(perms?.ask) ? (perms!.ask as string[]) : [],
+    deny: Array.isArray(perms?.deny) ? (perms!.deny as string[]) : [],
+  };
+
+  const canonical: PermissionTriple = {
+    allow: buildClaudeAllowList(languages, platformManagers),
+    ask: buildClaudeAskList(),
+    deny: buildClaudeDenyList(),
+  };
+
+  return computeDrift(existing, canonical);
 }
 
 // ----- Session-title hook -----
