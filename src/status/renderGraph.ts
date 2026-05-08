@@ -65,6 +65,25 @@
  *   layer omission — every member of every layer is listed regardless
  *   of status, and the heading omits the `done hidden` suffix.
  *
+ * #### Within-layer next-action dedup
+ *
+ * After done-hiding, any remaining same-layer nodes that resolve to the
+ * same `→ smithy.<cmd> <args>` action are collapsed: only the deepest
+ * row survives. Depth follows the artifact hierarchy by row-id prefix —
+ * slice (`S<N>`) > user story (`US<N>`) > feature (`F<N>`) > milestone
+ * (`M<N>`). The classic case is an `F<N>` row whose downstream is a
+ * spec carrying an open `US<N>` story: both rows surface
+ * `smithy.cut <spec-folder> <N>` because the parent simply delegates to
+ * the deeper child, and showing both lines would just duplicate the
+ * same hint. Suppressed nodes are accounted for via a
+ * `, N duplicate hidden` suffix on the heading. The dedup is per-layer,
+ * not global — cross-layer duplicates are preserved because a node in
+ * a later layer carries a different "queued behind something else"
+ * signal that collapsing would erase. Dedup runs in both default and
+ * `--all` mode, but only when the caller supplies `records` so action
+ * hints are actually computed; otherwise every line falls back to the
+ * dim FQ-id suffix and there is no signature to group by.
+ *
  * ### Cycle fallback (AS 10.3 — `graph.cycles.length > 0`)
  *
  * When the graph contains cycles, layer assignment is undefined for the
@@ -361,9 +380,41 @@ function formatLayeredView(
  * function returns the empty string so the caller omits the layer
  * entirely from the rendered output.
  *
- * `--all` mode (`all === true`) disables both behaviors — every member
- * surfaces with its full marker, and the heading omits the
+ * `--all` mode (`all === true`) disables done-hiding — every member
+ * surfaces with its full marker and the heading omits the
  * `done hidden` suffix.
+ *
+ * ## Within-layer next-action dedup
+ *
+ * When two or more visible nodes in the same layer resolve to the
+ * same `→ smithy.<cmd> <args>` action (e.g. an `F<N>` features row
+ * and a `US<N>` story row both surfacing
+ * `smithy.cut <spec-folder> <N>` because the features row's
+ * downstream is the spec, and the spec's per-row fallback for the
+ * same `US<N>` is the same `smithy.cut`), only the deepest node is
+ * rendered — slice (`S<N>`) > user story (`US<N>`) > feature
+ * (`F<N>`) > milestone (`M<N>`). The ones we drop carry no extra
+ * signal: their action is already represented by the deeper node,
+ * and surfacing both lines just doubles the noise without telling
+ * the user anything new about what to do next. Suppressed
+ * duplicates are accounted for via a `, N duplicate hidden` suffix
+ * on the heading so the count stays honest.
+ *
+ * Dedup only runs when the caller supplied `records` (i.e. action
+ * hints are computable). When `records` is omitted every line falls
+ * back to the dim FQ-id suffix and there is no action signature to
+ * group by; the dedup pass is a no-op in that case. Dedup applies in
+ * both default and `--all` mode — the duplicate lines are noise even
+ * when the user opts into the unfiltered view; `--all` only governs
+ * done-hiding.
+ *
+ * Cross-layer duplicates are intentionally NOT collapsed. A node in a
+ * later layer carries a different signal — "queued behind something
+ * else" — even when its action signature happens to coincide with a
+ * Layer-0 node's; collapsing across layers would either hide the
+ * Layer-0 actionable item (when the deeper node is queued) or hide
+ * the queued node's "you'll get here next" placeholder. Within-layer
+ * dedup keeps both signals intact.
  */
 function formatLayerBlock(
   layer: { layer: number; node_ids: string[] },
@@ -388,6 +439,16 @@ function formatLayerBlock(
     }
   }
 
+  // Within-layer next-action dedup. Only meaningful when we have a
+  // record lookup (otherwise every node falls back to the dim FQ id
+  // and there's no action to group by). See the JSDoc preamble for
+  // why we keep the deepest member and why this is per-layer rather
+  // than global.
+  const { keptIds, dupHidden } =
+    lookup !== null
+      ? dedupVisibleByAction(visibleIds, graph, lookup)
+      : { keptIds: visibleIds, dupHidden: 0 };
+
   // Layer with no actionable members → omit entirely from default
   // mode. Earlier slices rendered a `Layer N: DONE (M items)`
   // collapse line, but that conveyed no actionable information — the
@@ -396,21 +457,123 @@ function formatLayerBlock(
   // Returning the empty string lets `formatLayeredView` filter the
   // block out before joining so no blank line is emitted in its
   // place either.
-  if (visibleIds.length === 0 && total > 0) {
+  if (keptIds.length === 0 && total > 0) {
     return '';
   }
 
-  const heading = formatLayerHeading(layer.layer, total, { doneHidden });
+  const heading = formatLayerHeading(layer.layer, total, {
+    doneHidden,
+    dupHidden,
+  });
   const lines: string[] = [heading];
+  for (let i = 0; i < keptIds.length; i++) {
+    const id = keptIds[i];
+    if (id === undefined) continue;
+    const node = graph.nodes[id];
+    if (node === undefined) continue;
+    const isLast = i === keptIds.length - 1;
+    lines.push(formatNodeLine(id, node, isLast, theme, lookup));
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Stable string key for a {@link NextAction}, used to group nodes that
+ * resolve to the same `→ smithy.<cmd> <args>` hint. The format mirrors
+ * what {@link formatNextAction} produces (sans arrow) so two nodes
+ * grouping together always means their rendered hints would be
+ * character-for-character identical.
+ */
+function actionSignature(action: NextAction): string {
+  return action.arguments.length > 0
+    ? `${action.command} ${action.arguments.join(' ')}`
+    : action.command;
+}
+
+/**
+ * Depth ranking for a row id within the artifact hierarchy. Used by the
+ * within-layer dedup pass to pick the "deepest" survivor when multiple
+ * visible nodes share an action signature: tasks slice (`S<N>`) outranks
+ * user story (`US<N>`), which outranks feature (`F<N>`), which outranks
+ * milestone (`M<N>`). Higher number = deeper.
+ *
+ * `US<N>` is checked before `S<N>` because both share the trailing `S`
+ * letter — `US1`.startsWith(`S`) is false (it's a `U`-led id), so the
+ * order doesn't actually matter for correctness, but the explicit
+ * `US`-first ordering keeps the intent obvious to a future reader.
+ */
+function rowIdDepth(rowId: string): number {
+  if (rowId.startsWith('US')) return 3;
+  if (rowId.startsWith('S')) return 4;
+  if (rowId.startsWith('F')) return 2;
+  if (rowId.startsWith('M')) return 1;
+  return 0;
+}
+
+/**
+ * Within-layer dedup worker: given the post-done-filter visible IDs,
+ * group nodes by action signature and keep only the deepest survivor
+ * per bucket. Returns the surviving ID list (preserving the input
+ * order) and the count of nodes suppressed by the dedup, so the caller
+ * can emit a `, N duplicate hidden` heading suffix.
+ *
+ * Tiebreaker (same depth + same signature, e.g. two `US<N>` rows in
+ * different specs that somehow share an action — a rarity worth
+ * defending against): keep the node that appeared first in the
+ * caller's `visibleIds` list, which preserves the layer's existing
+ * discovery-order semantics.
+ *
+ * Nodes whose `deriveRowAction` returns `null` are passed through
+ * unconditionally — those lines fall back to the dim FQ-id suffix and
+ * carry no action to dedup against.
+ */
+function dedupVisibleByAction(
+  visibleIds: string[],
+  graph: DependencyGraph,
+  lookup: RecordLookup,
+): { keptIds: string[]; dupHidden: number } {
+  type Entry = { id: string; depth: number; order: number };
+  const buckets = new Map<string, Entry[]>();
+  const survivors = new Set<string>();
   for (let i = 0; i < visibleIds.length; i++) {
     const id = visibleIds[i];
     if (id === undefined) continue;
     const node = graph.nodes[id];
     if (node === undefined) continue;
-    const isLast = i === visibleIds.length - 1;
-    lines.push(formatNodeLine(id, node, isLast, theme, lookup));
+    const action = deriveRowAction(node, lookup);
+    if (action === null) {
+      survivors.add(id);
+      continue;
+    }
+    const sig = actionSignature(action);
+    const entry: Entry = { id, depth: rowIdDepth(node.row.id), order: i };
+    const bucket = buckets.get(sig);
+    if (bucket === undefined) {
+      buckets.set(sig, [entry]);
+    } else {
+      bucket.push(entry);
+    }
   }
-  return lines.join('\n');
+  let dupHidden = 0;
+  for (const bucket of buckets.values()) {
+    let winner = bucket[0]!;
+    for (let i = 1; i < bucket.length; i++) {
+      const candidate = bucket[i]!;
+      if (
+        candidate.depth > winner.depth ||
+        (candidate.depth === winner.depth && candidate.order < winner.order)
+      ) {
+        winner = candidate;
+      }
+    }
+    survivors.add(winner.id);
+    dupHidden += bucket.length - 1;
+  }
+  const keptIds: string[] = [];
+  for (const id of visibleIds) {
+    if (survivors.has(id)) keptIds.push(id);
+  }
+  return { keptIds, dupHidden };
 }
 
 /**
@@ -419,7 +582,10 @@ function formatLayerBlock(
  * simpler `Layer N (M items)` form. Singular `1 item` vs plural
  * `M items` is selected based on the count. `doneHidden > 0` appends
  * a `, N done hidden` suffix inside the parens so reviewers see that
- * work was suppressed by the hide-done filter.
+ * work was suppressed by the hide-done filter; `dupHidden > 0`
+ * appends a `, N duplicate hidden` suffix when within-layer
+ * next-action dedup dropped a parent row that resolved to the same
+ * action as a deeper child.
  *
  * Note: fully-done layers are omitted from the rendered output
  * entirely (see `formatLayerBlock`); this function is never called
@@ -428,15 +594,17 @@ function formatLayerBlock(
 function formatLayerHeading(
   layerIndex: number,
   count: number,
-  opts: { doneHidden: number },
+  opts: { doneHidden: number; dupHidden: number },
 ): string {
   const itemsWord = count === 1 ? 'item' : 'items';
-  const hiddenSuffix =
+  const doneSuffix =
     opts.doneHidden > 0 ? `, ${opts.doneHidden} done hidden` : '';
+  const dupSuffix =
+    opts.dupHidden > 0 ? `, ${opts.dupHidden} duplicate hidden` : '';
   if (layerIndex === 0) {
-    return `Layer 0 — ready to work (${count} ${itemsWord}${hiddenSuffix})`;
+    return `Layer 0 — ready to work (${count} ${itemsWord}${doneSuffix}${dupSuffix})`;
   }
-  return `Layer ${layerIndex} (${count} ${itemsWord}${hiddenSuffix})`;
+  return `Layer ${layerIndex} (${count} ${itemsWord}${doneSuffix}${dupSuffix})`;
 }
 
 /**

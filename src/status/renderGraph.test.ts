@@ -785,6 +785,249 @@ describe('renderGraph — per-row action hints from records', () => {
   });
 });
 
+describe('renderGraph — within-layer next-action dedup', () => {
+  // When a parent row (`F<N>` in a features map, `M<N>` in an RFC)
+  // and one of its descendants (`US<N>` in the spec, `F<N>` in the
+  // features map) both surface the SAME `→ smithy.<cmd> <args>`
+  // hint inside the same layer, the renderer keeps only the deepest
+  // node so the user is not shown two lines that say to do the
+  // same thing. The classic case: an `F2` features row whose
+  // downstream is a spec carrying an open `US6` story — both rows
+  // resolve to `smithy.cut <spec-folder> 6`, and we want the user
+  // to see only the `US6` line.
+  const FEATURES_PATH = 'docs/rfcs/sample/01-spawn.features.md';
+  const SPEC_PATH = 'specs/sample-spec/sample.spec.md';
+  const SPEC_FOLDER = 'specs/sample-spec';
+
+  function makeFeaturesRecord(): ArtifactRecord {
+    return makeRecord({
+      type: 'features',
+      path: FEATURES_PATH,
+      title: 'Sample features',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'F',
+        format: 'table',
+        rows: [
+          // F2 is a root features row (no intra-table predecessors)
+          // and there is no RFC parent record, so it lands at
+          // in-degree 0 alongside the spec's US6 in Layer 0 — the
+          // condition under which the user-visible duplicate appears.
+          row('F2', [], { title: 'Spawn Dispatch' }),
+        ],
+      },
+      next_action: null,
+    });
+  }
+
+  function makeSpecRecord(status: 'in-progress' | 'not-started' = 'in-progress'): ArtifactRecord {
+    return makeRecord({
+      type: 'spec',
+      path: SPEC_PATH,
+      title: 'Spawn Dispatch spec',
+      status,
+      // Parent linkage: this spec is owned by F2 in the features map.
+      parent_path: FEATURES_PATH,
+      parent_row_id: 'F2',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          // US1-US5 are done; US6 is the first not-started story so
+          // its derived per-row hint is `smithy.cut <folder> 6`.
+          row('US1', [], { title: 'Done story 1' }),
+          row('US2', ['US1'], { title: 'Done story 2' }),
+          row('US3', ['US2'], { title: 'Done story 3' }),
+          row('US4', ['US3'], { title: 'Done story 4' }),
+          row('US5', ['US4'], { title: 'Done story 5' }),
+          row('US6', ['US5'], { title: 'Open story 6' }),
+        ],
+      },
+      next_action: {
+        command: 'smithy.cut',
+        arguments: [SPEC_FOLDER, '6'],
+        reason: 'US6 has no tasks file yet.',
+      },
+    });
+  }
+
+  function makeDoneTasksFor(usId: string, n: string): ArtifactRecord {
+    return makeRecord({
+      type: 'tasks',
+      path: `${SPEC_FOLDER}/${n.padStart(2, '0')}-done.tasks.md`,
+      status: 'done',
+      parent_path: SPEC_PATH,
+      parent_row_id: usId,
+      next_action: null,
+    });
+  }
+
+  function makeVirtualUS6Tasks(): ArtifactRecord {
+    return makeRecord({
+      type: 'tasks',
+      path: `${SPEC_FOLDER}/06-open.tasks.md`,
+      status: 'not-started',
+      virtual: true,
+      parent_path: SPEC_PATH,
+      parent_row_id: 'US6',
+      next_action: {
+        command: 'smithy.cut',
+        arguments: [SPEC_FOLDER, '6'],
+        reason: 'US6 has no tasks file yet.',
+      },
+    });
+  }
+
+  it('drops the parent row when it duplicates a deeper row\'s action in the same layer', () => {
+    const records: ArtifactRecord[] = [
+      makeFeaturesRecord(),
+      makeSpecRecord(),
+      makeDoneTasksFor('US1', '1'),
+      makeDoneTasksFor('US2', '2'),
+      makeDoneTasksFor('US3', '3'),
+      makeDoneTasksFor('US4', '4'),
+      makeDoneTasksFor('US5', '5'),
+      makeVirtualUS6Tasks(),
+    ];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, { theme: utf8Theme, records });
+    // The deeper US6 row keeps the smithy.cut hint.
+    expect(output).toMatch(/└─ US6 .*→ smithy\.cut specs\/sample-spec 6/);
+    // The shallower F2 row is suppressed entirely — neither its title
+    // nor a duplicate copy of the action remains in the output.
+    expect(output).not.toContain('F2 Spawn Dispatch');
+    // Only one `smithy.cut … 6` hint is rendered.
+    const cutMatches = output.match(/→ smithy\.cut specs\/sample-spec 6/g) ?? [];
+    expect(cutMatches.length).toBe(1);
+  });
+
+  it('annotates the layer heading with a `, N duplicate hidden` suffix', () => {
+    const records: ArtifactRecord[] = [
+      makeFeaturesRecord(),
+      makeSpecRecord(),
+      makeDoneTasksFor('US1', '1'),
+      makeDoneTasksFor('US2', '2'),
+      makeDoneTasksFor('US3', '3'),
+      makeDoneTasksFor('US4', '4'),
+      makeDoneTasksFor('US5', '5'),
+      makeVirtualUS6Tasks(),
+    ];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, { theme: utf8Theme, records });
+    // F2 gets dropped → 1 duplicate hidden.
+    expect(output).toMatch(/Layer 0 — ready to work \([^)]*1 duplicate hidden\)/);
+  });
+
+  it('still applies dedup under --all (heading still includes the suffix, no hidden-done suffix)', () => {
+    const records: ArtifactRecord[] = [
+      makeFeaturesRecord(),
+      makeSpecRecord(),
+      makeDoneTasksFor('US1', '1'),
+      makeDoneTasksFor('US2', '2'),
+      makeDoneTasksFor('US3', '3'),
+      makeDoneTasksFor('US4', '4'),
+      makeDoneTasksFor('US5', '5'),
+      makeVirtualUS6Tasks(),
+    ];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, {
+      theme: utf8Theme,
+      records,
+      all: true,
+    });
+    // --all does NOT re-introduce the duplicate parent row.
+    expect(output).not.toContain('F2 Spawn Dispatch');
+    expect(output).toMatch(/Layer 0[^\n]*1 duplicate hidden/);
+    // --all suppresses the `done hidden` count but keeps `duplicate
+    // hidden` since dedup runs in both modes.
+    expect(output).not.toMatch(/done hidden/);
+  });
+
+  it('does not dedup across layers (parent in earlier layer survives even if a deeper later-layer row matches)', () => {
+    // Construct a case where an F2 row in the features map sits alone
+    // in Layer 0 with a `smithy.mark <features> 3` hint (because F3
+    // is virtual / not-started), while F3 is in Layer 1 with the same
+    // action. Both lines should survive — the cross-layer signal
+    // (Layer 0 = ready now, Layer 1 = queued) is what we're after.
+    const featuresOnlyF2InProgress = makeRecord({
+      type: 'features',
+      path: FEATURES_PATH,
+      title: 'Sample features',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'F',
+        format: 'table',
+        rows: [
+          row('F2', [], { title: 'In-progress feature' }),
+          row('F3', ['F2'], { title: 'Queued feature' }),
+        ],
+      },
+      next_action: null,
+    });
+    const inProgressF2Spec = makeRecord({
+      type: 'spec',
+      path: 'specs/f2/f2.spec.md',
+      title: 'F2 spec',
+      status: 'in-progress',
+      parent_path: FEATURES_PATH,
+      parent_row_id: 'F2',
+      // Empty rows so the features rule for F2 returns null (every
+      // declared spec already exists). F2's per-row hint then comes
+      // from its downstream record's next_action (this spec).
+      dependency_order: { id_prefix: 'US', format: 'table', rows: [] },
+      next_action: {
+        command: 'smithy.forge',
+        arguments: ['specs/f2/f2.tasks.md'],
+        reason: '',
+      },
+    });
+    const virtualF3Spec = makeRecord({
+      type: 'spec',
+      path: 'specs/f3/',
+      title: 'F3 spec',
+      status: 'not-started',
+      virtual: true,
+      parent_path: FEATURES_PATH,
+      parent_row_id: 'F3',
+      dependency_order: { id_prefix: 'US', format: 'table', rows: [] },
+      next_action: {
+        command: 'smithy.mark',
+        arguments: [FEATURES_PATH, '3'],
+        reason: '',
+      },
+    });
+    const records: ArtifactRecord[] = [
+      featuresOnlyF2InProgress,
+      inProgressF2Spec,
+      virtualF3Spec,
+    ];
+    const graph = buildDependencyGraph(records);
+    const output = renderGraph(graph, { theme: utf8Theme, records });
+    // Both rows surface — F2 in Layer 0 with the forge hint, F3 in
+    // Layer 1 with the mark hint. They have distinct actions so dedup
+    // is moot here, but the test guards against an over-eager future
+    // change that would collapse cross-layer matches.
+    expect(output).toContain('F2 In-progress feature');
+    expect(output).toContain('F3 Queued feature');
+  });
+
+  it('is a no-op when the records option is omitted (no actions to dedup)', () => {
+    const records: ArtifactRecord[] = [
+      makeFeaturesRecord(),
+      makeSpecRecord(),
+      makeVirtualUS6Tasks(),
+    ];
+    const graph = buildDependencyGraph(records);
+    // No `records` passed → every line gets the dim FQ-id fallback,
+    // so there is no action signature to group by and the renderer
+    // emits both F2 and US6.
+    const output = renderGraph(graph, { theme: utf8Theme });
+    expect(output).toContain('F2 Spawn Dispatch');
+    expect(output).toContain('US6 Open story 6');
+    expect(output).not.toContain('duplicate hidden');
+  });
+});
+
 describe('renderGraph — default theme', () => {
   it('uses a UTF-8 no-color theme when options are omitted', () => {
     const spec = makeRecord({
