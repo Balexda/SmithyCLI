@@ -10,6 +10,7 @@ import {
   type DependencyGraph,
   type DependencyOrderTable,
   type DependencyRow,
+  type NextAction,
   type RenderGraphOptions,
 } from './index.js';
 import { createTheme, type Theme } from './theme.js';
@@ -944,11 +945,10 @@ describe('renderGraph — within-layer next-action dedup', () => {
   });
 
   it('does not dedup across layers (parent in earlier layer survives even if a deeper later-layer row matches)', () => {
-    // Construct a case where an F2 row in the features map sits alone
-    // in Layer 0 with a `smithy.mark <features> 3` hint (because F3
-    // is virtual / not-started), while F3 is in Layer 1 with the same
-    // action. Both lines should survive — the cross-layer signal
-    // (Layer 0 = ready now, Layer 1 = queued) is what we're after.
+    // Construct a case where F2 (Layer 0) and F3 (Layer 1) derive the
+    // *same* action signature. Within-layer dedup would drop a duplicate
+    // sibling, but the cross-layer signal (Layer 0 = ready now, Layer
+    // 1 = queued) must survive — both lines should render.
     const featuresOnlyF2InProgress = makeRecord({
       type: 'features',
       path: FEATURES_PATH,
@@ -964,6 +964,14 @@ describe('renderGraph — within-layer next-action dedup', () => {
       },
       next_action: null,
     });
+    // Pin both feature rows to the *same* downstream `next_action`
+    // so per-row derivation produces a matching signature for F2 and
+    // F3 — exercising the cross-layer dedup-skip path.
+    const sharedAction: NextAction = {
+      command: 'smithy.forge',
+      arguments: ['specs/shared/shared.tasks.md'],
+      reason: '',
+    };
     const inProgressF2Spec = makeRecord({
       type: 'spec',
       path: 'specs/f2/f2.spec.md',
@@ -975,11 +983,7 @@ describe('renderGraph — within-layer next-action dedup', () => {
       // declared spec already exists). F2's per-row hint then comes
       // from its downstream record's next_action (this spec).
       dependency_order: { id_prefix: 'US', format: 'table', rows: [] },
-      next_action: {
-        command: 'smithy.forge',
-        arguments: ['specs/f2/f2.tasks.md'],
-        reason: '',
-      },
+      next_action: { ...sharedAction },
     });
     const virtualF3Spec = makeRecord({
       type: 'spec',
@@ -990,11 +994,7 @@ describe('renderGraph — within-layer next-action dedup', () => {
       parent_path: FEATURES_PATH,
       parent_row_id: 'F3',
       dependency_order: { id_prefix: 'US', format: 'table', rows: [] },
-      next_action: {
-        command: 'smithy.mark',
-        arguments: [FEATURES_PATH, '3'],
-        reason: '',
-      },
+      next_action: { ...sharedAction },
     });
     const records: ArtifactRecord[] = [
       featuresOnlyF2InProgress,
@@ -1003,12 +1003,12 @@ describe('renderGraph — within-layer next-action dedup', () => {
     ];
     const graph = buildDependencyGraph(records);
     const output = renderGraph(graph, { theme: utf8Theme, records });
-    // Both rows surface — F2 in Layer 0 with the forge hint, F3 in
-    // Layer 1 with the mark hint. They have distinct actions so dedup
-    // is moot here, but the test guards against an over-eager future
-    // change that would collapse cross-layer matches.
+    // Both rows surface even though their action signatures match
+    // exactly — cross-layer pairs must not be deduped, and no
+    // `duplicate hidden` suffix should appear on either layer.
     expect(output).toContain('F2 In-progress feature');
     expect(output).toContain('F3 Queued feature');
+    expect(output).not.toContain('duplicate hidden');
   });
 
   it('is a no-op when the records option is omitted (no actions to dedup)', () => {
