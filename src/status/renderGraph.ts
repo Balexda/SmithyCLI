@@ -501,13 +501,18 @@ function actionSignature(action: NextAction): string {
  * letter — `US1`.startsWith(`S`) is false (it's a `U`-led id), so the
  * order doesn't actually matter for correctness, but the explicit
  * `US`-first ordering keeps the intent obvious to a future reader.
+ *
+ * Returns `null` for any row id that doesn't match a known artifact
+ * prefix. The dedup worker treats `null` as "do not bucket" so a
+ * future row type can't be hidden by a known-type sibling before its
+ * depth is added here.
  */
-function rowIdDepth(rowId: string): number {
+function rowIdDepth(rowId: string): number | null {
   if (rowId.startsWith('US')) return 3;
   if (rowId.startsWith('S')) return 4;
   if (rowId.startsWith('F')) return 2;
   if (rowId.startsWith('M')) return 1;
-  return 0;
+  return null;
 }
 
 /**
@@ -545,8 +550,16 @@ function dedupVisibleByAction(
       survivors.add(id);
       continue;
     }
+    const depth = rowIdDepth(node.row.id);
+    if (depth === null) {
+      // Unknown row-id prefix — keep it visible and out of the dedup
+      // buckets so a future row type can't be hidden by a known-type
+      // sibling that happens to share its action signature.
+      survivors.add(id);
+      continue;
+    }
     const sig = actionSignature(action);
-    const entry: Entry = { id, depth: rowIdDepth(node.row.id), order: i };
+    const entry: Entry = { id, depth, order: i };
     const bucket = buckets.get(sig);
     if (bucket === undefined) {
       buckets.set(sig, [entry]);
