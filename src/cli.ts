@@ -4,7 +4,7 @@ import { Command, Option } from 'commander';
 import { initAction, type InitOptions } from './commands/init.js';
 import { toolchains, type LanguageToolchain } from './permissions.js';
 import { uninitAction } from './commands/uninit.js';
-import { updateAction } from './commands/update.js';
+import { updateAction, type UpdateOptions } from './commands/update.js';
 import { statusAction, type StatusOptions } from './commands/status.js';
 
 const require = createRequire(import.meta.url);
@@ -67,7 +67,11 @@ program
   .description('Update deployed smithy templates to the current CLI version')
   .option('-d, --target-dir <path>', 'Target directory')
   .option('-y, --yes', 'Accept defaults (non-interactive)')
-  .action(updateAction);
+  .option(
+    '--reset-permissions',
+    'Replace Claude permissions in settings.json with the canonical Smithy baseline (drops user customizations and stale entries)',
+  )
+  .action((opts: Record<string, unknown>) => updateAction(opts as UpdateOptions));
 
 program
   .command('status')

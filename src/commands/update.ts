@@ -7,12 +7,17 @@ import {
   promptConfirmOverwrite,
   promptConfirmDowngrade,
   promptConfirmInit,
+  promptConfirmResetPermissions,
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
 import type { AgentChoice, DeployLocation } from '../interactive.js';
 import { toolchains, type LanguageToolchain } from '../permissions.js';
 import { detectPlatforms } from '../platform-detect.js';
-import { analyzeSettingsDrift, resolveSettingsPath } from '../agents/claude.js';
+import {
+  analyzeSettingsDrift,
+  resolveSettingsPath,
+  resetPermissions as resetClaudePermissions,
+} from '../agents/claude.js';
 import { formatDriftReport, hasDrift, type DriftReport } from '../drift.js';
 
 /** Validate and filter manifest language values against known toolchain keys. */
@@ -26,6 +31,13 @@ function validatedLanguages(raw: string[] | undefined): LanguageToolchain[] | un
 export interface UpdateOptions {
   targetDir?: string;
   yes?: boolean;
+  /**
+   * When true, replace the `allow`/`ask`/`deny` arrays in Claude's
+   * settings.json with the canonical Smithy baseline before redeploying.
+   * Drops user customizations and stale entries. No-op for manifests that
+   * don't manage Claude permissions.
+   */
+  resetPermissions?: boolean;
 }
 
 /** Map a manifest's agents array back to an AgentChoice for initAction. */
@@ -146,6 +158,7 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
   }
 
   // 3. For each target, check version and redeploy
+  const resetRequested = opts.resetPermissions ?? false;
   for (const { location, manifest } of targets) {
     const proceed = await confirmVersionChange(manifest, nonInteractive, location);
     if (!proceed) {
@@ -153,11 +166,20 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
       continue;
     }
 
+    const reset = await maybeResetClaudePermissions(
+      targetDir,
+      location,
+      manifest,
+      resetRequested,
+      nonInteractive,
+    );
+
     // Capture drift before the redeploy mutates the file. `writePermissions`
     // unions canonical entries into the user's settings, so post-merge every
     // user customization would look like drift — the diff is only meaningful
-    // against the pre-merge state.
-    const drift = collectClaudeDrift(targetDir, location, manifest);
+    // against the pre-merge state. Skip when we just reset; the diff is moot
+    // because the file already matches the baseline.
+    const drift = reset ? null : collectClaudeDrift(targetDir, location, manifest);
 
     await redeployFromManifest(manifest, targetDir);
 
@@ -167,6 +189,48 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
       console.log(picocolors.yellow(formatDriftReport(drift, settingsPath)));
     }
   }
+}
+
+/**
+ * Honor `--reset-permissions` for a single update target. Returns true when a
+ * reset was actually performed (so the caller can skip the drift report).
+ *
+ * No-op when:
+ *   - the flag wasn't passed,
+ *   - the manifest does not manage Claude permissions, or
+ *   - the user declines the interactive confirmation.
+ */
+async function maybeResetClaudePermissions(
+  targetDir: string,
+  location: DeployLocation,
+  manifest: SmithyManifest,
+  resetRequested: boolean,
+  nonInteractive: boolean,
+): Promise<boolean> {
+  if (!resetRequested) return false;
+
+  if (!manifest.permissions || !manifest.agents.includes('claude')) {
+    console.log(
+      picocolors.dim(
+        `  --reset-permissions: ${location} manifest does not manage Claude permissions; nothing to reset.`,
+      ),
+    );
+    return false;
+  }
+
+  const ok = nonInteractive || (await promptConfirmResetPermissions(location));
+  if (!ok) {
+    console.log(picocolors.dim(`  Skipping permission reset for ${location} manifest.`));
+    return false;
+  }
+
+  resetClaudePermissions(
+    targetDir,
+    location,
+    validatedLanguages(manifest.languages),
+    detectPlatforms(),
+  );
+  return true;
 }
 
 /**
