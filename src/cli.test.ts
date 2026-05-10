@@ -394,6 +394,31 @@ describe('CLI update (non-interactive)', () => {
     expect(after.model).toBe('claude-sonnet-4-6');
   });
 
+  it('refuses to update when manifest deployLocation does not match where it was found', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    // Simulate a manifest that was hand-copied from another location: it
+    // lives at the repo path but its inner deployLocation says "user".
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.deployLocation = 'user';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = spawnSync(
+      'node',
+      [CLI, 'update', '-y', '--reset-permissions'],
+      { encoding: 'utf-8', cwd: tmpDir },
+    );
+    const output = result.stdout + result.stderr;
+    expect(output).toContain('manifest declares deployLocation="user"');
+    expect(output).toContain('refusing to update');
+    expect(output).not.toContain('Reset permissions to Smithy baseline');
+    expect(output).not.toContain('Upgrade complete');
+  });
+
   it('--reset-permissions is a no-op when manifest does not manage permissions', () => {
     execFileSync('node', [CLI, 'init', '-a', 'claude', '-y', '--no-permissions'], {
       encoding: 'utf-8',

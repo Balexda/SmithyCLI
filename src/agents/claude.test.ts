@@ -912,6 +912,25 @@ describe('resetPermissions', () => {
     expect(config.permissions.allow).not.toContain('Bash(stale)');
   });
 
+  it('rebuilds permissions cleanly when existing.permissions is an array', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({ model: 'sonnet', permissions: ['Bash(rm -rf /)'] }),
+    );
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.model).toBe('sonnet');
+    expect(Array.isArray(config.permissions)).toBe(false);
+    expect(config.permissions.allow).toEqual(buildClaudeAllowList());
+    // No leaked array indices ("0", "length", etc.) on the permissions object.
+    expect(Object.keys(config.permissions).sort()).toEqual(['allow', 'ask', 'deny']);
+  });
+
   it('falls back to a fresh baseline when settings.json is malformed JSON', () => {
     const claudeDir = path.join(tmpDir, '.claude');
     fs.mkdirSync(claudeDir, { recursive: true });

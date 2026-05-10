@@ -257,7 +257,11 @@ export function resetPermissions(
   if (fs.existsSync(settingsPath)) {
     try {
       const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
-      const existingPerms = (existing['permissions'] as Record<string, unknown> | undefined) ?? {};
+      const rawPerms = existing['permissions'];
+      const existingPerms: Record<string, unknown> =
+        typeof rawPerms === 'object' && rawPerms !== null && !Array.isArray(rawPerms)
+          ? (rawPerms as Record<string, unknown>)
+          : {};
       const { allow: _a, ask: _k, deny: _d, ...preservedPerms } = existingPerms;
       void _a; void _k; void _d;
       config = {

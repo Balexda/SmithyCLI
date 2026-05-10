@@ -160,6 +160,21 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
   // 3. For each target, check version and redeploy
   const resetRequested = opts.resetPermissions ?? false;
   for (const { location, manifest } of targets) {
+    // The manifest's stored deployLocation must match where we read it from.
+    // They diverge only when a manifest is hand-copied between repo/user, in
+    // which case `--reset-permissions` and the drift report would act on
+    // `location`'s settings.json while `redeployFromManifest` would write to
+    // `manifest.deployLocation`'s — two different files. Bail loudly instead
+    // of silently picking one.
+    if (manifest.deployLocation !== location) {
+      console.log(
+        picocolors.yellow(
+          `  ${location} manifest declares deployLocation="${manifest.deployLocation}"; refusing to update — fix the manifest or rerun \`smithy init\`.`,
+        ),
+      );
+      continue;
+    }
+
     const proceed = await confirmVersionChange(manifest, nonInteractive, location);
     if (!proceed) {
       console.log(picocolors.dim(`Skipping ${manifest.deployLocation} manifest update.`));
