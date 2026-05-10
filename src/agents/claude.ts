@@ -225,6 +225,64 @@ export function writePermissions(
 }
 
 /**
+ * Replace the `allow`/`ask`/`deny` lists in Claude's settings.json with the
+ * canonical Smithy baseline, dropping any user customizations or stale entries
+ * left over from previous Smithy versions.
+ *
+ * Unlike {@link writePermissions}, this does NOT merge — it overwrites the
+ * three permission arrays. Other top-level keys (e.g. `model`, `hooks`) and
+ * any other keys inside `permissions` (e.g. `defaultMode`) are preserved, so
+ * an unrelated config survives the reset.
+ *
+ * Used by `smithy update --reset-permissions` to clear accumulated drift after
+ * a Smithy version that relocated entries between categories.
+ */
+export function resetPermissions(
+  targetDir: string,
+  level: DeployablePermissionLevel,
+  languages?: LanguageToolchain[],
+  platformManagers?: PlatformPackageManager[],
+): void {
+  const settingsPath = resolveSettingsPath(targetDir, level);
+  const settingsDir = path.dirname(settingsPath);
+  if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
+  const allowList = buildClaudeAllowList(languages, platformManagers);
+  const askList = buildClaudeAskList();
+  const denyList = buildClaudeDenyList();
+
+  let config: Record<string, unknown> = {
+    permissions: { allow: allowList, ask: askList, deny: denyList },
+  };
+
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as Record<string, unknown>;
+      const rawPerms = existing['permissions'];
+      const existingPerms: Record<string, unknown> =
+        typeof rawPerms === 'object' && rawPerms !== null && !Array.isArray(rawPerms)
+          ? (rawPerms as Record<string, unknown>)
+          : {};
+      const { allow: _a, ask: _k, deny: _d, ...preservedPerms } = existingPerms;
+      void _a; void _k; void _d;
+      config = {
+        ...existing,
+        permissions: {
+          ...preservedPerms,
+          allow: allowList,
+          ask: askList,
+          deny: denyList,
+        },
+      };
+    } catch {
+      config = { permissions: { allow: allowList, ask: askList, deny: denyList } };
+    }
+  }
+
+  fs.writeFileSync(settingsPath, JSON.stringify(config, null, 2));
+  console.log(picocolors.blue(`  Reset permissions to Smithy baseline in ${settingsPath}`));
+}
+
+/**
  * Inspect a Claude settings.json for drift against the canonical Smithy
  * permission lists. Returns `null` if the file does not exist or cannot be
  * parsed (no drift to report on something we can't read). Otherwise returns

@@ -361,6 +361,78 @@ describe('CLI update (non-interactive)', () => {
     const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     expect(updated.smithyVersion).toBe(pkg.version);
   });
+
+  it('--reset-permissions overwrites stale entries with the canonical baseline', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    // Inject a fake stale entry into settings.json that the canonical
+    // baseline does not include. Without --reset-permissions, the merge in
+    // writePermissions would preserve it.
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    settings.permissions.allow.push('Bash(stale-custom-entry)');
+    settings.permissions.ask.push('Bash(stale-ask-entry)');
+    settings.model = 'claude-sonnet-4-6';
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+    const output = execFileSync(
+      'node',
+      [CLI, 'update', '-y', '--reset-permissions'],
+      { encoding: 'utf-8', cwd: tmpDir },
+    );
+    expect(output).toContain('Reset permissions to Smithy baseline');
+
+    const after = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(after.permissions.allow).not.toContain('Bash(stale-custom-entry)');
+    expect(after.permissions.ask).not.toContain('Bash(stale-ask-entry)');
+    // Canonical entries are still present
+    expect(after.permissions.allow).toContain('Bash(git status)');
+    // Non-permissions keys preserved
+    expect(after.model).toBe('claude-sonnet-4-6');
+  });
+
+  it('refuses to update when manifest deployLocation does not match where it was found', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    // Simulate a manifest that was hand-copied from another location: it
+    // lives at the repo path but its inner deployLocation says "user".
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.deployLocation = 'user';
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = spawnSync(
+      'node',
+      [CLI, 'update', '-y', '--reset-permissions'],
+      { encoding: 'utf-8', cwd: tmpDir },
+    );
+    const output = result.stdout + result.stderr;
+    expect(output).toContain('manifest declares deployLocation="user"');
+    expect(output).toContain('refusing to update');
+    expect(output).not.toContain('Reset permissions to Smithy baseline');
+    expect(output).not.toContain('Upgrade complete');
+  });
+
+  it('--reset-permissions is a no-op when manifest does not manage permissions', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y', '--no-permissions'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const output = execFileSync(
+      'node',
+      [CLI, 'update', '-y', '--reset-permissions'],
+      { encoding: 'utf-8', cwd: tmpDir },
+    );
+    expect(output).toContain('does not manage Claude permissions');
+    expect(output).not.toContain('Reset permissions to Smithy baseline');
+  });
 });
 
 describe('CLI init lifecycle and idempotency', () => {

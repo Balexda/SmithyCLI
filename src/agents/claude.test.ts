@@ -11,6 +11,7 @@ import {
   deploySessionTitleHookScript,
   removeLegacy,
   removeSessionTitleHook,
+  resetPermissions,
   resolveSettingsPath,
   SESSION_TITLE_HOOK_COMMAND,
   SESSION_TITLE_HOOK_FILENAME,
@@ -812,6 +813,168 @@ describe('writePermissions', () => {
     expect(config.permissions.deny).toContain('Bash(git branch -D *)');
     // Custom key should be preserved
     expect(config.permissions.someCustomFlag).toBe(true);
+  });
+});
+
+describe('resetPermissions', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-claude-test-'));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('writes the canonical baseline when settings.json does not exist', () => {
+    resetPermissions(tmpDir, 'repo');
+
+    const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).toEqual(buildClaudeAllowList());
+    expect(config.permissions.ask).toEqual(buildClaudeAskList());
+    expect(config.permissions.deny).toEqual(buildClaudeDenyList());
+  });
+
+  it('overwrites existing allow/ask/deny with the canonical baseline (no merge)', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          allow: ['Bash(custom-allow)', 'Bash(git status)'],
+          ask: ['Bash(custom-ask)'],
+          deny: ['Bash(custom-deny)'],
+        },
+      }),
+    );
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.allow).not.toContain('Bash(custom-allow)');
+    expect(config.permissions.ask).not.toContain('Bash(custom-ask)');
+    expect(config.permissions.deny).not.toContain('Bash(custom-deny)');
+    expect(config.permissions.allow).toEqual(buildClaudeAllowList());
+    expect(config.permissions.ask).toEqual(buildClaudeAskList());
+    expect(config.permissions.deny).toEqual(buildClaudeDenyList());
+  });
+
+  it('preserves non-permissions top-level keys (e.g. model, hooks)', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'echo hi' }] }] },
+        permissions: { allow: ['Bash(custom)'], ask: [], deny: [] },
+      }),
+    );
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.model).toBe('claude-sonnet-4-6');
+    expect(config.hooks).toEqual({
+      UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'echo hi' }] }],
+    });
+    expect(config.permissions.allow).not.toContain('Bash(custom)');
+  });
+
+  it('preserves other keys inside permissions (e.g. defaultMode)', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          defaultMode: 'plan',
+          allow: ['Bash(stale)'],
+          ask: [],
+          deny: [],
+        },
+      }),
+    );
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.permissions.defaultMode).toBe('plan');
+    expect(config.permissions.allow).not.toContain('Bash(stale)');
+  });
+
+  it('rebuilds permissions cleanly when existing.permissions is an array', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({ model: 'sonnet', permissions: ['Bash(rm -rf /)'] }),
+    );
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    expect(config.model).toBe('sonnet');
+    expect(Array.isArray(config.permissions)).toBe(false);
+    expect(config.permissions.allow).toEqual(buildClaudeAllowList());
+    // No leaked array indices ("0", "length", etc.) on the permissions object.
+    expect(Object.keys(config.permissions).sort()).toEqual(['allow', 'ask', 'deny']);
+  });
+
+  it('falls back to a fresh baseline when settings.json is malformed JSON', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), '{ not valid json');
+
+    resetPermissions(tmpDir, 'repo');
+
+    const config = JSON.parse(fs.readFileSync(path.join(claudeDir, 'settings.json'), 'utf8'));
+    expect(config.permissions.allow).toEqual(buildClaudeAllowList());
+  });
+
+  it('writes to user-level path for "user" level', () => {
+    const fakeHome = path.join(tmpDir, 'fakehome');
+    fs.mkdirSync(fakeHome, { recursive: true });
+    vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    resetPermissions(tmpDir, 'user');
+
+    const settingsPath = path.join(fakeHome, '.claude', 'settings.json');
+    expect(fs.existsSync(settingsPath)).toBe(true);
+    const repoSettingsPath = path.join(tmpDir, '.claude', 'settings.json');
+    expect(fs.existsSync(repoSettingsPath)).toBe(false);
+  });
+
+  it('clears drift after a reset', () => {
+    const claudeDir = path.join(tmpDir, '.claude');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const settingsPath = path.join(claudeDir, 'settings.json');
+    // Cross-category collision — strong drift signal
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        permissions: {
+          allow: ['Bash(git push --force-with-lease origin *)'],
+          ask: ['Bash(git push --force-with-lease origin *)'],
+          deny: [],
+        },
+      }),
+    );
+    expect(hasDrift(analyzeSettingsDrift(tmpDir, 'repo')!)).toBe(true);
+
+    resetPermissions(tmpDir, 'repo');
+
+    expect(hasDrift(analyzeSettingsDrift(tmpDir, 'repo')!)).toBe(false);
   });
 });
 

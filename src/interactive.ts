@@ -149,3 +149,12 @@ export async function promptConfirmDowngrade(
     default: false,
   });
 }
+
+export async function promptConfirmResetPermissions(location: DeployLocation): Promise<boolean> {
+  return await confirm({
+    message:
+      `Reset ${location} Claude permissions to the Smithy baseline? ` +
+      'This will overwrite the allow/ask/deny lists in settings.json — any custom entries you added will be removed.',
+    default: false,
+  });
+}
