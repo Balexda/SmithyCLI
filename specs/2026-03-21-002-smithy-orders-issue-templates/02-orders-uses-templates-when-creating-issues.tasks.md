@@ -17,14 +17,17 @@
 
 ### Tasks
 
-- [ ] **Add manifest-load and manifest-dir resolution phase to orders prompt**
+- [ ] **Add manifest discovery and manifest-dir resolution phase to orders prompt**
 
-  Insert a new phase in `src/templates/agent-skills/commands/smithy.orders.prompt` that loads `<manifestDir>/smithy-manifest.json`, reads its persisted `deployLocation` field, and computes `<manifestDir>` via the two-arg `resolveManifestDir(targetDir, location)` exported from `src/manifest.ts`. When the manifest cannot be loaded, halt with the "run `smithy init` first" error mandated by FR-005 and the Template Resolution Contract step 1. Position the phase early enough that Phase 4 duplicate detection never runs against a missing-manifest state.
+  Insert a new phase in `src/templates/agent-skills/commands/smithy.orders.prompt` that performs manifest discovery without circular reasoning: probe both candidate manifest paths — the repo-local `<targetDir>/.smithy/smithy-manifest.json` and the user-global `~/.smithy/smithy-manifest.json` — using the same two `resolveManifestDir(targetDir, location)` calls (one per `location` value) that `updateAction` and `uninitAction` use in `src/commands/update.ts` and `src/commands/uninit.ts`. Select the active manifest by precedence: **(a) neither exists** → halt with the "run `smithy init` first" error mandated by FR-005; **(b) only repo exists** → use repo; **(c) only user exists** → use user; **(d) both exist** → prefer the repo manifest (it is scoped to this repository and matches the deploy semantics a user got when they ran `smithy init --location repo` here). After selection, validate the self-consistency check used by `update.ts` — the selected manifest's stored `deployLocation` field must equal the `location` it was read from; if they diverge, halt with the same "fix the manifest or rerun `smithy init`" message that `update.ts` emits. The selected `(targetDir, location)` pair drives the final `<manifestDir>` value used by Phase 5 template lookups. Position the phase early enough that Phase 4 duplicate detection never runs against a missing-manifest state.
 
   _Acceptance criteria:_
-  - Phase prose names both `resolveManifestDir` arguments explicitly (`targetDir`, `location`) and identifies their runtime sources (current working directory and manifest field).
-  - Missing-manifest path emits a clear "run `smithy init` first" message and stops before Phase 4.
-  - Phase prose forbids reading or modifying `<manifestDir>/smithy-manifest.json` as a template.
+  - Phase prose describes a non-circular discovery: probe both candidate paths first, then read `deployLocation` from the selected manifest — never the other way around.
+  - Each `resolveManifestDir(targetDir, location)` call names both arguments explicitly and identifies their runtime sources (current working directory for `targetDir`; the hardcoded `'repo'`/`'user'` enum value for `location`, not a field read from a manifest the prompt has not yet loaded).
+  - The four discovery outcomes (neither / repo-only / user-only / both) are each explicitly handled; the "both" case states the repo-precedence rule.
+  - The selected manifest's stored `deployLocation` must match the location it was read from; mismatched manifests halt with a clear "fix the manifest or rerun `smithy init`" message matching the wording style in `src/commands/update.ts`.
+  - Missing-manifest path (neither exists) emits a clear "run `smithy init` first" message and stops before Phase 4.
+  - Phase prose forbids reading or modifying `smithy-manifest.json` as a template at either candidate path.
   - The composed `smithy.orders.md` template still satisfies the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` structural assertion in `src/templates.test.ts`.
 
 - [ ] **Replace `.spec.md` Phase 5 heredoc with template-driven rendering**
