@@ -143,7 +143,7 @@ Recommended implementation sequence (priority, then independence):
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Audit eval validates the audit command catches a planted flaw | — | — |
+| US1 | Audit eval validates the audit command catches a planted flaw | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/01-audit-eval-catches-planted-flaw.tasks.md |
 | US2 | Mark eval validates the mark command produces a complete spec artifact set | — | — |
 | US3 | Cut eval validates the cut command produces tasks with inherited spec debt | — | — |
 | US4 | Render eval validates the render command produces a feature map from an RFC | — | — |
