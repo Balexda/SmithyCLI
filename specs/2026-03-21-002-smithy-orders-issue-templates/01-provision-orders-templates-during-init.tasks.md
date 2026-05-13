@@ -99,7 +99,7 @@
   - The prompt fires at most once per init invocation regardless of how many of the four files pre-exist.
   - Behavior matches AS 4 (decline → existing preserved, missing still written) and AS 5 (accept → only the four canonical files replaced).
 
-- [ ] **Wire orders-template provisioning into `initAction`**
+- [x] **Wire orders-template provisioning into `initAction`**
 
   After permission setup, language-toolchain selection, and the session-title decision (where the legacy `deployIssueTemplates` block previously sat), call into the new module to detect pre-existing files, prompt only when needed, and write defaults. Provisioning must run before the manifest-write step and must not alter the manifest file. Surface a brief console message reporting how many templates were written and how many were preserved, matching the existing init step's UX style (see SD-002 for the rationale).
 
