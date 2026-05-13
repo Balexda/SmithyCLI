@@ -110,7 +110,7 @@
   - With overwrite accepted, only the four canonical `<type>.md` files are replaced; non-canonical extras under `templates/orders/` and any peer `templates/<family>/` subtrees are untouched (AS 5).
   - A console line reports the written/preserved counts on each init run.
 
-- [ ] **Add CLI integration tests for unconditional provisioning**
+- [x] **Add CLI integration tests for unconditional provisioning**
 
   Extend `src/cli.test.ts` with cases that run `init` against a fresh temp directory and assert the four files exist with default content, that the manifest is byte-identical before and after re-running provisioning under "decline overwrite", and that overwrite preserves non-canonical neighbors. The `--location user` case must isolate the user's real `~/.smithy/` from the test — the isolation mechanism is left to implementation; see SD-001 for the open portability question.
 
