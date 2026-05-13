@@ -177,8 +177,10 @@ function spawnAgent(
 // Git initialization (runner-internal)
 // ---------------------------------------------------------------------------
 
-/** Repo-local git identity used inside the eval temp copy. Never leaks to the
- *  developer's global git config. */
+/** Repo-local git identity used inside the eval temp copy. The git subprocess
+ *  also runs with `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_SYSTEM=/dev/null`
+ *  (see `initGitInTempCopy`) so the developer's global / system git config is
+ *  neither read, written, nor required. */
 const EVAL_GIT_USER_EMAIL = 'eval-runner@smithy.local';
 const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
 
@@ -189,6 +191,12 @@ const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
  * which `runScenario`'s `finally` block converts into a clean tmp-dir
  * teardown.
  *
+ * The git subprocess env points `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`
+ * at `/dev/null` so the developer's `~/.gitconfig` and `/etc/gitconfig` are
+ * neither read nor required — eval behavior is deterministic regardless of
+ * machine-local git settings (custom hooks, `core.autocrlf`,
+ * `init.templateDir`, etc.).
+ *
  * Belt-and-suspenders identity handling: we set `user.email` / `user.name`
  * via `git config --local` AND re-specify them with `-c` on the commit so
  * the commit succeeds even in environments where local config is ignored
@@ -198,6 +206,11 @@ function initGitInTempCopy(tmpDir: string): void {
   const gitOpts = {
     cwd: tmpDir,
     stdio: ['ignore', 'pipe', 'pipe'] as ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_SYSTEM: '/dev/null',
+    },
   };
 
   // `-c init.defaultBranch=main` avoids the "hint: Using 'master' as the
