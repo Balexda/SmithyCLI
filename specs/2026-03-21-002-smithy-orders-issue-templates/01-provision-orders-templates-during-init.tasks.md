@@ -46,7 +46,7 @@
   - `update`'s redeploy path does not pass it through.
   - Old manifests on disk that still carry the field continue to load (the existing reader ignores extra JSON properties).
 
-- [ ] **Remove the legacy issue-template cleanup block from `uninit`**
+- [x] **Remove the legacy issue-template cleanup block from `uninit`**
 
   Delete the uninit step that scans `issueTemplatesSrcDir`, computes a destination via `resolveIssueTemplatePath`, and removes legacy YAML/MD files from both `<manifestDir>` and `.github/ISSUE_TEMPLATE/`. Without this edit `uninit.ts` will fail to compile after the previous tasks land. Manifest-driven removal continues to handle anything tracked under `files['…']`.
 
