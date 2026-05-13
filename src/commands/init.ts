@@ -146,7 +146,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // --- Step 2: Deploy ---
 
   // Deploy agents and collect deployed files per agent
-  const agentsToSetup = agent === 'all' ? ['gemini', 'claude'] as const : [agent] as const;
+  const agentsToSetup = agent === 'all'
+    ? (deployLocation === 'repo'
+        ? ['gemini', 'claude', 'codex'] as const
+        : ['claude'] as const)
+    : [agent] as const;
   const deployedFiles: Record<string, string[]> = {};
 
   for (const a of agentsToSetup) {

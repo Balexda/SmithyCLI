@@ -359,10 +359,12 @@ describe('getTemplateFilesByCategory', () => {
 describe('getComposedTemplates', () => {
   let composed: ComposedTemplates;
   let claudeComposed: ComposedTemplates;
+  let codexComposed: ComposedTemplates;
 
   beforeAll(async () => {
     composed = await getComposedTemplates();
     claudeComposed = await getComposedTemplates('claude');
+    codexComposed = await getComposedTemplates('codex');
   });
 
   it('returns commands, prompts, agents, and skills maps', () => {
@@ -418,6 +420,15 @@ describe('getComposedTemplates', () => {
     // The skill must explicitly direct the agent through the dual-path flow.
     expect(skill.prompt).toMatch(/MCP[^\n]+(first|prefer)/i);
     expect(skill.prompt).toMatch(/(fall back|fallback)/i);
+  });
+
+  it('smithy.pr-review renders Codex script fallback paths', () => {
+    const skill = codexComposed.skills.get('smithy.pr-review')!;
+    expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/get-comments.sh');
+    expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/reply-comment.sh');
+    expect(skill.prompt).not.toContain('${CLAUDE_SKILL_DIR}');
+    expect(skill.prompt).not.toContain('./.gemini/skills/smithy.pr-review');
   });
 
   it('smithy.pr-review scripts start with bash shebang', () => {
@@ -612,6 +623,25 @@ describe('getComposedTemplates', () => {
       /smithy\.cut \{\{spec_folder\}\} \{\{user_story_number\}\}/
     );
     expect(orders).toMatch(/smithy\.cut \{\{spec_folder\}\} \{\{user_story_number\}\}/);
+  });
+
+  it('smithy.orders renders Codex gh-issue script paths', () => {
+    const orders = codexComposed.commands.get('smithy.orders.md')!;
+    expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/check-env.sh');
+    expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/search-issues.sh');
+    expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/create-issue.sh');
+    expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh');
+    expect(orders).not.toContain('${CLAUDE_SKILL_DIR}');
+    expect(orders).not.toContain('./.gemini/skills/smithy.gh-issue');
+  });
+
+  it('smithy.forge renders direct implementation and review instructions for Codex', () => {
+    const forge = codexComposed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('Use test-driven development for each task');
+    expect(forge).toContain('Review your implementation by examining the diff');
+    expect(forge).not.toContain('Dispatch a sub-agent for each task');
+    expect(forge).not.toContain('smithy-implementation-review sub-agent');
+    expect(forge).not.toContain('smithy-maid sub-agent');
   });
 
   // US4 Slice 1 Task 1: the RFC parser in Phase 3 must enumerate

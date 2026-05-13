@@ -9,7 +9,7 @@ import { removeIfExists } from '../utils.js';
  * Deploy Codex templates. Returns the list of deployed file paths (relative to targetDir).
  */
 export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
-  const templates = await getComposedTemplates();
+  const templates = await getComposedTemplates('codex');
   const deployedFiles: string[] = [];
 
   // Deploy prompts -> tools/codex/prompts/
@@ -24,16 +24,33 @@ export async function deploy(targetDir: string, initPermissions: boolean): Promi
     deployedFiles.push(path.relative(targetDir, dest));
   }
 
-  // Deploy commands as Codex skills -> .agents/skills/<name>/SKILL.md
+  // Deploy commands, reference prompts, and operational skills as Codex skills.
   const skillsDir = path.join(targetDir, '.agents', 'skills');
-  for (const [, content] of templates.commands) {
-    const name = parseFrontmatterName(content);
-    if (name) {
-      const skillPath = path.join(skillsDir, name);
-      if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
-      const dest = path.join(skillPath, 'SKILL.md');
-      fs.writeFileSync(dest, content);
-      deployedFiles.push(path.relative(targetDir, dest));
+  const deployAsSkill = (content: string, name?: string): string | undefined => {
+    const skillName = name ?? parseFrontmatterName(content);
+    if (!skillName) return undefined;
+    const skillPath = path.join(skillsDir, skillName);
+    if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
+    const dest = path.join(skillPath, 'SKILL.md');
+    fs.writeFileSync(dest, content);
+    deployedFiles.push(path.relative(targetDir, dest));
+    return skillPath;
+  };
+
+  for (const [, content] of templates.commands) deployAsSkill(content);
+  for (const [, content] of templates.prompts) deployAsSkill(content);
+
+  for (const [skillName, skill] of templates.skills) {
+    const skillPath = deployAsSkill(skill.prompt, skillName);
+    if (skillPath && skill.scripts.size > 0) {
+      const scriptsDir = path.join(skillPath, 'scripts');
+      if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+      for (const [filename, content] of skill.scripts) {
+        const dest = path.join(scriptsDir, filename);
+        fs.writeFileSync(dest, content);
+        fs.chmodSync(dest, 0o755);
+        deployedFiles.push(path.relative(targetDir, dest));
+      }
     }
   }
 
@@ -58,7 +75,7 @@ export function removeLegacy(targetDir: string): number {
   const skillsDir = path.join(targetDir, '.agents', 'skills');
   if (fs.existsSync(skillsDir)) {
     for (const entry of fs.readdirSync(skillsDir)) {
-      if (entry.startsWith('smithy-')) {
+      if (entry.startsWith('smithy-') || entry.startsWith('smithy.')) {
         const entryPath = path.join(skillsDir, entry);
         if (fs.statSync(entryPath).isDirectory() && fs.existsSync(path.join(entryPath, 'SKILL.md'))) {
           if (removeIfExists(entryPath)) removedCount++;

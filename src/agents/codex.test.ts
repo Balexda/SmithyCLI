@@ -71,7 +71,7 @@ describe('deploy', () => {
     }
   });
 
-  it('deploys command-flagged templates as skills to .agents/skills/', async () => {
+  it('deploys commands, prompts, and operational skills to .agents/skills/', async () => {
     await deploy(tmpDir, false);
 
     const skillsDir = path.join(tmpDir, '.agents', 'skills');
@@ -80,11 +80,14 @@ describe('deploy', () => {
     const skillDirs = fs.readdirSync(skillsDir);
     expect(skillDirs.length).toBeGreaterThan(0);
 
-    // Verify only command-category templates with names become skills
-    const templates = await getComposedTemplates();
-    const expectedSkills = [...templates.commands.entries()]
+    const templates = await getComposedTemplates('codex');
+    const expectedSkills = [
+      ...templates.commands.entries(),
+      ...templates.prompts.entries(),
+    ]
       .map(([, content]) => parseFrontmatterName(content)!)
-      .filter(Boolean);
+      .filter(Boolean)
+      .concat([...templates.skills.keys()]);
 
     expect(skillDirs.sort()).toEqual(expectedSkills.sort());
 
@@ -95,6 +98,31 @@ describe('deploy', () => {
       const content = fs.readFileSync(skillFile, 'utf8');
       expect(content).toMatch(/^---\s*\n/);
     }
+  });
+
+  it('deploys operational skill scripts for Codex', async () => {
+    await deploy(tmpDir, false);
+
+    const prReviewDir = path.join(tmpDir, '.agents', 'skills', 'smithy.pr-review');
+    expect(fs.existsSync(path.join(prReviewDir, 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(prReviewDir, 'scripts', 'find-pr.sh'))).toBe(true);
+    expect(fs.existsSync(path.join(prReviewDir, 'scripts', 'get-comments.sh'))).toBe(true);
+    expect(fs.existsSync(path.join(prReviewDir, 'scripts', 'reply-comment.sh'))).toBe(true);
+
+    const skillMd = fs.readFileSync(path.join(prReviewDir, 'SKILL.md'), 'utf8');
+    expect(skillMd).toContain('./.agents/skills/smithy.pr-review/scripts/find-pr.sh');
+    expect(skillMd).not.toContain('${CLAUDE_SKILL_DIR}');
+    expect(skillMd).not.toContain('./.gemini/skills/smithy.pr-review');
+  });
+
+  it('renders forge for direct Codex execution instead of sub-agent orchestration', async () => {
+    await deploy(tmpDir, false);
+
+    const forgeSkill = path.join(tmpDir, '.agents', 'skills', 'smithy-forge', 'SKILL.md');
+    const content = fs.readFileSync(forgeSkill, 'utf8');
+    expect(content).toContain('Use test-driven development for each task');
+    expect(content).not.toContain('Dispatch a sub-agent for each task');
+    expect(content).not.toContain('smithy-implement sub-agent');
   });
 
   it('is idempotent — deploying twice does not duplicate content', async () => {
@@ -143,12 +171,16 @@ describe('removeLegacy', () => {
   it('removes smithy-prefixed skill directories', () => {
     const skillsDir = path.join(tmpDir, '.agents', 'skills');
     const staleSkillDir = path.join(skillsDir, 'smithy-patch');
+    const staleDottedSkillDir = path.join(skillsDir, 'smithy.pr-review');
     fs.mkdirSync(staleSkillDir, { recursive: true });
+    fs.mkdirSync(staleDottedSkillDir, { recursive: true });
     fs.writeFileSync(path.join(staleSkillDir, 'SKILL.md'), '# stale');
+    fs.writeFileSync(path.join(staleDottedSkillDir, 'SKILL.md'), '# stale');
 
     const removedCount = removeLegacy(tmpDir);
-    expect(removedCount).toBeGreaterThanOrEqual(1);
+    expect(removedCount).toBeGreaterThanOrEqual(2);
     expect(fs.existsSync(staleSkillDir)).toBe(false);
+    expect(fs.existsSync(staleDottedSkillDir)).toBe(false);
   });
 
   it('returns 0 when no files exist to remove', () => {
