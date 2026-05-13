@@ -12,7 +12,6 @@ import { detectLanguages } from '../language-detect.js';
 import { detectPlatforms } from '../platform-detect.js';
 import type { LanguageToolchain, PlatformPackageManager } from '../permissions.js';
 import {
-  copyDirSync,
   agentGitignoreEntries,
   addToGitignore,
 } from '../utils.js';
