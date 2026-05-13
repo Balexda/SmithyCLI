@@ -1,19 +1,18 @@
 <!--
   Smithy eval fixture: planted parent artifact.
 
-  Consuming scenario: render-from-rfc (evals/cases/render-from-rfc.yaml,
-  authored by US4 Slice 2 of the expand-evals-coverage feature).
+  Consuming scenario: render-from-rfc.
 
-  Plant classification: representative (per the data-model realism enum in
-  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md).
-  This RFC exercises realistic content depth so render's Phase 1 milestone
-  extraction and downstream features-map drafting have plausible substrate,
-  without colliding with any real Smithy concept.
+  Plant classification: representative (per the data-model realism enum:
+  minimal / representative / flawed). This RFC exercises realistic content
+  depth so render's Phase 1 milestone extraction and downstream features-map
+  drafting have plausible substrate, without colliding with any real Smithy
+  concept.
 
   DO NOT delete or "clean up" this file. Removing it silently breaks the
   render-from-rfc eval scenario, which asserts against the features-map
-  rendered from this exact RFC. See evals/fixture/README.md (Planted Parent
-  Artifacts) for the convention.
+  rendered from this exact RFC. The fixture README's Planted Parent
+  Artifacts section documents the convention this file belongs to.
 -->
 
 # RFC: Log-Tail CLI for Local Fixture Service
