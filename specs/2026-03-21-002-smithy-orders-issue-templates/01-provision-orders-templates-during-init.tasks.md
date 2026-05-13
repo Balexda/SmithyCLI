@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Delete legacy YAML templates and path helpers**
+- [x] **Delete legacy YAML templates and path helpers**
 
   Remove the `src/templates/issues/` directory along with the `issueTemplatesSrcDir` constant and `resolveIssueTemplatePath` helper in `src/utils.ts` that target it. Both helpers are reachable only from the legacy flow and must vanish together so no dead exports remain. Per FR-011 in the spec.
 
@@ -26,7 +26,7 @@
   - The legacy path constant and resolver are no longer exported from `src/utils.ts`.
   - `npm run typecheck` succeeds once the call sites in subsequent tasks are also gone (the type errors should pinpoint exactly which files still need editing).
 
-- [ ] **Remove the issue-templates prompt, CLI flags, and `InitOptions` field**
+- [x] **Remove the issue-templates prompt, CLI flags, and `InitOptions` field**
 
   Strip `promptIssueTemplates` from `src/interactive.ts`, the `issueTemplates` field from `InitOptions`, the matching `--issue-templates` / `--no-issue-templates` flags from `src/cli.ts`, and the prompt/flag handling block plus `copyDirSync`-into-`<manifestDir>` branch in `src/commands/init.ts`. Per FR-011.
 
@@ -36,7 +36,7 @@
   - `initAction` no longer reads, prompts for, or branches on an issue-templates choice.
   - The legacy `Installing Smithy issue templates in …` log line is gone.
 
-- [ ] **Drop `issueTemplates` from the manifest contract and update redeploy**
+- [x] **Drop `issueTemplates` from the manifest contract and update redeploy**
 
   Remove the `issueTemplates: boolean` field from `SmithyManifest` and `WriteManifestOptions` in `src/manifest.ts`, the corresponding write in `initAction`'s manifest-write step, and the read-back used by `redeployFromManifest` in `src/commands/update.ts`. These three edits must land in the same commit because removing the manifest field breaks both call sites simultaneously and there is no useful intermediate state.
 
@@ -46,7 +46,7 @@
   - `update`'s redeploy path does not pass it through.
   - Old manifests on disk that still carry the field continue to load (the existing reader ignores extra JSON properties).
 
-- [ ] **Remove the legacy issue-template cleanup block from `uninit`**
+- [x] **Remove the legacy issue-template cleanup block from `uninit`**
 
   Delete the uninit step that scans `issueTemplatesSrcDir`, computes a destination via `resolveIssueTemplatePath`, and removes legacy YAML/MD files from both `<manifestDir>` and `.github/ISSUE_TEMPLATE/`. Without this edit `uninit.ts` will fail to compile after the previous tasks land. Manifest-driven removal continues to handle anything tracked under `files['…']`.
 
@@ -55,7 +55,7 @@
   - The legacy `.github/ISSUE_TEMPLATE/` cleanup loop is removed (see SD-003 for the behavior-change note flagged for the PR description).
   - `smithy uninit` against a manifest-tracked install still removes every manifest-listed artifact.
 
-- [ ] **Refresh CLI tests for the retired flag and manifest field**
+- [x] **Refresh CLI tests for the retired flag and manifest field**
 
   Update `src/cli.test.ts` so the existing assertions that exercise `--issue-templates` / `--no-issue-templates` and the `issueTemplates` manifest field are replaced with assertions that the flag is absent from `--help` and the field is absent from a freshly written manifest. Test descriptions follow the new behavior; no new test file is added.
 
@@ -139,7 +139,7 @@
 |----|-------------|-----------------|--------|-----------|--------|------------|
 | SD-001 | Slice 2 Task 4 calls for stubbing `HOME` in the `--location user` integration test, but the existing `src/cli.test.ts` infrastructure uses `execFileSync` / `spawnSync` with only `cwd` and `encoding` overrides — there is no precedent for overriding environment variables. The implement agent must choose a mechanism (passing `env: { ...process.env, HOME: tmpHome }`, deciding whether to also override `USERPROFILE` for Windows parity, and whether to skip the test on platforms where `os.homedir()` ignores `HOME`). Choice affects test reliability and CI portability. | Testing Strategy / Technical Risk | High | Medium | open | — |
 | SD-002 | The Init Template Provisioning Contract returns `templates_written` and `templates_preserved`, but neither the spec nor FRs mandate a specific user-visible console message in `initAction`. Existing init steps emit messages like `Installing Smithy issue templates in …` and `Cleaned up N stale artifacts`, so silence would be a UX consistency regression. Slice 2 Task 3 commits to surfacing a counts message but the exact wording is left to the implement agent. | Scope Edges | Medium | Medium | open | — |
-| SD-003 | Slice 1 Task 4 removes the uninit cleanup block that also handled `.github/ISSUE_TEMPLATE/`. This is a behavior change for users who ran an old smithy version that deployed YAML forms there: the next `smithy uninit` will no longer remove those files. The spec's Out of Scope bullet on legacy `src/templates/issues/` YAML form cleanup covers `<manifestDir>` deployments but does not explicitly bless dropping the `.github/ISSUE_TEMPLATE/` cleanup path. Likely intentional (the source dir is gone, so the loop becomes a no-op anyway), but worth confirming on the PR. | Scope Edges | Medium | Medium | open | — |
+| SD-003 | Slice 1 Task 4 originally removed the uninit cleanup block that swept legacy YAML form files from both `<manifestDir>` and `.github/ISSUE_TEMPLATE/`. PR #321 review surfaced that those files were never tracked in `manifest.files`, so `removeManifestFiles` cannot reach them — a real regression in the uninit contract for users upgrading from pre-rework smithy. | Scope Edges | Medium | Medium | resolved | Re-introduced the sweep in `src/commands/uninit.ts` with a hardcoded `LEGACY_ISSUE_TEMPLATE_FILES` list (the source dir is deleted, so the set is closed at 5 names). Cleanup runs in both `<manifestDir>` per target and `.github/ISSUE_TEMPLATE/`. Covered by the `uninit sweeps legacy YAML issue-template files left by pre-rework installs` test in `src/cli.test.ts`. |
 | SD-004 | The new overwrite prompt's exact message wording, whether it interpolates an absolute `<manifestDir>` path or a repo-relative one, and whether it accepts a list of conflicting paths or just a count, are not specified beyond the example prompt string in the Init Template Provisioning Contract's Flow step 4. Inquirer's `confirm` with `default: false` is well-understood, but message-formatting choices remain open. | Technical Risk | Low | Medium | open | — |
 
 ---

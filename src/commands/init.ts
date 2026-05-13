@@ -4,7 +4,6 @@ import {
   promptAgent,
   promptDeployLocation,
   promptPermissions,
-  promptIssueTemplates,
   promptToolchains,
 } from '../interactive.js';
 import { detectLanguages } from '../language-detect.js';
@@ -12,10 +11,8 @@ import { detectPlatforms } from '../platform-detect.js';
 import type { LanguageToolchain, PlatformPackageManager } from '../permissions.js';
 import {
   copyDirSync,
-  issueTemplatesSrcDir,
   agentGitignoreEntries,
   addToGitignore,
-  resolveIssueTemplatePath,
 } from '../utils.js';
 import { readManifest, removeStaleFiles, writeManifest } from '../manifest.js';
 import * as gemini from '../agents/gemini.js';
@@ -28,7 +25,6 @@ export interface InitOptions {
   agent?: AgentChoice;
   location?: DeployLocation;
   permissions?: boolean;
-  issueTemplates?: boolean;
   /**
    * When true (default), deploys the Claude Code session-title UserPromptSubmit
    * hook so `/smithy.<cmd>` invocations get a meaningful session title.
@@ -111,27 +107,10 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // 5b. Session-title hook (Claude only). Default on; opt out via --no-session-titles.
   const deploySessionTitles = opts.sessionTitles ?? true;
 
-  // 6. Issue templates — y/n at the selected deploy location
-  let deployIssueTemplates: boolean;
-  if (opts.issueTemplates !== undefined) {
-    deployIssueTemplates = opts.issueTemplates;
-  } else if (opts.yes) {
-    deployIssueTemplates = true;
-  } else {
-    deployIssueTemplates = await promptIssueTemplates();
-  }
-
   // --- Step 1: Check manifest (read old state for stale file cleanup) ---
   const oldManifest = readManifest(targetDir, deployLocation);
 
   // --- Step 2: Deploy ---
-
-  // Deploy issue templates at the selected location
-  if (deployIssueTemplates) {
-    const dest = resolveIssueTemplatePath(targetDir, deployLocation);
-    console.log(picocolors.green(`\nInstalling Smithy issue templates in ${dest}...`));
-    copyDirSync(issueTemplatesSrcDir, dest);
-  }
 
   // Deploy agents and collect deployed files per agent
   const agentsToSetup = agent === 'all' ? ['gemini', 'claude'] as const : [agent] as const;
@@ -168,7 +147,6 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     location: deployLocation,
     agents: [...agentsToSetup],
     permissions: deployPermissions,
-    issueTemplates: deployIssueTemplates,
     sessionTitles: deploySessionTitles,
     languages,
     platforms: platformManagers,

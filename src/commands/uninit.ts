@@ -1,9 +1,8 @@
-import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import { promptConfirmUninit, promptManifestChoice } from '../interactive.js';
-import { removeIfExists, issueTemplatesSrcDir, resolveIssueTemplatePath } from '../utils.js';
-import { readManifest, removeManifestFiles } from '../manifest.js';
+import { readManifest, removeManifestFiles, resolveManifestDir } from '../manifest.js';
+import { removeIfExists } from '../utils.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -13,6 +12,19 @@ export interface UninitOptions {
   targetDir?: string;
   yes?: boolean;
 }
+
+// Filenames that previous smithy versions deployed flat into <manifestDir>
+// (and, even earlier, into .github/ISSUE_TEMPLATE/). The source dir
+// src/templates/issues/ has been deleted, so the set is closed — these
+// five names are the entire historical surface and uninit must continue
+// to sweep them so existing installs can be fully uninitialized.
+const LEGACY_ISSUE_TEMPLATE_FILES = [
+  'config.yml',
+  'smithy_bug_report.md',
+  'smithy_implementation_task.md',
+  'smithy_task_stub.md',
+  'smithy_tech_debt.md',
+];
 
 export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   console.log(picocolors.cyan('🧹 Welcome to Smithy CLI (Uninit)\n'));
@@ -90,22 +102,20 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
   removedCount += gemini.removeLegacy(targetDir);
   removedCount += codex.removeLegacy(targetDir);
 
-  // Step 3: Remove issue templates from targeted locations
-  if (fs.existsSync(issueTemplatesSrcDir)) {
-    const issueTemplates = fs.readdirSync(issueTemplatesSrcDir).filter(f => f.endsWith('.md') || f.endsWith('.yml'));
-
-    for (const { location } of targets) {
-      const dir = resolveIssueTemplatePath(targetDir, location);
-      for (const file of issueTemplates) {
-        if (removeIfExists(path.join(dir, file))) removedCount++;
-      }
+  // Step 3: Sweep legacy YAML issue-template files from each target's
+  // <manifestDir>. Pre-rework smithy installed these flat under <manifestDir>
+  // without recording them in manifest.files, so removeManifestFiles never
+  // sees them. Older still: a few names were once landed in
+  // .github/ISSUE_TEMPLATE/, so sweep that too.
+  for (const { location } of targets) {
+    const dir = resolveManifestDir(targetDir, location);
+    for (const file of LEGACY_ISSUE_TEMPLATE_FILES) {
+      if (removeIfExists(path.join(dir, file))) removedCount++;
     }
-
-    // Legacy: .github/ISSUE_TEMPLATE/ (clean up old deployments)
-    const legacyDir = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');
-    for (const file of issueTemplates) {
-      if (removeIfExists(path.join(legacyDir, file))) removedCount++;
-    }
+  }
+  const legacyGithubDir = path.join(targetDir, '.github', 'ISSUE_TEMPLATE');
+  for (const file of LEGACY_ISSUE_TEMPLATE_FILES) {
+    if (removeIfExists(path.join(legacyGithubDir, file))) removedCount++;
   }
 
   if (removedCount > 0) {

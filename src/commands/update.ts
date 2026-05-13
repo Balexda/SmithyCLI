@@ -100,7 +100,6 @@ async function redeployFromManifest(
     agent: toAgentChoice(manifest.agents),
     location: manifest.deployLocation,
     permissions: manifest.permissions,
-    issueTemplates: manifest.issueTemplates,
     sessionTitles: manifest.sessionTitles ?? true,
     languages: validatedLanguages(manifest.languages),
     targetDir,

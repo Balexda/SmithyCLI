@@ -1,8 +1,6 @@
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { DeployLocation } from './interactive.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,19 +13,6 @@ export const agentsTemplateDir = path.join(agentSkillsDir, 'agents');
 export const snippetsTemplateDir = path.join(agentSkillsDir, 'snippets');
 export const skillsTemplateDir = path.join(agentSkillsDir, 'skills');
 export const hooksTemplateDir = path.join(templatesBaseDir, 'hooks');
-export const issueTemplatesSrcDir = path.join(templatesBaseDir, 'issues');
-
-/**
- * Resolve the destination path for issue templates based on deploy location.
- *   - 'repo' → <targetDir>/.smithy/
- *   - 'user' → ~/.smithy/
- */
-export function resolveIssueTemplatePath(targetDir: string, location: DeployLocation): string {
-  if (location === 'user') {
-    return path.join(os.homedir(), '.smithy');
-  }
-  return path.join(targetDir, '.smithy');
-}
 
 export function copyDirSync(src: string, dest: string): void {
   if (!fs.existsSync(dest)) {
