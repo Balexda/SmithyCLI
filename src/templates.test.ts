@@ -551,6 +551,20 @@ describe('getComposedTemplates', () => {
     // manifest's orders templates directory.
     expect(orders).toContain('<manifestDir>/templates/orders/spec.md');
 
+    // US2 S2: rfc/tasks template lookup + RFC parent epic stays
+    // hardcoded per AS 2.2. The per-milestone .rfc.md child body and
+    // the per-slice .tasks.md child body both render from
+    // <manifestDir>/templates/orders/<type>.md when present. The
+    // RFC parent tracking issue (the `[RFC] <rfc-title>` epic) body
+    // is explicitly out of scope and must remain as a hardcoded
+    // heredoc — we assert both the `## RFC Tracking Issue` section
+    // header and the `[RFC] <rfc-title>` title pattern survive so a
+    // future edit cannot quietly drop the parent epic body.
+    expect(orders).toContain('<manifestDir>/templates/orders/rfc.md');
+    expect(orders).toContain('<manifestDir>/templates/orders/tasks.md');
+    expect(orders).toContain('## RFC Tracking Issue');
+    expect(orders).toContain('[RFC] <rfc-title>');
+
     // US4 Slice 1 Task 2: parity between the prompt's Phase 5 fallback
     // bodies and the canonical default exports in `src/orders-templates.ts`.
     // For each of the four orders-eligible artifact types, both surfaces

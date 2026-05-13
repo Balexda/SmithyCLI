@@ -86,7 +86,7 @@
   - Global substitution — every occurrence of every known placeholder is replaced.
   - When `<manifestDir>/templates/orders/tasks.md` is absent the existing per-slice heredoc is used.
 
-- [ ] **Extend orders structural assertions to cover rfc and tasks template lookup**
+- [x] **Extend orders structural assertions to cover rfc and tasks template lookup**
 
   Extend the existing `smithy.orders` block in `src/templates.test.ts` with behavioral assertions that the composed prompt references `<manifestDir>/templates/orders/rfc.md` and `<manifestDir>/templates/orders/tasks.md`. Add an assertion that the RFC parent tracking issue body remains hardcoded (the prompt still contains the `[RFC] <rfc-title>` epic heredoc heading and references to `## RFC Tracking Issue`).
 
