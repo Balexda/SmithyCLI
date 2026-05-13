@@ -45,16 +45,16 @@ new box" use case that motivates the work.
 
 `dotfile-sync` is a single-binary CLI that, given a git URL pointing at a
 user's dotfiles repository, bootstraps a new machine in one command:
-clones the repo into `~/.dotfiles`, reads a declarative manifest at the
-repo root, and creates the symlinks the manifest describes. A subsequent
-invocation of the same command on the same machine is a no-op when nothing
-has drifted, and reports clearly when something has.
+clones the repo into a local directory, reads a declarative manifest at
+the repo root, and creates the symlinks the manifest describes. A
+subsequent invocation of the same command on the same machine is a no-op
+when nothing has drifted, and reports clearly when something has.
 
-Users observe one command (`dotfile-sync apply <repo-url>`), one place to
-edit (`dotfiles.toml` at the root of their dotfiles repo), and one place
-their dotfiles live on disk (`~/.dotfiles` plus the symlinks it creates).
-No daemons, no background syncs, no opinions about which dotfiles to
-include — the manifest is whatever the user writes.
+Users observe one command (`dotfile-sync apply <repo-url>`), one place
+to edit (the manifest file at the root of their dotfiles repo), and one
+place their dotfiles live on disk (the local clone plus the symlinks it
+creates). No daemons, no background syncs, no opinions about which
+dotfiles to include — the manifest is whatever the user writes.
 
 ## Target Users
 
