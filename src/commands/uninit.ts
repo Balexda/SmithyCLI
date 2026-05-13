@@ -1,7 +1,6 @@
 import path from 'path';
 import picocolors from 'picocolors';
 import { promptConfirmUninit, promptManifestChoice } from '../interactive.js';
-import { removeIfExists } from '../utils.js';
 import { readManifest, removeManifestFiles } from '../manifest.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';

@@ -61,7 +61,7 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
 
-    // Issue templates deployed to .smithy/ (repo default)
+    // Manifest directory created at .smithy/ (repo default)
     expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(true);
   });
 
@@ -77,18 +77,13 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(false);
   });
 
-  it('skips issue templates with --no-issue-templates', () => {
-    execFileSync('node', [CLI, 'init', '--no-issue-templates', '-y'], {
+  it('does not advertise the retired --issue-templates / --no-issue-templates flags', () => {
+    const result = spawnSync('node', [CLI, 'init', '--help'], {
       encoding: 'utf-8',
-      cwd: tmpDir,
     });
-    // .smithy/ may exist (for manifests), but should have no issue template files
-    const smithyDir = path.join(tmpDir, '.smithy');
-    if (fs.existsSync(smithyDir)) {
-      const files = fs.readdirSync(smithyDir);
-      const issueFiles = files.filter(f => f.endsWith('.md') || f === 'config.yml');
-      expect(issueFiles).toEqual([]);
-    }
+    const output = result.stdout + result.stderr;
+    expect(output).not.toContain('--issue-templates');
+    expect(output).not.toContain('--no-issue-templates');
   });
 
   it('skips permissions with --no-permissions', () => {
@@ -535,27 +530,24 @@ describe('CLI init lifecycle and idempotency', () => {
     expect(config.permissions.deny.length).toBeGreaterThan(0);
   });
 
-  it('deploys actual issue template files to .smithy/', () => {
+  it('does not write issueTemplates into the manifest', () => {
     execFileSync('node', [CLI, 'init', '-y'], {
       encoding: 'utf-8',
       cwd: tmpDir,
     });
 
-    const smithyDir = path.join(tmpDir, '.smithy');
-    const files = fs.readdirSync(smithyDir);
-    // Should contain at least config.yml and some .md templates
-    expect(files.some(f => f.endsWith('.yml'))).toBe(true);
-    expect(files.some(f => f.endsWith('.md'))).toBe(true);
-    expect(files.length).toBeGreaterThanOrEqual(2);
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    expect(manifest).not.toHaveProperty('issueTemplates');
   });
 
-  it('uninit removes only matching issue template files, preserves others', () => {
+  it('uninit preserves user-authored files under .smithy/', () => {
     execFileSync('node', [CLI, 'init', '-y'], {
       encoding: 'utf-8',
       cwd: tmpDir,
     });
 
-    // Add a custom file in .smithy/
+    // User drops a file alongside the manifest; uninit must leave it alone.
     const customFile = path.join(tmpDir, '.smithy', 'custom-template.md');
     fs.writeFileSync(customFile, '---\nname: Custom\n---\nCustom template');
 
@@ -564,7 +556,6 @@ describe('CLI init lifecycle and idempotency', () => {
       cwd: tmpDir,
     });
 
-    // Custom file should survive (uninit only removes known smithy files)
     expect(fs.existsSync(customFile)).toBe(true);
   });
 });

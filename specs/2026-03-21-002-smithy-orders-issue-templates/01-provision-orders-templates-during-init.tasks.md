@@ -55,7 +55,7 @@
   - The legacy `.github/ISSUE_TEMPLATE/` cleanup loop is removed (see SD-003 for the behavior-change note flagged for the PR description).
   - `smithy uninit` against a manifest-tracked install still removes every manifest-listed artifact.
 
-- [ ] **Refresh CLI tests for the retired flag and manifest field**
+- [x] **Refresh CLI tests for the retired flag and manifest field**
 
   Update `src/cli.test.ts` so the existing assertions that exercise `--issue-templates` / `--no-issue-templates` and the `issueTemplates` manifest field are replaced with assertions that the flag is absent from `--help` and the field is absent from a freshly written manifest. Test descriptions follow the new behavior; no new test file is added.
 
