@@ -26,7 +26,7 @@
   - The legacy path constant and resolver are no longer exported from `src/utils.ts`.
   - `npm run typecheck` succeeds once the call sites in subsequent tasks are also gone (the type errors should pinpoint exactly which files still need editing).
 
-- [ ] **Remove the issue-templates prompt, CLI flags, and `InitOptions` field**
+- [x] **Remove the issue-templates prompt, CLI flags, and `InitOptions` field**
 
   Strip `promptIssueTemplates` from `src/interactive.ts`, the `issueTemplates` field from `InitOptions`, the matching `--issue-templates` / `--no-issue-templates` flags from `src/cli.ts`, and the prompt/flag handling block plus `copyDirSync`-into-`<manifestDir>` branch in `src/commands/init.ts`. Per FR-011.
 
