@@ -509,6 +509,17 @@ describe('getComposedTemplates', () => {
     expect(orders).not.toContain('gh issue create --title');
     expect(orders).not.toContain('gh issue list --search');
 
+    // Manifest-load phase (US2 S1 Task 1): the prompt must name the
+    // resolveManifestDir helper that drives <manifestDir> selection, and
+    // it must name the runtime templates path pattern that Phase 5 reads
+    // from.
+    expect(orders).toContain('resolveManifestDir');
+    expect(orders).toContain('<manifestDir>/templates/orders/');
+    // Spec template lookup (US2 S1 Task 2): the .spec.md mapping must
+    // specifically reference the spec.md template file under the
+    // manifest's orders templates directory.
+    expect(orders).toContain('<manifestDir>/templates/orders/spec.md');
+
     // US4 Slice 1 Task 2: parity between the prompt's Phase 5 fallback
     // bodies and the canonical default exports in `src/orders-templates.ts`.
     // For each of the four orders-eligible artifact types, both surfaces

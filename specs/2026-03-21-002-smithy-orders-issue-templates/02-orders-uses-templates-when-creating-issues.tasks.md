@@ -40,7 +40,7 @@
   - Unknown `{{variable}}` names survive as literal text per the data-model validation rule.
   - When `<manifestDir>/templates/orders/spec.md` is absent the existing heredoc body is used.
 
-- [ ] **Assert manifest-load and spec template lookup are present in composed orders prompt**
+- [x] **Assert manifest-load and spec template lookup are present in composed orders prompt**
 
   Extend the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts` with behavioral assertions that the composed `smithy.orders.md` references `resolveManifestDir`, names the `<manifestDir>/templates/orders/` path pattern, and references the `spec.md` template specifically. Match by content, not line number, so the assertion survives prompt reflows.
 
