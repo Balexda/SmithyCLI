@@ -147,7 +147,7 @@ Recommended implementation sequence (priority, then independence):
 | US2 | Mark eval validates the mark command produces a complete spec artifact set | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/02-mark-eval-produces-spec-artifact-set.tasks.md |
 | US3 | Cut eval validates the cut command produces tasks with inherited spec debt | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/03-cut-eval-inherits-spec-debt.tasks.md |
 | US4 | Render eval validates the render command produces a feature map from an RFC | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/04-render-eval-produces-features-map.tasks.md |
-| US5 | Ignite eval validates the ignite command produces an RFC from a PRD | — | — |
+| US5 | Ignite eval validates the ignite command produces an RFC from a PRD | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/05-ignite-eval-produces-rfc-from-prd.tasks.md |
 | US6 | Spark eval validates the spark command produces a PRD from an idea, tolerating empty-state survey output | — | — |
 
 All six stories are independently shippable. The fixture-organization rules (scenario-isolated subdirectories under `evals/fixture/{prds,rfcs,specs}/`) are foundation-level guidance applied uniformly across stories rather than a separate dependency.
