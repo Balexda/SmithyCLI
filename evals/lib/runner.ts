@@ -79,6 +79,56 @@ export function hashDirectory(dirPath: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Git initialization for the temp fixture copy
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize the temp fixture copy as a git repository with a non-empty HEAD
+ * commit, using a repo-local identity. Required because mark/cut/render/ignite
+ * scenarios' producing commands invoke `git checkout -b` inside the temp copy
+ * (SD-001 / SD-007). Never touches the developer's global git config and never
+ * leaks output into the runner's stdout/stderr.
+ *
+ * @throws if any git command fails; the caller's `finally` block still runs.
+ */
+function initGitInTempCopy(tmpDir: string): void {
+  // Silent stdio: no stdout/stderr leak into the runner's output.
+  const opts: Parameters<typeof execFileSync>[2] = {
+    cwd: tmpDir,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  };
+
+  // `-b main` pins the initial branch name so the temp copy doesn't depend on
+  // the developer's `init.defaultBranch` setting.
+  execFileSync('git', ['init', '-q', '-b', 'main'], opts);
+
+  // Repo-local identity. Never `--global`; never depend on a global identity.
+  execFileSync('git', ['config', '--local', 'user.name', 'Smithy Eval Runner'], opts);
+  execFileSync('git', ['config', '--local', 'user.email', 'eval@smithy.local'], opts);
+
+  // Stage everything copied in from the fixture.
+  execFileSync('git', ['add', '-A'], opts);
+
+  // `commit.gpgsign=false` prevents the commit from hanging when the developer
+  // has signing enabled globally but the temp repo has no signing key.
+  // `--allow-empty` is a defensible safety net in case a fixture ever contains
+  // no stageable files (today the fixture always has files, but the cost of
+  // the flag is zero and it removes a class of latent failure).
+  execFileSync(
+    'git',
+    [
+      '-c', 'commit.gpgsign=false',
+      'commit', '-q', '--allow-empty', '-m', 'eval fixture initial commit',
+    ],
+    opts,
+  );
+
+  // Acceptance-criterion-1 invariant: HEAD must resolve before any claude
+  // invocation. Cheap to verify; makes silent regressions impossible.
+  execFileSync('git', ['rev-parse', '--verify', 'HEAD'], opts);
+}
+
+// ---------------------------------------------------------------------------
 // Process spawning
 // ---------------------------------------------------------------------------
 
@@ -251,6 +301,13 @@ export async function runScenario(
   try {
     // FR-002: Copy fixture to temp directory.
     fs.cpSync(fixtureDir, tmpDir, { recursive: true });
+
+    // Resolves SD-001 / SD-007: mark/cut/render/ignite scenarios run
+    // `git checkout -b` inside the temp copy. Without an initial commit,
+    // branch creation fails before any output is captured. Initialize git
+    // here, eagerly, using a repo-local identity so the developer's global
+    // git config is never read or written.
+    initGitInTempCopy(tmpDir);
 
     // Deploy Smithy skills into the temp copy. The fixture intentionally does
     // not commit .claude/ — skills are deployed fresh each run so evals always

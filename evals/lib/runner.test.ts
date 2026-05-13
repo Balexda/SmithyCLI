@@ -15,6 +15,13 @@ vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }));
 
+// The real execFileSync, bypassing the module mock, for tests that need to
+// actually shell out (e.g. for `git`). `vi.importActual` reaches past the
+// global mock declared above.
+const { execFileSync: realExecFileSync } = await vi.importActual<
+  typeof import('node:child_process')
+>('node:child_process');
+
 // Import after mock is declared so the module picks up the mocked version.
 const { spawn, execFileSync } = await import('node:child_process');
 const { runScenario, preflight, hashDirectory } = await import('./runner.js');
@@ -287,6 +294,77 @@ describe('runScenario', () => {
     } finally {
       fixture.cleanup();
       mkdtempSpy.mockRestore();
+    }
+  });
+
+  it('temp copy is a valid git repository before claude spawn', async () => {
+    // This regression test guards the SD-001/SD-007 fix: runScenario must
+    // initialize the temp fixture copy as a git repo with a HEAD commit
+    // before any skill invocation, so producing commands that call
+    // `git checkout -b` (mark/cut/render/ignite) succeed.
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    // Delegate execFileSync calls for `git` to the real implementation so
+    // the runner actually initializes the temp copy; stub the `node` (CLI
+    // init) call so we don't depend on `dist/cli.js` being built.
+    vi.mocked(execFileSync).mockImplementation(
+      ((command: string, args?: readonly string[], options?: unknown) => {
+        if (command === 'git') {
+          return realExecFileSync(command, args as readonly string[], options as never);
+        }
+        // Other commands (e.g. `node dist/cli.js init …`) are no-ops here.
+        return Buffer.from('');
+      }) as never,
+    );
+
+    // Capture the temp directory and defer its cleanup so we can inspect it.
+    const realMkdtempSync = fs.mkdtempSync;
+    let capturedTmpDir: string | undefined;
+    const mkdtempSpy = vi.spyOn(fs, 'mkdtempSync').mockImplementation(
+      (...args: Parameters<typeof fs.mkdtempSync>) => {
+        const result = realMkdtempSync(...args);
+        capturedTmpDir = result;
+        return result;
+      },
+    );
+
+    // Stash the captured directory before the runner's finally block deletes it.
+    let preservedDir: string | undefined;
+    const realRmSync = fs.rmSync;
+    const rmSyncSpy = vi.spyOn(fs, 'rmSync').mockImplementation(
+      (targetPath, options) => {
+        if (typeof targetPath === 'string' && targetPath === capturedTmpDir) {
+          // Move the temp dir aside so subsequent test logic can inspect it.
+          preservedDir = `${targetPath}-preserved`;
+          fs.renameSync(targetPath, preservedDir);
+          return;
+        }
+        realRmSync(targetPath, options);
+      },
+    );
+
+    const fixture = createRealFixture();
+    try {
+      await runScenario(makeScenario(), fixture.dir);
+
+      expect(preservedDir).toBeDefined();
+      // .git directory exists in the temp copy.
+      expect(fs.existsSync(path.join(preservedDir!, '.git'))).toBe(true);
+      // HEAD resolves to a non-empty SHA via real git.
+      const headSha = realExecFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+        cwd: preservedDir!,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).toString('utf-8').trim();
+      expect(headSha).toMatch(/^[0-9a-f]{7,40}$/);
+    } finally {
+      if (preservedDir && fs.existsSync(preservedDir)) {
+        realRmSync(preservedDir, { recursive: true, force: true });
+      }
+      fixture.cleanup();
+      mkdtempSpy.mockRestore();
+      rmSyncSpy.mockRestore();
     }
   });
 
