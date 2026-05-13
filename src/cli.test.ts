@@ -558,6 +558,42 @@ describe('CLI init lifecycle and idempotency', () => {
 
     expect(fs.existsSync(customFile)).toBe(true);
   });
+
+  it('uninit sweeps legacy YAML issue-template files left by pre-rework installs', () => {
+    execFileSync('node', [CLI, 'init', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    // Simulate a pre-rework install: drop the five filenames that older
+    // smithy versions deployed flat under .smithy/ (never tracked in
+    // manifest.files). Also drop one in .github/ISSUE_TEMPLATE/ to cover the
+    // even-older deployment path.
+    const smithyDir = path.join(tmpDir, '.smithy');
+    const legacyFiles = [
+      'config.yml',
+      'smithy_bug_report.md',
+      'smithy_implementation_task.md',
+      'smithy_task_stub.md',
+      'smithy_tech_debt.md',
+    ];
+    for (const f of legacyFiles) {
+      fs.writeFileSync(path.join(smithyDir, f), 'legacy');
+    }
+    const ghDir = path.join(tmpDir, '.github', 'ISSUE_TEMPLATE');
+    fs.mkdirSync(ghDir, { recursive: true });
+    fs.writeFileSync(path.join(ghDir, 'smithy_bug_report.md'), 'legacy');
+
+    execFileSync('node', [CLI, 'uninit', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    for (const f of legacyFiles) {
+      expect(fs.existsSync(path.join(smithyDir, f))).toBe(false);
+    }
+    expect(fs.existsSync(path.join(ghDir, 'smithy_bug_report.md'))).toBe(false);
+  });
 });
 
 describe('CLI status', () => {
