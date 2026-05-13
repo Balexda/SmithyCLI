@@ -613,6 +613,206 @@ describe('CLI init lifecycle and idempotency', () => {
   });
 });
 
+describe('CLI init orders-template provisioning', () => {
+  // Covers User Story 1 acceptance scenarios AS 1–5 from
+  // specs/2026-03-21-002-smithy-orders-issue-templates/smithy-orders-issue-templates.spec.md.
+  //
+  // AS 1 (fresh --location repo writes the four canonical files) is already
+  // covered by the wiring test
+  //   'init --yes provisions the four orders templates and emits a counts line'
+  // in describe('CLI init --yes (non-interactive)') above. The cases below
+  // lock in AS 2 through AS 5 with durable filesystem-state assertions.
+  //
+  // AS 5 (overwrite accepted replaces only the four canonical files) is
+  // exercised here via a direct call to provisionOrdersTemplates({ overwrite: true })
+  // because the CLI's non-interactive (-y) path always declines the overwrite
+  // prompt (preserves user edits under automation, per FR-003). The function
+  // is the same code path init invokes when the user answers "yes" to the
+  // overwrite prompt, so the assertion is faithful to the contract. The
+  // function-level overwrite=true / overwrite=false paths are additionally
+  // covered by unit tests in src/orders-templates.test.ts.
+
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-orders-cli-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('AS 2: --location user writes templates under stubbed HOME and leaves the repo .smithy/ untouched', () => {
+    // Two isolated tmp dirs: one for the target repo (cwd) and one to stand
+    // in for the user's home directory.
+    //
+    // Overrides HOME (POSIX) and USERPROFILE (Windows) so os.homedir() — and
+    // therefore resolveManifestDir(_, 'user') in src/manifest.ts — resolves
+    // to tmpHome on both platforms. On Linux/macOS this is sufficient because
+    // Node honors HOME unconditionally; on Windows USERPROFILE is the primary
+    // source. Cross-platform CI on Windows is out of scope for this test
+    // suite, but the env override is set defensively so the test would still
+    // isolate correctly there.
+    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-orders-home-'));
+    try {
+      execFileSync('node', [CLI, 'init', '-a', 'claude', '-l', 'user', '-y'], {
+        encoding: 'utf-8',
+        cwd: tmpDir,
+        env: { ...process.env, HOME: tmpHome, USERPROFILE: tmpHome },
+      });
+
+      // All four canonical files exist under the stubbed home with default
+      // content, never under the target repo.
+      const homeOrdersDir = path.join(tmpHome, '.smithy', 'templates', 'orders');
+      for (const type of ['rfc', 'features', 'spec', 'tasks'] as const) {
+        const dest = path.join(homeOrdersDir, `${type}.md`);
+        expect(fs.existsSync(dest)).toBe(true);
+        expect(fs.readFileSync(dest, 'utf8')).toBe(ORDERS_DEFAULT_TEMPLATES[type]);
+      }
+
+      // Provisioning must not create the target repo's own .smithy/. With
+      // --location user, the manifest also lands under tmpHome/.smithy/, so
+      // the repo dir should have nothing under .smithy/.
+      expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(false);
+    } finally {
+      fs.rmSync(tmpHome, { recursive: true, force: true });
+    }
+  });
+
+  it('AS 3: provisioning does not modify the manifest across re-runs', () => {
+    // First init writes the manifest and the four templates.
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    expect(fs.existsSync(manifestPath)).toBe(true);
+    const firstManifest = fs.readFileSync(manifestPath, 'utf8');
+
+    // Second init re-runs provisioning under decline-overwrite (-y always
+    // declines per FR-003). The manifest must be byte-identical: provisioning
+    // never touches it (the spec assertion), and re-running init with the
+    // same flags should regenerate an identical manifest since nothing else
+    // changed.
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const secondManifest = fs.readFileSync(manifestPath, 'utf8');
+    expect(secondManifest).toBe(firstManifest);
+  });
+
+  it('AS 4: re-init with overwrite declined preserves user edits and still writes missing templates', () => {
+    // First init creates the canonical four with default content.
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const ordersDir = path.join(tmpDir, '.smithy', 'templates', 'orders');
+    const specPath = path.join(ordersDir, 'spec.md');
+
+    // User edits one template by hand.
+    const customSpec = 'CUSTOM USER SPEC';
+    fs.writeFileSync(specPath, customSpec);
+
+    // Re-running init with -y declines the overwrite prompt: the edited
+    // spec.md is preserved verbatim, and the other three remain the
+    // unchanged defaults.
+    const rerunOutput = execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    expect(fs.readFileSync(specPath, 'utf8')).toBe(customSpec);
+    for (const type of ['rfc', 'features', 'tasks'] as const) {
+      const dest = path.join(ordersDir, `${type}.md`);
+      expect(fs.readFileSync(dest, 'utf8')).toBe(ORDERS_DEFAULT_TEMPLATES[type]);
+    }
+
+    // The user-visible counts line reflects the decline: nothing written,
+    // all four preserved.
+    expect(rerunOutput).toContain('Orders templates: 0 templates written, 4 preserved');
+  });
+
+  it('AS 4: missing canonical templates are written even when one pre-exists outside init', () => {
+    // Pre-create only spec.md without ever running init. The other three
+    // canonical files do not exist yet.
+    const ordersDir = path.join(tmpDir, '.smithy', 'templates', 'orders');
+    fs.mkdirSync(ordersDir, { recursive: true });
+    const specPath = path.join(ordersDir, 'spec.md');
+    const customSpec = 'PRE-EXISTING SPEC';
+    fs.writeFileSync(specPath, customSpec);
+
+    // Init under -y: overwrite is declined, but the three missing canonical
+    // files are still written with defaults (FR-003).
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    expect(fs.readFileSync(specPath, 'utf8')).toBe(customSpec);
+    for (const type of ['rfc', 'features', 'tasks'] as const) {
+      const dest = path.join(ordersDir, `${type}.md`);
+      expect(fs.existsSync(dest)).toBe(true);
+      expect(fs.readFileSync(dest, 'utf8')).toBe(ORDERS_DEFAULT_TEMPLATES[type]);
+    }
+  });
+
+  it('AS 5: overwrite accepted replaces only canonical <type>.md files; manifest, peer families, and user extras are preserved', async () => {
+    // The CLI's non-interactive (-y) path always declines the prompt to
+    // preserve user content under automation (FR-003). To exercise the
+    // overwrite=true branch — which is what AS 5 specifies — we invoke
+    // provisionOrdersTemplates directly. See src/orders-templates.test.ts
+    // for the function-level unit coverage that mirrors this.
+    const { provisionOrdersTemplates } = await import('./orders-templates.js');
+
+    const manifestDir = path.join(tmpDir, '.smithy');
+    const ordersDir = path.join(manifestDir, 'templates', 'orders');
+    const artifactsDir = path.join(manifestDir, 'templates', 'artifacts');
+    fs.mkdirSync(ordersDir, { recursive: true });
+    fs.mkdirSync(artifactsDir, { recursive: true });
+
+    // Seed a manifest file, a user extra alongside the canonical files, a
+    // peer-family file under a sibling templates/<family>/ subtree, and a
+    // customized canonical spec.md. AS 5 requires that all of these be
+    // preserved EXCEPT the four canonical <type>.md files.
+    const manifestPath = path.join(manifestDir, 'smithy-manifest.json');
+    const manifestSentinel = '{"sentinel":true}';
+    fs.writeFileSync(manifestPath, manifestSentinel);
+
+    const readmePath = path.join(ordersDir, 'README.md');
+    const readmeBody = 'user README — not a canonical template';
+    fs.writeFileSync(readmePath, readmeBody);
+
+    const peerPath = path.join(artifactsDir, 'foo.md');
+    const peerBody = 'peer family file — orders provisioning must not touch this';
+    fs.writeFileSync(peerPath, peerBody);
+
+    const customSpec = 'CUSTOM SPEC — about to be overwritten';
+    fs.writeFileSync(path.join(ordersDir, 'spec.md'), customSpec);
+
+    const result = provisionOrdersTemplates({
+      targetDir: tmpDir,
+      location: 'repo',
+      overwrite: true,
+    });
+
+    // All four canonical files now hold the defaults.
+    for (const type of ['rfc', 'features', 'spec', 'tasks'] as const) {
+      const dest = path.join(ordersDir, `${type}.md`);
+      expect(fs.readFileSync(dest, 'utf8')).toBe(ORDERS_DEFAULT_TEMPLATES[type]);
+    }
+    expect(result.templatesWritten).toHaveLength(4);
+    expect(result.templatesPreserved).toHaveLength(0);
+
+    // The manifest, the user extra under templates/orders/, and the
+    // peer-family file are untouched.
+    expect(fs.readFileSync(manifestPath, 'utf8')).toBe(manifestSentinel);
+    expect(fs.readFileSync(readmePath, 'utf8')).toBe(readmeBody);
+    expect(fs.readFileSync(peerPath, 'utf8')).toBe(peerBody);
+  });
+});
+
 describe('CLI status', () => {
   let tmpDir: string;
 
