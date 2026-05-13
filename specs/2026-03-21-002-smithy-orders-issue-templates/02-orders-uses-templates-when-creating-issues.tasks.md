@@ -30,7 +30,7 @@
   - Phase prose forbids reading or modifying `smithy-manifest.json` as a template at either candidate path.
   - The composed `smithy.orders.md` template still satisfies the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` structural assertion in `src/templates.test.ts`.
 
-- [ ] **Replace `.spec.md` Phase 5 heredoc with template-driven rendering**
+- [x] **Replace `.spec.md` Phase 5 heredoc with template-driven rendering**
 
   In Phase 5 of `smithy.orders.prompt`, replace the `.spec.md` mapping's hardcoded heredoc body with prose that reads `<manifestDir>/templates/orders/spec.md` (when present) and globally substitutes every placeholder named in the data-model's spec row. When the template file is absent, fall through to the existing heredoc body so `orders` keeps producing an issue. Substitution must visit every occurrence of every known placeholder across the rendered body so the default template's `{{next_step}}` parenthetical does not leak literal `{{spec_folder}}` / `{{user_story_number}}` text after `{{next_step}}` itself is replaced.
 
