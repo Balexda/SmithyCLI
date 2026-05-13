@@ -197,6 +197,12 @@ const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
  * machine-local git settings (custom hooks, `core.autocrlf`,
  * `init.templateDir`, etc.).
  *
+ * Hook neutralization: `core.hooksPath` is set to `/dev/null` in repo-local
+ * config and re-specified via `-c` on the commit, so neither the bootstrap
+ * commit nor any later commit inside the temp copy can fire `pre-commit` /
+ * `commit-msg` / other hooks inherited from the developer's
+ * `~/.git-templates` or `GIT_TEMPLATE_DIR`.
+ *
  * Belt-and-suspenders identity handling: we set `user.email` / `user.name`
  * via `git config --local` AND re-specify them with `-c` on the commit so
  * the commit succeeds even in environments where local config is ignored
@@ -218,7 +224,7 @@ function initGitInTempCopy(tmpDir: string): void {
   // pins the branch name regardless of the developer's git defaults.
   execFileSync('git', ['-c', 'init.defaultBranch=main', 'init'], gitOpts);
 
-  // Repo-local identity. Never `--global`.
+  // Repo-local identity and hook bypass. Never `--global`.
   execFileSync(
     'git',
     ['config', '--local', 'user.email', EVAL_GIT_USER_EMAIL],
@@ -229,6 +235,11 @@ function initGitInTempCopy(tmpDir: string): void {
     ['config', '--local', 'user.name', EVAL_GIT_USER_NAME],
     gitOpts,
   );
+  execFileSync(
+    'git',
+    ['config', '--local', 'core.hooksPath', '/dev/null'],
+    gitOpts,
+  );
 
   execFileSync('git', ['add', '-A'], gitOpts);
 
@@ -237,6 +248,7 @@ function initGitInTempCopy(tmpDir: string): void {
     [
       '-c', `user.email=${EVAL_GIT_USER_EMAIL}`,
       '-c', `user.name=${EVAL_GIT_USER_NAME}`,
+      '-c', 'core.hooksPath=/dev/null',
       'commit',
       '--no-gpg-sign',
       '--allow-empty',
