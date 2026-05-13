@@ -28,7 +28,7 @@
 
 The fixture API's `POST /api/users` handler currently accepts whatever JSON the
 client posts and writes it straight into the in-memory users array. A planted
-`TODO` above the handler in `src/routes/users.ts` admits the gap explicitly:
+`TODO` above the POST handler in the users router admits the gap explicitly:
 "add request validation before creating user (reject empty name/email, enforce
 email format)". In practice, this means a client can create users with an empty
 string for `name`, with no `email` field at all, or with a syntactically broken
@@ -53,9 +53,14 @@ Add input validation to the `POST /api/users` handler that rejects requests
 missing required fields (`name`, `email`), rejects empty-string values for
 those fields after trimming whitespace, and rejects email addresses that fail
 a conservative syntactic check. Rejected requests return HTTP 400 with a JSON
-body shaped like `{ "error": "<human-readable summary>", "field": "<which
-field failed>" }`. Valid requests behave exactly as they do today — they
-return HTTP 201 with the created user.
+body shaped like:
+
+```json
+{ "error": "<human-readable summary>", "field": "<which field failed>" }
+```
+
+Valid requests behave exactly as they do today — they return HTTP 201 with
+the created user.
 
 The change is observable to API consumers as: malformed POSTs are refused
 with a specific, machine-readable error; well-formed POSTs are unaffected;
@@ -108,10 +113,10 @@ inline style of the other handlers. We will build, not buy.
 
 ## Assumptions
 
-- [Critical Assumption] The fixture's `CreateUserRequest` interface
-  (`src/types.ts`) will not gain additional required fields during this
-  effort — if it does, the validation surface grows and the build-vs-buy
-  calculus may need to be revisited.
+- [Critical Assumption] The fixture's `CreateUserRequest` interface will
+  not gain additional required fields during this effort — if it does, the
+  validation surface grows and the build-vs-buy calculus may need to be
+  revisited.
 - The email format check can be a single conservative regex
   (presence of `@`, presence of `.` after the `@`, no whitespace);
   full RFC 5322 compliance is explicitly out of scope.
