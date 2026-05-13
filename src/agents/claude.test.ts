@@ -140,7 +140,7 @@ describe('deploy', () => {
   it('keeps frontmatter in deployed SKILL.md so allowed-tools is preserved', async () => {
     await deploy(tmpDir, 'none');
 
-    const templates = await getComposedTemplates();
+    const templates = await getComposedTemplates('claude');
     for (const [skillName, skill] of templates.skills) {
       const skillMd = path.join(tmpDir, '.claude', 'skills', skillName, 'SKILL.md');
       const content = fs.readFileSync(skillMd, 'utf8');

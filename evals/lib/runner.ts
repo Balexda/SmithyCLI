@@ -1,7 +1,7 @@
 /**
  * Eval runner — executes a single eval scenario by invoking
- * `claude --output-format stream-json -p` against a temp copy of the
- * reference fixture and returning the parsed output.
+ * the target agent (claude or gemini) --output-format stream-json -p
+ * against a temp copy of the reference fixture and returning the parsed output.
  *
  * Implements FR-001, FR-002, FR-003, FR-004, FR-011, FR-013.
  */
@@ -34,6 +34,7 @@ const FORCE_RESOLVE_MS = 2_000;
 const CHECKSUM_EXCLUDE_DIRS = new Set([
   'node_modules',
   '.claude',
+  '.gemini',
   '.smithy',
   'dist',
 ]);
@@ -90,11 +91,12 @@ interface SpawnResult {
 }
 
 /**
- * Spawn `claude` with the given arguments and enforce a timeout.
+ * Spawn the target agent with the given arguments and enforce a timeout.
  * Returns collected stdout, the exit code, whether a timeout occurred,
  * and wall-clock duration.
  */
-function spawnClaude(
+function spawnAgent(
+  agent: 'claude' | 'gemini',
   args: string[],
   cwd: string,
   timeoutMs: number,
@@ -103,7 +105,7 @@ function spawnClaude(
     const start = performance.now();
     let timedOut = false;
 
-    const child = spawn('claude', args, {
+    const child = spawn(agent, args, {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env },
@@ -176,55 +178,50 @@ function spawnClaude(
 // ---------------------------------------------------------------------------
 
 /**
- * Validate that the `claude` CLI is functional and that at least one
- * authentication path is configured (FR-003).
+ * Validate that the target agent CLI is functional and configured.
  *
- * This MUST be called before any scenario executes so that missing tooling
- * or credentials are caught eagerly — not on the first `runScenario` call.
- *
- * @throws {Error} If the `claude` CLI is not found, not functional, or no
- *   valid authentication (API key or OAuth login) is configured.
+ * @throws {Error} If the CLI is not found or not functional.
  */
-export function preflight(): void {
-  // (a) Validate that the `claude` CLI is functional.
+export function preflight(agent: 'claude' | 'gemini' = 'claude'): void {
+  // (a) Validate that the CLI is functional.
   try {
-    execFileSync('claude', ['--version'], {
+    execFileSync(agent, ['--version'], {
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 10_000,
     });
   } catch {
     throw new Error(
-      'claude CLI not found or not functional. ' +
-      'Install it from https://docs.anthropic.com/en/docs/claude-code/overview ' +
-      'and ensure it\'s in your PATH.',
+      `${agent} CLI not found or not functional. ` +
+      `Ensure it's in your PATH.`,
     );
   }
 
-  // (b) Verify that at least one auth path is configured.
-  if (process.env['ANTHROPIC_API_KEY']) {
-    return;
-  }
-  if (process.env['CLAUDE_CODE_OAUTH_TOKEN']) {
-    return;
-  }
-
-  // No env-var credential — probe whether OAuth is active.
-  try {
-    const result = execFileSync('claude', ['auth', 'status'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 10_000,
-    });
-    // If the command succeeds (exit code 0), OAuth is active.
-    // Some versions may output status text — we just need a zero exit.
-    const output = result.toString('utf-8');
-    if (output.toLowerCase().includes('not logged in')) {
-      throw new Error('OAuth not active');
+  if (agent === 'claude') {
+    // (b) Verify that at least one auth path is configured for Claude.
+    if (process.env['ANTHROPIC_API_KEY'] || process.env['CLAUDE_CODE_OAUTH_TOKEN']) {
+      return;
     }
-  } catch {
-    throw new Error(
-      'No API key or OAuth login found. ' +
-      'Set ANTHROPIC_API_KEY, set CLAUDE_CODE_OAUTH_TOKEN, or run `claude login`.',
-    );
+
+    try {
+      const result = execFileSync('claude', ['auth', 'status'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 10_000,
+      });
+      const output = result.toString('utf-8');
+      if (output.toLowerCase().includes('not logged in')) {
+        throw new Error('OAuth not active');
+      }
+    } catch {
+      throw new Error(
+        'No API key or OAuth login found for Claude. ' +
+        'Set ANTHROPIC_API_KEY, set CLAUDE_CODE_OAUTH_TOKEN, or run `claude login`.',
+      );
+    }
+  } else if (agent === 'gemini') {
+    // (b) Verify that at least one auth path is configured for Gemini.
+    if (!process.env['GOOGLE_API_KEY']) {
+      throw new Error('No API key found for Gemini. Set GOOGLE_API_KEY.');
+    }
   }
 }
 
@@ -233,7 +230,7 @@ export function preflight(): void {
  *
  * 1. Copies `fixtureDir` to a unique temp directory (FR-002).
  * 2. Computes a SHA-256 checksum of the source fixture before execution (FR-011).
- * 3. Spawns `claude --output-format stream-json -p "<invocation>"` in the temp copy.
+ * 3. Spawns `agent --output-format stream-json -p "<invocation>"` in the temp copy.
  * 4. Enforces per-case timeout (FR-004).
  * 5. Extracts canonical text via `extractCanonicalText` (FR-001).
  * 6. Re-verifies the source fixture checksum (FR-011).
@@ -242,6 +239,7 @@ export function preflight(): void {
 export async function runScenario(
   scenario: EvalScenario,
   fixtureDir: string,
+  agent: 'claude' | 'gemini' = 'claude',
 ): Promise<RunOutput> {
   // Create a unique temp directory and copy the fixture into it.
   const tmpDir = fs.mkdtempSync(
@@ -252,10 +250,8 @@ export async function runScenario(
     // FR-002: Copy fixture to temp directory.
     fs.cpSync(fixtureDir, tmpDir, { recursive: true });
 
-    // Deploy Smithy skills into the temp copy. The fixture intentionally does
-    // not commit .claude/ — skills are deployed fresh each run so evals always
-    // test against the latest templates.
-    execFileSync('node', [CLI_PATH, 'init', '-a', 'claude', '-y'], {
+    // Deploy Smithy skills into the temp copy.
+    execFileSync('node', [CLI_PATH, 'init', '-a', agent, '-y'], {
       cwd: tmpDir,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -264,7 +260,6 @@ export async function runScenario(
     const checksumBefore = hashDirectory(fixtureDir);
 
     // Build the invocation string: skill + prompt composed into slash-command form.
-    // No shell quoting needed — spawn passes args directly to the process.
     const invocation = `${scenario.skill} ${scenario.prompt}`;
 
     // Determine timeout: scenario-level override (in seconds) → default.
@@ -272,21 +267,8 @@ export async function runScenario(
       ? scenario.timeout * 1000
       : DEFAULT_TIMEOUT_MS;
 
-    // FR-001 / FR-003: Spawn claude in stream-json mode.
-    // `--verbose` is required by the claude CLI when combining `-p` with
-    // `--output-format stream-json` (verified in evals/spike/FINDINGS.md and
-    // re-confirmed against claude 2.1.121: without it, claude exits 1 with
-    // "Error: When using --print, --output-format=stream-json requires --verbose"
-    // before emitting any events).
-    //
-    // `--permission-mode bypassPermissions` is required because headless `-p`
-    // mode has no human to approve permission prompts. Without it, any tool
-    // call not covered by the deployed allow-list (e.g. `git init` on a fresh
-    // fixture, or a Write outside an over-narrow glob) silently stalls until
-    // the per-case timeout fires. Each scenario runs in a throwaway temp dir
-    // and the source fixture is checksum-verified before/after (FR-011), so
-    // bypass is appropriate for the eval harness.
-    const result = await spawnClaude(
+    const result = await spawnAgent(
+      agent,
       [
         '--output-format', 'stream-json',
         '--verbose',
@@ -298,9 +280,6 @@ export async function runScenario(
     );
 
     // Parse the NDJSON output.
-    // On clean runs (exit 0, no timeout), parse errors propagate — they
-    // indicate a real regression in output capture. On incomplete runs
-    // (timeout or non-zero exit), tolerate malformed/partial output.
     let events: StreamEvent[] = [];
     let extractedText = '';
     if (result.timed_out || result.exit_code !== 0) {
@@ -308,7 +287,7 @@ export async function runScenario(
         events = parseStreamString(result.stdout);
         extractedText = extractCanonicalText(events);
       } catch {
-        // Partial/malformed output from timeout or error — keep empty defaults.
+        // Partial/malformed output — keep empty defaults.
       }
     } else {
       events = parseStreamString(result.stdout);

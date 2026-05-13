@@ -18,34 +18,39 @@ export async function deploy(
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
 
-  const templates = await getComposedTemplates();
+  const templates = await getComposedTemplates('gemini');
   const deployedFiles: string[] = [];
 
   // Deploy commands and prompts as skills (skip agents — they are sub-agents, not invocable)
-  const deployAsSkill = (content: string) => {
-    const name = parseFrontmatterName(content);
-    if (!name) return;
-    const skillPath = path.join(skillsDir, name);
+  const deployAsSkill = (content: string, name?: string) => {
+    const skillName = name ?? parseFrontmatterName(content);
+    if (!skillName) return;
+    const skillPath = path.join(skillsDir, skillName);
     if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
     const dest = path.join(skillPath, 'SKILL.md');
     fs.writeFileSync(dest, content);
     deployedFiles.push(path.relative(targetDir, dest));
+    return skillPath;
   };
 
   for (const [, content] of templates.commands) deployAsSkill(content);
   for (const [, content] of templates.prompts) deployAsSkill(content);
 
-  // Skills (`.claude/skills/<name>/SKILL.md` for Claude) are also surfaced to
-  // Gemini as plain skills, but only when the skill is portable — i.e. it
-  // ships no `scripts/` directory. Skills with bundled scripts reference
-  // them through Claude's `${CLAUDE_SKILL_DIR}` env var (and pre-allow them
-  // through `allowed-tools` patterns), neither of which exists on Gemini;
-  // mirroring just `SKILL.md` would leave the Gemini-side skill instructing
-  // the agent to invoke scripts that aren't there. Skip those entirely
-  // until cross-agent script mirroring is designed.
-  for (const [, skill] of templates.skills) {
-    if (skill.scripts.size > 0) continue;
-    deployAsSkill(skill.prompt);
+  // Deploy all skills. Skills with scripts are no longer skipped; Gemini
+  // instructions (rendered via {{#ifAgent 'gemini'}}) can choose whether
+  // to invoke them via run_shell_command or use native tools.
+  for (const [skillName, skill] of templates.skills) {
+    const skillPath = deployAsSkill(skill.prompt, skillName);
+    if (skillPath && skill.scripts.size > 0) {
+      const scriptsDir = path.join(skillPath, 'scripts');
+      if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+      for (const [filename, content] of skill.scripts) {
+        const dest = path.join(scriptsDir, filename);
+        fs.writeFileSync(dest, content);
+        fs.chmodSync(dest, 0o755);
+        deployedFiles.push(path.relative(targetDir, dest));
+      }
+    }
   }
 
   if (initPermissions) {

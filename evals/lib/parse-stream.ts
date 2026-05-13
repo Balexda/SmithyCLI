@@ -150,6 +150,7 @@ export function extractToolResults(events: StreamEvent[]): ToolResult[] {
 
 /**
  * Extract sub-agent dispatches (Agent tool uses) and their results.
+ * Supports both Claude's `Agent` tool and Gemini's `invoke_agent` tool.
  */
 export function extractSubAgentDispatches(
   events: StreamEvent[],
@@ -159,13 +160,19 @@ export function extractSubAgentDispatches(
   const resultMap = new Map(toolResults.map((r) => [r.tool_use_id, r]));
 
   return toolUses
-    .filter((t) => t.name === 'Agent')
-    .map((t) => ({
-      id: t.id,
-      description: (t.input['description'] as string) ?? '',
-      prompt: (t.input['prompt'] as string) ?? '',
-      resultText: resultMap.get(t.id)?.content ?? '',
-    }));
+    .filter((t) => t.name === 'Agent' || t.name === 'invoke_agent')
+    .map((t) => {
+      // Claude `Agent` uses { description, prompt }
+      // Gemini `invoke_agent` uses { agent_name, prompt }
+      const description = (t.input['description'] ?? t.input['agent_name'] ?? '') as string;
+      const prompt = (t.input['prompt'] ?? '') as string;
+      return {
+        id: t.id,
+        description,
+        prompt,
+        resultText: resultMap.get(t.id)?.content ?? '',
+      };
+    });
 }
 
 /**

@@ -66,6 +66,25 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(true);
   });
 
+  it('deploys gemini with conditional templates and skills with scripts', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'gemini', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const geminiSkillsDir = path.join(tmpDir, '.gemini', 'skills');
+    expect(fs.existsSync(geminiSkillsDir)).toBe(true);
+
+    // Verify smithy.gh-issue is deployed with scripts
+    const ghIssueDir = path.join(geminiSkillsDir, 'smithy.gh-issue');
+    expect(fs.existsSync(path.join(ghIssueDir, 'scripts', 'check-env.sh'))).toBe(true);
+
+    // Verify SKILL.md content has Gemini-specific path (conditional rendering worked)
+    const skillMd = fs.readFileSync(path.join(ghIssueDir, 'SKILL.md'), 'utf8');
+    expect(skillMd).toContain('./.gemini/skills/smithy.gh-issue/scripts/check-env.sh');
+    expect(skillMd).not.toContain('${CLAUDE_SKILL_DIR}');
+  });
+
   it('deploys only claude when --agent claude is specified', () => {
     const output = execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
       encoding: 'utf-8',
