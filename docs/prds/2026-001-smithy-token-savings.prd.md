@@ -132,9 +132,13 @@ program does not preclude either.
 - A minimal JVM workload under `evals/fixture/jvm/` is sufficient to
   validate the gradle clauses of the build-output protocol. Cargo, Go,
   and Python coverage are nice-to-have but not blocking.
-- The user's existing memory entries about `.claude/` snapshot policy
-  (`project_gitignore_philosophy.md`) continue to apply: token-savings
-  PRs edit `src/templates/` only; snapshot refresh is a separate chore.
+- The `.claude/` snapshot policy documented in CLAUDE.md's "Source vs.
+  Deployed Artifacts" section continues to apply: source-of-truth edits
+  for prompts and skills live in `src/templates/`; the committed
+  `.claude/` snapshot is refreshed only by dedicated chore PRs, never
+  as a side effect of a feature or bugfix PR. Eval-framework edits and
+  `CONTRIBUTING.md` edits are allowed; only `.claude/` regeneration is
+  forbidden inside per-feature PRs.
 
 ## Specification Debt
 
