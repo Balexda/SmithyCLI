@@ -148,7 +148,7 @@ Recommended implementation sequence (priority, then independence):
 | US3 | Cut eval validates the cut command produces tasks with inherited spec debt | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/03-cut-eval-inherits-spec-debt.tasks.md |
 | US4 | Render eval validates the render command produces a feature map from an RFC | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/04-render-eval-produces-features-map.tasks.md |
 | US5 | Ignite eval validates the ignite command produces an RFC from a PRD | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/05-ignite-eval-produces-rfc-from-prd.tasks.md |
-| US6 | Spark eval validates the spark command produces a PRD from an idea, tolerating empty-state survey output | — | — |
+| US6 | Spark eval validates the spark command produces a PRD from an idea, tolerating empty-state survey output | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/06-spark-eval-produces-prd-from-idea.tasks.md |
 
 All six stories are independently shippable. The fixture-organization rules (scenario-isolated subdirectories under `evals/fixture/{prds,rfcs,specs}/`) are foundation-level guidance applied uniformly across stories rather than a separate dependency.
 
@@ -185,7 +185,7 @@ Per-command expected dispatches and their evidence-pattern source-of-truth. Each
 
 | Command | Sub-Agents (expected dispatches) | Evidence-pattern source |
 |---------|----------------------------------|--------------------------|
-| spark   | smithy-survey, smithy-clarify, smithy-prose, smithy-plan-review | template-stable Markers in each agent's output (e.g., `## Plan\n\n\*\*Directive\*\*` for plan; `^[Cc]larif` for clarify dispatch description) |
+| spark   | smithy-survey, smithy-clarify, smithy-prose | template-stable Markers in each agent's output (e.g., `## Plan\n\n\*\*Directive\*\*` for plan; `^[Cc]larif` for clarify dispatch description) |
 | ignite  | smithy-prose, smithy-plan, smithy-clarify, smithy-plan-review | same conventions as spark |
 | render  | smithy-scout, smithy-clarify, smithy-plan-review | same |
 | mark    | smithy-scout, smithy-plan, smithy-clarify, smithy-refine, smithy-plan-review | same |
