@@ -1,8 +1,10 @@
+import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import {
   promptAgent,
   promptDeployLocation,
+  promptOverwriteOrdersTemplates,
   promptPermissions,
   promptToolchains,
 } from '../interactive.js';
@@ -14,7 +16,8 @@ import {
   agentGitignoreEntries,
   addToGitignore,
 } from '../utils.js';
-import { readManifest, removeStaleFiles, writeManifest } from '../manifest.js';
+import { readManifest, removeStaleFiles, resolveManifestDir, writeManifest } from '../manifest.js';
+import { provisionOrdersTemplates } from '../orders-templates.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -106,6 +109,38 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   // 5b. Session-title hook (Claude only). Default on; opt out via --no-session-titles.
   const deploySessionTitles = opts.sessionTitles ?? true;
+
+  // 5d. Orders templates — write canonical default bodies to
+  // <manifestDir>/templates/orders/. Provisioning runs BEFORE the manifest-write
+  // step and never reads or alters smithy-manifest.json. The four canonical
+  // <type>.md files are user content, not manifest-tracked artifacts (FR-009),
+  // so they are not added to deployedFiles.
+  const ordersManifestDir = resolveManifestDir(targetDir, deployLocation);
+  const ordersDir = path.join(ordersManifestDir, 'templates', 'orders');
+  const canonicalOrdersTypes = ['rfc', 'features', 'spec', 'tasks'] as const;
+  const existingOrdersTypes = canonicalOrdersTypes.filter(t =>
+    fs.existsSync(path.join(ordersDir, `${t}.md`)),
+  );
+  let overwriteOrders = false;
+  if (existingOrdersTypes.length > 0) {
+    if (opts.yes === true) {
+      overwriteOrders = false;
+    } else {
+      overwriteOrders = await promptOverwriteOrdersTemplates(ordersManifestDir);
+    }
+  }
+  const ordersResult = provisionOrdersTemplates({
+    targetDir,
+    location: deployLocation,
+    overwrite: overwriteOrders,
+  });
+  {
+    const w = ordersResult.templatesWritten.length;
+    const p = ordersResult.templatesPreserved.length;
+    const writtenPart = `${w} template${w === 1 ? '' : 's'} written`;
+    const preservedPart = `${p} preserved`;
+    console.log(picocolors.dim(`  Orders templates: ${writtenPart}, ${preservedPart}`));
+  }
 
   // --- Step 1: Check manifest (read old state for stale file cleanup) ---
   const oldManifest = readManifest(targetDir, deployLocation);

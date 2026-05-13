@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { ORDERS_DEFAULT_TEMPLATES } from './orders-templates.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
@@ -148,6 +149,22 @@ describe('CLI init --yes (non-interactive)', () => {
     });
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);
+  });
+
+  it('init --yes provisions the four orders templates and emits a counts line', () => {
+    const output = execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const ordersDir = path.join(tmpDir, '.smithy', 'templates', 'orders');
+    for (const type of ['rfc', 'features', 'spec', 'tasks'] as const) {
+      const dest = path.join(ordersDir, `${type}.md`);
+      expect(fs.existsSync(dest)).toBe(true);
+      expect(fs.readFileSync(dest, 'utf8')).toBe(ORDERS_DEFAULT_TEMPLATES[type]);
+    }
+
+    expect(output).toContain('Orders templates: 4 templates written, 0 preserved');
   });
 
 });
