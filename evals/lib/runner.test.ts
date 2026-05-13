@@ -363,11 +363,6 @@ describe('runScenario', () => {
 
       // `git rev-parse HEAD` produced a non-empty 40-char SHA at that moment.
       expect(headOutputAtSpawn).toMatch(/^[0-9a-f]{40}$/);
-
-      // Belt-and-suspenders: source fixture is not modified by the git init
-      // (FR-013). Re-hash to confirm.
-      // (The existing fixture-isolation test covers this generally; checked
-      // here too because git init touches a sibling directory.)
     } finally {
       fixture.cleanup();
       mkdtempSpy.mockRestore();
