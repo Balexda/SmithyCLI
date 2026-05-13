@@ -73,14 +73,6 @@ export async function promptPermissions(): Promise<boolean> {
   });
 }
 
-export async function promptIssueTemplates(): Promise<boolean> {
-  return await confirm({
-    message: 'Deploy Smithy issue templates?',
-    default: true,
-  });
-}
-
-
 export async function promptToolchains(detected: LanguageToolchain[]): Promise<LanguageToolchain[]> {
   const detectedSet = new Set(detected);
   const choices = (Object.entries(toolchains) as [LanguageToolchain, typeof toolchains[LanguageToolchain]][]).map(

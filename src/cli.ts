@@ -32,8 +32,6 @@ program
   )
   .option('--permissions', 'Deploy permissions at the selected location')
   .option('--no-permissions', 'Skip permissions setup')
-  .option('--issue-templates', 'Install Smithy issue templates')
-  .option('--no-issue-templates', 'Skip issue templates')
   .option('--no-session-titles', 'Skip the Claude Code session-title hook')
   .option('--toolchains <list>', 'Comma-separated language toolchains to include in permissions (node,java,rust,python)')
   .option('-d, --target-dir <path>', 'Target directory')
