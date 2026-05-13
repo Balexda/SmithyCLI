@@ -1,6 +1,6 @@
 # Smithy CLI
 
-Smithy is a CLI tool that bootstraps AI-assisted development workflows across multiple agentic coding CLIs (Claude Code, Gemini CLI, Codex). It installs prompt templates, slash commands, permissions, and issue templates into a target repository so developers can invoke structured workflows like `/smithy.strike` directly from their AI assistant.
+Smithy is a CLI tool that bootstraps AI-assisted development workflows across multiple agentic coding CLIs (Claude Code, Gemini CLI, Codex). It installs prompt templates, slash commands, permissions, and orders body templates into a target repository so developers can invoke structured workflows like `/smithy.strike` directly from their AI assistant.
 
 ## What Smithy Does
 
@@ -24,7 +24,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 - **Agent deployers**: `src/agents/{claude,gemini}.ts` — per-agent deploy/remove logic. (`codex.ts` exists but is not exposed in the CLI yet.)
 - **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
 - **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
-- **Issue templates**: `src/templates/issues/` — GitHub issue templates, copied as-is.
+- **Orders body templates**: `src/orders-templates.ts` — exports the four canonical default body strings (`rfc` / `features` / `spec` / `tasks`) plus the `provisionOrdersTemplates` function that `smithy init` calls to write them under `<manifestDir>/templates/orders/<type>.md`. The same defaults double as the built-in fallback bodies in `smithy.orders` (parity asserted in `src/templates.test.ts`).
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
