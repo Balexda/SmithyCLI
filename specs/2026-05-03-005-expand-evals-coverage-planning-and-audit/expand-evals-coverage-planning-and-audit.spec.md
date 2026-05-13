@@ -145,7 +145,7 @@ Recommended implementation sequence (priority, then independence):
 |----|-------|------------|----------|
 | US1 | Audit eval validates the audit command catches a planted flaw | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/01-audit-eval-catches-planted-flaw.tasks.md |
 | US2 | Mark eval validates the mark command produces a complete spec artifact set | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/02-mark-eval-produces-spec-artifact-set.tasks.md |
-| US3 | Cut eval validates the cut command produces tasks with inherited spec debt | — | — |
+| US3 | Cut eval validates the cut command produces tasks with inherited spec debt | — | specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/03-cut-eval-inherits-spec-debt.tasks.md |
 | US4 | Render eval validates the render command produces a feature map from an RFC | — | — |
 | US5 | Ignite eval validates the ignite command produces an RFC from a PRD | — | — |
 | US6 | Spark eval validates the spark command produces a PRD from an idea, tolerating empty-state survey output | — | — |
