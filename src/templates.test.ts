@@ -9,6 +9,7 @@ import {
   getComposedTemplates,
   type ComposedTemplates,
 } from './templates.js';
+import { ORDERS_DEFAULT_TEMPLATES } from './orders-templates.js';
 
 describe('stripFrontmatter', () => {
   it('removes YAML frontmatter from content', () => {
@@ -507,6 +508,97 @@ describe('getComposedTemplates', () => {
     // gh directly for issue creation, search, or linking.
     expect(orders).not.toContain('gh issue create --title');
     expect(orders).not.toContain('gh issue list --search');
+
+    // US4 Slice 1 Task 2: parity between the prompt's Phase 5 fallback
+    // bodies and the canonical default exports in `src/orders-templates.ts`.
+    // For each of the four orders-eligible artifact types, both surfaces
+    // must (a) name every variable from the data-model variable table for
+    // that type and (b) carry the hybrid `## Source` / `## Context`
+    // section the spec's "Default Template Content" promises. We assert
+    // on structural strings only (no pasted body text, no line numbers)
+    // so the test stays robust to copy edits.
+    const perTypeVariables: Record<'rfc' | 'features' | 'spec' | 'tasks', string[]> = {
+      rfc: [
+        '{{title}}',
+        '{{milestone_number}}',
+        '{{milestone_title}}',
+        '{{milestone_description}}',
+        '{{milestone_success_criteria}}',
+        '{{rfc_path}}',
+        '{{parent_issue}}',
+        '{{next_step}}',
+      ],
+      features: [
+        '{{title}}',
+        '{{feature_description}}',
+        '{{milestone_number}}',
+        '{{parent_issue}}',
+        '{{features_path}}',
+        '{{next_step}}',
+      ],
+      spec: [
+        '{{title}}',
+        '{{priority}}',
+        '{{user_story_number}}',
+        '{{user_story}}',
+        '{{acceptance_scenarios}}',
+        '{{spec_path}}',
+        '{{data_model_path}}',
+        '{{contracts_path}}',
+        '{{next_step}}',
+        '{{spec_folder}}',
+      ],
+      tasks: [
+        '{{title}}',
+        '{{slice_number}}',
+        '{{slice_goal}}',
+        '{{slice_tasks}}',
+        '{{tasks_path}}',
+        '{{parent_issue}}',
+        '{{next_step}}',
+      ],
+    };
+
+    // The hybrid section the spec calls for is either a `## Source`
+    // (rfc, features) or `## Context` (spec, tasks) header — the spec's
+    // "Default Template Content" uses both names. Each canonical body
+    // includes at least one repo-relative path placeholder inside that
+    // section.
+    const perTypeHybridHeader: Record<'rfc' | 'features' | 'spec' | 'tasks', string> = {
+      rfc: '## Source',
+      features: '## Source',
+      spec: '## Context',
+      tasks: '## Context',
+    };
+
+    for (const type of ['rfc', 'features', 'spec', 'tasks'] as const) {
+      const canonical = ORDERS_DEFAULT_TEMPLATES[type];
+      expect(canonical).toBeDefined();
+
+      for (const variable of perTypeVariables[type]) {
+        // The canonical default must name every variable from the
+        // data-model table for this type.
+        expect(canonical).toContain(variable);
+        // The composed prompt's fallback region must name the same set
+        // — if either surface loses a variable, the two have drifted.
+        expect(orders).toContain(variable);
+      }
+
+      // Structural hybrid section: each canonical default has a
+      // Source/Context header with a repo-relative path placeholder.
+      expect(canonical).toContain(perTypeHybridHeader[type]);
+      expect(orders).toContain(perTypeHybridHeader[type]);
+    }
+
+    // Spec-type fallback's next-step line must include the parenthetical
+    // the spec shows, naming `{{spec_folder}}` and `{{user_story_number}}`
+    // together. We assert on both occurring near each other in both
+    // surfaces — the canonical default carries the same parenthetical so
+    // the prompt and module cannot diverge on this scope-edge wording.
+    expect(ORDERS_DEFAULT_TEMPLATES.spec).toMatch(
+      /smithy\.cut \{\{spec_folder\}\} \{\{user_story_number\}\}/
+    );
+    expect(orders).toMatch(/smithy\.cut \{\{spec_folder\}\} \{\{user_story_number\}\}/);
   });
 
   // US4 Slice 1 Task 1: the RFC parser in Phase 3 must enumerate

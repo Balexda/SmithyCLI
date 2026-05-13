@@ -178,23 +178,35 @@ BODY
 ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[RFC] <rfc-title>" /tmp/orders_body.md
 ```
 
-**Children**: one issue per milestone, linked to the parent.
+**Children**: one issue per milestone, linked to the parent. The body
+below is the built-in fallback used when `<manifestDir>/templates/orders/rfc.md`
+is absent (US4); when present, US2's template-resolution path wins and
+this heredoc is bypassed.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
-## Milestone: <milestone-title>
+# \{{title}}
 
-**Parent**: #<parent-issue-number>
-**Source**: `<path-to-rfc>`
-**Milestone number**: <N>
+**Milestone \{{milestone_number}}**: \{{milestone_title}}
 
-<milestone description>
+\{{milestone_description}}
 
-**Next step**: Run `/smithy.render <path-to-rfc> <N>` to produce a feature map for this milestone.
-(where `<N>` is this milestone's number — e.g., `/smithy.render docs/rfcs/2026-001-foo/foo.rfc.md 2`)
+## Success Criteria
+
+\{{milestone_success_criteria}}
+
+## Source
+
+- RFC: `\{{rfc_path}}`
+
+**Parent**: \{{parent_issue}}
+
+## Next Step
+
+Run `\{{next_step}}` to produce a feature map for this milestone.
 BODY
 
-${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
+${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[RFC][Milestone] \{{milestone_title}}" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.features.md`
@@ -212,45 +224,62 @@ path. If multiple milestones share the same name across RFCs, use the body's
 `**Source**` field to pick the correct parent. If found, reference it in the
 child ticket body.
 
-**Children**: one issue per feature.
+**Children**: one issue per feature. The body below is the built-in
+fallback used when `<manifestDir>/templates/orders/features.md` is
+absent (US4); when present, US2's template-resolution path wins and
+this heredoc is bypassed.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
-## Feature: <feature-title>
+# \{{title}}
 
-**Parent milestone**: #<milestone-issue-number> (if found)
-**Source**: `<path-to-features-file>`
+\{{feature_description}}
 
-<feature description>
+**Milestone \{{milestone_number}}** — parent issue: \{{parent_issue}}
 
-**Next step**: Run `smithy.mark` on this feature to produce a specification.
+## Source
+
+- Feature map: `\{{features_path}}`
+
+## Next Step
+
+Run `\{{next_step}}` on this feature to produce a spec with user stories.
 BODY
 
-${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Feature] <feature-title>" /tmp/orders_body.md
+${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Feature] \{{title}}" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.spec.md`
 
 **Children**: one issue per user story. No parent ticket is created.
+The body below is the built-in fallback used when
+`<manifestDir>/templates/orders/spec.md` is absent (US4); when present,
+US2's template-resolution path wins and this heredoc is bypassed.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
-## User Story: <story-title>
+# \{{title}}
 
-**Priority**: P<N>
-**Source**: `<path-to-spec>`
+**Priority**: \{{priority}} | **Story #\{{user_story_number}}**
 
-As a <persona>, I want <goal> so that <benefit>.
+\{{user_story}}
 
-### Acceptance Scenarios
+## Acceptance Criteria
 
-<acceptance scenarios from the spec>
+\{{acceptance_scenarios}}
 
-**Next step**: Run `/smithy.cut <spec-folder-path> <N>` to produce task slices for this story.
-(where `<N>` is this story's number — e.g., `/smithy.cut specs/2026-03-14-001-webhook-support 3`)
+## Context
+
+- Spec: `\{{spec_path}}`
+- Data Model: `\{{data_model_path}}`
+- Contracts: `\{{contracts_path}}`
+
+## Next Step
+
+Run `\{{next_step}}` (equivalent to `smithy.cut \{{spec_folder}} \{{user_story_number}}`) to decompose this story into implementable slices, then `smithy.forge` on each slice.
 BODY
 
-${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Story] <story-title>" /tmp/orders_body.md
+${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Story] \{{title}}" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.tasks.md`
@@ -270,27 +299,35 @@ or `### User Story N — <Title>` in older specs — the same title used in the
 `[Story] <story-title>` issue created by the `.spec.md` mapping). If found,
 reference it in the child ticket body.
 
-**Children**: one issue per slice.
+**Children**: one issue per slice. The body below is the built-in
+fallback used when `<manifestDir>/templates/orders/tasks.md` is absent
+(US4); when present, US2's template-resolution path wins and this
+heredoc is bypassed.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
-## Slice <N>: <slice-title>
+# \{{title}}
 
-**Parent story**: #<story-issue-number> (if found)
-**Source**: `<path-to-tasks-file>`
+**Slice \{{slice_number}}**
 
-### Goal
+\{{slice_goal}}
 
-<slice goal>
+## Tasks
 
-### Tasks
+\{{slice_tasks}}
 
-<task checklist from the slice>
+## Context
 
-**Next step**: Run `smithy.forge` on this slice to implement it.
+- Tasks file: `\{{tasks_path}}`
+
+**Story issue**: \{{parent_issue}}
+
+## Next Step
+
+Run `\{{next_step}}` to implement this slice as a PR.
 BODY
 
-${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Slice] <slice-title>" /tmp/orders_body.md
+${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Slice] \{{title}}" /tmp/orders_body.md
 ```
 
 ---
