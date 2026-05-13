@@ -28,9 +28,9 @@
   - When a milestone has no `**Success Criteria**` block, the variable resolves to empty string per the data-model validation rule.
   - Parsing rules for `.features.md`, `.spec.md`, and `.tasks.md` are unchanged.
 
-- [ ] **Rewrite Phase 5 fallback bodies to match spec Default Template Content for all four types**
+- [ ] **Rewrite Phase 5 fallback bodies to match spec Default Template Content for all four types, pinned to `src/orders-templates.ts`**
 
-  Replace the four fallthrough heredoc bodies in Phase 5 of `src/templates/agent-skills/commands/smithy.orders.prompt` (RFC per-milestone child, feature, user story, slice) with the spec's "Default Template Content" sections for each type. Preserve the existing `cat > /tmp/orders_body.md << 'BODY' … BODY` + `create-issue.sh` scaffolding around each body — only the body content changes. The fallthrough branch is reached only when `<manifestDir>/templates/orders/<type>.md` is absent, so US2's branching for the template-present case (AS 4.4) is unaffected. The RFC parent tracking issue (the `[RFC] <rfc-title>` epic body) remains hardcoded per the spec's Out of Scope section.
+  Replace the four fallthrough heredoc bodies in Phase 5 of `src/templates/agent-skills/commands/smithy.orders.prompt` (RFC per-milestone child, feature, user story, slice) with the spec's "Default Template Content" sections for each type. The implement agent preserves whatever issue-creation scaffolding currently wraps each body (heredoc + `create-issue.sh` invocation in today's prompt) — only the body content changes. The fallthrough branch is reached only when `<manifestDir>/templates/orders/<type>.md` is absent, so US2's branching for the template-present case (AS 4.4) is unaffected. The RFC parent tracking issue (the `[RFC] <rfc-title>` epic body) remains hardcoded per the spec's Out of Scope section. Pin the prompt fallback bodies to the canonical exports introduced by US1 in `src/orders-templates.ts` via a structural assertion inside the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts`, so the two surfaces cannot silently drift apart.
 
   Per-type variable sets the new fallback bodies must render (drawn from the data-model variable table and the spec's "Default Template Content" section):
   - **rfc** (per-milestone child): `{{title}}`, `{{milestone_number}}`, `{{milestone_title}}`, `{{milestone_description}}`, `{{milestone_success_criteria}}`, `{{rfc_path}}`, `{{parent_issue}}`, `{{next_step}}`.
@@ -41,20 +41,13 @@
   _Acceptance criteria:_
   - All four Phase 5 fallback bodies follow the structure shown in the spec's "Default Template Content" section for their type — H1 `# {{title}}` heading, hybrid pattern (inline actionable content + Source/Context section with repo-relative paths).
   - Every variable named in the per-type list above appears at least once in the corresponding fallback body.
-  - The spec-type fallback's `{{next_step}}` line includes the `(equivalent to \`smithy.cut {{spec_folder}} {{user_story_number}}\`)` parenthetical from the spec — resolves the scope-edge drift between the prior heredoc's example-style parenthetical and the spec default.
-  - The RFC parent tracking issue body (`## RFC Tracking Issue` heredoc for the `[RFC] <rfc-title>` epic) is unchanged.
-  - The `cat > /tmp/orders_body.md << 'BODY' … BODY` + `create-issue.sh` scaffolding around each body is preserved.
+  - The spec-type fallback's `{{next_step}}` line includes the parenthetical the spec shows alongside the spec-type next step, naming `{{spec_folder}}` and `{{user_story_number}}` — resolves the scope-edge drift between the prior heredoc's example-style parenthetical and the spec default.
+  - The RFC parent tracking issue body (the `[RFC] <rfc-title>` epic) is unchanged.
+  - Whatever issue-creation scaffolding currently surrounds each fallback body in the prompt is preserved; only the body content is rewritten.
   - The US2 branching (template file present → use file; absent → fallthrough) is unchanged; only the fallthrough body content is rewritten.
-
-- [ ] **Pin prompt-fallback parity to `src/orders-templates.ts` exports in the orders structural test**
-
-  Extend the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts` so the four prompt-resident fallback bodies are pinned to the canonical default exports from `src/orders-templates.ts`. The assertion imports the canonical defaults as ground truth and verifies that the composed `smithy.orders.md` prompt's fallback region contains the substance of each default — establishing a single source of truth so future edits to either surface cannot silently drift apart. This is the test guard FR-010 requires for the built-in fallback / user-template parity invariant.
-
-  _Acceptance criteria:_
-  - The assertion imports the four canonical default templates from `src/orders-templates.ts` (the module produced by US1).
-  - For each of the four artifact types (`rfc`, `features`, `spec`, `tasks`), the assertion verifies that the composed `smithy.orders.md` prompt's fallback region contains the substance of the corresponding canonical default — at minimum the variables named for that type in the data-model table and the hybrid section structure (Source/Context with repo-relative paths).
-  - The assertion lives inside the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block, not a new file.
-  - The assertion fails if a canonical variable disappears from either the prompt fallback or `src/orders-templates.ts`, or if the two surfaces diverge structurally.
+  - The `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts` is extended with a parity assertion that imports the canonical default templates from `src/orders-templates.ts` (the module produced by US1) and, for each of the four artifact types (`rfc`, `features`, `spec`, `tasks`), verifies that the composed `smithy.orders.md` prompt's fallback region contains the substance of the corresponding canonical default — at minimum the variables named for that type in the data-model table and the hybrid section structure (Source/Context with repo-relative paths).
+  - The parity assertion fails if a canonical variable disappears from either the prompt fallback or `src/orders-templates.ts`, or if the two surfaces diverge structurally.
+  - The parity assertion lives inside the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block — no new test file is added.
   - No exact line numbers, pasted prompt text, or full body strings are baked into the assertion body.
 
 **PR Outcome**: Running `smithy.orders` against any artifact type with `<manifestDir>/templates/orders/<type>.md` absent (or with `<manifestDir>` missing the `templates/orders/` subtree entirely) produces an issue body that follows the spec's "Default Template Content" for that type, satisfying AS 4.1, AS 4.2, and AS 4.3. With templates present, the US2 branching still wins (AS 4.4) — that path is unchanged. A new structural assertion pins the prompt and `src/orders-templates.ts` so the two cannot silently diverge.
