@@ -106,7 +106,7 @@ No grammar changes in this feature; new scenarios author patterns within the exi
 | `cut-from-spec` | smithy-scout, smithy-clarify, smithy-plan-review | same conventions as mark for the agents listed. |
 | `render-from-rfc` | smithy-scout, smithy-clarify, smithy-plan-review | same. |
 | `ignite-from-prd` | smithy-prose, smithy-plan, smithy-clarify, smithy-plan-review | `## Plan\n\n\*\*Directive\*\*` (plan); `^[Cc]larif` (clarify); prose's stable marker; plan-review's stable marker. |
-| `spark-from-idea` | smithy-survey, smithy-clarify, smithy-prose, smithy-plan-review | `^[Ss]urvey` (survey dispatch description) OR survey's empty-state stub (FR-008 alternation); `^[Cc]larif` (clarify); prose's marker; plan-review's marker. |
+| `spark-from-idea` | smithy-survey, smithy-clarify, smithy-prose | `^[Ss]urvey` (survey dispatch description) OR survey's empty-state stub (FR-008 alternation); `^[Cc]larif` (clarify); prose's marker. |
 
 #### Error Conditions
 

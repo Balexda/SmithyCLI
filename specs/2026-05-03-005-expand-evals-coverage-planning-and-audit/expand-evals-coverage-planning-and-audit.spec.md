@@ -185,7 +185,7 @@ Per-command expected dispatches and their evidence-pattern source-of-truth. Each
 
 | Command | Sub-Agents (expected dispatches) | Evidence-pattern source |
 |---------|----------------------------------|--------------------------|
-| spark   | smithy-survey, smithy-clarify, smithy-prose, smithy-plan-review | template-stable Markers in each agent's output (e.g., `## Plan\n\n\*\*Directive\*\*` for plan; `^[Cc]larif` for clarify dispatch description) |
+| spark   | smithy-survey, smithy-clarify, smithy-prose | template-stable Markers in each agent's output (e.g., `## Plan\n\n\*\*Directive\*\*` for plan; `^[Cc]larif` for clarify dispatch description) |
 | ignite  | smithy-prose, smithy-plan, smithy-clarify, smithy-plan-review | same conventions as spark |
 | render  | smithy-scout, smithy-clarify, smithy-plan-review | same |
 | mark    | smithy-scout, smithy-plan, smithy-clarify, smithy-refine, smithy-plan-review | same |
