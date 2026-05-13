@@ -120,7 +120,7 @@
   - Assertions describe observable filesystem state, not internal prompt mechanics.
   - `npm test` passes on Linux; cross-platform behavior (Windows `USERPROFILE`) is documented in the test or marked as out of scope.
 
-- [ ] **Refresh `CLAUDE.md` to reflect the new template family**
+- [x] **Refresh `CLAUDE.md` to reflect the new template family**
 
   Update the project preamble in `CLAUDE.md` so the line referencing `src/templates/issues/` and the prose describing smithy as installing "issue templates" describe the new `<manifestDir>/templates/orders/` provisioning instead. This belongs in Slice 2 because the doc accurately describes the codebase only once both removal (Slice 1) and addition (Slice 2 prior tasks) have landed.
 
