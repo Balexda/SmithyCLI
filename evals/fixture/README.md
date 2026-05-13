@@ -33,6 +33,7 @@ In addition to the scout-flawed plants documented in `## Planted Inconsistencies
 
 | Path | Owner Scenario | Realism | Purpose |
 |------|----------------|---------|---------|
+| `evals/fixture/specs/cut-eval/` | `cut-from-spec` | representative | Three-file spec / data-model / contracts plant consumed by `/smithy.cut` to assert the generated tasks file inherits the SD-001 debt row from the upstream spec. |
 | `evals/fixture/prds/ignite-eval/` | `ignite-from-prd` | representative | Canonical PRD fed to `/smithy.ignite` to produce an RFC. |
 
 ## Usage
