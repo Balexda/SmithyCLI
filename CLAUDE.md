@@ -60,7 +60,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description, RFC, or `.features.md` feature map (auto-selects the first unspecced feature).
 - **smithy.fix** — Minimal-diff bug fix from a GitHub issue
 - **smithy.audit** — Audit a Smithy artifact against its checklist
-- **smithy.orders** — Show available Smithy commands and their usage
+- **smithy.orders** — Create GitHub issues from any smithy artifact file (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`). Auto-detects artifact type by extension and creates structured issue bodies, using `<manifestDir>/templates/orders/<type>.md` when present and otherwise falling back to the built-in heredoc bodies defined inline in `src/templates/agent-skills/commands/smithy.orders.prompt` (kept in lockstep with the canonical defaults exported by `src/orders-templates.ts` via a parity assertion in `src/templates.test.ts`).
 - **smithy.status** — Show the current status of every Smithy planning artifact in the repo. Deployed as a Claude Code skill (auto-activates on natural-language questions like "what's next?" or "which user stories are left?") and still invocable explicitly via `/smithy.status …`. Pass-through mode shells out to `smithy status` with the user's flags and returns CLI output verbatim; question mode runs `smithy status --format json` and answers the user's question from the parsed payload (no LLM reconstruction of status, dependencies, or next actions).
 
 ### Sub-Agents (not user-invocable)

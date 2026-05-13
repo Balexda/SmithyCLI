@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Extend Phase 3 RFC parser to extract milestone success criteria**
+- [x] **Extend Phase 3 RFC parser to extract milestone success criteria**
 
   Update the `.rfc.md` parsing section of Phase 3 in `src/templates/agent-skills/commands/smithy.orders.prompt` so each milestone yields its success-criteria text alongside the title and description it already captures. The captured value feeds the `{{milestone_success_criteria}}` placeholder used by the new RFC fallback body. If US2 already added this extraction, leave it in place — the acceptance criterion is the observable parser instruction, not a textual edit.
 
@@ -28,7 +28,7 @@
   - When a milestone has no `**Success Criteria**` block, the variable resolves to empty string per the data-model validation rule.
   - Parsing rules for `.features.md`, `.spec.md`, and `.tasks.md` are unchanged.
 
-- [ ] **Rewrite Phase 5 fallback bodies to match spec Default Template Content for all four types, pinned to `src/orders-templates.ts`**
+- [x] **Rewrite Phase 5 fallback bodies to match spec Default Template Content for all four types, pinned to `src/orders-templates.ts`**
 
   Replace the four fallthrough heredoc bodies in Phase 5 of `src/templates/agent-skills/commands/smithy.orders.prompt` (RFC per-milestone child, feature, user story, slice) with the spec's "Default Template Content" sections for each type. The implement agent preserves whatever issue-creation scaffolding currently wraps each body (heredoc + `create-issue.sh` invocation in today's prompt) — only the body content changes. The fallthrough branch is reached only when `<manifestDir>/templates/orders/<type>.md` is absent, so US2's branching for the template-present case (AS 4.4) is unaffected. The RFC parent tracking issue (the `[RFC] <rfc-title>` epic body) remains hardcoded per the spec's Out of Scope section. Pin the prompt fallback bodies to the canonical exports introduced by US1 in `src/orders-templates.ts` via a structural assertion inside the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts`, so the two surfaces cannot silently drift apart.
 
