@@ -174,6 +174,66 @@ function spawnAgent(
 }
 
 // ---------------------------------------------------------------------------
+// Git initialization (runner-internal)
+// ---------------------------------------------------------------------------
+
+/** Repo-local git identity used inside the eval temp copy. Never leaks to the
+ *  developer's global git config. */
+const EVAL_GIT_USER_EMAIL = 'eval-runner@smithy.local';
+const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
+
+/**
+ * Initialize `tmpDir` as a git repository with a baseline commit, using a
+ * repo-local identity. All git stdio is silenced so it does not leak into
+ * the runner's own streams. Any failure throws (`execFileSync`'s default),
+ * which `runScenario`'s `finally` block converts into a clean tmp-dir
+ * teardown.
+ *
+ * Belt-and-suspenders identity handling: we set `user.email` / `user.name`
+ * via `git config --local` AND re-specify them with `-c` on the commit so
+ * the commit succeeds even in environments where local config is ignored
+ * (e.g. some CI sandboxes that override config search paths).
+ */
+function initGitInTempCopy(tmpDir: string): void {
+  const gitOpts = {
+    cwd: tmpDir,
+    stdio: ['ignore', 'pipe', 'pipe'] as ['ignore', 'pipe', 'pipe'],
+  };
+
+  // `-c init.defaultBranch=main` avoids the "hint: Using 'master' as the
+  // name for the initial branch" advice on stderr (silenced anyway) and
+  // pins the branch name regardless of the developer's git defaults.
+  execFileSync('git', ['-c', 'init.defaultBranch=main', 'init'], gitOpts);
+
+  // Repo-local identity. Never `--global`.
+  execFileSync(
+    'git',
+    ['config', '--local', 'user.email', EVAL_GIT_USER_EMAIL],
+    gitOpts,
+  );
+  execFileSync(
+    'git',
+    ['config', '--local', 'user.name', EVAL_GIT_USER_NAME],
+    gitOpts,
+  );
+
+  execFileSync('git', ['add', '-A'], gitOpts);
+
+  execFileSync(
+    'git',
+    [
+      '-c', `user.email=${EVAL_GIT_USER_EMAIL}`,
+      '-c', `user.name=${EVAL_GIT_USER_NAME}`,
+      'commit',
+      '--no-gpg-sign',
+      '--allow-empty',
+      '-m', 'eval: fixture baseline',
+    ],
+    gitOpts,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -249,6 +309,15 @@ export async function runScenario(
   try {
     // FR-002: Copy fixture to temp directory.
     fs.cpSync(fixtureDir, tmpDir, { recursive: true });
+
+    // Initialize the temp copy as a git repository with a baseline commit
+    // BEFORE any skill invocation. Scenarios whose producing command runs
+    // `git checkout -b` (mark / cut / render / ignite) fail at branch creation
+    // unless the working tree is a real git repo with a HEAD commit. Doing
+    // this here decouples the runner from whether `evals/fixture/` is itself
+    // under git (SD-001 / SD-007). A repo-local identity is configured so the
+    // developer's global git config is never touched.
+    initGitInTempCopy(tmpDir);
 
     // Deploy Smithy skills into the temp copy.
     execFileSync('node', [CLI_PATH, 'init', '-a', agent, '-y'], {
