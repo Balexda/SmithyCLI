@@ -40,6 +40,102 @@ ${CLAUDE_SKILL_DIR}/scripts/check-env.sh
 If it fails, surface the message it printed and stop. On success, capture the
 returned `ownerRepo` for use in the summary.
 
+### Manifest Discovery and `<manifestDir>` Resolution
+
+After `check-env.sh` succeeds, locate the active smithy manifest **before**
+Phase 4 ever runs. Phase 5's `.spec.md` mapping (and the rfc/features/tasks
+mappings added in later slices) reads body templates from
+`<manifestDir>/templates/orders/<type>.md`, so the prompt must resolve a
+trustworthy `<manifestDir>` here. The resolver matches the two-arg
+`resolveManifestDir(targetDir, location)` helper at `src/manifest.ts:38-43`
+that `updateAction` and `uninitAction` already use
+(`src/commands/update.ts`, `src/commands/uninit.ts`):
+
+```
+resolveManifestDir(targetDir, location):
+  if location === 'user' → path.join(os.homedir(), '.smithy')
+  else                   → path.join(targetDir,     '.smithy')
+```
+
+Where the two arguments come from at runtime:
+
+- `targetDir` — the current working directory (the repo you are running
+  `smithy.orders` from). It is **not** read from any manifest; the prompt has
+  not loaded one yet.
+- `location` — the **hardcoded `DeployLocation` enum value** for the candidate
+  you are probing this iteration: literal `'repo'` for the repo-local
+  candidate, literal `'user'` for the user-global candidate. Do **not** read
+  `location` from any manifest field — that would be circular reasoning
+  (using a field from a manifest you have not yet decided to use).
+
+**Step 1 — Probe both candidate manifest paths.** Using the `Read` tool, check
+for the manifest at each candidate:
+
+1. Repo candidate: `Read` the file at `<targetDir>/.smithy/smithy-manifest.json`
+   (equivalently `<resolveManifestDir(targetDir, 'repo')>/smithy-manifest.json`).
+2. User candidate: `Read` the file at `~/.smithy/smithy-manifest.json`
+   (equivalently `<resolveManifestDir(targetDir, 'user')>/smithy-manifest.json`).
+
+Record for each candidate whether the file exists and, when it does, the
+parsed JSON object (in particular its `deployLocation` field, which is one of
+`'repo'` or `'user'`).
+
+**Step 2 — Select the active manifest by precedence.** Apply the rules below
+in order. All four cases are handled explicitly:
+
+- **(a) Neither candidate exists.** Halt before Phase 4. Surface this exact
+  error to the user and stop:
+
+  > `smithy.orders` requires `smithy init` to have run first — no manifest
+  > was found at `<targetDir>/.smithy/smithy-manifest.json` or
+  > `~/.smithy/smithy-manifest.json`. Run `smithy init` to provision the
+  > orders templates and manifest, then re-run `smithy.orders`.
+
+- **(b) Only the repo candidate exists.** Select it: the active
+  `(targetDir, location)` pair is `(<cwd>, 'repo')`.
+
+- **(c) Only the user candidate exists.** Select it: the active
+  `(targetDir, location)` pair is `(<cwd>, 'user')`.
+
+- **(d) Both candidates exist.** **Prefer the repo manifest.** It is scoped
+  to this repository and matches the deploy semantics a user got when they
+  ran `smithy init --location repo` here. The active `(targetDir, location)`
+  pair is `(<cwd>, 'repo')`.
+
+**Step 3 — Validate selected manifest self-consistency.** Read the selected
+manifest's stored `deployLocation` field and confirm it equals the
+`location` value you used to read it (the hardcoded `'repo'` or `'user'`
+from Step 2). If they diverge, halt with the same wording style
+`update.ts` emits (see `src/commands/update.ts:168-176`):
+
+  > `<location>` manifest declares `deployLocation="<other>"`; refusing to
+  > proceed — fix the manifest or rerun `smithy init`.
+
+(Substitute the actual values: e.g. ``repo manifest declares
+deployLocation="user"; refusing to proceed — fix the manifest or rerun
+`smithy init`.``)
+
+**Step 4 — Compute `<manifestDir>`.** Once selection passes Step 3, set the
+named variable `<manifestDir>` for downstream phases:
+
+```
+<manifestDir> = resolveManifestDir(targetDir, location)
+              = (location === 'user') ? ~/.smithy : <targetDir>/.smithy
+```
+
+Subsequent phases — most importantly Phase 5's `.spec.md` mapping — reference
+`<manifestDir>` to look up body templates under
+`<manifestDir>/templates/orders/<type>.md`. Capture `<manifestDir>` (and the
+`(targetDir, location)` pair it was derived from) so later phases can reuse
+the value without re-probing the filesystem.
+
+**Forbidden operations.** Never read `<manifestDir>/smithy-manifest.json` as
+a body template, and never modify, truncate, rewrite, or delete it. The
+manifest is CLI-owned state (`src/manifest.ts`); the only template files in
+scope live under `<manifestDir>/templates/orders/<type>.md`. This rule
+applies at **both** candidate paths — the user-global path included — and
+holds regardless of which candidate Step 2 selected.
+
 ---
 
 ## Phase 2: Identify Artifact Type

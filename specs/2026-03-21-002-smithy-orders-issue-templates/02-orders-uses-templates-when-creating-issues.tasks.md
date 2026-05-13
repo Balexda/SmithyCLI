@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add manifest discovery and manifest-dir resolution phase to orders prompt**
+- [x] **Add manifest discovery and manifest-dir resolution phase to orders prompt**
 
   Insert a new phase in `src/templates/agent-skills/commands/smithy.orders.prompt` that performs manifest discovery without circular reasoning: probe both candidate manifest paths — the repo-local `<targetDir>/.smithy/smithy-manifest.json` and the user-global `~/.smithy/smithy-manifest.json` — using the same two `resolveManifestDir(targetDir, location)` calls (one per `location` value) that `updateAction` and `uninitAction` use in `src/commands/update.ts` and `src/commands/uninit.ts`. Select the active manifest by precedence: **(a) neither exists** → halt with the "run `smithy init` first" error mandated by FR-005; **(b) only repo exists** → use repo; **(c) only user exists** → use user; **(d) both exist** → prefer the repo manifest (it is scoped to this repository and matches the deploy semantics a user got when they ran `smithy init --location repo` here). After selection, validate the self-consistency check used by `update.ts` — the selected manifest's stored `deployLocation` field must equal the `location` it was read from; if they diverge, halt with the same "fix the manifest or rerun `smithy init`" message that `update.ts` emits. The selected `(targetDir, location)` pair drives the final `<manifestDir>` value used by Phase 5 template lookups. Position the phase early enough that Phase 4 duplicate detection never runs against a missing-manifest state.
 
