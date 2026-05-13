@@ -40,6 +40,21 @@ describe('deploy', () => {
     }
   });
 
+  it('deploys skills with scripts (like smithy.gh-issue)', async () => {
+    await deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.gemini', 'skills');
+    const ghIssueDir = path.join(skillsDir, 'smithy.gh-issue');
+    expect(fs.existsSync(ghIssueDir)).toBe(true);
+    expect(fs.existsSync(path.join(ghIssueDir, 'SKILL.md'))).toBe(true);
+
+    const scriptsDir = path.join(ghIssueDir, 'scripts');
+    expect(fs.existsSync(scriptsDir)).toBe(true);
+    const scripts = fs.readdirSync(scriptsDir);
+    expect(scripts.length).toBeGreaterThan(0);
+    expect(scripts).toContain('check-env.sh');
+  });
+
   it('does not deploy agent-only templates as Gemini skills', async () => {
     await deploy(tmpDir, false);
 

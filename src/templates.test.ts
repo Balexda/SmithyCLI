@@ -357,9 +357,11 @@ describe('getTemplateFilesByCategory', () => {
 
 describe('getComposedTemplates', () => {
   let composed: ComposedTemplates;
+  let claudeComposed: ComposedTemplates;
 
   beforeAll(async () => {
     composed = await getComposedTemplates();
+    claudeComposed = await getComposedTemplates('claude');
   });
 
   it('returns commands, prompts, agents, and skills maps', () => {
@@ -373,7 +375,7 @@ describe('getComposedTemplates', () => {
     // Issue #261 added the GitHub MCP tools as the preferred path but kept
     // the three `gh`-CLI shell scripts as the fallback for hosts without
     // the GitHub MCP server.
-    const skill = composed.skills.get('smithy.pr-review');
+    const skill = claudeComposed.skills.get('smithy.pr-review');
     expect(skill).toBeDefined();
     expect(skill!.prompt).toBeTruthy();
     expect(skill!.scripts).toBeInstanceOf(Map);
@@ -385,13 +387,13 @@ describe('getComposedTemplates', () => {
 
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
     // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain('smithy.pr-review');
     expect(skill.prompt).toContain('allowed-tools');
   });
 
   it('smithy.pr-review allowed-tools lists both the GitHub MCP tools and the script fallbacks', () => {
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     // MCP-first path
     expect(skill.prompt).toContain('mcp__github__list_pull_requests');
     expect(skill.prompt).toContain('mcp__github__pull_request_read');
@@ -406,7 +408,7 @@ describe('getComposedTemplates', () => {
     // Spot-check that the prompt body teaches the three operations and the
     // dual-path decision rule (try MCP first, fall back to scripts when the
     // GitHub MCP server is unavailable).
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain('Find Open PR');
     expect(skill.prompt).toContain('List Inline Comments');
     expect(skill.prompt).toContain('Reply to a Comment');
@@ -418,14 +420,14 @@ describe('getComposedTemplates', () => {
   });
 
   it('smithy.pr-review scripts start with bash shebang', () => {
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {
       expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
     }
   });
 
   it('get-comments.sh uses GraphQL for full thread data', () => {
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     const script = skill.scripts.get('get-comments.sh')!;
     expect(script).toContain('gh api graphql');
     expect(script).toContain('reviewThreads');
@@ -434,7 +436,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('reply-comment.sh uses correct REST API path with pr number', () => {
-    const skill = composed.skills.get('smithy.pr-review')!;
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
     const script = skill.scripts.get('reply-comment.sh')!;
     expect(script).toContain('repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies');
     expect(script).toContain('--method POST');
@@ -442,7 +444,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('skills map includes smithy.gh-issue with the four expected scripts', () => {
-    const skill = composed.skills.get('smithy.gh-issue');
+    const skill = claudeComposed.skills.get('smithy.gh-issue');
     expect(skill).toBeDefined();
     expect(skill!.prompt).toBeTruthy();
     expect(skill!.scripts.size).toBe(4);
@@ -453,7 +455,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('smithy.gh-issue prompt retains frontmatter with allowed-tools for all scripts', () => {
-    const skill = composed.skills.get('smithy.gh-issue')!;
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     expect(skill.prompt).toMatch(/^---\s*\n/);
     expect(skill.prompt).toContain('name: smithy.gh-issue');
     expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/check-env.sh)');
@@ -463,7 +465,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('smithy.gh-issue scripts start with bash shebang and set strict mode', () => {
-    const skill = composed.skills.get('smithy.gh-issue')!;
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     for (const [, content] of skill.scripts) {
       expect(content).toMatch(/^#!\/usr\/bin\/env bash/);
       expect(content).toContain('set -euo pipefail');
@@ -471,7 +473,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('search-issues.sh accepts state, query, and optional limit', () => {
-    const skill = composed.skills.get('smithy.gh-issue')!;
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     const script = skill.scripts.get('search-issues.sh')!;
     expect(script).toContain('gh issue list');
     expect(script).toContain('--state "$STATE"');
@@ -481,7 +483,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('create-issue.sh writes via --body-file and emits JSON with number', () => {
-    const skill = composed.skills.get('smithy.gh-issue')!;
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     const script = skill.scripts.get('create-issue.sh')!;
     expect(script).toContain('gh issue create --title "$TITLE" --body-file "$BODY_FILE"');
     expect(script).toContain('jq -n');
@@ -489,7 +491,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('link-blocked-by.sh uses addBlockedBy GraphQL mutation', () => {
-    const skill = composed.skills.get('smithy.gh-issue')!;
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     const script = skill.scripts.get('link-blocked-by.sh')!;
     expect(script).toContain('addBlockedBy');
     expect(script).toContain('blockingIssueId:$blocker');
@@ -497,7 +499,7 @@ describe('getComposedTemplates', () => {
   });
 
   it('smithy.orders command delegates GitHub ops to smithy.gh-issue scripts', () => {
-    const orders = composed.commands.get('smithy.orders.md')!;
+    const orders = claudeComposed.commands.get('smithy.orders.md')!;
     expect(orders).toBeDefined();
     expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/check-env.sh');
     expect(orders).toContain('${CLAUDE_SKILL_DIR}/scripts/search-issues.sh');
@@ -849,10 +851,11 @@ describe('getComposedTemplates', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
 
-    // Scope assertions to the markdown code fence block to avoid matching
-    // instructional text that references these headings in backticks
-    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
-    expect(markdownBlockMatch).not.toBeNull();
+    // The RFC template code fence must be the one containing the full structure.
+    // In agent mode, there's a smaller header-only block earlier; find the big one.
+    const markdownBlocks = [...ignite.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g)];
+    const markdownBlockMatch = markdownBlocks.find(m => m[1]!.includes('## Open Questions'));
+    expect(markdownBlockMatch).toBeDefined();
 
     const markdownBlock = markdownBlockMatch![1]!;
     const openQuestionsIdx = markdownBlock.indexOf('\n## Open Questions\n');
@@ -1293,10 +1296,15 @@ describe('getComposedTemplates', () => {
 
     // The RFC template code fence must contain these sections in order:
     // Goals -> Out of Scope -> Personas -> Proposal
-    const goalsIdx = ignite.indexOf('## Goals');
-    const outOfScopeIdx = ignite.indexOf('## Out of Scope');
-    const personasIdx = ignite.indexOf('## Personas');
-    const proposalIdx = ignite.indexOf('## Proposal');
+    const markdownBlocks = [...ignite.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g)];
+    const markdownBlockMatch = markdownBlocks.find(m => m[1]!.includes('## Goals'));
+    expect(markdownBlockMatch).toBeDefined();
+    const markdownBlock = markdownBlockMatch![1]!;
+
+    const goalsIdx = markdownBlock.indexOf('## Goals');
+    const outOfScopeIdx = markdownBlock.indexOf('## Out of Scope');
+    const personasIdx = markdownBlock.indexOf('## Personas');
+    const proposalIdx = markdownBlock.indexOf('## Proposal');
 
     expect(goalsIdx).toBeGreaterThan(-1);
     expect(outOfScopeIdx).toBeGreaterThan(-1);
@@ -1309,10 +1317,10 @@ describe('getComposedTemplates', () => {
     expect(proposalIdx).toBeGreaterThan(personasIdx);
 
     // Verify placeholder content exists
-    expect(ignite).toContain('<Explicitly excluded capability 1>');
-    expect(ignite).toContain('<Explicitly excluded capability 2>');
-    expect(ignite).toContain('<Persona 1');
-    expect(ignite).toContain('<Persona 2');
+    expect(markdownBlock).toContain('<Explicitly excluded capability 1>');
+    expect(markdownBlock).toContain('<Explicitly excluded capability 2>');
+    expect(markdownBlock).toContain('<Persona 1');
+    expect(markdownBlock).toContain('<Persona 2');
   });
 
   it('ignite Phase 0 audit table includes Persona Coverage and Out of Scope Completeness', () => {
@@ -1559,8 +1567,9 @@ describe('getComposedTemplates', () => {
 
     // Scope assertions to the markdown code fence block (the RFC template
     // shape), mirroring the pattern used by sibling ignite tests.
-    const markdownBlockMatch = ignite.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
-    expect(markdownBlockMatch).not.toBeNull();
+    const markdownBlocks = [...ignite.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g)];
+    const markdownBlockMatch = markdownBlocks.find(m => m[1]!.includes('## Milestones'));
+    expect(markdownBlockMatch).toBeDefined();
     const markdownBlock = markdownBlockMatch![1]!;
 
     const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
@@ -1702,11 +1711,6 @@ describe('getComposedTemplates', () => {
 
   // Compose the claude variant once and reuse for every per-command test so
   // we don't re-render every template per iteration (would scale O(N × M)).
-  let claudeComposed: ComposedTemplates;
-  beforeAll(async () => {
-    claudeComposed = await getComposedTemplates('claude');
-  });
-
   // Helper: every PR-creation invocation must be preceded by at least one
   // plan-review dispatch earlier in the template. Scanning every occurrence
   // — not just the last — prevents a regression where a later phase (e.g.,
@@ -1815,7 +1819,6 @@ describe('getComposedTemplates', () => {
   });
 
   it('variant does not change the number of template keys', async () => {
-    const claudeComposed = await getComposedTemplates('claude');
     expect([...composed.commands.keys()].sort()).toEqual([...claudeComposed.commands.keys()].sort());
     expect([...composed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
     expect([...composed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
