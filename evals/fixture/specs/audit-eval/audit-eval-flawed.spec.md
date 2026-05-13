@@ -1,36 +1,59 @@
 <!--
 PLANTED EVAL FIXTURE — DO NOT "FIX" THIS FILE.
 
-This `.spec.md` is a deliberately flawed planted artifact. The flaw is the
-intentional absence of a `## Dependency Order` section.
+This `.spec.md` is a deliberately flawed planted artifact. The flaw is
+the intentional absence of a `## Dependency Order` section.
 
-Violated checklist invariant:
-  - Audit Checklist for `.spec.md` artifacts, row "Dependency Order".
-  - Requirement: a spec contains a `## Dependency Order` section structured
-    as a 4-column Markdown table with headers
-    `ID | Title | Depends On | Artifact`, with `US<N>` IDs unique within
-    the table, `Depends On` listing only same-table IDs (or `—`), and
-    every `Artifact` cell either `—` or a repo-relative path to an
-    existing `.tasks.md` file.
+Checklist context — the audit checklist's `## Dependency Order` row is
+phrased *conditionally*, not unconditionally:
+
+  "If the spec contains a `## Dependency Order` section: is it a
+   4-column Markdown table with headers `ID | Title | Depends On |
+   Artifact`? Does every row use a `US<N>` ID (no leading zeros) that
+   is unique within the table? Does each `Depends On` cell list only
+   IDs from the same table (or `—`)? Does every `Artifact` cell contain
+   either `—` or a repo-relative path to an existing `.tasks.md` file
+   in the spec folder (flag any path that does not resolve)? Is the
+   recommended sequence logically justified? No `[ ]`/`[x]` checkbox
+   syntax is valid here — flag any checkbox markup as a finding."
+
+The audit checklist therefore has no single unconditional clause that
+demands the section exist. Separately, the canonical spec template
+stamped by `smithy.mark` always emits a `## Dependency Order` section
+for every spec it produces, so a spec without one is
+template-incomplete relative to the producing command's output even
+though no single checklist row outlaws the omission. The audit agent is
+expected to surface the missing-but-canonical section under
+cross-cutting checklist categories — "Story Independence" (which
+discusses inter-story dependencies), "Specification Debt" /
+"Staleness", or a general completeness observation — and to emit the
+literal token `Dependency Order` plus at least one `Critical` severity
+label in its output.
+
+The risk that this expectation fails (the agent stays silent about the
+missing section, or emits no `Critical` label) is acknowledged upstream
+as SD-002 in the parent feature spec; the audit-flawed-spec eval
+scenario in Slice 2 surfaces that drift as a FAIL.
 
 Why this plant exists:
-The audit-flawed-spec eval scenario runs `/smithy.audit` against this file
-and asserts the audit's output contains the literal string `Dependency
-Order` plus at least one `Critical` finding. Repairing the flaw — that is,
-adding a `## Dependency Order` section back — would cause the eval to
-report PASS-against-nothing or FAIL, which is the desired regression
-signal but only when deliberately triggered. Routine cleanup must NOT
-"fix" the missing section.
+The audit-flawed-spec eval scenario runs `/smithy.audit` against this
+file and asserts the audit's output contains the literal string
+`Dependency Order` plus at least one `Critical` finding. Repairing the
+flaw — adding a `## Dependency Order` section back — would cause the
+eval to FAIL on its next run, which is the desired regression signal
+but only when deliberately triggered. Routine cleanup must NOT "fix"
+the missing section.
 
 Maintainer instructions:
   - DO NOT add a `## Dependency Order` section to this file.
-  - DO NOT introduce a placeholder, comment, or table stub purporting to
-    be the `## Dependency Order` section — even an empty section breaks
-    the plant.
+  - DO NOT introduce a placeholder, comment, or table stub purporting
+    to be the `## Dependency Order` section — even an empty section
+    breaks the plant.
   - If the audit checklist's wording around `Dependency Order` changes
-    (for example, renaming the section to `Implementation Order`),
-    coordinate the change with the consuming eval scenario's
-    `required_patterns` so the two stay in sync.
+    (for example, renaming the section to `Implementation Order`, or
+    promoting the conditional row to an unconditional "must contain"
+    rule), coordinate the change with the consuming eval scenario's
+    `required_patterns` so the two stay in sync (see SD-002).
 -->
 
 # Feature Specification: Add a health-check endpoint to the demo API
