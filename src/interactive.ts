@@ -150,3 +150,10 @@ export async function promptConfirmResetPermissions(location: DeployLocation): P
     default: false,
   });
 }
+
+export async function promptOverwriteOrdersTemplates(manifestDir: string): Promise<boolean> {
+  return await confirm({
+    message: `Overwrite existing orders templates at ${manifestDir}/templates/orders/?`,
+    default: false,
+  });
+}

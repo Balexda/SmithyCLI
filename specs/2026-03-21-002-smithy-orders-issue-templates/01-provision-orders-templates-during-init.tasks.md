@@ -78,7 +78,7 @@
 
 ### Tasks
 
-- [ ] **Add `src/orders-templates.ts` with default bodies and a provisioner**
+- [x] **Add `src/orders-templates.ts` with default bodies and a provisioner**
 
   Create one flat module under `src/` (matching the repo's existing `permissions.ts` / `language-detect.ts` / `manifest.ts` convention) that exports the four default body strings keyed by artifact type (`rfc`, `features`, `spec`, `tasks`) with content matching the spec's Default Template Content section verbatim, plus a `provisionOrdersTemplates` function that ensures `<manifestDir>/templates/orders/` exists and writes any missing defaults. Centralizing both in one module lets US4's built-in fallback import the same defaults later without a follow-up extraction. Resolve `<manifestDir>` through the existing manifest-directory helper in `src/manifest.ts` so deploy-location semantics match the rest of init.
 
@@ -89,7 +89,7 @@
   - The function never opens, reads, writes, truncates, or stats `<manifestDir>/smithy-manifest.json` or any non-`<type>.md` sibling under `<manifestDir>` (satisfies AS 3 and AS 5).
   - File presence (not content) is the override signal — empty existing files count as "exists" for overwrite gating, per the spec's Edge Cases section ("A template file exists but is empty" bullet).
 
-- [ ] **Add an overwrite prompt for existing orders templates**
+- [x] **Add an overwrite prompt for existing orders templates**
 
   Add a new prompt to `src/interactive.ts` that asks once whether to overwrite existing orders templates at `<manifestDir>/templates/orders/`, defaulting to `no`, with phrasing aligned to the Init Template Provisioning Contract's step 4 message. The prompt is invoked only when at least one of the four canonical files already exists; missing templates are always written without asking.
 
@@ -99,7 +99,7 @@
   - The prompt fires at most once per init invocation regardless of how many of the four files pre-exist.
   - Behavior matches AS 4 (decline → existing preserved, missing still written) and AS 5 (accept → only the four canonical files replaced).
 
-- [ ] **Wire orders-template provisioning into `initAction`**
+- [x] **Wire orders-template provisioning into `initAction`**
 
   After permission setup, language-toolchain selection, and the session-title decision (where the legacy `deployIssueTemplates` block previously sat), call into the new module to detect pre-existing files, prompt only when needed, and write defaults. Provisioning must run before the manifest-write step and must not alter the manifest file. Surface a brief console message reporting how many templates were written and how many were preserved, matching the existing init step's UX style (see SD-002 for the rationale).
 
@@ -110,7 +110,7 @@
   - With overwrite accepted, only the four canonical `<type>.md` files are replaced; non-canonical extras under `templates/orders/` and any peer `templates/<family>/` subtrees are untouched (AS 5).
   - A console line reports the written/preserved counts on each init run.
 
-- [ ] **Add CLI integration tests for unconditional provisioning**
+- [x] **Add CLI integration tests for unconditional provisioning**
 
   Extend `src/cli.test.ts` with cases that run `init` against a fresh temp directory and assert the four files exist with default content, that the manifest is byte-identical before and after re-running provisioning under "decline overwrite", and that overwrite preserves non-canonical neighbors. The `--location user` case must isolate the user's real `~/.smithy/` from the test — the isolation mechanism is left to implementation; see SD-001 for the open portability question.
 
@@ -120,7 +120,7 @@
   - Assertions describe observable filesystem state, not internal prompt mechanics.
   - `npm test` passes on Linux; cross-platform behavior (Windows `USERPROFILE`) is documented in the test or marked as out of scope.
 
-- [ ] **Refresh `CLAUDE.md` to reflect the new template family**
+- [x] **Refresh `CLAUDE.md` to reflect the new template family**
 
   Update the project preamble in `CLAUDE.md` so the line referencing `src/templates/issues/` and the prose describing smithy as installing "issue templates" describe the new `<manifestDir>/templates/orders/` provisioning instead. This belongs in Slice 2 because the doc accurately describes the codebase only once both removal (Slice 1) and addition (Slice 2 prior tasks) have landed.
 
