@@ -16,7 +16,7 @@ import {
   addToGitignore,
 } from '../utils.js';
 import { readManifest, removeStaleFiles, resolveManifestDir, writeManifest } from '../manifest.js';
-import { provisionOrdersTemplates } from '../orders-templates.js';
+import { ORDERS_TEMPLATE_TYPES, provisionOrdersTemplates } from '../orders-templates.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -116,8 +116,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // so they are not added to deployedFiles.
   const ordersManifestDir = resolveManifestDir(targetDir, deployLocation);
   const ordersDir = path.join(ordersManifestDir, 'templates', 'orders');
-  const canonicalOrdersTypes = ['rfc', 'features', 'spec', 'tasks'] as const;
-  const existingOrdersTypes = canonicalOrdersTypes.filter(t =>
+  const existingOrdersTypes = ORDERS_TEMPLATE_TYPES.filter(t =>
     fs.existsSync(path.join(ordersDir, `${t}.md`)),
   );
   let overwriteOrders = false;

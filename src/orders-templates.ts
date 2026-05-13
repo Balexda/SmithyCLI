@@ -113,8 +113,8 @@ Run \`{{next_step}}\` to implement this slice as a PR.
 };
 
 /** Canonical template type identifiers, ordered for deterministic output. */
-const ORDERS_TEMPLATE_TYPES = ['rfc', 'features', 'spec', 'tasks'] as const;
-type OrdersTemplateType = (typeof ORDERS_TEMPLATE_TYPES)[number];
+export const ORDERS_TEMPLATE_TYPES = ['rfc', 'features', 'spec', 'tasks'] as const;
+export type OrdersTemplateType = (typeof ORDERS_TEMPLATE_TYPES)[number];
 
 export interface ProvisionOrdersTemplatesOptions {
   /** Target directory whose `.smithy/` is used when `location === 'repo'`. */
