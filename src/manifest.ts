@@ -16,7 +16,6 @@ export interface SmithyManifest {
   deployLocation: DeployLocation;
   agents: string[];
   permissions: boolean;
-  issueTemplates: boolean;
   /** Whether the Claude Code session-title UserPromptSubmit hook was deployed. */
   sessionTitles?: boolean;
   languages?: string[] | undefined;
@@ -98,7 +97,6 @@ export interface WriteManifestOptions {
   location: DeployLocation;
   agents: string[];
   permissions: boolean;
-  issueTemplates: boolean;
   sessionTitles?: boolean;
   languages?: string[] | undefined;
   platforms?: string[] | undefined;
@@ -118,7 +116,6 @@ export function writeManifest(opts: WriteManifestOptions): void {
     deployLocation: opts.location,
     agents: opts.agents,
     permissions: opts.permissions,
-    issueTemplates: opts.issueTemplates,
     ...(opts.sessionTitles !== undefined ? { sessionTitles: opts.sessionTitles } : {}),
     ...(opts.languages !== undefined ? { languages: opts.languages } : {}),
     ...(opts.platforms !== undefined ? { platforms: opts.platforms } : {}),

@@ -147,7 +147,6 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     location: deployLocation,
     agents: [...agentsToSetup],
     permissions: deployPermissions,
-    issueTemplates: false,
     sessionTitles: deploySessionTitles,
     languages,
     platforms: platformManagers,

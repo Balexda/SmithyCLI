@@ -36,7 +36,7 @@
   - `initAction` no longer reads, prompts for, or branches on an issue-templates choice.
   - The legacy `Installing Smithy issue templates in …` log line is gone.
 
-- [ ] **Drop `issueTemplates` from the manifest contract and update redeploy**
+- [x] **Drop `issueTemplates` from the manifest contract and update redeploy**
 
   Remove the `issueTemplates: boolean` field from `SmithyManifest` and `WriteManifestOptions` in `src/manifest.ts`, the corresponding write in `initAction`'s manifest-write step, and the read-back used by `redeployFromManifest` in `src/commands/update.ts`. These three edits must land in the same commit because removing the manifest field breaks both call sites simultaneously and there is no useful intermediate state.
 
