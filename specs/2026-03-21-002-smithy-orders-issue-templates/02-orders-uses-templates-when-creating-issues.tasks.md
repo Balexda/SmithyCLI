@@ -75,7 +75,7 @@
   - Global substitution — every occurrence of every known placeholder is replaced.
   - When `<manifestDir>/templates/orders/rfc.md` is absent the existing per-milestone heredoc is used.
 
-- [ ] **Replace `.tasks.md` per-slice heredoc with template-driven body**
+- [x] **Replace `.tasks.md` per-slice heredoc with template-driven body**
 
   In Phase 5 of `smithy.orders.prompt`, replace the per-slice child body's heredoc with prose that reads `<manifestDir>/templates/orders/tasks.md` (when present) and globally substitutes every placeholder named in the data-model's tasks row. When the template file is absent, fall through to the existing per-slice heredoc.
 

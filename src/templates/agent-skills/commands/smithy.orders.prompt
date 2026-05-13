@@ -559,6 +559,71 @@ fallback used when `<manifestDir>/templates/orders/tasks.md` is absent
 (US4); when present, US2's template-resolution path wins and this
 heredoc is bypassed.
 
+**Template-driven rendering (preferred path).** Before falling back to the
+heredoc below, attempt to render the body from the user-overridable tasks
+template provisioned by `smithy init` under
+`<manifestDir>/templates/orders/tasks.md`. `<manifestDir>` is the value
+captured at the end of Phase 1's "Manifest Discovery and `<manifestDir>`
+Resolution" sub-section — do not re-probe the filesystem; reuse the
+already-resolved value.
+
+For **each** slice extracted in Phase 3, perform the following steps:
+
+1. **Build the tasks-type interpolation context.** Compute a value for every
+   variable named in the data-model's tasks row. Sources:
+
+   - `{{title}}` ← the slice's title (the same `<slice-title>` used in the
+     `[Slice] <slice-title>` issue title).
+   - `{{slice_number}}` ← the integer `N` from the `## Slice N: <Title>`
+     heading (no leading zeros — e.g., `2`).
+   - `{{slice_goal}}` ← the slice's goal statement parsed in Phase 3.
+   - `{{slice_tasks}}` ← the slice's task checklist parsed in Phase 3. This
+     is a multi-line markdown value: it includes the `- [ ]` bullets and
+     any nested prose under each bullet. Preserve the embedded newlines and
+     list structure verbatim during substitution — do not flatten, trim, or
+     collapse the value to a single line.
+   - `{{tasks_path}}` ← the artifact path argument that `smithy.orders` was
+     invoked with (the `.tasks.md` file).
+   - `{{parent_issue}}` ← the `#<n>` reference for the `[Story] <story-title>`
+     issue resolved by the parent-linking `search-issues.sh` call earlier in
+     this `.tasks.md` mapping. If no parent was found, use empty string per
+     the data-model validation rule.
+   - `{{next_step}}` ← the literal string `smithy.forge on this slice` per
+     the data-model next-step mapping (note: this is an English phrase, not
+     a CLI-shaped command with placeholder slots, so there are no nested
+     `{{…}}` references to resolve within it).
+
+2. **Read the template file.** Using the `Read` tool, attempt to read
+   `<manifestDir>/templates/orders/tasks.md`.
+
+3. **If the read succeeds** (the template file exists): perform a
+   **global** substitution of every variable in the context built in
+   step 1 across the entire template body. Every occurrence of every
+   known placeholder must be replaced — not just the first. When the
+   `{{slice_tasks}}` placeholder is replaced, its multi-line markdown
+   value (the parsed `- [ ]` task checklist) must be inserted with its
+   newlines and list structure preserved so the rendered body still
+   renders as a list. Unknown `{{variable}}` names (any token not in
+   the tasks-row context above) are **left as literal text** per the
+   data-model validation rule — do not error and do not delete them.
+
+   Write the rendered body to `/tmp/orders_body.md` and then call:
+
+   ```bash
+   ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Slice] <slice-title>" /tmp/orders_body.md
+   ```
+
+   Skip the heredoc fallthrough below for this slice.
+
+4. **If the read fails** because the file does not exist (i.e.,
+   `<manifestDir>/templates/orders/tasks.md` is absent on disk): fall
+   through to the heredoc body below so `orders` still produces an
+   issue. Do **not** treat any other read failure (permission denied,
+   I/O error) as "absent" — surface those errors and stop.
+
+**Fallthrough heredoc body.** Used only when the template file at
+`<manifestDir>/templates/orders/tasks.md` is absent:
+
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
 # \{{title}}
