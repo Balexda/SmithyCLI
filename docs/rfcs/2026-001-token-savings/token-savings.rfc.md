@@ -102,9 +102,9 @@ M3 F3.2 (sub-agent model downgrades) takes a hard prerequisite on expand-evals U
 
 ### Operational Constraints
 
-- Every slice in M1, M2, and M3 edits `src/templates/` only. No slice regenerates `.claude/` or `.smithy/smithy-manifest.json` as a side effect of its feature or bugfix PR.
+- No M1, M2, or M3 slice regenerates `.claude/` or `.smithy/smithy-manifest.json` as a side effect of its feature or bugfix PR. Source-of-truth template edits land under `src/templates/`; eval-framework changes land under `evals/`; the F3.4 PR-description protocol lands under `CONTRIBUTING.md` — but the committed `.claude/` snapshot is never regenerated except by the dedicated chore PRs described below.
 - F3.5 is the dedicated `.claude/` snapshot-refresh mechanism. Equivalent chore PRs land at the close of M1 and M2 as well — one snapshot refresh per milestone, never per feature.
-- Reference: CLAUDE.md "Source vs. Deployed Artifacts" section; user memory entry `project_gitignore_philosophy.md`.
+- Reference: CLAUDE.md "Source vs. Deployed Artifacts" section.
 - No slice ships un-baselined: every M2 and M3 PR includes a token-delta line in its PR description (per the F3.4 protocol) once F3.4 is merged.
 - Every model downgrade and orchestration change passes the quality regression gate (no structural-eval pass-rate regression, at least two human-reviewed sampled outputs per affected sub-agent showing no quality regression) before the template edit merges.
 
