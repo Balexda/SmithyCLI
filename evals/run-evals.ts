@@ -66,9 +66,16 @@ const { values } = parseArgs({
     timeout: { type: 'string' },
     case: { type: 'string' },
     dump: { type: 'string' },
+    agent: { type: 'string', default: 'claude' },
   },
   strict: false,
 });
+
+const agent = values['agent'] as 'claude' | 'gemini';
+if (agent !== 'claude' && agent !== 'gemini') {
+  console.error(`Error: Invalid agent: ${agent}. Supported agents: claude, gemini`);
+  process.exit(1);
+}
 
 // Optional output capture directory. When set, after each scenario completes
 // the orchestrator writes the canonical extracted text and the raw stream-json
@@ -121,7 +128,7 @@ if (values['timeout'] !== undefined) {
 // ---------------------------------------------------------------------------
 
 try {
-  preflight();
+  preflight(agent);
 } catch (err) {
   console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
@@ -239,6 +246,7 @@ const results: EvalResult[] = [];
 
 for (const scenario of finalScenarios) {
   console.log(`Running scenario: ${scenario.name}`);
+  console.log(`  Agent:   ${agent}`);
   console.log(`  Skill:   ${scenario.skill}`);
   console.log(`  Prompt:  ${scenario.prompt}`);
   console.log(`  Fixture: ${fixtureDir}`);
@@ -253,7 +261,7 @@ for (const scenario of finalScenarios) {
 
   let output;
   try {
-    output = await runScenario(scenario, fixtureDir);
+    output = await runScenario(scenario, fixtureDir, agent);
   } catch (err) {
     console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

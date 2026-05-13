@@ -230,6 +230,10 @@ export async function getComposedTemplates(variant?: string): Promise<ComposedTe
   // standard {{#if variable}} doesn't work — custom block helpers are required.
   renderer.defineHelper('ifAgent', function (this: unknown, ...args: unknown[]) {
     const options = args[args.length - 1] as { fn: (ctx: unknown) => string; inverse: (ctx: unknown) => string };
+    if (args.length > 1) {
+      const agentName = args[0] as string;
+      return variant === agentName ? options.fn(this) : options.inverse(this);
+    }
     return variant ? options.fn(this) : options.inverse(this);
   });
 
