@@ -89,7 +89,7 @@
   - The function never opens, reads, writes, truncates, or stats `<manifestDir>/smithy-manifest.json` or any non-`<type>.md` sibling under `<manifestDir>` (satisfies AS 3 and AS 5).
   - File presence (not content) is the override signal — empty existing files count as "exists" for overwrite gating, per the spec's Edge Cases section ("A template file exists but is empty" bullet).
 
-- [ ] **Add an overwrite prompt for existing orders templates**
+- [x] **Add an overwrite prompt for existing orders templates**
 
   Add a new prompt to `src/interactive.ts` that asks once whether to overwrite existing orders templates at `<manifestDir>/templates/orders/`, defaulting to `no`, with phrasing aligned to the Init Template Provisioning Contract's step 4 message. The prompt is invoked only when at least one of the four canonical files already exists; missing templates are always written without asking.
 
