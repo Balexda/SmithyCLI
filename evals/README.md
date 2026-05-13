@@ -337,6 +337,14 @@ Don't "clean these up." The scout scenario asserts at least one Warning or
 Conflict row is emitted; removing the plants breaks the eval (AS 8.1, 8.2).
 See `evals/fixture/README.md` for the full table.
 
+The fixture README also documents a second category of deliberate fixture
+content — **planted parent artifacts** (representative, non-flawed PRDs /
+RFCs / features-maps / specs consumed by mark/cut/render/ignite/spark
+evals via exact-path `prompt` references) — in its `## Planted Parent
+Artifacts` section. Those plants are governed by the same don't-clean-up
+rule but exist for a different reason (parent-artifact input to a
+producing command, not a scout target).
+
 ## The validation spike
 
 `evals/spike/` is the FR-014 dry run that confirmed the three architectural

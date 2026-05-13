@@ -57,7 +57,7 @@ The evals framework (under `evals/`) — implemented:
 - Baseline regression library (`loadBaseline`, `compareToBaseline` — convention-based JSON loader and pure structural diff; wired into the orchestrator with a committed `strike-health-check.json` baseline)
 - Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
 - Strike and scout end-to-end scenarios (`strikeScenario`, `scoutScenario`) wired into the orchestrator; `--case <name>` filter selects a single scenario by name
-- Reference fixture carries documented planted inconsistencies (`evals/fixture/README.md` — Planted Inconsistencies section) that the scout scenario asserts are detected
+- Reference fixture carries documented planted inconsistencies (`evals/fixture/README.md` — Planted Inconsistencies section) that the scout scenario asserts are detected, and planted parent artifacts (`evals/fixture/README.md` — Planted Parent Artifacts section) consumed by exact-path `prompt` references in individual eval scenarios
 
 Pending:
 - YAML-defined scenario loading (`evals/cases/`)
