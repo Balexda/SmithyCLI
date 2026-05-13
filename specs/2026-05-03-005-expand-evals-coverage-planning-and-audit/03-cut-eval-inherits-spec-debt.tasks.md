@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant the cut-eval spec, data-model, and contracts fixture**
+- [x] **Plant the cut-eval spec, data-model, and contracts fixture**
 
   Create the scenario-isolated directory `evals/fixture/specs/cut-eval/` containing three files conforming to the canonical Smithy spec / data-model / contracts shape: `cut-eval.spec.md`, `cut-eval.data-model.md`, `cut-eval.contracts.md`. The spec must contain at least one user story whose `## Dependency Order` row carries the ID `US1`, AND a `## Specification Debt` table with at least one row whose `ID` is `SD-001` and `Status` is `open` (satisfies AS 3.1 and AS 3.2 preconditions). The data-model and contracts files are minimal but structurally valid instances of their canonical templates so cut's Phase 1 reads succeed. All three files open with a top-of-file comment naming the consuming scenario (`cut-from-spec`) and that the plants are representative (non-flawed).
 
