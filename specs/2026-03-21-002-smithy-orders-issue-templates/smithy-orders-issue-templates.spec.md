@@ -126,7 +126,7 @@ As a developer whose `<manifestDir>/templates/orders/` is missing one or more te
 | US1 | Provision orders templates during init                | —          | specs/2026-03-21-002-smithy-orders-issue-templates/01-provision-orders-templates-during-init.tasks.md |
 | US2 | Orders uses templates when creating issues            | US1        | specs/2026-03-21-002-smithy-orders-issue-templates/02-orders-uses-templates-when-creating-issues.tasks.md |
 | US3 | Deployment location is honored end-to-end             | US1, US2   | specs/2026-03-21-002-smithy-orders-issue-templates/03-deployment-location-honored-end-to-end.tasks.md |
-| US4 | Orders falls back to built-in defaults                | US2        | —        |
+| US4 | Orders falls back to built-in defaults                | US2        | specs/2026-03-21-002-smithy-orders-issue-templates/04-orders-falls-back-to-built-in-defaults.tasks.md |
 
 ## Requirements
 
