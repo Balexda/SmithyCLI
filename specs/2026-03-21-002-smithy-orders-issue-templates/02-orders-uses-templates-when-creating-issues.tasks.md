@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add manifest discovery and manifest-dir resolution phase to orders prompt**
+- [x] **Add manifest discovery and manifest-dir resolution phase to orders prompt**
 
   Insert a new phase in `src/templates/agent-skills/commands/smithy.orders.prompt` that performs manifest discovery without circular reasoning: probe both candidate manifest paths — the repo-local `<targetDir>/.smithy/smithy-manifest.json` and the user-global `~/.smithy/smithy-manifest.json` — using the same two `resolveManifestDir(targetDir, location)` calls (one per `location` value) that `updateAction` and `uninitAction` use in `src/commands/update.ts` and `src/commands/uninit.ts`. Select the active manifest by precedence: **(a) neither exists** → halt with the "run `smithy init` first" error mandated by FR-005; **(b) only repo exists** → use repo; **(c) only user exists** → use user; **(d) both exist** → prefer the repo manifest (it is scoped to this repository and matches the deploy semantics a user got when they ran `smithy init --location repo` here). After selection, validate the self-consistency check used by `update.ts` — the selected manifest's stored `deployLocation` field must equal the `location` it was read from; if they diverge, halt with the same "fix the manifest or rerun `smithy init`" message that `update.ts` emits. The selected `(targetDir, location)` pair drives the final `<manifestDir>` value used by Phase 5 template lookups. Position the phase early enough that Phase 4 duplicate detection never runs against a missing-manifest state.
 
@@ -30,7 +30,7 @@
   - Phase prose forbids reading or modifying `smithy-manifest.json` as a template at either candidate path.
   - The composed `smithy.orders.md` template still satisfies the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` structural assertion in `src/templates.test.ts`.
 
-- [ ] **Replace `.spec.md` Phase 5 heredoc with template-driven rendering**
+- [x] **Replace `.spec.md` Phase 5 heredoc with template-driven rendering**
 
   In Phase 5 of `smithy.orders.prompt`, replace the `.spec.md` mapping's hardcoded heredoc body with prose that reads `<manifestDir>/templates/orders/spec.md` (when present) and globally substitutes every placeholder named in the data-model's spec row. When the template file is absent, fall through to the existing heredoc body so `orders` keeps producing an issue. Substitution must visit every occurrence of every known placeholder across the rendered body so the default template's `{{next_step}}` parenthetical does not leak literal `{{spec_folder}}` / `{{user_story_number}}` text after `{{next_step}}` itself is replaced.
 
@@ -40,7 +40,7 @@
   - Unknown `{{variable}}` names survive as literal text per the data-model validation rule.
   - When `<manifestDir>/templates/orders/spec.md` is absent the existing heredoc body is used.
 
-- [ ] **Assert manifest-load and spec template lookup are present in composed orders prompt**
+- [x] **Assert manifest-load and spec template lookup are present in composed orders prompt**
 
   Extend the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts` with behavioral assertions that the composed `smithy.orders.md` references `resolveManifestDir`, names the `<manifestDir>/templates/orders/` path pattern, and references the `spec.md` template specifically. Match by content, not line number, so the assertion survives prompt reflows.
 
