@@ -28,7 +28,7 @@
   - File contents reference no paths outside `evals/fixture/rfcs/render-eval/` (FR-004 isolation rule)
   - `evals/fixture/src/` and existing scout `## Planted Inconsistencies` rows are untouched (FR-013)
 
-- [ ] **Document the render-eval plant in the fixture README**
+- [x] **Document the render-eval plant in the fixture README**
 
   Extend `evals/fixture/README.md` with one row recording the render-eval plant directory in the `## Planted Parent Artifacts` section. Use a create-if-absent strategy following the US3 Slice 1 precedent: if the section does not yet exist when this task runs (US2 Slice 2 or US3 Slice 1 may or may not have landed first), create it using the schema established by US2 Slice 2 — positioned after `## Planted Inconsistencies` and before `## Usage`, with a one-paragraph intro distinguishing representative plants from scout-flawed plants and a 4-column table (`Path | Owner Scenario | Realism | Purpose`). If the section already exists, append a row only.
 

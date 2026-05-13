@@ -34,6 +34,7 @@ In addition to the scout-flawed plants documented in `## Planted Inconsistencies
 | Path | Owner Scenario | Realism | Purpose |
 |------|----------------|---------|---------|
 | `evals/fixture/prds/ignite-eval/` | `ignite-from-prd` | representative | Canonical PRD fed to `/smithy.ignite` to produce an RFC. |
+| `evals/fixture/rfcs/render-eval/` | `render-from-rfc` | representative | Minimal-but-structurally-valid RFC with one `### Milestone 1:` heading; consumed by `/smithy.render` to validate milestone-to-features decomposition (AS 4.1 precondition). |
 
 ## Usage
 
