@@ -81,8 +81,18 @@ Read the artifact file and extract the items that will become tickets.
 
 Parse the RFC to extract:
 - **RFC title** — from the H1 heading.
-- **Milestones** — look for a Milestones or Phases section; each milestone
-  becomes a child ticket.
+- **Milestones** — look for a Milestones or Phases section. Each
+  `### Milestone N: <Title>` block becomes a child ticket. For each
+  milestone, extract the following fields:
+  - **title** — the `<Title>` portion of `### Milestone N: <Title>`.
+  - **description** — the body of the `**Description**` field inside that
+    milestone block.
+  - **success criteria** — the body of the `**Success Criteria**` field
+    inside that milestone block (scoped to the milestone, **not** any
+    top-level RFC section that happens to share the name). When the
+    milestone has no `**Success Criteria**` block, treat the value as the
+    empty string so the downstream `{{milestone_success_criteria}}`
+    placeholder resolves to empty per the data-model validation rule.
 
 ### For `.features.md`
 

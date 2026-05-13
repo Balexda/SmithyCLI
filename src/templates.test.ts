@@ -509,6 +509,43 @@ describe('getComposedTemplates', () => {
     expect(orders).not.toContain('gh issue list --search');
   });
 
+  // US4 Slice 1 Task 1: the RFC parser in Phase 3 must enumerate
+  // milestone-level success criteria alongside title and description so
+  // downstream fallback bodies can render {{milestone_success_criteria}}.
+  // The data-model row for that variable is `rfc | inline | body of
+  // **Success Criteria**`, and validation says missing content resolves to
+  // empty string. The assertion below is structural: it isolates Phase 3's
+  // `.rfc.md` block and checks that the per-milestone extraction set names
+  // all three fields (title, description, success criteria) without
+  // pinning exact wording.
+  it('smithy.orders Phase 3 RFC parser enumerates milestone success criteria', () => {
+    const orders = composed.commands.get('smithy.orders.md')!;
+    expect(orders).toBeDefined();
+
+    // Slice out the `.rfc.md` parse block from Phase 3 — the section
+    // begins at the `### For \`.rfc.md\`` heading and ends at the next
+    // `### For ` heading (the `.features.md` block).
+    const rfcHeading = '### For `.rfc.md`';
+    const rfcStart = orders.indexOf(rfcHeading);
+    expect(rfcStart).toBeGreaterThan(-1);
+    const nextHeading = orders.indexOf('### For ', rfcStart + rfcHeading.length);
+    expect(nextHeading).toBeGreaterThan(rfcStart);
+    const rfcBlock = orders.slice(rfcStart, nextHeading);
+
+    // Per-milestone extraction set must enumerate title, description, and
+    // success criteria. We match the data-model field name ("success
+    // criteria") and the source pattern (`**Success Criteria**`) so the
+    // assertion fails if either disappears.
+    expect(rfcBlock.toLowerCase()).toContain('title');
+    expect(rfcBlock.toLowerCase()).toContain('description');
+    expect(rfcBlock.toLowerCase()).toContain('success criteria');
+    expect(rfcBlock).toContain('**Success Criteria**');
+
+    // Anchor the success-criteria extraction to the per-milestone block
+    // (`### Milestone N:` pattern) rather than a top-level RFC section.
+    expect(rfcBlock).toMatch(/###\s+Milestone\s+N/i);
+  });
+
   it('smithy.helper-docker is body-only (no scripts) with frontmatter retained', () => {
     const skill = composed.skills.get('smithy.helper-docker');
     expect(skill).toBeDefined();

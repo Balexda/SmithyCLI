@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Extend Phase 3 RFC parser to extract milestone success criteria**
+- [x] **Extend Phase 3 RFC parser to extract milestone success criteria**
 
   Update the `.rfc.md` parsing section of Phase 3 in `src/templates/agent-skills/commands/smithy.orders.prompt` so each milestone yields its success-criteria text alongside the title and description it already captures. The captured value feeds the `{{milestone_success_criteria}}` placeholder used by the new RFC fallback body. If US2 already added this extraction, leave it in place — the acceptance criterion is the observable parser instruction, not a textual edit.
 
