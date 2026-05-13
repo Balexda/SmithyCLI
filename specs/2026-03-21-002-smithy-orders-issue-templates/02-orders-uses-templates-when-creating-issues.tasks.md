@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Replace `.rfc.md` per-milestone child heredoc with template-driven body**
+- [x] **Replace `.rfc.md` per-milestone child heredoc with template-driven body**
 
   In Phase 5 of `smithy.orders.prompt`, replace the per-milestone child body's heredoc with prose that reads `<manifestDir>/templates/orders/rfc.md` (when present) and globally substitutes every placeholder named in the data-model's rfc row. The RFC parent tracking issue (the one-per-RFC `[RFC] <rfc-title>` epic) keeps its existing hardcoded heredoc — that body is explicitly out of scope per AS 2.2. When the template file is absent, fall through to the existing per-milestone heredoc.
 
