@@ -406,8 +406,8 @@ child ticket body.
 
 **Children**: one issue per feature. The body below is the built-in
 fallback used when `<manifestDir>/templates/orders/features.md` is
-absent (US4); when present, US2's template-resolution path wins and
-this heredoc is bypassed.
+absent (US4); template-driven rendering for the features type is
+implemented in Slice 3.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
