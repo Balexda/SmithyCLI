@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant the render-eval RFC fixture**
+- [x] **Plant the render-eval RFC fixture**
 
   Create the scenario-isolated directory `evals/fixture/rfcs/render-eval/` containing `render-eval.rfc.md` — a minimal but structurally valid Smithy RFC. The file must contain at least one `### Milestone 1: <Title>` heading with a milestone description and success-criteria sub-fields so render's Phase 1 milestone-extraction routing succeeds (the AS 4.1 precondition). Conform to the canonical RFC shape parsed by `src/templates/agent-skills/commands/smithy.render.prompt` Phase 1 (read the rendered RFC template, not a guess). Open the file with a top-of-file comment naming the consuming scenario (`render-from-rfc`) and that the plant is `representative` (non-flawed) per the data-model `realism` enum.
 
