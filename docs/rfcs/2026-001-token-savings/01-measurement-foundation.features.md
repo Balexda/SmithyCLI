@@ -28,7 +28,7 @@
 
 ### Feature 1.3a: Per-Case Token Totals in EvalReport
 
-**Description**: Every `npm run eval` report attributes input and output token counts per scenario, surfaced through the full `evals/lib/` substrate: a `usage` field on stream events, token totals on `RunOutput`, `EvalResult`, and `EvalReport`, a per-case token column in `formatReport`'s rendering, the committed baseline file for the existing strike scenario in the new token-aware schema, and the baseline-file schema itself that F1.7's M1-closing sweep authors against. F1.3a is the M1 completion gate.
+**Description**: Every `npm run eval` report attributes input and output token counts per scenario, surfaced through the full `evals/lib/` substrate: a `usage` field on stream events, token totals on `RunOutput`, `EvalResult`, and `EvalReport`, a per-case token column in `formatReport`'s rendering, the committed baseline file for the existing strike scenario in the new token-aware schema, and the baseline-file schema itself that F1.7's M1-closing sweep authors against. F1.3a is the foundational measurement-substrate feature on which the M1 completion gate (F1.7) and every downstream M2 / M3 cost-reduction feature build; it is not itself the milestone gate. Within F1.3, F1.3a is the always-shipping branch — the RFC carves F1.3b as contingent on its SD-001 evidence — but milestone closure is owned by F1.7.
 
 **User-Facing Value**: A power user or contributor running `npm run eval` sees `input: NNNN, output: NNNN` per case in the report and a `baseline:` marker against the committed token envelope for the strike scenario, so any template edit's token impact is visible without re-running history. Downstream cost-reduction features in M2 and M3 inherit a non-speculative measurement substrate.
 
@@ -109,7 +109,7 @@ Recommended specification sequence:
 | F1.3a | Per-Case Token Totals in EvalReport | F1.1 | — |
 | F1.3b | Per-Sub-Agent Token Attribution | F1.3a | — |
 | F1.4 | smithy.fix End-to-End Eval Scenario | F1.3a | — |
-| F1.5 | smithy.forge End-to-End Eval Scenario + Runner git-init (SD-002) | F1.3a | — |
+| F1.5 | smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1.3a | — |
 | F1.6 | JVM Multi-Language Fixture | F1.1 | — |
 | F1.7 | Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1.3a, F1.5, F1.6 | — |
 
