@@ -185,6 +185,51 @@ const EVAL_GIT_USER_EMAIL = 'eval-runner@smithy.local';
 const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
 
 /**
+ * `execFileSync` options for every git invocation inside the eval temp copy.
+ * Silences git stdio and points `GIT_CONFIG_GLOBAL` / `GIT_CONFIG_SYSTEM`
+ * at `/dev/null` so the developer's machine-local git config is neither read
+ * nor required (see `initGitInTempCopy`'s docstring for the full rationale).
+ */
+function evalGitOpts(tmpDir: string) {
+  return {
+    cwd: tmpDir,
+    stdio: ['ignore', 'pipe', 'pipe'] as ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_SYSTEM: '/dev/null',
+    },
+  };
+}
+
+/**
+ * Stage every change in `tmpDir` and commit it with the eval identity. Used
+ * for both the initial fixture baseline (from `initGitInTempCopy`) and the
+ * post-`smithy init` baseline that snapshots the deployed `.claude/` /
+ * `.smithy/` files (from `runScenario`). `--allow-empty` makes the helper
+ * safe to call when nothing changed since the last commit. Identity and
+ * `core.hooksPath` are re-specified via `-c` as a belt-and-suspenders match
+ * to the repo-local config set in `initGitInTempCopy`.
+ */
+function commitAllInTempCopy(tmpDir: string, message: string): void {
+  const gitOpts = evalGitOpts(tmpDir);
+  execFileSync('git', ['add', '-A'], gitOpts);
+  execFileSync(
+    'git',
+    [
+      '-c', `user.email=${EVAL_GIT_USER_EMAIL}`,
+      '-c', `user.name=${EVAL_GIT_USER_NAME}`,
+      '-c', 'core.hooksPath=/dev/null',
+      'commit',
+      '--no-gpg-sign',
+      '--allow-empty',
+      '-m', message,
+    ],
+    gitOpts,
+  );
+}
+
+/**
  * Initialize `tmpDir` as a git repository with a baseline commit, using a
  * repo-local identity. All git stdio is silenced so it does not leak into
  * the runner's own streams. Any failure throws (`execFileSync`'s default),
@@ -209,15 +254,7 @@ const EVAL_GIT_USER_NAME = 'Smithy Eval Runner';
  * (e.g. some CI sandboxes that override config search paths).
  */
 function initGitInTempCopy(tmpDir: string): void {
-  const gitOpts = {
-    cwd: tmpDir,
-    stdio: ['ignore', 'pipe', 'pipe'] as ['ignore', 'pipe', 'pipe'],
-    env: {
-      ...process.env,
-      GIT_CONFIG_GLOBAL: '/dev/null',
-      GIT_CONFIG_SYSTEM: '/dev/null',
-    },
-  };
+  const gitOpts = evalGitOpts(tmpDir);
 
   // `-c init.defaultBranch=main` avoids the "hint: Using 'master' as the
   // name for the initial branch" advice on stderr (silenced anyway) and
@@ -241,21 +278,7 @@ function initGitInTempCopy(tmpDir: string): void {
     gitOpts,
   );
 
-  execFileSync('git', ['add', '-A'], gitOpts);
-
-  execFileSync(
-    'git',
-    [
-      '-c', `user.email=${EVAL_GIT_USER_EMAIL}`,
-      '-c', `user.name=${EVAL_GIT_USER_NAME}`,
-      '-c', 'core.hooksPath=/dev/null',
-      'commit',
-      '--no-gpg-sign',
-      '--allow-empty',
-      '-m', 'eval: fixture baseline',
-    ],
-    gitOpts,
-  );
+  commitAllInTempCopy(tmpDir, 'eval: fixture baseline');
 }
 
 // ---------------------------------------------------------------------------
@@ -349,6 +372,13 @@ export async function runScenario(
       cwd: tmpDir,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+
+    // Commit a second baseline so the worktree is clean when `claude` spawns.
+    // `smithy init` writes `.claude/`, `.smithy/`, and may update `.gitignore`,
+    // which would otherwise leave the temp repo dirty for the whole scenario.
+    // Producing commands that gate behavior on `git status --porcelain` clean
+    // (e.g. refine paths in mark / cut) need this to detect no-op runs.
+    commitAllInTempCopy(tmpDir, 'eval: post-init baseline');
 
     // FR-011: Checksum the source fixture *before* execution.
     const checksumBefore = hashDirectory(fixtureDir);
