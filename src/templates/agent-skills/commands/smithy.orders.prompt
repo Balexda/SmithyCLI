@@ -91,7 +91,7 @@ Parse the RFC to extract:
     inside that milestone block (scoped to the milestone, **not** any
     top-level RFC section that happens to share the name). When the
     milestone has no `**Success Criteria**` block, treat the value as the
-    empty string so the downstream `{{milestone_success_criteria}}`
+    empty string so the downstream `\{{milestone_success_criteria}}`
     placeholder resolves to empty per the data-model validation rule.
 
 ### For `.features.md`

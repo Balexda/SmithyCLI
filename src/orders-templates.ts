@@ -2,28 +2,28 @@
  * Canonical default body templates for `smithy.orders`.
  *
  * These four strings are the source of truth for the "Default Template
- * Content" promised by the smithy-orders-issue-templates spec. They serve
- * two purposes:
+ * Content" promised by the smithy-orders-issue-templates spec. They are
+ * NOT consumed by `smithy.orders` at runtime — the agent reads the
+ * Phase 5 heredoc fallback bodies inline in
+ * `src/templates/agent-skills/commands/smithy.orders.prompt`. The
+ * relationship is a build/test-time invariant, not a runtime import:
  *
- *   1. `smithy init` writes them verbatim to
- *      `<manifestDir>/templates/orders/<type>.md` when provisioning the
- *      user's default templates (US1 — provisioner not yet implemented;
- *      this module exposes only the body strings it will eventually
- *      consume).
- *   2. `smithy.orders` uses them as the built-in fallback when no
- *      `<manifestDir>/templates/orders/<type>.md` exists for an artifact
- *      type (US4). The Phase 5 fallback bodies in
- *      `src/templates/agent-skills/commands/smithy.orders.prompt` mirror
- *      these strings; a parity assertion in `src/templates.test.ts` locks
- *      the two surfaces together so they cannot silently drift.
+ *   - The Phase 5 heredoc fallback bodies in `smithy.orders.prompt`
+ *     mirror these strings. A parity assertion in `src/templates.test.ts`
+ *     (inside the `smithy.orders command delegates GitHub ops to
+ *     smithy.gh-issue scripts` test) verifies that every variable and
+ *     hybrid section header appears in both surfaces, so the two cannot
+ *     silently drift.
+ *   - When US1 ships, `smithy init` will write these strings verbatim to
+ *     `<manifestDir>/templates/orders/<type>.md` as the user's default
+ *     templates. That provisioner (`provisionOrdersTemplates`) lives in
+ *     US1 Slice 2 and is intentionally omitted from this module today —
+ *     only the body string exports are needed to satisfy the parity
+ *     assertion.
  *
  * Placeholder syntax is `{{variable}}` per the spec. The authoritative
  * per-type variable namespace lives in the spec's
  * `smithy-orders-issue-templates.data-model.md` Template Variable table.
- *
- * NOTE: A higher-level `provisionOrdersTemplates` function that writes
- * these defaults to disk during `smithy init` is US1 Slice 2's
- * responsibility and is intentionally omitted here.
  */
 export const ORDERS_DEFAULT_TEMPLATES: Readonly<
   Record<'rfc' | 'features' | 'spec' | 'tasks', string>
