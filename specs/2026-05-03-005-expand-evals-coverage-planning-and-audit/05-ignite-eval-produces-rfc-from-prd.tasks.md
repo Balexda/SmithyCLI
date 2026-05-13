@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant the ignite-eval PRD fixture**
+- [x] **Plant the ignite-eval PRD fixture**
 
   Create the scenario-isolated directory `evals/fixture/prds/ignite-eval/` containing `ignite-eval.prd.md` — a minimal-but-representative Smithy PRD conforming to the canonical PRD template rendered by `src/templates/agent-skills/commands/smithy.spark.prompt` (Phase 3 PRD template, lines ~397–446). The PRD MUST contain the eight canonical sections (`## Problem Statement`, `## Proposed Solution`, `## Target Users`, `## Success Signals`, `## Alternatives / Build-vs-Buy`, `## Assumptions`, `## Specification Debt`, `## Open Questions`) and MUST NOT contain `## Dependency Order` (the spark template explicitly omits that section from PRDs — PRDs sit upstream of the RFC→spec→tasks lineage). Open the file with a top-of-file comment naming the consuming scenario (`ignite-from-prd`) and identifying the plant as `representative` per the data-model `realism` enum. Author against the canonical template rather than minimum-viable content so ignite's Phase 1 PRD-read step has substantive input for downstream clarify/prose dispatches.
 
@@ -29,7 +29,7 @@
   - File contents reference no paths outside `evals/fixture/prds/ignite-eval/` (FR-004 isolation rule)
   - `evals/fixture/src/` and existing scout `## Planted Inconsistencies` rows are untouched (FR-013)
 
-- [ ] **Document the ignite-eval plant in the fixture README**
+- [x] **Document the ignite-eval plant in the fixture README**
 
   Extend `evals/fixture/README.md` with one row recording the ignite-eval plant directory in the `## Planted Parent Artifacts` section. Use a create-if-absent strategy following the US3/US4 precedent: if the section does not yet exist when this task runs (US2 Slice 2 / US3 Slice 1 / US4 Slice 1 may or may not have landed first), create it using the schema established by US2 Slice 2 — positioned after `## Planted Inconsistencies` and before `## Usage`, with a one-paragraph intro distinguishing representative plants from scout-flawed plants and a 4-column table (`Path | Owner Scenario | Realism | Purpose`). If the section already exists, append a row only.
 
