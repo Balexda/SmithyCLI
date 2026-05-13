@@ -27,22 +27,32 @@ skill: /smithy.spark
 prompt: add a CLI flag to dump a scenario's runtime in CSV format
 structural_expectations:
   required_headings:
-    # `## Assumptions` is the most stable ATX-heading anchor available to
-    # spark's terminal output. It appears as a section in Phase 4 Variant A
-    # (`src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4 —
-    # item 2 lists the assumptions bullets) and is also present in the
-    # on-disk PRD body (Sub-phase 3e draws it from the PRD Template
-    # Reference). The model emits this heading consistently in the
-    # strike-precedent one-shot pipeline (see `evals/cases/strike-health-check.yaml`).
+    # Empirical anchor — kept as `## Assumptions` because it is the most
+    # likely ATX heading the model emits when rendering Phase 4 Variant A
+    # item 2 ("**Assumptions** — a bulleted list of the Phase 2
+    # assumptions"). Cross-ref:
+    # `src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4
+    # Variant A + PRD Template Reference (`## Assumptions` appears in both).
     #
-    # SD-014 tracks the empirical-anchor risk: if `claude`'s stream-json
-    # surfaces only the narrative terminal summary and the model drops the
-    # ATX heading in favor of a bold lead-in (`**Assumptions**`), this
-    # check fails and the fallback path is to anchor against a heading
-    # that the PRD-write surfaces into `extracted_text` (e.g.,
-    # `### Alternatives Considered`, present in both survey branches per
-    # the smithy.survey.prompt empty-state fallback block) or to escalate
-    # as a runner enhancement.
+    # KNOWN RISK (SD-014; flagged by PR #333 review):
+    # `validateStructure` matches `required_headings` whole-line and
+    # `extractCanonicalText` returns only `result.text`. Spark's Phase 4
+    # explicitly says "Do not dump the PRD contents into the terminal" and
+    # uses bold-prefix items (`**Assumptions**`) rather than instructing
+    # ATX headings. The on-disk PRD body is in Write tool inputs, which
+    # the runner does not capture. The model MAY still emit `## Assumptions`
+    # by analogy to strike's Phase 4 (which uses ATX), but this is
+    # empirically uncertain until the live `npm run eval -- --case
+    # spark-from-idea` is run.
+    #
+    # Fallback paths if this anchor empirically fails:
+    #   (a) Update `smithy.spark.prompt` Phase 4 Variant A to emit stable
+    #       ATX headings (matching strike's `## Summary`/`## Assumptions`/
+    #       `## Specification Debt`/`## PR` one-shot snippet) — small
+    #       template change, aligns the two one-shot summary contracts.
+    #   (b) Enhance the runner to also validate the on-disk PRD content
+    #       (out of US6 scope per FR-002).
+    # The follow-up choice is left to the empirical-confirmation step.
     - '## Assumptions'
   required_patterns:
     # AS 6.1 terminal marker — the spark template's Phase 1 step 5
@@ -54,22 +64,30 @@ structural_expectations:
     # Cross-ref: src/templates/agent-skills/commands/smithy.spark.prompt
     # Phase 1 step 5 + Phase 4 Variant A item 4.
     - 'docs/prds/'
-    # FR-008 survey alternation — accepts either the populated-survey
-    # `### Alternatives Considered` table heading (AS 6.2, smithy-survey
-    # success path) OR the empty-state stub's opening sentence (AS 6.3,
-    # smithy-survey empty-state fallback). Survey error states are
-    # intentionally not accepted by this pattern — survey errors are
-    # converted to debt items in Phase 2.5, and AS 6.4's positive
-    # PASS-checking assertion is tracked as story-level SD-013 (unsupported
-    # by the current `validateStructure` grammar).
+    # Phase 4 Variant A handoff-hint marker (item 5): the template
+    # instructs spark to close with the blockquote `> Ready for
+    # \`smithy.ignite docs/prds/<YYYY>-<NNN>-<slug>.prd.md\` to expand
+    # this PRD into an RFC.` The substring `smithy.ignite docs/prds/` is
+    # stable across slug/year changes and survives blockquote
+    # wrapping/unwrapping. Cross-ref:
+    # `src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4
+    # Variant A item 5.
     #
-    # The stub-sentence anchor is pinned cross-template to
-    # `src/templates/agent-skills/agents/smithy.survey.prompt` "Empty-state
-    # fallback" block. SD-005 (inherited) tracks the cross-template drift
-    # risk; the reciprocal cross-reference comment in
-    # `smithy.survey.prompt` is added in this PR so a future rename of the
-    # stub sentence updates both call sites together.
-    - '### Alternatives Considered|No comparable off-the-shelf options identified during survey\.'
+    # FR-008 SURVEY ALTERNATION (REMOVED, flagged by PR #333 review):
+    # The original alternation
+    #   `### Alternatives Considered|No comparable off-the-shelf options identified during survey\.`
+    # was anchored to PRD-body content which lives in Write tool inputs,
+    # not in the runner's `result.text`. AS 6.2 / AS 6.3 branch
+    # differentiation is instead handled implicitly via the smithy-survey
+    # sub-agent evidence below — the dispatch resultText is rich and
+    # contains either the populated table or the stub sentence, and
+    # `verifySubAgents` matches patterns against dispatch resultText
+    # (path c). The scenario passes whether smithy-survey returns the
+    # populated table (AS 6.2) or the empty-state stub (AS 6.3), as
+    # required by the slice's PR Outcome. The reciprocal stub-sentence
+    # maintenance comment in `smithy.survey.prompt` remains useful for
+    # SD-005 even though the literal sentence is no longer asserted here.
+    - 'smithy\.ignite docs/prds/'
   forbidden_patterns:
     # FR-011 — strike-convention set: generic refusals / non-skill responses.
     - "I'd be happy to help"
