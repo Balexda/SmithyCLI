@@ -86,8 +86,15 @@ export function hashDirectory(dirPath: string): string {
  * Initialize the temp fixture copy as a git repository with a non-empty HEAD
  * commit, using a repo-local identity. Required because mark/cut/render/ignite
  * scenarios' producing commands invoke `git checkout -b` inside the temp copy
- * (SD-001 / SD-007). Never touches the developer's global git config and never
- * leaks output into the runner's stdout/stderr.
+ * (SD-001 / SD-007).
+ *
+ * Isolation contract: this helper never *writes* to the developer's global
+ * git config (no `--global` calls; identity and signing are scoped via
+ * `--local` and `-c`). Git still *reads* global config — that is unavoidable —
+ * so commit hooks are explicitly skipped via `--no-verify` to prevent a
+ * developer's husky / lint-staged / `core.hooksPath` setup from hanging or
+ * failing eval runs. Git output is captured into Buffers (`['ignore', 'pipe',
+ * 'pipe']`) rather than forwarded to the runner's stdout/stderr.
  *
  * @throws if any git command fails; the caller's `finally` block still runs.
  */
@@ -111,6 +118,9 @@ function initGitInTempCopy(tmpDir: string): void {
 
   // `commit.gpgsign=false` prevents the commit from hanging when the developer
   // has signing enabled globally but the temp repo has no signing key.
+  // `--no-verify` skips pre-commit / commit-msg hooks; the developer's global
+  // `core.hooksPath` (e.g. husky) would otherwise run against the temp repo
+  // and could hang or fail the eval run.
   // `--allow-empty` is a defensible safety net in case a fixture ever contains
   // no stageable files (today the fixture always has files, but the cost of
   // the flag is zero and it removes a class of latent failure).
@@ -118,7 +128,7 @@ function initGitInTempCopy(tmpDir: string): void {
     'git',
     [
       '-c', 'commit.gpgsign=false',
-      'commit', '-q', '--allow-empty', '-m', 'eval fixture initial commit',
+      'commit', '-q', '--no-verify', '--allow-empty', '-m', 'eval fixture initial commit',
     ],
     opts,
   );
@@ -305,8 +315,9 @@ export async function runScenario(
     // Resolves SD-001 / SD-007: mark/cut/render/ignite scenarios run
     // `git checkout -b` inside the temp copy. Without an initial commit,
     // branch creation fails before any output is captured. Initialize git
-    // here, eagerly, using a repo-local identity so the developer's global
-    // git config is never read or written.
+    // here, eagerly, using a repo-local identity; the helper never *writes*
+    // global config and skips commit hooks via `--no-verify` so the eval
+    // run is independent of the developer's husky / `core.hooksPath` setup.
     initGitInTempCopy(tmpDir);
 
     // Deploy Smithy skills into the temp copy. The fixture intentionally does
