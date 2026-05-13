@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Delete legacy YAML templates and path helpers**
+- [x] **Delete legacy YAML templates and path helpers**
 
   Remove the `src/templates/issues/` directory along with the `issueTemplatesSrcDir` constant and `resolveIssueTemplatePath` helper in `src/utils.ts` that target it. Both helpers are reachable only from the legacy flow and must vanish together so no dead exports remain. Per FR-011 in the spec.
 
