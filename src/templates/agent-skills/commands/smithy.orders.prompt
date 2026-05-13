@@ -109,11 +109,17 @@ from Step 2). If they diverge, halt with the same wording style
 `update.ts` emits (see `src/commands/update.ts:168-176`):
 
   > `<location>` manifest declares `deployLocation="<other>"`; refusing to
-  > proceed — fix the manifest or rerun `smithy init`.
+  > run orders — fix the manifest or rerun `smithy init`.
 
 (Substitute the actual values: e.g. ``repo manifest declares
-deployLocation="user"; refusing to proceed — fix the manifest or rerun
+deployLocation="user"; refusing to run orders — fix the manifest or rerun
 `smithy init`.``)
+
+The verb ("refusing to run orders") deliberately mirrors `update.ts`'s
+`refusing to update` wording shape — the surrounding sentence structure
+and the trailing ``— fix the manifest or rerun `smithy init` `` half
+are kept identical so the two halts read as siblings; only the verb
+varies because `orders` is not "updating" anything.
 
 **Step 4 — Compute `<manifestDir>`.** Once selection passes Step 3, set the
 named variable `<manifestDir>` for downstream phases:
