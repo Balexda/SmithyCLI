@@ -34,6 +34,7 @@ In addition to the scout-flawed plants documented in `## Planted Inconsistencies
 | Path | Owner Scenario | Realism | Purpose |
 |------|----------------|---------|---------|
 | `evals/fixture/prds/ignite-eval/` | `ignite-from-prd` | representative | Canonical PRD fed to `/smithy.ignite` to produce an RFC. |
+| `evals/fixture/rfcs/render-eval/` | `render-from-rfc` | representative | Minimal Smithy RFC consumed by the render scenario; exercises render's Phase 1 milestone-extraction routing. |
 
 ## Usage
 

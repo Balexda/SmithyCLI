@@ -143,7 +143,9 @@ evals/
 │   └── strike-health-check.yaml
 ├── fixture/                # Static reference codebase (Express TS API)
 │   ├── src/                # 5-6 file fixture; do NOT npm install in here
-│   └── README.md           # Documents intentional gaps + planted inconsistencies
+│   ├── rfcs/               # Planted RFC parent artifacts (per-scenario-slug subdirs)
+│   │   └── render-eval/    # Owned by render-from-rfc; render scenario input
+│   └── README.md           # Documents intentional gaps, planted inconsistencies, and planted parent artifacts
 ├── lib/                    # Framework internals (all unit-tested)
 │   ├── runner.ts           # spawn claude, copy fixture, checksum, cleanup
 │   ├── parse-stream.ts     # stream-json NDJSON → events / text / dispatches
