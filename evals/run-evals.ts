@@ -44,7 +44,7 @@ import { loadBaseline, compareToBaseline } from './lib/baseline.js';
 import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
 import { loadScenarios } from './lib/scenario-loader.js';
 import { scoutScenario } from './lib/scout-scenario.js';
-import type { CheckResult, EvalResult, EvalScenario } from './lib/types.js';
+import type { CheckResult, EvalAgent, EvalResult, EvalScenario } from './lib/types.js';
 
 // ---------------------------------------------------------------------------
 // Run-wide wall-clock timer — started before any orchestrator work (preflight,
@@ -71,9 +71,9 @@ const { values } = parseArgs({
   strict: false,
 });
 
-const agent = values['agent'] as 'claude' | 'gemini';
-if (agent !== 'claude' && agent !== 'gemini') {
-  console.error(`Error: Invalid agent: ${agent}. Supported agents: claude, gemini`);
+const agent = values['agent'] as EvalAgent;
+if (agent !== 'claude' && agent !== 'gemini' && agent !== 'codex') {
+  console.error(`Error: Invalid agent: ${agent}. Supported agents: claude, gemini, codex`);
   process.exit(1);
 }
 

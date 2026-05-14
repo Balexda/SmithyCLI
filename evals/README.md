@@ -1,7 +1,7 @@
 # Smithy Evals Framework
 
-Tier 3 testing for Smithy agent-skills: invokes deployed `.claude/` skills via the
-headless `claude` CLI against a static reference fixture, then validates the
+Tier 3 testing for Smithy agent-skills: invokes deployed skills via a headless
+agent CLI (`claude`, `gemini`, or `codex exec`) against a static reference fixture, then validates the
 captured output structurally (headings, tables, regex patterns, sub-agent
 dispatch evidence, baseline drift).
 
@@ -22,24 +22,32 @@ CI. It runs locally on demand, or — for unattended runs — via the
 
 ## Prerequisites
 
-1. **`claude` CLI** in `PATH` and authenticated. Any of:
-   - `ANTHROPIC_API_KEY` env var (pay-per-token API access), or
-   - `CLAUDE_CODE_OAUTH_TOKEN` env var (long-lived subscription token,
-     generated via `claude setup-token`), or
-   - Interactive OAuth login: `claude login`.
+1. **A supported agent CLI** in `PATH`:
+
+   | Agent | Requirement |
+   |---|---|
+   | Claude | `claude` authenticated via `ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, or `claude login`. |
+   | Gemini | `gemini` with `GOOGLE_API_KEY`. |
+   | Codex | `codex` configured for local `codex exec`; preflight only checks `codex --version` and does not require an API-key environment variable. |
+
 2. **Node** + the project's npm dependencies: `npm install` from the repo root.
 3. **Built CLI**: `npm run eval` and `npm run test:evals` both pre-build via tsup
    (`preeval` / `pretest:evals` hooks). No manual `npm run build` needed.
 
-The runner's `preflight()` (`evals/lib/runner.ts`) probes `claude --version` and
-auth state before the first scenario; missing tooling exits 1 with a clear
-message.
+The runner's `preflight()` (`evals/lib/runner.ts`) probes the selected CLI and
+required auth state before the first scenario; missing tooling exits 1 with a
+clear message.
 
 ## Running
 
 ```bash
 # Full eval suite (all scenarios in evals/cases/ + the TS-declared scout scenario)
 npm run eval
+
+# Select an agent (default: claude)
+npm run eval -- --agent claude
+npm run eval -- --agent gemini
+npm run eval -- --agent codex
 
 # Single scenario by name (matches EvalScenario.name, not filename)
 npm run eval -- --case strike-health-check
@@ -68,7 +76,7 @@ npm run test:evals
 ```
 
 Runs every `evals/**/*.test.ts` via vitest — covers the parser, runner (mocked
-`claude`), structural validator, scenario loader, baseline library, report
+agent CLIs), structural validator, scenario loader, baseline library, report
 formatter, and the strike + scout scenario shapes. Fast and free; run it any
 time you touch `evals/lib/`.
 
@@ -172,18 +180,20 @@ evals/
 
 ## How a scenario runs
 
-1. **Preflight** — `claude --version` + auth probe (FR-003).
+1. **Preflight** — selected CLI `--version` + provider-specific auth probe
+   (FR-003). Codex intentionally has no API-key env check.
 2. **Load** every `*.yaml` in `evals/cases/` via `loadScenarios`; append the
    TS-declared `scoutScenario` unless a YAML case already claims that name.
 3. **Filter** by `--case` if supplied; otherwise run all.
 4. For each scenario:
    - Copy `evals/fixture/` to a unique `os.tmpdir()/smithy-eval-XXXX/` (FR-002).
-   - Run `node dist/cli.js init -a claude -y` in the temp copy to deploy
-     `.claude/` skills fresh from the current `src/templates/`.
+   - Run `node dist/cli.js init -a <agent> -y` in the temp copy to deploy
+     selected-agent skills fresh from the current `src/templates/`.
    - Checksum the **source** fixture (FR-011, before).
-   - Spawn `claude --output-format stream-json --verbose -p "<skill> <prompt>"`
-     with the temp copy as `cwd`. Default per-case timeout 120 s; SIGTERM →
-     SIGKILL → force-resolve grace ladder.
+   - Spawn the selected agent in headless JSONL mode with the temp copy as
+     `cwd`. Claude/Gemini use slash-command prompt form; Codex uses
+     `codex exec --json` and asks for the deployed `smithy-*` skill by name.
+     Default per-case timeout 120 s; SIGTERM → SIGKILL → force-resolve grace ladder.
    - Parse NDJSON via `parseStreamString`; extract canonical text via
      `extractCanonicalText` (FR-001 precedence: `result.text` if non-empty,
      else concatenated assistant text blocks — never both).
@@ -364,7 +374,9 @@ Per the feature spec — defer until structural evals prove valuable:
   `Smithy Evals` workflow runs on demand only, see
   [Running in CI](#running-in-ci)).
 - **`smithy.orders` evals** (needs GitHub API mocking, which needs Docker).
-- **Gemini / Codex evals** (Tier 3 covers Claude Code execution only).
+- **Provider-specific scenario expectations** beyond the shared structural
+  contract. Gemini and Codex can execute the current scenarios, but captures
+  and baselines are still maintained from the default Claude path.
 - **Automatic baseline regeneration** (manual on purpose so structure changes
   are reviewed).
 

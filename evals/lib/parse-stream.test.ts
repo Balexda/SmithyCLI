@@ -119,6 +119,30 @@ describe('extractCanonicalText', () => {
     ];
     expect(extractCanonicalText(events)).toBe('fallback text');
   });
+
+  it('extracts Codex exec agent_message events', () => {
+    const events: StreamEvent[] = [
+      { type: 'thread.started', thread_id: 'thread_123' },
+      { type: 'agent_message', message: 'Codex final text' },
+    ];
+
+    expect(extractCanonicalText(events)).toBe('Codex final text');
+  });
+
+  it('extracts Codex/OpenAI response item assistant text events', () => {
+    const events: StreamEvent[] = [
+      {
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: 'Item final text' }],
+        },
+      },
+    ];
+
+    expect(extractCanonicalText(events)).toBe('Item final text');
+  });
 });
 
 describe('extractSubAgentDispatches', () => {

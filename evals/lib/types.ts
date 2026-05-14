@@ -5,22 +5,24 @@
  *   specs/2026-04-06-003-smithy-evals-framework/smithy-evals-framework.data-model.md
  *
  * StreamEvent is intentionally loose (optional fields, not a discriminated
- * union) so the parser tolerates new claude CLI event types without code
+ * union) so the parser tolerates new agent CLI event types without code
  * changes.
  */
+
+export type EvalAgent = 'claude' | 'gemini' | 'codex';
 
 // ---------------------------------------------------------------------------
 // Stream parsing types (in-memory, transient)
 // ---------------------------------------------------------------------------
 
 /**
- * A single parsed line from the `claude --output-format stream-json` NDJSON
+ * A single parsed line from agent NDJSON output.
  * output. Typed loosely so that new/unknown event types pass through without
  * requiring code changes.
  */
 export interface StreamEvent {
   type: string;
-  message?: {
+  message?: string | {
     content?: Array<Record<string, unknown>>;
     [key: string]: unknown;
   } | undefined;

@@ -1,8 +1,9 @@
 /**
- * Utilities for parsing `claude --output-format stream-json` output.
+ * Utilities for parsing agent JSONL output.
  *
- * Stream-json output is newline-delimited JSON, one event per line.
- * Each event has a `type` field: system, assistant, user, result, rate_limit_event.
+ * Agent stream output is newline-delimited JSON, one event per line.
+ * Each event has a `type` field. Claude/Gemini emit assistant/user/result
+ * stream-json events; Codex emits exec JSON events such as agent_message.
  *
  * Ported from `evals/spike/parse-stream.mjs` with the following changes:
  * - `parseStreamFile` removed (file I/O is the runner's concern)
@@ -49,12 +50,30 @@ export function parseStreamString(content: string): StreamEvent[] {
 export function extractText(events: StreamEvent[]): string {
   const texts: string[] = [];
   for (const event of events) {
-    if (event.type !== 'assistant') continue;
-    const content = event.message?.content ?? [];
-    for (const block of content) {
-      if (block['type'] === 'text') {
-        texts.push(block['text'] as string);
+    if (event.type === 'assistant' && typeof event.message === 'object') {
+      const content = event.message.content ?? [];
+      for (const block of content) {
+        if (block['type'] === 'text') {
+          texts.push(block['text'] as string);
+        }
       }
+    }
+
+    if (
+      (event.type === 'agent_message' || event.type === 'assistant_message') &&
+      typeof event.message === 'string'
+    ) {
+      texts.push(event.message);
+    }
+
+    const item = getObjectField(event, 'item') ?? getObjectField(event, 'payload');
+    if (
+      item &&
+      (event.type === 'item.completed' || event.type === 'response_item') &&
+      item['type'] === 'message' &&
+      item['role'] === 'assistant'
+    ) {
+      texts.push(...extractContentText(item['content']));
     }
   }
   return texts.join('\n');
@@ -81,8 +100,8 @@ export function extractResult(events: StreamEvent[]): ResultSummary | null {
 export function extractToolUses(events: StreamEvent[]): ToolUse[] {
   const tools: ToolUse[] = [];
   for (const event of events) {
-    if (event.type !== 'assistant') continue;
-    const content = event.message?.content ?? [];
+    if (event.type !== 'assistant' || typeof event.message !== 'object') continue;
+    const content = event.message.content ?? [];
     for (const block of content) {
       if (block['type'] === 'tool_use') {
         tools.push({
@@ -121,8 +140,8 @@ export function extractToolUses(events: StreamEvent[]): ToolUse[] {
 export function extractToolResults(events: StreamEvent[]): ToolResult[] {
   const results: ToolResult[] = [];
   for (const event of events) {
-    if (event.type !== 'user') continue;
-    const content = event.message?.content ?? [];
+    if (event.type !== 'user' || typeof event.message !== 'object') continue;
+    const content = event.message.content ?? [];
     for (const block of content) {
       if (block['type'] === 'tool_result') {
         const blockContent = block['content'];
@@ -216,4 +235,25 @@ export function extractCanonicalText(events: StreamEvent[]): string {
     return result.text;
   }
   return extractText(events);
+}
+
+function getObjectField(
+  object: Record<string, unknown>,
+  field: string,
+): Record<string, unknown> | undefined {
+  const value = object[field];
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function extractContentText(content: unknown): string[] {
+  if (!Array.isArray(content)) return [];
+
+  return (content as Array<Record<string, unknown>>)
+    .flatMap((block) => {
+      if (typeof block['text'] === 'string') return [block['text']];
+      if (typeof block['output_text'] === 'string') return [block['output_text']];
+      return [];
+    });
 }
