@@ -147,10 +147,13 @@ Status tokens: `PASS`, `FAIL`, `TIMEOUT`, `ERROR` (FR-009, AS 9.3). The
 ```
 evals/
 ├── cases/                  # YAML scenario definitions (FR-007)
+│   ├── spark-from-idea.yaml
 │   └── strike-health-check.yaml
 ├── fixture/                # Static reference codebase (Express TS API)
 │   ├── src/                # 5-6 file fixture; do NOT npm install in here
-│   └── README.md           # Documents intentional gaps + planted inconsistencies
+│   ├── rfcs/               # Planted RFC parent artifacts (per-scenario-slug subdirs)
+│   │   └── render-eval/    # Owned by render-from-rfc; render scenario input
+│   └── README.md           # Documents intentional gaps, planted inconsistencies, and planted parent artifacts
 ├── lib/                    # Framework internals (all unit-tested)
 │   ├── runner.ts           # spawn claude, copy fixture, checksum, cleanup
 │   ├── parse-stream.ts     # stream-json NDJSON → events / text / dispatches
@@ -187,6 +190,11 @@ evals/
 3. **Filter** by `--case` if supplied; otherwise run all.
 4. For each scenario:
    - Copy `evals/fixture/` to a unique `os.tmpdir()/smithy-eval-XXXX/` (FR-002).
+   - Initialize the temp copy as a git repository with a baseline commit and a
+     repo-local identity (`eval-runner@smithy.local`). This ensures scenarios
+     whose producing command issues `git checkout -b` (mark, cut, render,
+     ignite) have a valid HEAD before any skill invocation. The source fixture
+     need not be its own git repo.
    - Run `node dist/cli.js init -a <agent> -y` in the temp copy to deploy
      selected-agent skills fresh from the current `src/templates/`.
    - Checksum the **source** fixture (FR-011, before).

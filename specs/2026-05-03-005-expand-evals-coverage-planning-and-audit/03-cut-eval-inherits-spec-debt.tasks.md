@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant the cut-eval spec, data-model, and contracts fixture**
+- [x] **Plant the cut-eval spec, data-model, and contracts fixture**
 
   Create the scenario-isolated directory `evals/fixture/specs/cut-eval/` containing three files conforming to the canonical Smithy spec / data-model / contracts shape: `cut-eval.spec.md`, `cut-eval.data-model.md`, `cut-eval.contracts.md`. The spec must contain at least one user story whose `## Dependency Order` row carries the ID `US1`, AND a `## Specification Debt` table with at least one row whose `ID` is `SD-001` and `Status` is `open` (satisfies AS 3.1 and AS 3.2 preconditions). The data-model and contracts files are minimal but structurally valid instances of their canonical templates so cut's Phase 1 reads succeed. All three files open with a top-of-file comment naming the consuming scenario (`cut-from-spec`) and that the plants are representative (non-flawed).
 
@@ -29,7 +29,7 @@
   - File contents reference no paths outside `evals/fixture/specs/cut-eval/` (FR-004 data-model isolation rule)
   - `evals/fixture/src/` and existing scout `## Planted Inconsistencies` rows are untouched (FR-013)
 
-- [ ] **Document the cut-eval plant in the fixture README**
+- [x] **Document the cut-eval plant in the fixture README**
 
   Extend `evals/fixture/README.md` with one row recording the cut-eval plant directory in the `## Planted Parent Artifacts` section. If that section does not yet exist when this task runs (US2 Slice 2 may or may not have landed first), create it using the schema established by US2 Slice 2: positioned after `## Planted Inconsistencies` and before `## Usage`, with a one-paragraph intro distinguishing representative plants from scout-flawed plants, and a 4-column table (`Path | Owner Scenario | Realism | Purpose`). If the section already exists from US2, append a row only.
 

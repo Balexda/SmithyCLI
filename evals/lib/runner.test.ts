@@ -10,6 +10,11 @@ import type { EvalScenario, StreamEvent } from './types.js';
 // Mock node:child_process
 // ---------------------------------------------------------------------------
 
+// Capture the real `execFileSync` so individual tests can opt into letting
+// `git` invocations pass through while still mocking `node`/`claude` calls.
+const actualChildProcess = await vi.importActual<typeof import('node:child_process')>('node:child_process');
+const realExecFileSync = actualChildProcess.execFileSync;
+
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
   execFileSync: vi.fn(),
@@ -322,6 +327,80 @@ describe('runScenario', () => {
 
       expect(capturedTmpDir).toBeDefined();
       expect(fs.existsSync(capturedTmpDir!)).toBe(false);
+    } finally {
+      fixture.cleanup();
+      mkdtempSpy.mockRestore();
+    }
+  });
+
+  it('initializes git in the temp fixture copy before invoking claude (Slice 1 / SD-001 / SD-007)', async () => {
+    // Route `execFileSync` so git calls hit the real binary (we need a real
+    // `.git/` to inspect) while the smithy `node CLI init` invocation is a
+    // no-op. preflight/auth calls aren't on this path.
+    vi.mocked(execFileSync).mockImplementation(
+      ((command: string, args: readonly string[] | undefined, options: unknown) => {
+        if (command === 'git') {
+          return realExecFileSync(command, args as string[] | undefined, options as Parameters<typeof realExecFileSync>[2]);
+        }
+        // `node CLI_PATH init ...` — no-op success.
+        return Buffer.from('');
+      }) as never,
+    );
+
+    // Capture tmpDir at creation time.
+    const realMkdtempSync = fs.mkdtempSync;
+    let capturedTmpDir: string | undefined;
+    const mkdtempSpy = vi.spyOn(fs, 'mkdtempSync').mockImplementation(
+      (...args: Parameters<typeof fs.mkdtempSync>) => {
+        const result = realMkdtempSync(...args);
+        capturedTmpDir = result;
+        return result;
+      },
+    );
+
+    // When `spawn('claude', ...)` is called, the temp dir MUST already be a
+    // git repo with a HEAD commit. Capture the state at that moment, before
+    // runScenario's `finally` block removes the directory.
+    let gitDirPresentAtSpawn = false;
+    let headOutputAtSpawn = '';
+    let spawnObservedCwd = '';
+
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        spawnObservedCwd = opts.cwd ?? '';
+        if (spawnObservedCwd) {
+          gitDirPresentAtSpawn = fs.existsSync(path.join(spawnObservedCwd, '.git'));
+          try {
+            const head = realExecFileSync('git', ['rev-parse', 'HEAD'], {
+              cwd: spawnObservedCwd,
+              stdio: ['ignore', 'pipe', 'pipe'],
+            });
+            headOutputAtSpawn = head.toString('utf-8').trim();
+          } catch {
+            headOutputAtSpawn = '';
+          }
+        }
+        return child as never;
+      }) as never,
+    );
+
+    const fixture = createRealFixture();
+    try {
+      await runScenario(makeScenario(), fixture.dir);
+
+      // The runner created a temp directory.
+      expect(capturedTmpDir).toBeDefined();
+
+      // The directory the runner invoked claude inside is the same temp dir.
+      expect(spawnObservedCwd).toBe(capturedTmpDir);
+
+      // At the moment claude was invoked, `.git/` existed in the temp copy.
+      expect(gitDirPresentAtSpawn).toBe(true);
+
+      // `git rev-parse HEAD` produced a non-empty 40-char SHA at that moment.
+      expect(headOutputAtSpawn).toMatch(/^[0-9a-f]{40}$/);
     } finally {
       fixture.cleanup();
       mkdtempSpy.mockRestore();

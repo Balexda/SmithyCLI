@@ -215,6 +215,68 @@ describe('CLI init --yes (non-interactive)', () => {
 
 });
 
+describe('CLI init cross-location isolation (orders templates)', () => {
+  let tmpDir: string;
+  let tmpHome: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-test-target-'));
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-test-home-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  // The four orders-template files US1 Slice 2 provisions under
+  // <manifestDir>/templates/orders/. Asserted by name (not by directory
+  // listing) so the isolation contract is observable and stable even if
+  // sibling artifacts land alongside them later.
+  const ORDERS_FILES = ['rfc.md', 'features.md', 'spec.md', 'tasks.md'];
+
+  it('--location repo populates <targetDir>/.smithy/templates/orders/ and leaves <HOME>/.smithy/ alone (AS 3.1)', () => {
+    // HOME / USERPROFILE are overridden via the spawn env (not via mutating
+    // process.env) so the developer's real ~/.smithy/ is never read or
+    // written, and other tests in this file are unaffected. os.homedir()
+    // — which resolveManifestDir() calls for 'user' location — honors HOME
+    // on POSIX and USERPROFILE on Windows, so setting both gives
+    // cross-platform parity on every supported CI runner.
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '--location', 'repo', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+      env: { ...process.env, HOME: tmpHome, USERPROFILE: tmpHome },
+    });
+
+    for (const f of ORDERS_FILES) {
+      expect(fs.existsSync(path.join(tmpDir, '.smithy', 'templates', 'orders', f))).toBe(true);
+    }
+    // The isolated user home must not have been touched for orders templates
+    // when provisioning was directed at the repo location.
+    expect(fs.existsSync(path.join(tmpHome, '.smithy', 'templates', 'orders'))).toBe(false);
+  });
+
+  it('--location user populates <HOME>/.smithy/templates/orders/ and leaves <targetDir>/.smithy/ alone (AS 3.2)', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '--location', 'user', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+      env: { ...process.env, HOME: tmpHome, USERPROFILE: tmpHome },
+    });
+
+    for (const f of ORDERS_FILES) {
+      expect(fs.existsSync(path.join(tmpHome, '.smithy', 'templates', 'orders', f))).toBe(true);
+    }
+    // The target repo's .smithy/ must not contain an orders/ subtree when
+    // provisioning was directed at the user-level home. We assert on the
+    // templates/orders/ subtree specifically (not the entire .smithy/
+    // tree) because under --location user the target .smithy/ may
+    // legitimately hold sibling artifacts (e.g. a smithy-manifest.json
+    // from other init flows). The isolation contract this slice owns is
+    // the orders subtree.
+    expect(fs.existsSync(path.join(tmpDir, '.smithy', 'templates', 'orders'))).toBe(false);
+  });
+});
+
 describe('CLI uninit --yes (non-interactive)', () => {
   let tmpDir: string;
 
@@ -397,6 +459,85 @@ describe('CLI update (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(false);
+  });
+
+  it('replays a claude plus codex manifest without adding gemini', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.agents = ['claude', 'codex'];
+    manifest.files.codex = [];
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    execFileSync('node', [CLI, 'update', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    expect(updated.agents).toEqual(['claude', 'codex']);
+    expect(updated.files.codex.length).toBeGreaterThan(0);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
+  });
+
+  it('refuses to update a manifest with an unsupported agent', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.agents = ['claude', 'future-agent'];
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = spawnSync('node', [CLI, 'update', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const output = result.stdout + result.stderr;
+    expect(result.status).toBe(1);
+    expect(output).toContain('unsupported agent');
+    expect(output).toContain('future-agent');
+    expect(output).toContain('refusing to update');
+    expect(output).not.toContain('Upgrade complete');
+
+    const after = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    expect(after.agents).toEqual(['claude', 'future-agent']);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+  });
+
+  it('refuses to update a manifest with no agents', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.agents = [];
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const result = spawnSync('node', [CLI, 'update', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const output = result.stdout + result.stderr;
+    expect(result.status).toBe(1);
+    expect(output).toContain('manifest contains no agents');
+    expect(output).toContain('refusing to update');
+    expect(output).not.toContain('Upgrade complete');
+
+    const after = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    expect(after.agents).toEqual([]);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
   });
 
   it('manifest version is updated after update', () => {

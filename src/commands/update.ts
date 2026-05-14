@@ -10,7 +10,7 @@ import {
   promptConfirmResetPermissions,
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
-import type { AgentChoice, DeployLocation } from '../interactive.js';
+import type { AgentName, DeployLocation } from '../interactive.js';
 import { toolchains, type LanguageToolchain } from '../permissions.js';
 import { detectPlatforms } from '../platform-detect.js';
 import {
@@ -40,16 +40,29 @@ export interface UpdateOptions {
   resetPermissions?: boolean;
 }
 
-/** Map a manifest's agents array back to an AgentChoice for initAction. */
-function toAgentChoice(agents: string[]): AgentChoice {
-  const sorted = [...agents].sort();
-  if (
-    (sorted.length === 2 && sorted[0] === 'claude' && sorted[1] === 'gemini') ||
-    (sorted.length === 3 && sorted[0] === 'claude' && sorted[1] === 'codex' && sorted[2] === 'gemini')
-  ) {
-    return 'all';
+const knownAgents = new Set<AgentName>(['claude', 'gemini', 'codex']);
+
+/** Validate a manifest's agent list before replaying it through initAction. */
+function validateManifestAgents(
+  manifest: SmithyManifest,
+  location: DeployLocation,
+): AgentName[] | null {
+  if (manifest.agents.length === 0) {
+    console.error(picocolors.red(`  ${location} manifest contains no agents; refusing to update.`));
+    process.exitCode = 1;
+    return null;
   }
-  return agents[0] as AgentChoice;
+
+  const unknown = manifest.agents.filter(agent => !knownAgents.has(agent as AgentName));
+  if (unknown.length > 0) {
+    console.error(picocolors.red(
+      `  ${location} manifest contains unsupported agent${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}; refusing to update.`,
+    ));
+    process.exitCode = 1;
+    return null;
+  }
+
+  return manifest.agents as AgentName[];
 }
 
 /**
@@ -98,9 +111,10 @@ async function confirmVersionChange(
 async function redeployFromManifest(
   manifest: SmithyManifest,
   targetDir: string,
+  agents: AgentName[],
 ): Promise<void> {
   await initAction({
-    agent: toAgentChoice(manifest.agents),
+    agents,
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     sessionTitles: manifest.sessionTitles ?? true,
@@ -177,6 +191,9 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
       continue;
     }
 
+    const agents = validateManifestAgents(manifest, location);
+    if (!agents) return;
+
     const proceed = await confirmVersionChange(manifest, nonInteractive, location);
     if (!proceed) {
       console.log(picocolors.dim(`Skipping ${manifest.deployLocation} manifest update.`));
@@ -198,7 +215,7 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
     // because the file already matches the baseline.
     const drift = reset ? null : collectClaudeDrift(targetDir, location, manifest);
 
-    await redeployFromManifest(manifest, targetDir);
+    await redeployFromManifest(manifest, targetDir, agents);
 
     if (drift) {
       const settingsPath = resolveSettingsPath(targetDir, location);
