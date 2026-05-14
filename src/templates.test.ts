@@ -434,8 +434,10 @@ describe('getComposedTemplates', () => {
   it('smithy.pr-review renders Codex GitHub app actions as the preferred review-thread path', () => {
     const skill = codexComposed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain("Codex's GitHub app connector");
+    expect(skill.prompt).toContain('allowed-tools:');
     expect(skill.prompt).toContain('_list_pull_request_review_threads');
     expect(skill.prompt).toContain('_reply_to_review_comment');
+    expect(skill.prompt).toContain('reply-comment.sh <ownerRepo> <pr-number> <comment-id> <body-file>');
     expect(skill.prompt).toContain('use tool discovery');
     expect(skill.prompt).toContain('The discovered Codex GitHub app actions do not provide a direct "find open PR');
   });
