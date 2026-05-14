@@ -1,0 +1,142 @@
+# Spark end-to-end eval scenario — exercises `/smithy.spark` against a
+# one-line free-text idea and validates that spark produces a PRD without
+# coupling to web-research availability (smithy-survey's populated table OR
+# its documented empty-state stub).
+#
+# Spec:       specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.spec.md
+# Data model: specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md
+# Contracts:  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.contracts.md
+# Tasks:      specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/06-spark-eval-produces-prd-from-idea.tasks.md
+#
+# No fixture plant: spark's input is the idea text in `prompt` (AS 6.1).
+# The data model + contracts §4 explicitly forbid an
+# `evals/fixture/prds/spark-eval/` directory — spark is the only US6-class
+# scenario in this feature with no planted artifact.
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the
+# precedent set by `evals/cases/strike-health-check.yaml`. Single-quoted
+# strings are used for regex patterns so backslash escapes (e.g. \., \r, \n)
+# round-trip byte-for-byte to the parser.
+
+name: spark-from-idea
+skill: /smithy.spark
+# AS 6.1 example: a one-line free-text idea (no path argument). The runner
+# composes the invocation as `/smithy.spark <prompt>` (FR-005 / SD-011
+# verification path); no `evals/fixture/prds/spark-eval/` plant is read or
+# created.
+prompt: add a CLI flag to dump a scenario's runtime in CSV format
+structural_expectations:
+  required_headings:
+    # Empirical anchor — kept as `## Assumptions` because it is the most
+    # likely ATX heading the model emits when rendering Phase 4 Variant A
+    # item 2 ("**Assumptions** — a bulleted list of the Phase 2
+    # assumptions"). Cross-ref:
+    # `src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4
+    # Variant A + PRD Template Reference (`## Assumptions` appears in both).
+    #
+    # KNOWN RISK (SD-014; flagged by PR #333 review):
+    # `validateStructure` matches `required_headings` whole-line and
+    # `extractCanonicalText` returns only `result.text`. Spark's Phase 4
+    # explicitly says "Do not dump the PRD contents into the terminal" and
+    # uses bold-prefix items (`**Assumptions**`) rather than instructing
+    # ATX headings. The on-disk PRD body is in Write tool inputs, which
+    # the runner does not capture. The model MAY still emit `## Assumptions`
+    # by analogy to strike's Phase 4 (which uses ATX), but this is
+    # empirically uncertain until the live `npm run eval -- --case
+    # spark-from-idea` is run.
+    #
+    # Fallback paths if this anchor empirically fails:
+    #   (a) Update `smithy.spark.prompt` Phase 4 Variant A to emit stable
+    #       ATX headings (matching strike's `## Summary`/`## Assumptions`/
+    #       `## Specification Debt`/`## PR` one-shot snippet) — small
+    #       template change, aligns the two one-shot summary contracts.
+    #   (b) Enhance the runner to also validate the on-disk PRD content
+    #       (out of US6 scope per FR-002).
+    # The follow-up choice is left to the empirical-confirmation step.
+    - '## Assumptions'
+  required_patterns:
+    # AS 6.1 terminal marker — the spark template's Phase 1 step 5
+    # invariant: every successful PRD write targets
+    # `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`, and Phase 4 Variant A item 4
+    # ("PRD path") emits the literal path to disk in the terminal summary.
+    # The `docs/prds/` prefix is the most stable substring across both
+    # variants and across slug/year changes.
+    # Cross-ref: src/templates/agent-skills/commands/smithy.spark.prompt
+    # Phase 1 step 5 + Phase 4 Variant A item 4.
+    - 'docs/prds/'
+    # Phase 4 Variant A handoff-hint marker (item 5): the template
+    # instructs spark to close with the blockquote `> Ready for
+    # \`smithy.ignite docs/prds/<YYYY>-<NNN>-<slug>.prd.md\` to expand
+    # this PRD into an RFC.` The substring `smithy.ignite docs/prds/` is
+    # stable across slug/year changes and survives blockquote
+    # wrapping/unwrapping. Cross-ref:
+    # `src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4
+    # Variant A item 5.
+    #
+    # FR-008 SURVEY ALTERNATION (REMOVED, flagged by PR #333 review):
+    # The original alternation
+    #   `### Alternatives Considered|No comparable off-the-shelf options identified during survey\.`
+    # was anchored to PRD-body content which lives in Write tool inputs,
+    # not in the runner's `result.text`. AS 6.2 / AS 6.3 branch
+    # differentiation is instead handled implicitly via the smithy-survey
+    # sub-agent evidence below — the dispatch resultText is rich and
+    # contains either the populated table or the stub sentence, and
+    # `verifySubAgents` matches patterns against dispatch resultText
+    # (path c). The scenario passes whether smithy-survey returns the
+    # populated table (AS 6.2) or the empty-state stub (AS 6.3), as
+    # required by the slice's PR Outcome. The reciprocal stub-sentence
+    # maintenance comment in `smithy.survey.prompt` remains useful for
+    # SD-005 even though the literal sentence is no longer asserted here.
+    - 'smithy\.ignite docs/prds/'
+  forbidden_patterns:
+    # FR-011 — strike-convention set: generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'
+# Sub-Agent Evidence — exactly three entries (FR-009, FR-016 of the original
+# evals spec). Spark's template
+# (`src/templates/agent-skills/commands/smithy.spark.prompt`) dispatches
+# smithy-clarify (Phase 2), smithy-survey (Phase 2.5), and smithy-prose
+# (Phase 3a). It deliberately does NOT dispatch smithy-plan-review —
+# Phase 3 sub-phase 3f's closing paragraph states "There is no harmonize
+# pass for spark." (verified by grep against the full template).
+#
+# The spec's Sub-Agent Evidence Matrix and contracts §3 Per-Command
+# Required Sub-Agent Evidence table previously listed smithy-plan-review
+# for spark; that listing has been corrected in this PR alongside the YAML
+# (resolves SD-016). Template truth — not the matrix — is the source of
+# truth for which sub-agents to verify.
+sub_agent_evidence:
+  # smithy-survey: dispatch-description marker. Per the strike-precedent
+  # shape (clarify uses `^[Cc]larif`), the LLM's summary phrase always
+  # opens with the dispatch verb form when routing to smithy-survey
+  # (e.g., "Survey off-the-shelf alternatives", "Survey alternatives for
+  # the idea"). `^[Ss]urvey` anchors at description start and tolerates
+  # both capitalizations.
+  - agent: smithy-survey
+    pattern: '^[Ss]urvey'
+  # smithy-clarify: identical marker to strike — clarify dispatches share
+  # the description-start verb form ("Clarify the PRD intake",
+  # "clarify ambiguities"). See `evals/cases/strike-health-check.yaml` for
+  # the canonical precedent.
+  - agent: smithy-clarify
+    pattern: '^[Cc]larif'
+  # smithy-prose: resultText leading-heading marker. Spark Phase 3a
+  # dispatches smithy-prose with `section_assignment: "PRD Problem
+  # Statement"`. The smithy-prose output format
+  # (`src/templates/agent-skills/agents/smithy.prose.prompt` Output Format)
+  # instructs the agent to "Begin directly with the first Markdown
+  # heading" — for this section assignment the natural opening heading is
+  # `## Problem Statement` (Sub-phase 3a says spark adds the heading only
+  # "if smithy-prose did not supply the heading"). Anchored at resultText
+  # start; matches via verifySubAgents path (c) for the dispatch.
+  #
+  # SD-015 tracks the empirical-marker risk: if prose omits the leading
+  # heading and emits prose paragraphs directly, the fallback per
+  # sibling-precedent is to swap to the dispatch-description marker
+  # `^[Dd]raft` (the natural verb the orchestrator would describe a prose
+  # dispatch with — e.g., "Draft PRD Problem Statement"). Update this
+  # comment when the empirical fallback fires.
+  - agent: smithy-prose
+    pattern: '^## Problem Statement'

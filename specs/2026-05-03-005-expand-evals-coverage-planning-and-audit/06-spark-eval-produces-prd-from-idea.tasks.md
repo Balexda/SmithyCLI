@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Author the spark-from-idea YAML scenario**
+- [x] **Author the spark-from-idea YAML scenario**
 
   Create `evals/cases/spark-from-idea.yaml` conforming to the `EvalScenario` shape in `evals/lib/types.ts`, mirroring the precedent in `evals/cases/strike-health-check.yaml`. The scenario invokes `/smithy.spark` with a one-line free-text idea (AS 6.1 example: `add a CLI flag to dump a scenario's runtime in CSV format`); no fixture path appears in `prompt`. Structural assertions anchor to template-stable markers from `src/templates/agent-skills/commands/smithy.spark.prompt` Phase 4 Variant A and the PRD template reference, accounting for Phase 4 emitting prose rather than ATX headings (see SD-014). Sub-agent evidence covers exactly three agents — the spec's Sub-Agent Evidence Matrix entry for smithy-plan-review is overridden by template truth (see SD-016). The FR-008 survey alternation is implemented as a single regex alternation in `required_patterns` accepting either the populated table header OR the empty-state stub literal.
 
