@@ -181,6 +181,11 @@ evals/
 3. **Filter** by `--case` if supplied; otherwise run all.
 4. For each scenario:
    - Copy `evals/fixture/` to a unique `os.tmpdir()/smithy-eval-XXXX/` (FR-002).
+   - Initialize the temp copy as a git repository with a baseline commit and a
+     repo-local identity (`eval-runner@smithy.local`). This ensures scenarios
+     whose producing command issues `git checkout -b` (mark, cut, render,
+     ignite) have a valid HEAD before any skill invocation. The source fixture
+     need not be its own git repo.
    - Run `node dist/cli.js init -a claude -y` in the temp copy to deploy
      `.claude/` skills fresh from the current `src/templates/`.
    - Checksum the **source** fixture (FR-011, before).
