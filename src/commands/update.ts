@@ -43,8 +43,26 @@ export interface UpdateOptions {
 const knownAgents = new Set<AgentName>(['claude', 'gemini', 'codex']);
 
 /** Validate a manifest's agent list before replaying it through initAction. */
-function toAgentNames(agents: string[]): AgentName[] {
-  return agents.filter((agent): agent is AgentName => knownAgents.has(agent as AgentName));
+function validateManifestAgents(
+  manifest: SmithyManifest,
+  location: DeployLocation,
+): AgentName[] | null {
+  if (manifest.agents.length === 0) {
+    console.error(picocolors.red(`  ${location} manifest contains no agents; refusing to update.`));
+    process.exitCode = 1;
+    return null;
+  }
+
+  const unknown = manifest.agents.filter(agent => !knownAgents.has(agent as AgentName));
+  if (unknown.length > 0) {
+    console.error(picocolors.red(
+      `  ${location} manifest contains unsupported agent${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}; refusing to update.`,
+    ));
+    process.exitCode = 1;
+    return null;
+  }
+
+  return manifest.agents as AgentName[];
 }
 
 /**
@@ -93,9 +111,10 @@ async function confirmVersionChange(
 async function redeployFromManifest(
   manifest: SmithyManifest,
   targetDir: string,
+  agents: AgentName[],
 ): Promise<void> {
   await initAction({
-    agents: toAgentNames(manifest.agents),
+    agents,
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     sessionTitles: manifest.sessionTitles ?? true,
@@ -172,6 +191,9 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
       continue;
     }
 
+    const agents = validateManifestAgents(manifest, location);
+    if (!agents) return;
+
     const proceed = await confirmVersionChange(manifest, nonInteractive, location);
     if (!proceed) {
       console.log(picocolors.dim(`Skipping ${manifest.deployLocation} manifest update.`));
@@ -193,7 +215,7 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
     // because the file already matches the baseline.
     const drift = reset ? null : collectClaudeDrift(targetDir, location, manifest);
 
-    await redeployFromManifest(manifest, targetDir);
+    await redeployFromManifest(manifest, targetDir, agents);
 
     if (drift) {
       const settingsPath = resolveSettingsPath(targetDir, location);
