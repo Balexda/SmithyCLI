@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Plant the flawed audit-eval spec fixture**
+- [x] **Plant the flawed audit-eval spec fixture**
 
   Create `evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md` as a complete-but-deliberately-flawed spec matching the canonical spec template, then delete the `## Dependency Order` section entirely. Open the file with a multi-line comment block per the data model's `flawed` plant rule, naming the violated checklist invariant from `src/templates/agent-skills/snippets/audit-checklist-spec.md` and instructing maintainers not to restore the section.
 
