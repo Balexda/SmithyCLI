@@ -143,6 +143,20 @@ describe('extractCanonicalText', () => {
 
     expect(extractCanonicalText(events)).toBe('Item final text');
   });
+
+  it('extracts Codex item.completed agent_message text events', () => {
+    const events: StreamEvent[] = [
+      {
+        type: 'item.completed',
+        item: {
+          type: 'agent_message',
+          text: 'Completed item text',
+        },
+      },
+    ];
+
+    expect(extractCanonicalText(events)).toBe('Completed item text');
+  });
 });
 
 describe('extractSubAgentDispatches', () => {

@@ -70,6 +70,15 @@ export function extractText(events: StreamEvent[]): string {
     if (
       item &&
       (event.type === 'item.completed' || event.type === 'response_item') &&
+      item['type'] === 'agent_message' &&
+      typeof item['text'] === 'string'
+    ) {
+      texts.push(item['text']);
+    }
+
+    if (
+      item &&
+      (event.type === 'item.completed' || event.type === 'response_item') &&
       item['type'] === 'message' &&
       item['role'] === 'assistant'
     ) {
