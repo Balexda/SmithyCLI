@@ -338,13 +338,16 @@ For **each** milestone extracted in Phase 3, perform the following steps:
 3. **If the read succeeds** (the template file exists): perform a
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
-   known placeholder must be replaced — not just the first. This single
-   pass also catches any nested `{{rfc_path}}` / `{{milestone_number}}`
-   references inside the rendered `{{next_step}}` value or in any
-   parenthetical aside, so no leftover `{{…}}` tokens for known variables
-   survive in the output. Unknown `{{variable}}` names (any token not in
-   the rfc-row context above) are **left as literal text** per the
-   data-model validation rule — do not error and do not delete them.
+   known placeholder must be replaced — not just the first. Because
+   `{{next_step}}`'s value was pre-composed in step 1 with `<rfc_path>`
+   and `<milestone_number>` already substituted, the rendered
+   `{{next_step}}` introduces no new placeholders into the output —
+   this single pass only replaces tokens that were already present in
+   the template body, including any user-customised parenthetical aside
+   that references `{{rfc_path}}` or `{{milestone_number}}` directly.
+   Unknown `{{variable}}` names (any token not in the rfc-row context
+   above) are **left as literal text** per the data-model validation
+   rule — do not error and do not delete them.
 
    Write the rendered body to `/tmp/orders_body.md` and then call:
 
@@ -404,10 +407,12 @@ path. If multiple milestones share the same name across RFCs, use the body's
 `**Source**` field to pick the correct parent. If found, reference it in the
 child ticket body.
 
-**Children**: one issue per feature. The body below is the built-in
-fallback used when `<manifestDir>/templates/orders/features.md` is
-absent (US4); template-driven rendering for the features type is
-implemented in Slice 3.
+**Children**: one issue per feature. Template-driven rendering for
+the features type is implemented in Slice 3 — until then, the heredoc
+body below is always used, regardless of whether
+`<manifestDir>/templates/orders/features.md` exists on disk. Any
+`features.md` file in `<manifestDir>/templates/orders/` is ignored by
+the current `.features.md` mapping.
 
 ```bash
 cat > /tmp/orders_body.md << 'BODY'
