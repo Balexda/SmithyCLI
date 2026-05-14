@@ -110,6 +110,9 @@ describe('deploy', () => {
     expect(fs.existsSync(path.join(prReviewDir, 'scripts', 'reply-comment.sh'))).toBe(true);
 
     const skillMd = fs.readFileSync(path.join(prReviewDir, 'SKILL.md'), 'utf8');
+    expect(skillMd).toContain('allowed-tools:');
+    expect(skillMd).toContain('_list_pull_request_review_threads');
+    expect(skillMd).toContain('_reply_to_review_comment');
     expect(skillMd).toContain('./.agents/skills/smithy.pr-review/scripts/find-pr.sh');
     expect(skillMd).not.toContain('${CLAUDE_SKILL_DIR}');
     expect(skillMd).not.toContain('./.gemini/skills/smithy.pr-review');
