@@ -43,7 +43,10 @@ export interface UpdateOptions {
 /** Map a manifest's agents array back to an AgentChoice for initAction. */
 function toAgentChoice(agents: string[]): AgentChoice {
   const sorted = [...agents].sort();
-  if (sorted.length === 2 && sorted[0] === 'claude' && sorted[1] === 'gemini') {
+  if (
+    (sorted.length === 2 && sorted[0] === 'claude' && sorted[1] === 'gemini') ||
+    (sorted.length === 3 && sorted[0] === 'claude' && sorted[1] === 'codex' && sorted[2] === 'gemini')
+  ) {
     return 'all';
   }
   return agents[0] as AgentChoice;

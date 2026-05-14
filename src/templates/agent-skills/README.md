@@ -8,7 +8,8 @@ repositories. Templates are written as [Dotprompt](https://firebase.google.com/d
 
 ```
 agent-skills/
-  commands/    Slash commands (invocable as /smithy.<name>)
+  commands/    Slash commands / project skills (invocable as /smithy.<name>
+               where supported, or as loaded skills)
   prompts/     Reference prompts (readable by the AI, not invocable)
   agents/      Sub-agent definitions (dispatched by parent commands)
   skills/      Lazy-loaded operational skills (frontmatter visible, body
@@ -26,8 +27,9 @@ See the README in each subdirectory for details on its contents and conventions.
 - **Body**: Markdown with Handlebars expressions. Dotprompt resolves partials
   (`{{>snippet-name}}`) and conditionals (`{{#ifAgent}}...{{/ifAgent}}`) at
   deploy time.
-- **Deploy transform**: Frontmatter is stripped when deploying to Claude
-  (kept for Gemini skills). Files are renamed from `.prompt` to `.md`.
+- **Deploy transform**: Frontmatter is stripped when deploying Claude
+  commands/prompts (kept for Gemini and Codex skills). Files are renamed from
+  `.prompt` to `.md`.
 
 ## Workflow Pipeline
 

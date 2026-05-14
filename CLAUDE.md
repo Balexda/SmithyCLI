@@ -10,8 +10,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 |-------|---------|-------------------|---------------------|-------------|
 | Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/` | `.claude/settings.json` |
 | Gemini | `.gemini/skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | (not deployed) | `.gemini/settings.json` |
-
-> **Note:** Codex support exists in the codebase (`src/agents/codex.ts`) but is not currently exposed as a CLI option. It will be revisited once Codex's skill/prompt conventions are better understood.
+| Codex | `tools/codex/prompts/` and `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` | (not deployed) | `.codex/rules/default.rules` |
 
 `smithy uninit` removes all deployed artifacts (but preserves config/permissions).
 
@@ -21,7 +20,7 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 - **CLI entry**: `src/cli.ts` — Commander setup and arg parsing.
 - **Commands**: `src/commands/init.ts`, `src/commands/uninit.ts`, `src/commands/update.ts` — action handlers.
-- **Agent deployers**: `src/agents/{claude,gemini}.ts` — per-agent deploy/remove logic. (`codex.ts` exists but is not exposed in the CLI yet.)
+- **Agent deployers**: `src/agents/{claude,gemini,codex}.ts` — per-agent deploy/remove logic.
 - **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
 - **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
 - **Orders body templates**: `src/orders-templates.ts` — exports the four canonical default body strings (`rfc` / `features` / `spec` / `tasks`) plus the `provisionOrdersTemplates` function that `smithy init` calls to write them under `<manifestDir>/templates/orders/<type>.md`. The same defaults double as the built-in fallback bodies in `smithy.orders` (parity asserted in `src/templates.test.ts`).
@@ -100,11 +99,11 @@ Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
 - **`agents/`** — sub-agent definitions (deployed to `.claude/agents/` only, with frontmatter intact).
-- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/`. Deployed to `.claude/skills/<name>/SKILL.md` (+ executable `scripts/`).
+- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/`. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` where present).
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility
-The same template source serves all three agents. Gemini keeps frontmatter (for skill metadata). Claude/Codex strip it. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
+The same template source serves all three agents. Gemini and Codex keep frontmatter for skill metadata; Claude strips it from commands/prompts while retaining it for sub-agents and skills. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
 
 ### Artifact Hierarchy and Relationships
 

@@ -5,11 +5,36 @@ import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter, par
 import { permissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
+const SMITHY_CODEX_RULES_BEGIN = '# BEGIN SMITHY CODEX RULES';
+const SMITHY_CODEX_RULES_END = '# END SMITHY CODEX RULES';
+const SMITHY_CODEX_CONFIG_BEGIN = '# BEGIN SMITHY CODEX CONFIG';
+const SMITHY_CODEX_CONFIG_END = '# END SMITHY CODEX CONFIG';
+
+const CODEX_CONFIG_BLOCK = [
+  SMITHY_CODEX_CONFIG_BEGIN,
+  'approval_policy = "on-request"',
+  'sandbox_mode = "workspace-write"',
+  'approvals_reviewer = "auto_review"',
+  'web_search = "cached"',
+  SMITHY_CODEX_CONFIG_END,
+  '',
+].join('\n');
+
+const SMITHY_SKILL_SCRIPT_RULES = [
+  './.agents/skills/smithy.pr-review/scripts/find-pr.sh',
+  './.agents/skills/smithy.pr-review/scripts/get-comments.sh',
+  './.agents/skills/smithy.pr-review/scripts/reply-comment.sh',
+  './.agents/skills/smithy.gh-issue/scripts/check-env.sh',
+  './.agents/skills/smithy.gh-issue/scripts/search-issues.sh',
+  './.agents/skills/smithy.gh-issue/scripts/create-issue.sh',
+  './.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh',
+];
+
 /**
  * Deploy Codex templates. Returns the list of deployed file paths (relative to targetDir).
  */
 export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
-  const templates = await getComposedTemplates();
+  const templates = await getComposedTemplates('codex');
   const deployedFiles: string[] = [];
 
   // Deploy prompts -> tools/codex/prompts/
@@ -24,16 +49,33 @@ export async function deploy(targetDir: string, initPermissions: boolean): Promi
     deployedFiles.push(path.relative(targetDir, dest));
   }
 
-  // Deploy commands as Codex skills -> .agents/skills/<name>/SKILL.md
+  // Deploy commands, reference prompts, and operational skills as Codex skills.
   const skillsDir = path.join(targetDir, '.agents', 'skills');
-  for (const [, content] of templates.commands) {
-    const name = parseFrontmatterName(content);
-    if (name) {
-      const skillPath = path.join(skillsDir, name);
-      if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
-      const dest = path.join(skillPath, 'SKILL.md');
-      fs.writeFileSync(dest, content);
-      deployedFiles.push(path.relative(targetDir, dest));
+  const deployAsSkill = (content: string, name?: string): string | undefined => {
+    const skillName = name ?? parseFrontmatterName(content);
+    if (!skillName) return undefined;
+    const skillPath = path.join(skillsDir, skillName);
+    if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
+    const dest = path.join(skillPath, 'SKILL.md');
+    fs.writeFileSync(dest, content);
+    deployedFiles.push(path.relative(targetDir, dest));
+    return skillPath;
+  };
+
+  for (const [, content] of templates.commands) deployAsSkill(content);
+  for (const [, content] of templates.prompts) deployAsSkill(content);
+
+  for (const [skillName, skill] of templates.skills) {
+    const skillPath = deployAsSkill(skill.prompt, skillName);
+    if (skillPath && skill.scripts.size > 0) {
+      const scriptsDir = path.join(skillPath, 'scripts');
+      if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
+      for (const [filename, content] of skill.scripts) {
+        const dest = path.join(scriptsDir, filename);
+        fs.writeFileSync(dest, content);
+        fs.chmodSync(dest, 0o755);
+        deployedFiles.push(path.relative(targetDir, dest));
+      }
     }
   }
 
@@ -58,7 +100,7 @@ export function removeLegacy(targetDir: string): number {
   const skillsDir = path.join(targetDir, '.agents', 'skills');
   if (fs.existsSync(skillsDir)) {
     for (const entry of fs.readdirSync(skillsDir)) {
-      if (entry.startsWith('smithy-')) {
+      if (entry.startsWith('smithy-') || entry.startsWith('smithy.')) {
         const entryPath = path.join(skillsDir, entry);
         if (fs.statSync(entryPath).isDirectory() && fs.existsSync(path.join(entryPath, 'SKILL.md'))) {
           if (removeIfExists(entryPath)) removedCount++;
@@ -71,46 +113,108 @@ export function removeLegacy(targetDir: string): number {
 }
 
 function writePermissions(targetDir: string): void {
-  const codexBaseDir = path.join(targetDir, '.codex');
-  if (!fs.existsSync(codexBaseDir)) fs.mkdirSync(codexBaseDir, { recursive: true });
+  const codexDir = path.join(targetDir, '.codex');
+  if (!fs.existsSync(codexDir)) fs.mkdirSync(codexDir, { recursive: true });
 
-  const configPath = path.join(codexBaseDir, 'config.toml');
+  const configPath = path.join(codexDir, 'config.toml');
+  const existingConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
+  const nextConfig = upsertManagedTopLevelConfigBlock(existingConfig, CODEX_CONFIG_BLOCK);
+  fs.writeFileSync(configPath, nextConfig);
 
-  let tomlContent = `[approvals]\npolicy = "auto"\n\n`;
+  const rulesDir = path.join(codexDir, 'rules');
+  if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
+
+  const rulesPath = path.join(rulesDir, 'default.rules');
+  const rulesBlock = [
+    SMITHY_CODEX_RULES_BEGIN,
+    ...buildCodexRules().map(formatPrefixRule),
+    SMITHY_CODEX_RULES_END,
+    '',
+  ].join('\n');
+
+  const existing = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath, 'utf8') : '';
+  const next = upsertManagedRulesBlock(existing, rulesBlock);
+
+  fs.writeFileSync(rulesPath, next);
+  console.log(picocolors.blue(`  Added Codex Auto-review defaults to ${configPath}`));
+  console.log(picocolors.blue(`  Added default permissions to ${rulesPath}`));
+}
+
+function buildCodexRules(): string[][] {
+  const patterns = SMITHY_SKILL_SCRIPT_RULES.map(script => [script]);
 
   for (const [cmd, value] of Object.entries(permissions)) {
     if (Array.isArray(value)) {
-      if (value.length === 0) {
-        tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs = []\n\n`;
-      } else if (value.includes('*')) {
-        tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs_startswith = []\n\n`;
-      } else {
-        const hasWildcard = value.some(arg => arg.includes('*'));
-        if (hasWildcard) {
-          const cleanArgs = value.map(arg => arg.replace('*', '')).filter(arg => arg !== '');
-          tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs_startswith = ${JSON.stringify(cleanArgs)}\n\n`;
-        } else {
-          tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs = ${JSON.stringify(value)}\n\n`;
-        }
-      }
+      if (value.length === 0) patterns.push([cmd]);
+      for (const arg of value) patterns.push(buildPrefixPattern(cmd, arg));
     } else {
       for (const [sub, args] of Object.entries(value)) {
-        const subParts = sub.split(' ');
-        const fullArgs = [...subParts, ...args];
-        const hasWildcard = fullArgs.some(arg => arg.includes('*'));
-
-        if (hasWildcard) {
-          const cleanArgs = fullArgs.map(arg => arg.replace('*', '')).filter(arg => arg !== '');
-          tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs_startswith = ${JSON.stringify(cleanArgs)}\n\n`;
-        } else {
-          tomlContent += `[[approvals.rules]]\ncommand = "${cmd}"\nargs = ${JSON.stringify(fullArgs)}\n\n`;
-        }
+        if (args.length === 0) patterns.push(buildPrefixPattern(cmd, sub));
+        for (const arg of args) patterns.push(buildPrefixPattern(cmd, sub, arg));
       }
     }
   }
 
-  if (!fs.existsSync(configPath) || !fs.readFileSync(configPath, 'utf8').includes('[approvals]')) {
-    fs.appendFileSync(configPath, (fs.existsSync(configPath) ? '\n' : '') + tomlContent);
-    console.log(picocolors.blue(`  Added default permissions to ${configPath}`));
+  const seen = new Set<string>();
+  return patterns.filter(pattern => {
+    const key = JSON.stringify(pattern);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildPrefixPattern(command: string, ...parts: string[]): string[] {
+  const tokens = [command];
+
+  for (const part of parts) {
+    for (const token of part.split(/\s+/)) {
+      const cleanToken = token.trim().replace(/\*+$/, '');
+      if (cleanToken && cleanToken !== '*') tokens.push(cleanToken);
+    }
   }
+
+  return tokens;
+}
+
+function formatPrefixRule(pattern: string[]): string {
+  return `prefix_rule(pattern=${JSON.stringify(pattern)}, decision="allow")`;
+}
+
+function upsertManagedRulesBlock(existing: string, rulesBlock: string): string {
+  const managedBlockPattern = new RegExp(
+    `${escapeRegExp(SMITHY_CODEX_RULES_BEGIN)}[\\s\\S]*?${escapeRegExp(SMITHY_CODEX_RULES_END)}\\n?`
+  );
+
+  if (managedBlockPattern.test(existing)) {
+    return existing.replace(managedBlockPattern, rulesBlock);
+  }
+
+  if (!existing.trim()) return rulesBlock;
+
+  return `${existing.replace(/\s*$/, '')}\n\n${rulesBlock}`;
+}
+
+function upsertManagedTopLevelConfigBlock(existing: string, configBlock: string): string {
+  const managedBlockPattern = new RegExp(
+    `${escapeRegExp(SMITHY_CODEX_CONFIG_BEGIN)}[\\s\\S]*?${escapeRegExp(SMITHY_CODEX_CONFIG_END)}\\n?`
+  );
+  const withoutManagedBlock = existing.replace(managedBlockPattern, '').replace(/^\s+/, '');
+  if (!withoutManagedBlock.trim()) return configBlock;
+
+  const firstTableIndex = withoutManagedBlock.search(/^\s*\[[^\]]+\]\s*$/m);
+  if (firstTableIndex === -1) {
+    return `${configBlock}\n${withoutManagedBlock.replace(/^\s+/, '')}`;
+  }
+
+  const beforeTables = withoutManagedBlock.slice(0, firstTableIndex).replace(/\s*$/, '');
+  const tables = withoutManagedBlock.slice(firstTableIndex).replace(/^\s+/, '');
+
+  if (!beforeTables) return `${configBlock}${tables}`;
+
+  return `${beforeTables}\n\n${configBlock}${tables}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

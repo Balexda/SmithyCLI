@@ -19,9 +19,9 @@ Provides GitHub PR review operations through two interchangeable paths:
 
 | Operation             | MCP-first path                                    | Script fallback                                                                  |
 |-----------------------|---------------------------------------------------|----------------------------------------------------------------------------------|
-| Find Open PR          | `mcp__github__list_pull_requests`                 | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}`/scripts/find-pr.sh` |
-| List Inline Comments  | `mcp__github__pull_request_read` (`get_review_comments`) | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}`/scripts/get-comments.sh <ownerRepo> <pr-number>` |
-| Reply to a Comment    | `mcp__github__add_reply_to_pull_request_comment`  | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}`/scripts/reply-comment.sh <ownerRepo> <pr-number> <id> <body-file>` |
+| Find Open PR          | `mcp__github__list_pull_requests`                 | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}{{#ifAgent 'codex'}}`./.agents/skills/smithy.pr-review`{{/ifAgent}}`/scripts/find-pr.sh` |
+| List Inline Comments  | `mcp__github__pull_request_read` (`get_review_comments`) | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}{{#ifAgent 'codex'}}`./.agents/skills/smithy.pr-review`{{/ifAgent}}`/scripts/get-comments.sh <ownerRepo> <pr-number>` |
+| Reply to a Comment    | `mcp__github__add_reply_to_pull_request_comment`  | {{#ifAgent 'claude'}}`${CLAUDE_SKILL_DIR}`{{/ifAgent}}{{#ifAgent 'gemini'}}`./.gemini/skills/smithy.pr-review`{{/ifAgent}}{{#ifAgent 'codex'}}`./.agents/skills/smithy.pr-review`{{/ifAgent}}`/scripts/reply-comment.sh <ownerRepo> <pr-number> <id> <body-file>` |
 
 ## Path Selection
 
@@ -81,7 +81,7 @@ Otherwise capture `number` from the first entry.
 ### Script fallback
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/find-pr.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/find-pr.sh{{/ifAgent}}
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/find-pr.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/find-pr.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.pr-review/scripts/find-pr.sh{{/ifAgent}}
 ```
 
 Returns JSON with `owner`, `repo`, `pr`, and `ownerRepo` fields, or `{}`
@@ -120,7 +120,7 @@ to the caller — only unresolved threads need a reply.
 ### Script fallback
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/get-comments.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/get-comments.sh{{/ifAgent}} <ownerRepo> <pr-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/get-comments.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/get-comments.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.pr-review/scripts/get-comments.sh{{/ifAgent}} <ownerRepo> <pr-number>
 ```
 
 Returns a JSON array of **threads** (one entry per review thread). Each
@@ -167,7 +167,7 @@ then POST it:
 cat > /tmp/smithy_reply_<databaseId>.json << 'EOF'
 {"body": "your reply text here"}
 EOF
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/reply-comment.sh{{/ifAgent}} <ownerRepo> <pr-number> <databaseId> /tmp/smithy_reply_<databaseId>.json
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.pr-review/scripts/reply-comment.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.pr-review/scripts/reply-comment.sh{{/ifAgent}} <ownerRepo> <pr-number> <databaseId> /tmp/smithy_reply_<databaseId>.json
 ```
 
 ### Reply body conventions (both paths)

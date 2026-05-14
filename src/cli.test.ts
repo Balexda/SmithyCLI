@@ -58,9 +58,11 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(output).toContain('Welcome to Smithy CLI');
     expect(output).toContain('Initialization complete');
 
-    // Both agents deployed
+    // All repo-scoped agents deployed
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
 
     // Manifest directory created at .smithy/ (repo default)
     expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(true);
@@ -95,6 +97,21 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(false);
+  });
+
+  it('deploys only codex when --agent codex is specified', () => {
+    const output = execFileSync('node', [CLI, 'init', '-a', 'codex', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    expect(output).toContain('Initialization complete');
+
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy-forge', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy-fix', 'SKILL.md'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy.pr-review', 'scripts', 'find-pr.sh'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
   });
 
   it('does not advertise the retired --issue-templates / --no-issue-templates flags', () => {
@@ -159,6 +176,16 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(output).toContain('not supported by gemini');
     // Should not deploy anything
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
+  });
+
+  it('rejects --location user for codex', () => {
+    const result = spawnSync('node', [CLI, 'init', '-a', 'codex', '--location', 'user', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+    const output = result.stdout + result.stderr;
+    expect(output).toContain('not supported by codex');
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills'))).toBe(false);
   });
 
   it('accepts --location flag', () => {

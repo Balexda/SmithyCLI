@@ -7,6 +7,7 @@ commands reference during their workflows.
 Deployed to:
 - **Claude**: `.claude/prompts/smithy.<name>.md` (frontmatter stripped)
 - **Gemini**: `.gemini/skills/smithy.<name>/SKILL.md` (frontmatter kept)
+- **Codex**: `tools/codex/prompts/smithy.<name>.md` (frontmatter stripped) and `.agents/skills/smithy-<name>/SKILL.md` (frontmatter kept)
 
 ## Current Prompts
 

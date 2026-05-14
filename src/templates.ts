@@ -225,6 +225,7 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
 export async function getComposedTemplates(variant?: string): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
   const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
+  const supportsSubAgents = variant === 'claude' || variant === 'gemini';
 
   // Register {{#ifAgent}} block helper. Dotprompt uses knownHelpersOnly so
   // standard {{#if variable}} doesn't work — custom block helpers are required.
@@ -234,7 +235,7 @@ export async function getComposedTemplates(variant?: string): Promise<ComposedTe
       const agentName = args[0] as string;
       return variant === agentName ? options.fn(this) : options.inverse(this);
     }
-    return variant ? options.fn(this) : options.inverse(this);
+    return supportsSubAgents ? options.fn(this) : options.inverse(this);
   });
 
   const resolve = async (dir: string): Promise<Map<string, string>> => {

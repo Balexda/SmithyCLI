@@ -14,6 +14,11 @@ Provides GitHub issue operations via shell scripts bundled in this skill's `scri
 directory. You can run them using `run_shell_command` with the relative path:
 `./.gemini/skills/smithy.gh-issue/scripts/<script-name>`.
 {{/ifAgent}}
+{{#ifAgent 'codex'}}
+Provides GitHub issue operations via shell scripts bundled in this skill's `scripts/`
+directory. Run them with the relative path:
+`./.agents/skills/smithy.gh-issue/scripts/<script-name>`.
+{{/ifAgent}}
 
 Each operation is implemented as a small, stable script with a fixed set of
 `gh` calls (most use one; `link-blocked-by.sh` makes a few — repo lookup, two
@@ -30,7 +35,7 @@ Returns JSON with `owner`, `repo`, and `ownerRepo`. Exits non-zero with a
 friendly stderr message on failure.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}
 ```
 
 Run this **once** at the start of any flow that will create or query issues.
@@ -43,7 +48,7 @@ Searches issues in the current repo. Use this for duplicate detection and for
 locating parent tickets when stitching artifacts together.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <state> <search-query> [limit]
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <state> <search-query> [limit]
 ```
 
 - `state`: `open`, `closed`, or `all`.
@@ -74,7 +79,7 @@ BODY
 
 **Step 2 — create the issue:**
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "<title>" /tmp/smithy_issue_body.md
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "<title>" /tmp/smithy_issue_body.md
 ```
 
 Output: JSON `{"number": N, "url": "..."}`. Capture the `number` for parent/child
@@ -90,7 +95,7 @@ Marks one issue as blocked by another via the GitHub `addBlockedBy` GraphQL
 mutation. Use this after both the parent and child issues exist.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <child-number> <blocker-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <child-number> <blocker-number>
 ```
 
 The script handles node-ID lookup and the mutation itself. Output: JSON

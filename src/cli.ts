@@ -23,7 +23,7 @@ program
   .description('Initialize smithy prompts in the current repository')
   .addOption(
     new Option('-a, --agent <name>', 'AI assistant to configure')
-      .choices(['claude', 'gemini', 'all'])
+      .choices(['claude', 'gemini', 'codex', 'all'])
   )
   .addOption(
     new Option('-l, --location <location>', 'Deploy location')
