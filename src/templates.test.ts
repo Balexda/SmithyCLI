@@ -431,6 +431,22 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).not.toContain('./.gemini/skills/smithy.pr-review');
   });
 
+  it('smithy.pr-review renders Codex GitHub app actions as the preferred review-thread path', () => {
+    const skill = codexComposed.skills.get('smithy.pr-review')!;
+    expect(skill.prompt).toContain("Codex's GitHub app connector");
+    expect(skill.prompt).toContain('_list_pull_request_review_threads');
+    expect(skill.prompt).toContain('_reply_to_review_comment');
+    expect(skill.prompt).toContain('use tool discovery');
+    expect(skill.prompt).toContain('The discovered Codex GitHub app actions do not provide a direct "find open PR');
+  });
+
+  it('smithy.fix tells Codex to use pr-review app actions before script fallbacks', () => {
+    const fix = codexComposed.commands.get('smithy.fix.md')!;
+    expect(fix).toContain("skill's Codex GitHub app path");
+    expect(fix).toContain('root comment ID identified by the `smithy.pr-review` Codex path');
+    expect(fix).not.toContain('Post your reply to\n   `comments[0].databaseId`');
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {
