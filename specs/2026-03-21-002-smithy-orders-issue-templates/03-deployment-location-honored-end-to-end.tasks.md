@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add cross-location isolation tests for repo and user init**
+- [x] **Add cross-location isolation tests for repo and user init**
 
   Extend `src/cli.test.ts` with HOME-isolated test cases that exercise both `--location repo` and `--location user` provisioning, asserting the chosen `<manifestDir>` is populated AND the other manifest dir remains absent. Reuse whatever HOME-override mechanism US1 Slice 2 Task 4 establishes (see SD-001) — these tests are US3's primary regression guard for cross-location isolation, so they must execute on every supported CI platform. Do not gate them behind a skip path: if the inherited mechanism does not produce a reliable isolated home on a target platform, treat that as a US1-side gap to fix in the shared mechanism, not a US3 reason to weaken the contract. Satisfies AS 3.1 and AS 3.2.
 
