@@ -399,6 +399,32 @@ describe('CLI update (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(false);
   });
 
+  it('replays a claude plus codex manifest without adding gemini', () => {
+    execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.agents = ['claude', 'codex'];
+    manifest.files.codex = [];
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    execFileSync('node', [CLI, 'update', '-y'], {
+      encoding: 'utf-8',
+      cwd: tmpDir,
+    });
+
+    const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    expect(updated.agents).toEqual(['claude', 'codex']);
+    expect(updated.files.codex.length).toBeGreaterThan(0);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);
+  });
+
   it('manifest version is updated after update', () => {
     execFileSync('node', [CLI, 'init', '-y'], {
       encoding: 'utf-8',

@@ -21,10 +21,12 @@ import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
 import { agentDeployLocations } from '../interactive.js';
-import type { AgentChoice, DeployLocation } from '../interactive.js';
+import type { AgentChoice, AgentName, DeployLocation } from '../interactive.js';
 
 export interface InitOptions {
   agent?: AgentChoice;
+  /** Exact agent subset to deploy. Used by manifest replay during update. */
+  agents?: AgentName[];
   location?: DeployLocation;
   permissions?: boolean;
   /**
@@ -52,13 +54,17 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   }
 
   // 1. Agent selection
-  const agent = opts.agent ?? (opts.yes ? 'all' : await promptAgent());
+  const agent = opts.agent ?? (opts.yes || opts.agents ? 'all' : await promptAgent());
 
   // 2. Deploy location (limited by agent capabilities)
   const deployLocation = opts.location ?? (opts.yes ? 'repo' : await promptDeployLocation(agent));
 
   // Validate that the deploy location is supported by the selected agent
-  const supportedLocations = agentDeployLocations[agent];
+  const supportedLocations = opts.agents
+    ? (['repo', 'user'] as DeployLocation[]).filter(location =>
+        opts.agents!.every(a => agentDeployLocations[a].includes(location)),
+      )
+    : agentDeployLocations[agent];
   if (!supportedLocations.includes(deployLocation)) {
     console.error(picocolors.red(
       `Error: Deploy location '${deployLocation}' is not supported by ${agent}. ` +
@@ -146,11 +152,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // --- Step 2: Deploy ---
 
   // Deploy agents and collect deployed files per agent
-  const agentsToSetup = agent === 'all'
+  const agentsToSetup = opts.agents ?? (agent === 'all'
     ? (deployLocation === 'repo'
         ? ['gemini', 'claude', 'codex'] as const
         : ['claude'] as const)
-    : [agent] as const;
+    : [agent] as const);
   const deployedFiles: Record<string, string[]> = {};
 
   for (const a of agentsToSetup) {

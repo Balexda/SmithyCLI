@@ -2,7 +2,8 @@ import { select, confirm, checkbox } from '@inquirer/prompts';
 import picocolors from 'picocolors';
 import { toolchains, type LanguageToolchain } from './permissions.js';
 
-export type AgentChoice = 'gemini' | 'claude' | 'codex' | 'all';
+export type AgentName = 'gemini' | 'claude' | 'codex';
+export type AgentChoice = AgentName | 'all';
 export type DeployLocation = 'repo' | 'user';
 export type PermissionLevel = 'repo' | 'user' | 'none';
 export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;

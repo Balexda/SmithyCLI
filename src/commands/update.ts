@@ -10,7 +10,7 @@ import {
   promptConfirmResetPermissions,
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
-import type { AgentChoice, DeployLocation } from '../interactive.js';
+import type { AgentName, DeployLocation } from '../interactive.js';
 import { toolchains, type LanguageToolchain } from '../permissions.js';
 import { detectPlatforms } from '../platform-detect.js';
 import {
@@ -40,16 +40,11 @@ export interface UpdateOptions {
   resetPermissions?: boolean;
 }
 
-/** Map a manifest's agents array back to an AgentChoice for initAction. */
-function toAgentChoice(agents: string[]): AgentChoice {
-  const sorted = [...agents].sort();
-  if (
-    (sorted.length === 2 && sorted[0] === 'claude' && sorted[1] === 'gemini') ||
-    (sorted.length === 3 && sorted[0] === 'claude' && sorted[1] === 'codex' && sorted[2] === 'gemini')
-  ) {
-    return 'all';
-  }
-  return agents[0] as AgentChoice;
+const knownAgents = new Set<AgentName>(['claude', 'gemini', 'codex']);
+
+/** Validate a manifest's agent list before replaying it through initAction. */
+function toAgentNames(agents: string[]): AgentName[] {
+  return agents.filter((agent): agent is AgentName => knownAgents.has(agent as AgentName));
 }
 
 /**
@@ -100,7 +95,7 @@ async function redeployFromManifest(
   targetDir: string,
 ): Promise<void> {
   await initAction({
-    agent: toAgentChoice(manifest.agents),
+    agents: toAgentNames(manifest.agents),
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     sessionTitles: manifest.sessionTitles ?? true,
