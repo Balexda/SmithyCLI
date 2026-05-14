@@ -48,19 +48,19 @@ describe('deploy', () => {
   it('writes permissions when initPermissions is true', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    expect(fs.existsSync(configPath)).toBe(true);
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    expect(fs.existsSync(rulesPath)).toBe(true);
 
-    const content = fs.readFileSync(configPath, 'utf8');
-    expect(content).toContain('[approvals]');
-    expect(content).toContain('policy = "auto"');
+    const content = fs.readFileSync(rulesPath, 'utf8');
+    expect(content).toContain('# BEGIN SMITHY CODEX RULES');
+    expect(content).toContain('prefix_rule(pattern=["git","status"], decision="allow")');
   });
 
   it('does not write permissions when initPermissions is false', async () => {
     await deploy(tmpDir, false);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    expect(fs.existsSync(configPath)).toBe(false);
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    expect(fs.existsSync(rulesPath)).toBe(false);
   });
 
   it('returns deployed file paths', async () => {
@@ -202,102 +202,125 @@ describe('writePermissions (via deploy)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('creates .codex directory if it does not exist', async () => {
+  it('creates .codex rules directory if it does not exist', async () => {
     await deploy(tmpDir, true);
 
-    const codexDir = path.join(tmpDir, '.codex');
-    expect(fs.existsSync(codexDir)).toBe(true);
+    const rulesDir = path.join(tmpDir, '.codex', 'rules');
+    expect(fs.existsSync(rulesDir)).toBe(true);
   });
 
-  it('generates valid TOML with approvals rules', async () => {
+  it('generates Codex prefix rules', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    const content = fs.readFileSync(configPath, 'utf8');
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
 
-    expect(content).toContain('[approvals]');
-    expect(content).toContain('policy = "auto"');
-    expect(content).toContain('[[approvals.rules]]');
-    expect(content).toContain('command = "git"');
+    expect(content).toContain('# BEGIN SMITHY CODEX RULES');
+    expect(content).toContain('# END SMITHY CODEX RULES');
+    expect(content).toContain('prefix_rule(pattern=["git","status"], decision="allow")');
   });
 
   it('includes filesystem commands in rules', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    const content = fs.readFileSync(configPath, 'utf8');
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
 
-    expect(content).toContain('command = "ls"');
-    expect(content).toContain('command = "cat"');
-    expect(content).toContain('command = "cp"');
-    expect(content).toContain('command = "mkdir"');
+    expect(content).toContain('prefix_rule(pattern=["ls"], decision="allow")');
+    expect(content).toContain('prefix_rule(pattern=["cat"], decision="allow")');
+    expect(content).toContain('prefix_rule(pattern=["cp"], decision="allow")');
+    expect(content).toContain('prefix_rule(pattern=["mkdir"], decision="allow")');
   });
 
-  it('uses args_startswith for wildcard entries', async () => {
+  it('trims wildcard entries into prefix patterns', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    const content = fs.readFileSync(configPath, 'utf8');
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
 
-    // Wildcard entries should produce args_startswith
-    expect(content).toContain('args_startswith');
+    expect(content).toContain('prefix_rule(pattern=["git","fetch"], decision="allow")');
+    expect(content).toContain('prefix_rule(pattern=["mkdir","-p"], decision="allow")');
   });
 
-  it('uses args for non-wildcard entries', async () => {
+  it('includes non-wildcard arguments in prefix patterns', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    const content = fs.readFileSync(configPath, 'utf8');
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
 
-    // Non-wildcard entries like "git status" (no args) should produce args = []
-    expect(content).toContain('args = []');
+    expect(content).toContain('prefix_rule(pattern=["git","status"], decision="allow")');
+    expect(content).toContain('prefix_rule(pattern=["git","push","--force-with-lease"], decision="allow")');
   });
 
-  it('uses empty args_startswith for commands with bare wildcard and flag variants', async () => {
+  it('does not emit duplicate prefix patterns for bare wildcard and flag variants', async () => {
     await deploy(tmpDir, true);
 
-    const configPath = path.join(tmpDir, '.codex', 'config.toml');
-    const content = fs.readFileSync(configPath, 'utf8');
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
 
-    // mkdir: ["*", "-p *"] should produce args_startswith = [], not ["-p "]
-    const mkdirRule = content.match(
-      /\[\[approvals\.rules\]\]\ncommand = "mkdir"\n(args\S* = [^\n]+)/
+    const bareMkdirRules = content.match(/prefix_rule\(pattern=\["mkdir"\], decision="allow"\)/g);
+    expect(bareMkdirRules).toHaveLength(1);
+    expect(content).toContain('prefix_rule(pattern=["mkdir","-p"], decision="allow")');
+  });
+
+  it('allows Smithy skill helper scripts used by Codex skills', async () => {
+    await deploy(tmpDir, true);
+
+    const rulesPath = path.join(tmpDir, '.codex', 'rules', 'default.rules');
+    const content = fs.readFileSync(rulesPath, 'utf8');
+
+    expect(content).toContain(
+      'prefix_rule(pattern=["./.agents/skills/smithy.pr-review/scripts/find-pr.sh"], decision="allow")'
     );
-    expect(mkdirRule).not.toBeNull();
-    expect(mkdirRule![1]).toBe('args_startswith = []');
+    expect(content).toContain(
+      'prefix_rule(pattern=["./.agents/skills/smithy.pr-review/scripts/get-comments.sh"], decision="allow")'
+    );
+    expect(content).toContain(
+      'prefix_rule(pattern=["./.agents/skills/smithy.pr-review/scripts/reply-comment.sh"], decision="allow")'
+    );
+    expect(content).toContain(
+      'prefix_rule(pattern=["./.agents/skills/smithy.gh-issue/scripts/check-env.sh"], decision="allow")'
+    );
   });
 
-  it('does not overwrite existing config with approvals section', async () => {
-    const codexDir = path.join(tmpDir, '.codex');
-    fs.mkdirSync(codexDir, { recursive: true });
-    const configPath = path.join(codexDir, 'config.toml');
+  it('preserves existing user rules and appends Smithy rules', async () => {
+    const rulesDir = path.join(tmpDir, '.codex', 'rules');
+    fs.mkdirSync(rulesDir, { recursive: true });
+    const rulesPath = path.join(rulesDir, 'default.rules');
 
-    const existing = '[approvals]\npolicy = "suggest"\n';
-    fs.writeFileSync(configPath, existing);
+    const existing = 'prefix_rule(pattern=["custom"], decision="allow")\n';
+    fs.writeFileSync(rulesPath, existing);
 
     await deploy(tmpDir, true);
 
-    const content = fs.readFileSync(configPath, 'utf8');
-    // Should not have appended a second [approvals] section
-    expect(content).toBe(existing);
+    const content = fs.readFileSync(rulesPath, 'utf8');
+    expect(content).toContain(existing.trim());
+    expect(content).toContain('# BEGIN SMITHY CODEX RULES');
+    expect(content).toContain('prefix_rule(pattern=["git","status"], decision="allow")');
   });
 
-  it('appends to existing config without approvals section', async () => {
-    const codexDir = path.join(tmpDir, '.codex');
-    fs.mkdirSync(codexDir, { recursive: true });
-    const configPath = path.join(codexDir, 'config.toml');
+  it('updates the managed Smithy rules block idempotently', async () => {
+    const rulesDir = path.join(tmpDir, '.codex', 'rules');
+    fs.mkdirSync(rulesDir, { recursive: true });
+    const rulesPath = path.join(rulesDir, 'default.rules');
 
-    const existing = '[model]\nname = "gpt-4"\n';
-    fs.writeFileSync(configPath, existing);
+    const existing = [
+      'prefix_rule(pattern=["custom"], decision="allow")',
+      '',
+      '# BEGIN SMITHY CODEX RULES',
+      'prefix_rule(pattern=["old"], decision="allow")',
+      '# END SMITHY CODEX RULES',
+      '',
+    ].join('\n');
+    fs.writeFileSync(rulesPath, existing);
 
     await deploy(tmpDir, true);
+    const firstContent = fs.readFileSync(rulesPath, 'utf8');
+    await deploy(tmpDir, true);
 
-    const content = fs.readFileSync(configPath, 'utf8');
-    // Should preserve existing content
-    expect(content).toContain('[model]');
-    expect(content).toContain('name = "gpt-4"');
-    // Should have appended approvals
-    expect(content).toContain('[approvals]');
-    expect(content).toContain('policy = "auto"');
+    const secondContent = fs.readFileSync(rulesPath, 'utf8');
+    expect(secondContent).toBe(firstContent);
+    expect(secondContent).not.toContain('prefix_rule(pattern=["old"], decision="allow")');
+    expect(secondContent.match(/# BEGIN SMITHY CODEX RULES/g)).toHaveLength(1);
   });
 });
