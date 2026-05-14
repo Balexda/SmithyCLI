@@ -27,6 +27,14 @@ Each plant maps to a row in smithy-scout's Severity Guidelines table (see `src/t
 
 Together with the **Intentional Gap** above, these plants are the fixture's twin purposes: the missing health-check endpoint drives eval scenarios that ask agents to add new behavior, and the planted inconsistencies drive eval scenarios that ask agents to detect existing flaws.
 
+## Planted Parent Artifacts
+
+In addition to the scout-flawed plants documented in `## Planted Inconsistencies` above, the fixture hosts **representative parent artifacts** — scenario-isolated files that conform to a producing command's canonical template and are consumed as **input** by downstream eval scenarios (for example, a PRD that `/smithy.ignite` workshops into an RFC). Representative plants differ from scout-flawed plants in intent: representative plants are deliberately *well-formed* so a downstream command can produce realistic output from them, whereas scout-flawed plants are deliberately *malformed* so `smithy-scout` can detect their flaws. Both kinds are deliberate fixtures — **do not "clean up" either kind**; removing a representative plant silently breaks the owner scenario that feeds on it.
+
+| Path | Owner Scenario | Realism | Purpose |
+|------|----------------|---------|---------|
+| `evals/fixture/prds/ignite-eval/` | `ignite-from-prd` | representative | Canonical PRD fed to `/smithy.ignite` to produce an RFC. |
+
 ## Usage
 
 This fixture is **read by AI agents, not executed**. Do not run `npm install` in this directory. At eval time, the eval runner copies this directory to a temp location, deploys Smithy skills into the copy via `smithy init -a claude -y`, and runs `claude -p` against it.
