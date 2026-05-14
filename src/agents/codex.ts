@@ -7,6 +7,18 @@ import { removeIfExists } from '../utils.js';
 
 const SMITHY_CODEX_RULES_BEGIN = '# BEGIN SMITHY CODEX RULES';
 const SMITHY_CODEX_RULES_END = '# END SMITHY CODEX RULES';
+const SMITHY_CODEX_CONFIG_BEGIN = '# BEGIN SMITHY CODEX CONFIG';
+const SMITHY_CODEX_CONFIG_END = '# END SMITHY CODEX CONFIG';
+
+const CODEX_CONFIG_BLOCK = [
+  SMITHY_CODEX_CONFIG_BEGIN,
+  'approval_policy = "on-request"',
+  'sandbox_mode = "workspace-write"',
+  'approvals_reviewer = "auto_review"',
+  'web_search = "cached"',
+  SMITHY_CODEX_CONFIG_END,
+  '',
+].join('\n');
 
 const SMITHY_SKILL_SCRIPT_RULES = [
   './.agents/skills/smithy.pr-review/scripts/find-pr.sh',
@@ -101,7 +113,15 @@ export function removeLegacy(targetDir: string): number {
 }
 
 function writePermissions(targetDir: string): void {
-  const rulesDir = path.join(targetDir, '.codex', 'rules');
+  const codexDir = path.join(targetDir, '.codex');
+  if (!fs.existsSync(codexDir)) fs.mkdirSync(codexDir, { recursive: true });
+
+  const configPath = path.join(codexDir, 'config.toml');
+  const existingConfig = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
+  const nextConfig = upsertManagedTopLevelConfigBlock(existingConfig, CODEX_CONFIG_BLOCK);
+  fs.writeFileSync(configPath, nextConfig);
+
+  const rulesDir = path.join(codexDir, 'rules');
   if (!fs.existsSync(rulesDir)) fs.mkdirSync(rulesDir, { recursive: true });
 
   const rulesPath = path.join(rulesDir, 'default.rules');
@@ -116,6 +136,7 @@ function writePermissions(targetDir: string): void {
   const next = upsertManagedRulesBlock(existing, rulesBlock);
 
   fs.writeFileSync(rulesPath, next);
+  console.log(picocolors.blue(`  Added Codex Auto-review defaults to ${configPath}`));
   console.log(picocolors.blue(`  Added default permissions to ${rulesPath}`));
 }
 
@@ -172,6 +193,26 @@ function upsertManagedRulesBlock(existing: string, rulesBlock: string): string {
   if (!existing.trim()) return rulesBlock;
 
   return `${existing.replace(/\s*$/, '')}\n\n${rulesBlock}`;
+}
+
+function upsertManagedTopLevelConfigBlock(existing: string, configBlock: string): string {
+  const managedBlockPattern = new RegExp(
+    `${escapeRegExp(SMITHY_CODEX_CONFIG_BEGIN)}[\\s\\S]*?${escapeRegExp(SMITHY_CODEX_CONFIG_END)}\\n?`
+  );
+  const withoutManagedBlock = existing.replace(managedBlockPattern, '').replace(/^\s+/, '');
+  if (!withoutManagedBlock.trim()) return configBlock;
+
+  const firstTableIndex = withoutManagedBlock.search(/^\s*\[[^\]]+\]\s*$/m);
+  if (firstTableIndex === -1) {
+    return `${configBlock}\n${withoutManagedBlock.replace(/^\s+/, '')}`;
+  }
+
+  const beforeTables = withoutManagedBlock.slice(0, firstTableIndex).replace(/\s*$/, '');
+  const tables = withoutManagedBlock.slice(firstTableIndex).replace(/^\s+/, '');
+
+  if (!beforeTables) return `${configBlock}${tables}`;
+
+  return `${beforeTables}\n\n${configBlock}${tables}`;
 }
 
 function escapeRegExp(value: string): string {

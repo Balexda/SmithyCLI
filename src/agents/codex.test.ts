@@ -209,6 +209,67 @@ describe('writePermissions (via deploy)', () => {
     expect(fs.existsSync(rulesDir)).toBe(true);
   });
 
+  it('writes Codex Auto-review defaults to config.toml', async () => {
+    await deploy(tmpDir, true);
+
+    const configPath = path.join(tmpDir, '.codex', 'config.toml');
+    const content = fs.readFileSync(configPath, 'utf8');
+
+    expect(content).toContain('# BEGIN SMITHY CODEX CONFIG');
+    expect(content).toContain('approval_policy = "on-request"');
+    expect(content).toContain('sandbox_mode = "workspace-write"');
+    expect(content).toContain('approvals_reviewer = "auto_review"');
+    expect(content).toContain('web_search = "cached"');
+    expect(content).toContain('# END SMITHY CODEX CONFIG');
+  });
+
+  it('places managed Codex config before TOML tables', async () => {
+    const codexDir = path.join(tmpDir, '.codex');
+    fs.mkdirSync(codexDir, { recursive: true });
+    const configPath = path.join(codexDir, 'config.toml');
+    fs.writeFileSync(
+      configPath,
+      ['notify = ["custom"]', '', '[plugins."github@openai-curated"]', 'enabled = true', ''].join('\n')
+    );
+
+    await deploy(tmpDir, true);
+
+    const content = fs.readFileSync(configPath, 'utf8');
+    expect(content.indexOf('approvals_reviewer = "auto_review"')).toBeLessThan(
+      content.indexOf('[plugins."github@openai-curated"]')
+    );
+    expect(content).toContain('notify = ["custom"]');
+    expect(content).toContain('[plugins."github@openai-curated"]');
+  });
+
+  it('updates managed Codex config idempotently', async () => {
+    const codexDir = path.join(tmpDir, '.codex');
+    fs.mkdirSync(codexDir, { recursive: true });
+    const configPath = path.join(codexDir, 'config.toml');
+    fs.writeFileSync(
+      configPath,
+      [
+        '# BEGIN SMITHY CODEX CONFIG',
+        'approval_policy = "never"',
+        '# END SMITHY CODEX CONFIG',
+        '',
+        '[profiles.custom]',
+        'sandbox_mode = "read-only"',
+        '',
+      ].join('\n')
+    );
+
+    await deploy(tmpDir, true);
+    const firstContent = fs.readFileSync(configPath, 'utf8');
+    await deploy(tmpDir, true);
+
+    const secondContent = fs.readFileSync(configPath, 'utf8');
+    expect(secondContent).toBe(firstContent);
+    expect(secondContent).toContain('approval_policy = "on-request"');
+    expect(secondContent).not.toContain('approval_policy = "never"');
+    expect(secondContent.match(/# BEGIN SMITHY CODEX CONFIG/g)).toHaveLength(1);
+  });
+
   it('generates Codex prefix rules', async () => {
     await deploy(tmpDir, true);
 
