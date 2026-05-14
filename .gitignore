@@ -9,5 +9,3 @@ dist
 .gemini/
 .claude/local/
 .claude/settings.local.json
-.codex/
-tools/codex/
