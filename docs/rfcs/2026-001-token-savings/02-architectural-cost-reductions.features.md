@@ -64,4 +64,5 @@ Direction must be either `depends on` or `depended upon by`.
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
 | Milestone 1: Measurement Foundation | depends on | M2 does not begin implementation until M1 provides per-case token totals, committed forge baselines for JS and JVM fixtures, and captured forge-run evidence sufficient to compare token deltas and quality gates. |
-| Milestone 3: Early Cost Savings | depended upon by | M3 proceeds in parallel after M1, but must respect the touched-files single-owner matrix: F3.1 owns build-output protocol injection in `smithy.implement.prompt` and the forge Validation block, while M2 owns `smithy.implement.prompt` re-read orchestration and `smithy.forge.prompt` Phase 6. |
+
+M3 is not listed: per the source RFC (lines 23, 50, 193-194), M2 and M3 both depend only on M1 and construct in parallel. M3's touched-files coordination with M2 is governed by the RFC's Cross-Cutting Governance single-owner matrix and surfaced in this file as SD-003 and SD-004, not as a cross-milestone dependency.
