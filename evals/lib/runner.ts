@@ -1,6 +1,6 @@
 /**
  * Eval runner — executes a single eval scenario by invoking
- * the target agent (claude or gemini) --output-format stream-json -p
+ * the target agent (claude, gemini, or codex) in headless mode
  * against a temp copy of the reference fixture and returning the parsed output.
  *
  * Implements FR-001, FR-002, FR-003, FR-004, FR-011, FR-013.
@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { EvalScenario, RunOutput, StreamEvent } from './types.js';
+import type { EvalAgent, EvalScenario, RunOutput, StreamEvent } from './types.js';
 import { parseStreamString, extractCanonicalText } from './parse-stream.js';
 
 /** Path to the built Smithy CLI, resolved relative to this module. */
@@ -35,6 +35,8 @@ const CHECKSUM_EXCLUDE_DIRS = new Set([
   'node_modules',
   '.claude',
   '.gemini',
+  '.agents',
+  '.codex',
   '.smithy',
   'dist',
 ]);
@@ -96,7 +98,7 @@ interface SpawnResult {
  * and wall-clock duration.
  */
 function spawnAgent(
-  agent: 'claude' | 'gemini',
+  agent: EvalAgent,
   args: string[],
   cwd: string,
   timeoutMs: number,
@@ -290,7 +292,7 @@ function initGitInTempCopy(tmpDir: string): void {
  *
  * @throws {Error} If the CLI is not found or not functional.
  */
-export function preflight(agent: 'claude' | 'gemini' = 'claude'): void {
+export function preflight(agent: EvalAgent = 'claude'): void {
   // (a) Validate that the CLI is functional.
   try {
     execFileSync(agent, ['--version'], {
@@ -330,6 +332,9 @@ export function preflight(agent: 'claude' | 'gemini' = 'claude'): void {
     if (!process.env['GOOGLE_API_KEY']) {
       throw new Error('No API key found for Gemini. Set GOOGLE_API_KEY.');
     }
+  } else if (agent === 'codex') {
+    // Codex local evals rely on the developer's existing Codex CLI auth/config.
+    // There is intentionally no API-key preflight for this path.
   }
 }
 
@@ -347,7 +352,7 @@ export function preflight(agent: 'claude' | 'gemini' = 'claude'): void {
 export async function runScenario(
   scenario: EvalScenario,
   fixtureDir: string,
-  agent: 'claude' | 'gemini' = 'claude',
+  agent: EvalAgent = 'claude',
 ): Promise<RunOutput> {
   // Create a unique temp directory and copy the fixture into it.
   const tmpDir = fs.mkdtempSync(
@@ -383,8 +388,9 @@ export async function runScenario(
     // FR-011: Checksum the source fixture *before* execution.
     const checksumBefore = hashDirectory(fixtureDir);
 
-    // Build the invocation string: skill + prompt composed into slash-command form.
-    const invocation = `${scenario.skill} ${scenario.prompt}`;
+    // Build the invocation string. Claude/Gemini scenarios use slash-command
+    // form; Codex uses deployed skills, so name the matching skill directly.
+    const invocation = buildInvocation(scenario, agent);
 
     // Determine timeout: scenario-level override (in seconds) → default.
     const timeoutMs = scenario.timeout != null
@@ -393,12 +399,7 @@ export async function runScenario(
 
     const result = await spawnAgent(
       agent,
-      [
-        '--output-format', 'stream-json',
-        '--verbose',
-        '--permission-mode', 'bypassPermissions',
-        '-p', invocation,
-      ],
+      buildAgentArgs(agent, invocation, tmpDir),
       tmpDir,
       timeoutMs,
     );
@@ -438,4 +439,41 @@ export async function runScenario(
     // FR-013: Always clean up the temp directory.
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+}
+
+function buildAgentArgs(agent: EvalAgent, invocation: string, tmpDir: string): string[] {
+  if (agent === 'codex') {
+    return [
+      'exec',
+      '--json',
+      '--dangerously-bypass-approvals-and-sandbox',
+      '--skip-git-repo-check',
+      '--cd', tmpDir,
+      invocation,
+    ];
+  }
+
+  return [
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--permission-mode', 'bypassPermissions',
+    '-p', invocation,
+  ];
+}
+
+function buildInvocation(scenario: EvalScenario, agent: EvalAgent): string {
+  const prompt = scenario.prompt.trim();
+  if (agent !== 'codex') {
+    return `${scenario.skill} ${scenario.prompt}`;
+  }
+
+  const skillName = codexSkillName(scenario.skill);
+  if (!skillName) return prompt;
+
+  return `Use the ${skillName} skill.\n\nInput:\n${prompt}`;
+}
+
+function codexSkillName(skill: string): string {
+  const normalized = skill.trim().replace(/^\//, '').replace(/\./g, '-');
+  return normalized;
 }

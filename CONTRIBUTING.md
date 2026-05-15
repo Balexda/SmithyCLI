@@ -49,7 +49,7 @@ Tests that templates compose correctly (snippet/partial resolution, frontmatter 
 Tests that the deployed skills actually *work* when invoked by an AI agent — slash commands trigger, output has the correct structure, sub-agents are dispatched, and results meet quality expectations. Run via `npm run eval` (local on-demand, not CI).
 
 The evals framework (under `evals/`) — implemented:
-- Executes skills via `claude -p` in headless mode against a reference fixture codebase
+- Executes skills via a selected headless agent CLI (`claude`, `gemini`, or local `codex exec`) against a reference fixture codebase
 - Runs locally on demand (`npm run eval`), not in CI, due to LLM cost
 - Structural output validation (`validateStructure` — required headings, patterns, tables, forbidden patterns)
 - Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)

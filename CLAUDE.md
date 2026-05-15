@@ -135,7 +135,7 @@ The canonical schema and rules live in `src/templates/agent-skills/README.md`. W
 npm run build        # Build with tsup
 npm run typecheck    # Type-check without emitting
 npm test             # Run all tests
-npm run eval         # Run evals framework (requires claude CLI + auth)
+npm run eval         # Run evals framework (default claude; supports -- --agent gemini/codex)
 npm run test:evals   # Run evals unit tests (structural, parse-stream, runner, fixture, baseline)
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow

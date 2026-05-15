@@ -218,6 +218,44 @@ describe('runScenario', () => {
     }
   });
 
+  it('deploys and executes Codex scenarios through codex exec', async () => {
+    const stdout = ndjsonLines({ type: 'agent_message', message: 'Codex output' });
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    const fixture = createRealFixture();
+    try {
+      const output = await runScenario(makeScenario(), fixture.dir, 'codex');
+
+      expect(output.extracted_text).toBe('Codex output');
+      expect(spawn).toHaveBeenCalledWith(
+        'codex',
+        [
+          'exec',
+          '--json',
+          '--dangerously-bypass-approvals-and-sandbox',
+          '--skip-git-repo-check',
+          '--cd',
+          expect.stringContaining('smithy-eval-'),
+          'Use the smithy-strike skill.\n\nInput:\ndo something',
+        ],
+        expect.objectContaining({
+          cwd: expect.stringContaining('smithy-eval-'),
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }),
+      );
+      expect(execFileSync).toHaveBeenCalledWith(
+        'node',
+        expect.arrayContaining(['init', '-a', 'codex', '-y']),
+        expect.objectContaining({
+          cwd: expect.stringContaining('smithy-eval-'),
+        }),
+      );
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
   it('timeout is detected and timed_out: true is returned', async () => {
     // Use fake timers so we can advance the timeout without real waiting.
     vi.useFakeTimers();
@@ -423,6 +461,7 @@ describe('runScenario', () => {
 describe('preflight', () => {
   const savedApiKey = process.env['ANTHROPIC_API_KEY'];
   const savedOauthToken = process.env['CLAUDE_CODE_OAUTH_TOKEN'];
+  const savedGoogleApiKey = process.env['GOOGLE_API_KEY'];
 
   afterEach(() => {
     if (savedApiKey !== undefined) {
@@ -434,6 +473,11 @@ describe('preflight', () => {
       process.env['CLAUDE_CODE_OAUTH_TOKEN'] = savedOauthToken;
     } else {
       delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
+    }
+    if (savedGoogleApiKey !== undefined) {
+      process.env['GOOGLE_API_KEY'] = savedGoogleApiKey;
+    } else {
+      delete process.env['GOOGLE_API_KEY'];
     }
   });
 
@@ -512,6 +556,23 @@ describe('preflight', () => {
 
     expect(() => preflight()).toThrow(
       /CLAUDE_CODE_OAUTH_TOKEN/,
+    );
+  });
+
+  it('passes for Codex with only a functional CLI', () => {
+    delete process.env['ANTHROPIC_API_KEY'];
+    delete process.env['CLAUDE_CODE_OAUTH_TOKEN'];
+    delete process.env['GOOGLE_API_KEY'];
+
+    vi.mocked(execFileSync).mockReturnValue(Buffer.from('codex-cli 0.130.0'));
+
+    expect(() => preflight('codex')).not.toThrow();
+    expect(execFileSync).toHaveBeenCalledWith(
+      'codex',
+      ['--version'],
+      expect.objectContaining({
+        timeout: 10_000,
+      }),
     );
   });
 });
