@@ -29,12 +29,13 @@ Together with the **Intentional Gap** above, these plants are the fixture's twin
 
 ## Planted Parent Artifacts
 
-In addition to the scout-flawed plants documented in `## Planted Inconsistencies` above, the fixture hosts **representative parent artifacts** — scenario-isolated files that conform to a producing command's canonical template and are consumed as **input** by downstream eval scenarios (for example, a PRD that `/smithy.ignite` workshops into an RFC). Representative plants differ from scout-flawed plants in intent: representative plants are deliberately *well-formed* so a downstream command can produce realistic output from them, whereas scout-flawed plants are deliberately *malformed* so `smithy-scout` can detect their flaws. Both kinds are deliberate fixtures — **do not "clean up" either kind**; removing a representative plant silently breaks the owner scenario that feeds on it.
+In addition to the scout-flawed plants documented in `## Planted Inconsistencies` above, the fixture hosts **representative parent artifacts** — scenario-isolated files that conform to a producing command's canonical template and are consumed as **input** by downstream eval scenarios (for example, a PRD that `/smithy.ignite` workshops into an RFC). Representative plants differ from scout-flawed plants in intent: representative plants are deliberately *well-formed* so a downstream command can produce realistic output from them, whereas scout-flawed plants are deliberately *malformed* so `smithy-scout` can detect their flaws. Both kinds are deliberate fixtures — **do not "clean up" either kind**; removing, moving, or renaming a representative plant without coordinating with the owning scenario silently breaks the scenario that feeds on it.
 
 | Path | Owner Scenario | Realism | Purpose |
 |------|----------------|---------|---------|
 | `evals/fixture/specs/cut-eval/` | `cut-from-spec` | representative | Three-file spec / data-model / contracts plant consumed by `/smithy.cut` to assert the generated tasks file inherits the SD-001 debt row from the upstream spec. |
 | `evals/fixture/prds/ignite-eval/` | `ignite-from-prd` | representative | Canonical PRD fed to `/smithy.ignite` to produce an RFC. |
+| `evals/fixture/rfcs/mark-eval/` | `mark-from-features` | representative | Co-located RFC and features-map plant consumed by `/smithy.mark`; the features-map starts with its `Artifact` cell unset so the scenario can verify spec-artifact production. |
 | `evals/fixture/rfcs/render-eval/` | `render-from-rfc` | representative | Minimal Smithy RFC consumed by the render scenario; exercises render's Phase 1 milestone-extraction routing. |
 
 ## Usage
