@@ -546,6 +546,23 @@ describe('getComposedTemplates', () => {
     // from.
     expect(orders).toContain('resolveManifestDir');
     expect(orders).toContain('<manifestDir>/templates/orders/');
+    const manifestResolutionHeading = '### Manifest Discovery and `<manifestDir>` Resolution';
+    const manifestResolutionStart = orders.indexOf(manifestResolutionHeading);
+    expect(manifestResolutionStart).toBeGreaterThan(-1);
+    const manifestResolutionEnd = orders.indexOf('**Forbidden operations.**', manifestResolutionStart);
+    expect(manifestResolutionEnd).toBeGreaterThan(manifestResolutionStart);
+    const manifestResolution = orders.slice(manifestResolutionStart, manifestResolutionEnd);
+
+    // US3 Slice 2: deploy-location awareness must be routed through the
+    // manifest-load phase, not hardcoded to one location. The prompt may use a
+    // deploy-location-agnostic <manifestDir> placeholder downstream, so assert
+    // that both location values are inputs to resolveManifestDir here.
+    expect(manifestResolution).toMatch(
+      /stored `deployLocation` field[\s\S]+<manifestDir> = resolveManifestDir\(targetDir, location\)/
+    );
+    expect(manifestResolution).toContain("resolveManifestDir(targetDir, 'repo')");
+    expect(manifestResolution).toContain("resolveManifestDir(targetDir, 'user')");
+    expect(manifestResolution).toMatch(/Run `smithy init`[\s\S]+re-run `smithy\.orders`/);
     // Spec template lookup (US2 S1 Task 2): the .spec.md mapping must
     // specifically reference the spec.md template file under the
     // manifest's orders templates directory.
