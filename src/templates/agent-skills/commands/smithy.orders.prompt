@@ -352,7 +352,7 @@ For **each** milestone extracted in Phase 3, perform the following steps:
    Write the rendered body to `/tmp/orders_body.md` and then call:
 
    ```bash
-   ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
    ```
 
    Skip the heredoc fallthrough below for this milestone.
@@ -615,7 +615,7 @@ For **each** slice extracted in Phase 3, perform the following steps:
    Write the rendered body to `/tmp/orders_body.md` and then call:
 
    ```bash
-   ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Slice] <slice-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Slice] <slice-title>" /tmp/orders_body.md
    ```
 
    Skip the heredoc fallthrough below for this slice.
