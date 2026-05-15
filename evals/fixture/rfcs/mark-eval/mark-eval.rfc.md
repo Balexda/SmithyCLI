@@ -71,11 +71,11 @@ those cases lead to different support conversations.
 
 ## Open Questions
 
-None — all ambiguities resolved.
+- None — all ambiguities resolved.
 
 ## Specification Debt
 
-None — all ambiguities resolved.
+- None — all ambiguities resolved.
 
 ## Milestones
 
