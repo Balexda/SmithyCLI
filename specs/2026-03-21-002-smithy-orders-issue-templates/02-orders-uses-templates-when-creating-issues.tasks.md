@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Replace `.rfc.md` per-milestone child heredoc with template-driven body**
+- [x] **Replace `.rfc.md` per-milestone child heredoc with template-driven body**
 
   In Phase 5 of `smithy.orders.prompt`, replace the per-milestone child body's heredoc with prose that reads `<manifestDir>/templates/orders/rfc.md` (when present) and globally substitutes every placeholder named in the data-model's rfc row. The RFC parent tracking issue (the one-per-RFC `[RFC] <rfc-title>` epic) keeps its existing hardcoded heredoc — that body is explicitly out of scope per AS 2.2. When the template file is absent, fall through to the existing per-milestone heredoc.
 
@@ -75,7 +75,7 @@
   - Global substitution — every occurrence of every known placeholder is replaced.
   - When `<manifestDir>/templates/orders/rfc.md` is absent the existing per-milestone heredoc is used.
 
-- [ ] **Replace `.tasks.md` per-slice heredoc with template-driven body**
+- [x] **Replace `.tasks.md` per-slice heredoc with template-driven body**
 
   In Phase 5 of `smithy.orders.prompt`, replace the per-slice child body's heredoc with prose that reads `<manifestDir>/templates/orders/tasks.md` (when present) and globally substitutes every placeholder named in the data-model's tasks row. When the template file is absent, fall through to the existing per-slice heredoc.
 
@@ -86,7 +86,7 @@
   - Global substitution — every occurrence of every known placeholder is replaced.
   - When `<manifestDir>/templates/orders/tasks.md` is absent the existing per-slice heredoc is used.
 
-- [ ] **Extend orders structural assertions to cover rfc and tasks template lookup**
+- [x] **Extend orders structural assertions to cover rfc and tasks template lookup**
 
   Extend the existing `smithy.orders` block in `src/templates.test.ts` with behavioral assertions that the composed prompt references `<manifestDir>/templates/orders/rfc.md` and `<manifestDir>/templates/orders/tasks.md`. Add an assertion that the RFC parent tracking issue body remains hardcoded (the prompt still contains the `[RFC] <rfc-title>` epic heredoc heading and references to `## RFC Tracking Issue`).
 
