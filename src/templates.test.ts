@@ -582,6 +582,14 @@ describe('getComposedTemplates', () => {
     expect(orders).toContain('## RFC Tracking Issue');
     expect(orders).toContain('[RFC] <rfc-title>');
 
+    // US2 S3: features issues render from the features template when
+    // present, and the features parser populates {{features_path}} from
+    // the source RFC's Dependency Order table rather than guessing a path.
+    expect(orders).toContain('<manifestDir>/templates/orders/features.md');
+    expect(orders).toContain('{{features_path}}');
+    expect(orders).toMatch(/Source RFC[\s\S]+## Dependency Order[\s\S]+Artifact/);
+    expect(orders).toMatch(/milestone number[\s\S]+M<N>/);
+
     // US4 Slice 1 Task 2: parity between the prompt's Phase 5 fallback
     // bodies and the canonical default exports in `src/orders-templates.ts`.
     // For each of the four orders-eligible artifact types, both surfaces

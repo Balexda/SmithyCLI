@@ -110,7 +110,7 @@
 
 ### Tasks
 
-- [ ] **Extend Phase 3 features parser to resolve `{{features_path}}` from the source RFC**
+- [x] **Extend Phase 3 features parser to resolve `{{features_path}}` from the source RFC**
 
   In Phase 3 of `smithy.orders.prompt`, extend the `.features.md` parse instructions so the agent locates the source RFC referenced in the features file's header, then reads that RFC's `## Dependency Order` table, finds the milestone row whose ID matches this features file's milestone, and captures the `Artifact` column value as `{{features_path}}`. When the source RFC cannot be located, the milestone row is missing, or the `Artifact` cell is `—`, populate `{{features_path}}` with empty string per the data-model validation rule.
 
@@ -120,7 +120,7 @@
   - Empty `Artifact` cell (`—` or absent) yields empty-string substitution rather than the literal `{{features_path}}`.
   - The captured value is stored for Phase 5 interpolation context.
 
-- [ ] **Replace `.features.md` per-feature heredoc with template-driven body**
+- [x] **Replace `.features.md` per-feature heredoc with template-driven body**
 
   In Phase 5 of `smithy.orders.prompt`, replace the per-feature body's heredoc with prose that reads `<manifestDir>/templates/orders/features.md` (when present) and globally substitutes every placeholder named in the data-model's features row, using the `{{features_path}}` value captured by the Phase 3 parser extension. The parent milestone-linkage search logic earlier in the Phase 5 features section is preserved. When the template file is absent, fall through to the existing per-feature heredoc.
 
@@ -132,7 +132,7 @@
   - Global substitution — every occurrence of every known placeholder is replaced.
   - When `<manifestDir>/templates/orders/features.md` is absent the existing per-feature heredoc is used.
 
-- [ ] **Assert features template lookup and `{{features_path}}` parser are present**
+- [x] **Assert features template lookup and `{{features_path}}` parser are present**
 
   Extend the existing `smithy.orders` block in `src/templates.test.ts` with behavioral assertions that the composed prompt references `<manifestDir>/templates/orders/features.md`, names `{{features_path}}` as a populated placeholder, and references the source RFC's `## Dependency Order` table as the lookup site for the features path.
 
