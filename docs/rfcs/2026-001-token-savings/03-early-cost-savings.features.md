@@ -87,5 +87,6 @@ Direction must be either `depends on` or `depended upon by`.
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
 | Milestone 1: Measurement Foundation | depends on | M3 starts after M1 provides per-case token totals, committed baselines, the `smithy.fix` high-cost CI-log scenario, and the JVM fixture needed to validate build-output protocol claims. |
-| Milestone 2: Architectural Cost Reductions | depended upon by | M2 and M3 construct in parallel after M1. M3 does not depend on M2 completion, but the shared touched-files matrix keeps F3.1 changes in `smithy.implement.prompt` and `smithy.forge.prompt` separate from M2 F2.3 and F2.4 ownership. |
 | Cross-RFC: `specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/` | depends on | F3.2 specifically depends on expand-evals US1 (audit), US2 (mark), and US3 (cut) being merged to master before model downgrades land. Other M3 features do not wait on this cross-RFC dependency. |
+
+M2 and M3 construct in parallel after M1 with no dependency in either direction. The shared touched-files matrix (F3.1 edits `smithy.implement.prompt` and `smithy.forge.prompt`; M2 F2.3 and F2.4 own overlapping sections) requires coordination at PR time but does not impose a sequencing constraint between milestones.
