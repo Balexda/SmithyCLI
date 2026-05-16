@@ -1,0 +1,69 @@
+# Render end-to-end eval scenario -- exercises `/smithy.render` against the
+# Slice 1 RFC plant and validates that render produces a feature map summary
+# with matrix-faithful sub-agent evidence.
+#
+# Spec:       specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.spec.md
+# Data model: specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md
+# Contracts:  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.contracts.md
+# Tasks:      specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/04-render-eval-produces-features-map.tasks.md
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the regex
+# quoting convention in `evals/cases/strike-health-check.yaml`. Structural
+# expectations validate the terminal one-shot snippet, not the on-disk
+# `.features.md`, because the runner validates `extracted_text` only.
+
+name: render-from-rfc
+skill: /smithy.render
+prompt: rfcs/render-eval/render-eval.rfc.md
+# Timeout calibration: render runs scout, competing plan lenses in agent mode,
+# clarify, feature-map drafting, plan-review, commit, and PR creation. A 15
+# minute budget is the smallest suite-consistent value that covers the spec's
+# 4-10 minute render estimate plus PR-failure-path variance.
+timeout: 900
+structural_expectations:
+  required_headings:
+    # Render Phase 4 inlines `src/templates/agent-skills/snippets/one-shot-output.md`
+    # as the terminal contract for first-pass feature-map generation.
+    - '## Summary'
+    - '## Assumptions'
+    - '## Specification Debt'
+    - '## PR'
+  required_patterns:
+    # One-shot-output Summary marker. For render, Phase 4 uses the RFC folder
+    # as the "Spec folder" and substitutes feature-map counts for spec counts.
+    - '\*\*Spec folder\*\*'
+    # AS 4.1 proxy for the produced feature-map path. The runner cannot inspect
+    # the on-disk artifact, so this anchors to the one-shot Summary bullet.
+    - '\*\*Artifacts produced\*\*:.*\.features\.md'
+    # PR creation may succeed in a configured environment or fall through to
+    # the documented PR-creation-failure paragraph when `gh`/remote auth is
+    # unavailable. Accept either terminal contract.
+    - 'https://github\.com/\S+/pull/\d+|PR creation failed . artifacts are on disk at'
+  forbidden_patterns:
+    # FR-011 -- strike-convention set: generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'
+# Sub-Agent Evidence -- exactly the three entries in the spec matrix for
+# render (smithy-scout, smithy-clarify, smithy-plan-review). SD-013 records
+# that render also dispatches competing smithy-plan lenses in agent mode, but
+# this scenario stays matrix-faithful until the spec is amended.
+sub_agent_evidence:
+  # smithy-scout: resultText leading-heading marker from
+  # `src/templates/agent-skills/agents/smithy.scout.prompt` Output.
+  - agent: smithy-scout
+    pattern: '^## Scout Report'
+  # smithy-clarify: dispatch-description marker shared with the strike
+  # scenario; parent dispatch descriptions naturally begin with a clarify
+  # verb form ("Clarify feature boundaries", "clarify ambiguities", etc.).
+  - agent: smithy-clarify
+    pattern: '^[Cc]larif'
+  # smithy-plan-review: pinned to the ReviewResult return shape required by
+  # `src/templates/agent-skills/agents/smithy.plan-review.prompt` and the
+  # shared review protocol: a findings list plus summary. This is the stable
+  # resultText marker for SD-015 until a richer plan-review output heading is
+  # introduced.
+  - agent: smithy-plan-review
+    # Order-insensitive: both words must appear but either may come first.
+    pattern: '(?=[\s\S]*\bfindings\b)(?=[\s\S]*\bsummary\b)'
