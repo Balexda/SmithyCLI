@@ -207,10 +207,18 @@ Parse the feature map to extract:
   Features/Feature List section) becomes a ticket.
 - **Feature map metadata** — read the feature map's header metadata rather
   than guessing paths:
-  - **Source RFC** — from the `**Source RFC**` field. If the field is absent
-    or the referenced RFC cannot be located, keep parsing features but set the
-    downstream `\{{features_path}}` value to empty string per the data-model
-    validation rule.
+  - **Source RFC** — from the `**Source RFC**` field. Resolve the path as
+    follows:
+    1. If the value is an absolute path or starts with the repo root, try it
+       as-is.
+    2. Otherwise treat it as a path **relative to the `.features.md` file's
+       own directory** (not the current working directory). For example, if the
+       feature map is at `evals/fixture/rfcs/mark-eval/01-core.features.md`
+       and the field value is `mark-eval.rfc.md`, resolve to
+       `evals/fixture/rfcs/mark-eval/mark-eval.rfc.md`.
+    If the field is absent or the resolved RFC path cannot be located on disk,
+    keep parsing features but set the downstream `\{{features_path}}` value to
+    empty string per the data-model validation rule.
   - **Milestone number** — from the `**Milestone**: <N> — <Title>` field. Use
     the number `<N>` as the stable lookup key; do not match by milestone title
     because names can collide across RFCs.
