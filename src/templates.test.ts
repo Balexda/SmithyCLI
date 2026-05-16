@@ -376,16 +376,17 @@ describe('getComposedTemplates', () => {
 
   it('skills map includes smithy.pr-review with prompt and scripts', () => {
     // Issue #261 added the GitHub MCP tools as the preferred path but kept
-    // the three `gh`-CLI shell scripts as the fallback for hosts without
+    // the `gh`-CLI shell scripts as the fallback for hosts without
     // the GitHub MCP server.
     const skill = claudeComposed.skills.get('smithy.pr-review');
     expect(skill).toBeDefined();
     expect(skill!.prompt).toBeTruthy();
     expect(skill!.scripts).toBeInstanceOf(Map);
-    expect(skill!.scripts.size).toBe(3);
+    expect(skill!.scripts.size).toBe(4);
     expect(skill!.scripts.has('find-pr.sh')).toBe(true);
     expect(skill!.scripts.has('get-comments.sh')).toBe(true);
     expect(skill!.scripts.has('reply-comment.sh')).toBe(true);
+    expect(skill!.scripts.has('add-comment.sh')).toBe(true);
   });
 
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
@@ -401,20 +402,23 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('mcp__github__list_pull_requests');
     expect(skill.prompt).toContain('mcp__github__pull_request_read');
     expect(skill.prompt).toContain('mcp__github__add_reply_to_pull_request_comment');
+    expect(skill.prompt).toContain('mcp__github__issue_write');
     // gh-CLI script fallback (canonical `:*` argument-suffix form)
     expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
     expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
   });
 
-  it('smithy.pr-review documents the three operations and the MCP-first / script-fallback choice', () => {
-    // Spot-check that the prompt body teaches the three operations and the
+  it('smithy.pr-review documents PR comment operations and the MCP-first / script-fallback choice', () => {
+    // Spot-check that the prompt body teaches the comment operations and the
     // dual-path decision rule (try MCP first, fall back to scripts when the
     // GitHub MCP server is unavailable).
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain('Find Open PR');
-    expect(skill.prompt).toContain('List Inline Comments');
-    expect(skill.prompt).toContain('Reply to a Comment');
+    expect(skill.prompt).toContain('List PR Comments');
+    expect(skill.prompt).toContain('Reply to Inline Comment');
+    expect(skill.prompt).toContain('Reply to Conversation Comment');
     // MCP method that exposes review threads
     expect(skill.prompt).toContain('get_review_comments');
     // The skill must explicitly direct the agent through the dual-path flow.
@@ -427,6 +431,7 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/find-pr.sh');
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/get-comments.sh');
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/reply-comment.sh');
+    expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/add-comment.sh');
     expect(skill.prompt).not.toContain('${CLAUDE_SKILL_DIR}');
     expect(skill.prompt).not.toContain('./.gemini/skills/smithy.pr-review');
   });
@@ -436,7 +441,9 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain("Codex's GitHub app connector");
     expect(skill.prompt).toContain('allowed-tools:');
     expect(skill.prompt).toContain('_list_pull_request_review_threads');
+    expect(skill.prompt).toContain('_fetch_pr_comments');
     expect(skill.prompt).toContain('_reply_to_review_comment');
+    expect(skill.prompt).toContain('_add_comment_to_issue');
     expect(skill.prompt).toContain('reply-comment.sh <ownerRepo> <pr-number> <comment-id> <body-file>');
     expect(skill.prompt).toContain('use tool discovery');
     expect(skill.prompt).toContain('The discovered Codex GitHub app actions do not provide a direct "find open PR');
@@ -461,8 +468,18 @@ describe('getComposedTemplates', () => {
     const script = skill.scripts.get('get-comments.sh')!;
     expect(script).toContain('gh api graphql');
     expect(script).toContain('reviewThreads');
+    expect(script).toContain('comments(first: 100)');
+    expect(script).toContain('conversation_comment');
     expect(script).toContain('isResolved');
     expect(script).toContain('databaseId');
+  });
+
+  it('add-comment.sh uses correct REST API path for PR conversation comments', () => {
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
+    const script = skill.scripts.get('add-comment.sh')!;
+    expect(script).toContain('repos/$REPO/issues/$PR/comments');
+    expect(script).toContain('--method POST');
+    expect(script).toContain('--input "$BODY_FILE"');
   });
 
   it('reply-comment.sh uses correct REST API path with pr number', () => {

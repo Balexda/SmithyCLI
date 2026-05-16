@@ -434,9 +434,11 @@ export const extraPermissions: string[] = [
   ".claude/skills/smithy.pr-review/scripts/find-pr.sh",
   ".claude/skills/smithy.pr-review/scripts/get-comments.sh:*",
   ".claude/skills/smithy.pr-review/scripts/reply-comment.sh:*",
+  ".claude/skills/smithy.pr-review/scripts/add-comment.sh:*",
   "*/smithy.pr-review/scripts/find-pr.sh",
   "*/smithy.pr-review/scripts/get-comments.sh:*",
   "*/smithy.pr-review/scripts/reply-comment.sh:*",
+  "*/smithy.pr-review/scripts/add-comment.sh:*",
 ];
 
 /**
@@ -509,10 +511,11 @@ export const denyPermissions: string[] = [
  * creation step in forge / strike / cut / mark / ignite / render),
  * `list_pull_requests` (cut/mark "is there an existing PR for this branch"
  * check + the smithy.pr-review skill's Find Open PR operation),
- * `pull_request_read` (smithy.pr-review's List Inline Comments operation),
- * `add_reply_to_pull_request_comment` (smithy.pr-review's Reply to a
- * Comment operation), and `issue_write` (the example tool the
- * `guidance-shell` snippet calls out for issue creation).
+ * `pull_request_read` (smithy.pr-review's List PR Comments operation),
+ * `add_reply_to_pull_request_comment` (smithy.pr-review's Reply to an
+ * Inline Comment operation), and `issue_write` (the example tool the
+ * `guidance-shell` snippet calls out for issue creation, also used by
+ * smithy.pr-review's Reply to Conversation Comment operation).
  *
  * Anything broader — destructive operations like `merge_pull_request` /
  * `delete_file` / `fork_repository` / `create_repository` /

@@ -167,6 +167,7 @@ describe('deploy', () => {
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(content).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
   });
 
   it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
@@ -202,7 +203,7 @@ describe('deploy', () => {
     }
   });
 
-  it('deploys smithy.pr-review skill with all three scripts', async () => {
+  it('deploys smithy.pr-review skill with all scripts', async () => {
     // Issue #261 made the GitHub MCP tools the preferred path, but kept the
     // three `gh`-CLI shell scripts as a fallback for hosts without the
     // GitHub MCP server. The deploy step must still ship them.
@@ -215,6 +216,7 @@ describe('deploy', () => {
     expect(scripts).toContain('find-pr.sh');
     expect(scripts).toContain('get-comments.sh');
     expect(scripts).toContain('reply-comment.sh');
+    expect(scripts).toContain('add-comment.sh');
   });
 
   it('strips frontmatter from deployed prompt files', async () => {
@@ -416,10 +418,12 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
     expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh:*)');
     // Wildcard fallback for user-level / absolute deploys
     expect(list).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
     expect(list).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(list).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
   });
 
   it('includes multi-language build tool commands', () => {
@@ -683,10 +687,12 @@ describe('writePermissions', () => {
     expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
     expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh:*)');
     // Wildcard fallback for other deploy locations
     expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
     expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
     expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
   });
 
   it('entries are Bash()-wrapped or Claude tool names', () => {

@@ -130,6 +130,7 @@ describe('buildGeminiAllowList', () => {
     expect(joined).not.toContain('smithy.pr-review/scripts/find-pr.sh');
     expect(joined).not.toContain('smithy.pr-review/scripts/get-comments.sh');
     expect(joined).not.toContain('smithy.pr-review/scripts/reply-comment.sh');
+    expect(joined).not.toContain('smithy.pr-review/scripts/add-comment.sh');
     expect(joined).not.toContain('.claude/skills/');
     expect(list.some(e => e.includes(':*'))).toBe(false);
   });

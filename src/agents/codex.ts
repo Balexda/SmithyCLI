@@ -24,6 +24,7 @@ const SMITHY_SKILL_SCRIPT_RULES = [
   './.agents/skills/smithy.pr-review/scripts/find-pr.sh',
   './.agents/skills/smithy.pr-review/scripts/get-comments.sh',
   './.agents/skills/smithy.pr-review/scripts/reply-comment.sh',
+  './.agents/skills/smithy.pr-review/scripts/add-comment.sh',
   './.agents/skills/smithy.gh-issue/scripts/check-env.sh',
   './.agents/skills/smithy.gh-issue/scripts/search-issues.sh',
   './.agents/skills/smithy.gh-issue/scripts/create-issue.sh',
