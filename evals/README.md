@@ -147,6 +147,7 @@ Status tokens: `PASS`, `FAIL`, `TIMEOUT`, `ERROR` (FR-009, AS 9.3). The
 ```
 evals/
 ├── cases/                  # YAML scenario definitions (FR-007)
+│   ├── render-from-rfc.yaml
 │   ├── spark-from-idea.yaml
 │   └── strike-health-check.yaml
 ├── fixture/                # Static reference codebase (Express TS API)
