@@ -109,6 +109,7 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy-forge', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy-fix', 'SKILL.md'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy.pr-review', 'scripts', 'find-pr.sh'))).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills', 'smithy.pr-review', 'scripts', 'add-comment.sh'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'prompts'))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, '.gemini', 'skills'))).toBe(false);

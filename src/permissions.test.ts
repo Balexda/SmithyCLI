@@ -186,9 +186,11 @@ describe('flattenPermissions', () => {
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/add-comment.sh:*');
     expect(extraPermissions).toContain('*/smithy.pr-review/scripts/find-pr.sh');
     expect(extraPermissions).toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
     expect(extraPermissions).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/add-comment.sh:*');
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {
