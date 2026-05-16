@@ -527,6 +527,23 @@ export const claudeToolPermissions: string[] = [
   "WebSearch",
   "WebFetch",
   "Write(/tmp/**)",
+  // Claude Code's current Skill permission grammar uses a space before the
+  // wildcard arguments segment, e.g. `Skill(name *)`. Keep the legacy colon
+  // wildcard below temporarily for older Claude versions that accepted it.
+  "Skill(smithy.audit *)",
+  "Skill(smithy.cut *)",
+  "Skill(smithy.fix *)",
+  "Skill(smithy.forge *)",
+  "Skill(smithy.gh-issue *)",
+  "Skill(smithy.helper-docker *)",
+  "Skill(smithy.ignite *)",
+  "Skill(smithy.mark *)",
+  "Skill(smithy.orders *)",
+  "Skill(smithy.pr-review *)",
+  "Skill(smithy.render *)",
+  "Skill(smithy.spark *)",
+  "Skill(smithy.status *)",
+  "Skill(smithy.strike *)",
   "Skill(smithy.*:*)",
   // GitHub MCP — exactly the tools the smithy templates invoke.
   "mcp__github__create_pull_request",

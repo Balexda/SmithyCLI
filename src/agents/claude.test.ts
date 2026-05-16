@@ -374,7 +374,27 @@ describe('buildClaudeAllowList', () => {
     const list = buildClaudeAllowList();
     expect(list).toContain('WebSearch');
     expect(list).toContain('WebFetch');
-    expect(list.some(e => e.startsWith('Skill(smithy.'))).toBe(true);
+    expect(list).toContain('Skill(smithy.pr-review *)');
+    expect(list).toContain('Skill(smithy.fix *)');
+    expect(list).toContain('Skill(smithy.gh-issue *)');
+    expect(list).toContain('Skill(smithy.helper-docker *)');
+    expect(list).toContain('Skill(smithy.status *)');
+    // Keep the older colon wildcard while Claude versions in the wild may
+    // still accept it.
+    expect(list).toContain('Skill(smithy.*:*)');
+  });
+
+  it('includes current-form Skill permissions for every deployed smithy command and skill', () => {
+    const list = buildClaudeAllowList();
+    const categories = getTemplateFilesByCategory();
+    const commandNames = categories.commands.map(file => file.replace(/\.md$/, ''));
+    const smithyNames = [...commandNames, ...categories.skills]
+      .filter(name => name.startsWith('smithy.'))
+      .sort();
+
+    for (const name of smithyNames) {
+      expect(list).toContain(`Skill(${name} *)`);
+    }
   });
 
   it('includes GitHub MCP tool permissions for PR / issue / review actions', () => {
