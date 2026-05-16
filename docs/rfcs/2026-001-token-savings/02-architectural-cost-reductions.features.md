@@ -51,7 +51,7 @@ Recommended specification sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| F2.3 | smithy.implement Per-Task Spec Re-Read Reduction | — | — |
+| F2.3 | smithy.implement Per-Task Spec Re-Read Reduction | — | specs/2026-05-15-006-smithy-implement-per-task-spec-re-read-reduction/ |
 | F2.4 | Inline smithy.maid in smithy.forge Phase 6 | — | — |
 | F2.5 | Trivial-Slice Review-Skip Heuristic | F2.3 | — |
 
