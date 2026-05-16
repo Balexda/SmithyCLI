@@ -68,9 +68,9 @@ if no open PR exists for the current branch.
 
 ## Operation: List PR Comments
 
-Fetches unresolved inline review threads and top-level PR conversation
-comments. Conversation comments are not review threads, so handle them as
-separate actionable items.
+Fetches unresolved inline review threads and unhandled top-level PR
+conversation comments. Conversation comments are not review threads, so handle
+them as separate actionable items.
 
 ### Codex app path
 
@@ -84,7 +84,9 @@ them to the caller — only unresolved threads need a reply.
 
 Also call `_fetch_pr_comments` with the same arguments and include top-level
 PR conversation comments that are not already represented inside an inline
-review thread. Return one item per inline thread or conversation comment.
+review thread, not authored by the current actor, and not already followed by
+one of this workflow's marker comments. Return one item per inline thread or
+conversation comment.
 
 ### Script fallback
 
@@ -106,6 +108,12 @@ Each conversation comment has:
 - `kind`: `"conversation_comment"`
 - `replyMode`: `"conversation"`
 - `comments[]`: a single top-level PR conversation comment.
+
+Conversation comments authored by the authenticated viewer are excluded. A
+conversation comment is also excluded when a later viewer-authored comment
+contains the marker `smithy-pr-review-response-to:<databaseId>`. The script
+fetches the most recent 100 conversation comments so newer feedback is not
+starved by older PR activity.
 
 Returns `[]` if there are no unresolved review items.
 
@@ -160,7 +168,8 @@ replies to issue-style PR conversation comments.
 Call `_add_comment_to_issue` with:
 - `repo_full_name`: `"<owner>/<repo>"`
 - `pr_number`
-- `comment`: the reply text
+- `comment`: the reply text plus an HTML marker:
+  `<!-- smithy-pr-review-response-to:<databaseId> -->`
 
 ### Script fallback
 
@@ -169,7 +178,7 @@ then POST it:
 
 ```bash
 cat > /tmp/smithy_pr_comment_<pr-number>.json << 'EOF'
-{"body": "your reply text here"}
+{"body": "your reply text here\n\n<!-- smithy-pr-review-response-to:<databaseId> -->"}
 EOF
 ./.agents/skills/smithy.pr-review/scripts/add-comment.sh <ownerRepo> <pr-number> /tmp/smithy_pr_comment_<pr-number>.json
 ```
@@ -178,6 +187,9 @@ EOF
 
 - For a **fix** reply: `"Fixed in <commit-sha>: <one-line explanation of what changed and why>"`
 - For a **decline** reply: `"Not addressed: <explanation — why the comment doesn't apply, or what was misunderstood>"`
+- For a **conversation comment** reply, append
+  `<!-- smithy-pr-review-response-to:<databaseId> -->` so future list
+  operations can suppress the handled comment.
 
 ---
 

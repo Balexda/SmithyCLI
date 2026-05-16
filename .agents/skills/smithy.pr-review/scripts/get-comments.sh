@@ -14,6 +14,9 @@
 #   - replyMode: "conversation"
 #   - comments[]: a single comment object with databaseId, body, author.login,
 #                 createdAt, and null path/diffHunk fields
+# Conversation comments authored by the authenticated viewer, or already
+# followed by a viewer comment containing the smithy-pr-review response marker,
+# are filtered out.
 #
 # Returns an empty array ([]) if there are no unresolved review items.
 
@@ -31,6 +34,7 @@ gh api graphql \
   -F pr="$PR" \
   -f query='
 query($owner: String!, $name: String!, $pr: Int!) {
+  viewer { login }
   repository(owner: $owner, name: $name) {
     pullRequest(number: $pr) {
       reviewThreads(first: 100) {
@@ -48,7 +52,7 @@ query($owner: String!, $name: String!, $pr: Int!) {
           }
         }
       }
-      comments(first: 100) {
+      comments(last: 100) {
         nodes {
           databaseId
           body
@@ -58,23 +62,35 @@ query($owner: String!, $name: String!, $pr: Int!) {
       }
     }
   }
-}' --jq '[
+}' --jq '
+.data as $data
+| ($data.viewer.login // "") as $viewer
+| ($data.repository.pullRequest.comments.nodes | sort_by(.createdAt)) as $conversationComments
+| [
   (.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | . + {
     kind: "inline_thread",
     replyMode: "inline",
     comments: (.comments.nodes | sort_by(.createdAt))
   }),
-  (.data.repository.pullRequest.comments.nodes[] | {
+  ($conversationComments[] as $comment
+  | select(($comment.author.login // "") != $viewer)
+  | select([
+      $conversationComments[]
+      | select((.author.login // "") == $viewer)
+      | select(.createdAt > $comment.createdAt)
+      | select((.body // "") | contains("smithy-pr-review-response-to:" + ($comment.databaseId | tostring)))
+    ] | length == 0)
+  | {
     kind: "conversation_comment",
     replyMode: "conversation",
     isResolved: false,
     comments: [{
-      databaseId,
-      body,
+      databaseId: $comment.databaseId,
+      body: $comment.body,
       path: null,
       diffHunk: null,
-      author,
-      createdAt
+      author: $comment.author,
+      createdAt: $comment.createdAt
     }]
   })
 ] | sort_by(.comments[0].createdAt)'

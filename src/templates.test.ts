@@ -468,8 +468,10 @@ describe('getComposedTemplates', () => {
     const script = skill.scripts.get('get-comments.sh')!;
     expect(script).toContain('gh api graphql');
     expect(script).toContain('reviewThreads');
-    expect(script).toContain('comments(first: 100)');
+    expect(script).toContain('viewer { login }');
+    expect(script).toContain('comments(last: 100)');
     expect(script).toContain('conversation_comment');
+    expect(script).toContain('smithy-pr-review-response-to:');
     expect(script).toContain('isResolved');
     expect(script).toContain('databaseId');
   });
