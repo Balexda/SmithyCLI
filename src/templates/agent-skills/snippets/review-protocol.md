@@ -46,20 +46,15 @@ it never takes the action itself.
 | Severity | Confidence | Parent Action |
 |----------|------------|---------------|
 | Critical | High | Apply proposed fix, note in PR |
-| Critical | Low | Record as specification debt **if it passes the kind gate**, otherwise flag in PR for reviewer |
+| Critical | Low | Record as specification debt **if it passes the kind gate** (see `smithy-clarify` Step 3b for the canonical definition and routing table), otherwise route via the gate's routing table and flag in PR for reviewer |
 | Important | High | Apply proposed fix |
-| Important | Low | Record as specification debt **if it passes the kind gate**, otherwise route to the artifact's proper section (FR, acceptance scenarios, governance, out-of-scope) |
+| Important | Low | Record as specification debt **if it passes the kind gate**, otherwise route via the gate's routing table (`smithy-clarify` Step 3b) to the artifact's proper section (FR, acceptance scenarios, governance, out-of-scope) |
 | Minor | Any | Note in PR only |
 
-A finding **passes the kind gate** only when it names an unresolved
-choice between two or more meaningfully different paths and contains no
-prescription. Requirements ("X must Y"), acceptance tests ("acceptance
-criteria require verifying Z"), dependency/coordination notes ("F1 and
-F2 both touch file Z; second-to-land rebases"), future-work deferrals,
-and resolution records do **not** belong in `## Specification Debt` even
-when their confidence is Low. See `smithy-clarify` Step 3 for the
-canonical kind-gate definition; this snippet does not duplicate it to
-avoid drift between the two sites.
+The canonical kind-gate criteria and the leak-kind → proper-home
+routing table live in `smithy-clarify` Step 3b. This snippet
+deliberately does not restate them; consult that section directly
+when triaging a Critical-Low or Important-Low finding.
 
 ### Read-only invariant
 
