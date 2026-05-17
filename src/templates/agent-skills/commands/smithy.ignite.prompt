@@ -181,8 +181,8 @@ After the sub-agent returns its summary:
 1. Apply the refinements from smithy-refine directly to the RFC file in place
    — refine is non-interactive and returns high-confidence refinements ready
    to apply. Do not pause for user approval before writing.
-2. Route any low-confidence findings returned in `debt_items` into the RFC's
-   `## Specification Debt` section. Never reword a description into a
+2. Route the Medium/Low-confidence findings returned in `debt_items` into
+   the RFC's `## Specification Debt` section. Never reword a description into a
    directive, never append rows that did not come from `debt_items`, and do
    **not** populate the section from the Cross-Cutting Governance / touched-
    files matrix, from milestone deferrals, or from post-hoc resolution
