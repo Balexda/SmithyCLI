@@ -14,9 +14,9 @@ tallies. Exemplars are pulled from the classified set with verified line
 references.
 
 The findings drive the prompt edits that ship with this PR
-(`src/templates/agent-skills/agents/smithy.clarify.prompt` Step 3, plus
-mirror edits in refine, review-protocol, one-shot-output, mark, and
-cut).
+(`src/templates/agent-skills/agents/smithy.clarify.prompt` Step 3,
+plus mirror edits in refine, review-protocol, one-shot-output, mark,
+cut, and ignite).
 
 ## Method
 
