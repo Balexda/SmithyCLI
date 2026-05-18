@@ -576,12 +576,17 @@ describe('getComposedTemplates', () => {
     // manifest-load phase, not hardcoded to one location. The prompt may use a
     // deploy-location-agnostic <manifestDir> placeholder downstream, so assert
     // that both location values are inputs to resolveManifestDir here.
-    expect(manifestResolution).toMatch(
-      /stored `deployLocation` field[\s\S]+<manifestDir> = resolveManifestDir\(targetDir, location\)/
-    );
+    expect(manifestResolution).toContain("parsed JSON object (in particular its `deployLocation` field");
+    expect(manifestResolution).toMatch(/Read the selected\s+manifest's stored `deployLocation` field/);
+    expect(manifestResolution).toContain('<manifestDir> = resolveManifestDir(targetDir, location)');
     expect(manifestResolution).toContain("resolveManifestDir(targetDir, 'repo')");
     expect(manifestResolution).toContain("resolveManifestDir(targetDir, 'user')");
-    expect(manifestResolution).toMatch(/Run `smithy init`[\s\S]+re-run `smithy\.orders`/);
+    const missingManifestStart = manifestResolution.indexOf('**(a) Neither candidate exists.**');
+    expect(missingManifestStart).toBeGreaterThan(-1);
+    const missingManifestEnd = manifestResolution.indexOf('**(b) Only the repo candidate exists.**', missingManifestStart);
+    expect(missingManifestEnd).toBeGreaterThan(missingManifestStart);
+    const missingManifestPath = manifestResolution.slice(missingManifestStart, missingManifestEnd);
+    expect(missingManifestPath).toContain('`smithy init`');
     // Spec template lookup (US2 S1 Task 2): the .spec.md mapping must
     // specifically reference the spec.md template file under the
     // manifest's orders templates directory.
