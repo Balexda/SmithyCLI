@@ -11,7 +11,7 @@
 
 name: cut-from-spec
 skill: /smithy.cut
-prompt: evals/fixture/specs/cut-eval 1
+prompt: evals/fixture/specs/cut-eval/cut-eval.spec.md 1
 # Empirical calibration: local Codex run on 2026-05-16 completed the cut
 # command in 247.5s; 600s leaves headroom for slower sub-agent dispatches
 # while staying below the sibling long-running planning-command budget.
