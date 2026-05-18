@@ -73,7 +73,10 @@ When entering Phase 1 from a `.features.md`, carry forward:
 ## Phase 1: Intake
 
 1. Parse the input:
-   - **RFC path**: Read and extract goals, constraints, and open questions.
+   - **RFC path**: Read and extract goals, constraints, and any
+     unresolved `SD-NNN` rows from the RFC's Specification-Debt table —
+     the RFC has no separate "Open Questions" section; unresolved
+     uncertainty lives in the debt table.
    - **Feature description**: Treat as the starting context.
    - **Feature map** (from Routing): Use the selected feature's Title,
      Description, User-Facing Value, and Scope Boundaries as the starting
