@@ -14,11 +14,12 @@
 
 name: render-from-rfc
 skill: /smithy.render
-prompt: rfcs/render-eval/render-eval.rfc.md
+prompt: evals/fixture/rfcs/render-eval/render-eval.rfc.md
 # Timeout calibration: render runs scout, competing plan lenses in agent mode,
-# clarify, feature-map drafting, plan-review, commit, and PR creation. A 15
-# minute budget is the smallest suite-consistent value that covers the spec's
-# 4-10 minute render estimate plus PR-failure-path variance.
+# clarify, feature-map drafting, plan-review, commit, and PR creation. Observed
+# sibling full-pipeline evals sit in the 4-10 minute band tracked by SD-014; a
+# 15 minute budget leaves headroom for slower sub-agent dispatches and
+# PR-failure-path variance.
 timeout: 900
 structural_expectations:
   required_headings:
