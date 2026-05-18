@@ -106,7 +106,7 @@ Recommended specification sequence:
 |----|-------|------------|----------|
 | F1.1 | Reference Baseline Evals Infrastructure | — | — |
 | F1.2 | Expand-Evals Planning-Command Coverage (cross-RFC) | — | — |
-| F1.3a | Per-Case Token Totals in EvalReport | F1.1 | — |
+| F1.3a | Per-Case Token Totals in EvalReport | F1.1 | specs/2026-05-18-007-per-case-token-totals-in-evalreport/ |
 | F1.3b | Per-Sub-Agent Token Attribution | F1.3a | — |
 | F1.4 | smithy.fix End-to-End Eval Scenario | F1.3a | — |
 | F1.5 | smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1.3a | — |
