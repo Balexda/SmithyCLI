@@ -189,6 +189,6 @@ Each file, file section, or shared snippet has exactly one owning milestone for 
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| M1 | Measurement Foundation | — | — |
-| M2 | Architectural Cost Reductions | M1 | — |
-| M3 | Early Cost Savings | M1 | — |
+| M1 | Measurement Foundation | — | docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md |
+| M2 | Architectural Cost Reductions | M1 | docs/rfcs/2026-001-token-savings/02-architectural-cost-reductions.features.md |
+| M3 | Early Cost Savings | M1 | docs/rfcs/2026-001-token-savings/03-early-cost-savings.features.md |

@@ -104,16 +104,14 @@ Recommended specification sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| F1.1 | Reference Baseline Evals Infrastructure | — | — |
-| F1.2 | Expand-Evals Planning-Command Coverage (cross-RFC) | — | — |
-| F1.3a | Per-Case Token Totals in EvalReport | F1.1 | specs/2026-05-18-007-per-case-token-totals-in-evalreport/ |
-| F1.3b | Per-Sub-Agent Token Attribution | F1.3a | — |
-| F1.4 | smithy.fix End-to-End Eval Scenario | F1.3a | — |
-| F1.5 | smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1.3a | — |
-| F1.6 | JVM Multi-Language Fixture | F1.1 | — |
-| F1.7 | Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1.3a, F1.5, F1.6 | — |
+| F1 | Feature 1.3a: Per-Case Token Totals in EvalReport | — | specs/2026-05-18-007-per-case-token-totals-in-evalreport/ |
+| F2 | Feature 1.3b: Per-Sub-Agent Token Attribution | F1 | — |
+| F3 | Feature 1.4: smithy.fix End-to-End Eval Scenario | F1 | — |
+| F4 | Feature 1.5: smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1 | — |
+| F5 | Feature 1.6: JVM Multi-Language Fixture | — | — |
+| F6 | Feature 1.7: Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1, F4, F5 | — |
 
-F1.1 and F1.2 are referenced-only rows with no implementation work (their `Artifact` column will remain `—` because no spec will be authored against them in this milestone — they are inherited substrate / cross-RFC dependency).
+Feature 1.1 and Feature 1.2 are referenced-only rows with no implementation work, so they are intentionally omitted from the Dependency Order table. No spec will be authored against them in this milestone because they are inherited substrate / cross-RFC dependency.
 
 Parallel-startable on day one: F1.3a, F1.3b, F1.4, F1.5, F1.6 (five-way concurrency). F1.3b can begin in parallel with F1.3a because it primarily consumes the already-captured `evals/captures/strike-health-check.events.jsonl` evidence; its code path joins F1.3a's rendering surface. F1.4 and F1.5 each depend on F1.3a only for their committed baseline files. F1.6's fixture authoring and `fixture:` field plumbing are independent of every other feature. F1.7 fans in last as the M1 closer. The M1-close `.claude/` snapshot-refresh chore PR follows F1.7 — it is not a feature row in this map.
 
