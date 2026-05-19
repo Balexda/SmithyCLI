@@ -32,7 +32,15 @@ behavior).
 ### 5. Mark the task complete
 
 Update the task checkbox from `- [ ]` to `- [x]` in the tasks or strike file.
-Include this edit in the implementation commit.
+**Include this edit in the implementation commit — not a follow-up commit.**
+
+The checkbox flip is **mandatory**, not bookkeeping. The slice's parent
+orchestrator (`smithy.forge`) gates PR creation on every task in the slice
+reading `- [x]` at HEAD; a merged PR that leaves rows unchecked wedges the
+downstream dispatch loop (`smithy status` keeps the slice in progress while
+the merge-archive blocks re-dispatch). If you cannot legitimately mark the
+task complete (work is blocked, requirements unclear), do not fake the flip
+— stop and report the blocker per the constraints below.
 
 ---
 
