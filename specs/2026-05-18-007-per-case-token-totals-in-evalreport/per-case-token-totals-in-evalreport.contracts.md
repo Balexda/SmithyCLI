@@ -39,6 +39,15 @@ extractTokenTotals(events: StreamEvent[]): TokenTotals
 | Usage metadata is malformed | Ignore malformed fields and continue. | Unknown stream shapes remain tolerated. |
 | Events are empty | Return zero totals. | Empty or unparsable output can still produce a valid error result. |
 
+#### Deduplication Rule
+
+When usage metadata appears on more than one stream event for the same logical run (for example a terminal `result` event reporting cumulative totals alongside earlier `message_delta` or `assistant` events reporting per-step totals), the extractor MUST avoid double-counting by applying this precedence:
+
+1. **Terminal-event precedence.** If at least one event whose type is `result` (the run-terminating summary event) carries usage metadata, the extractor MUST take the per-field maximum of the input and output token counts reported by those terminal events and MUST ignore usage on non-terminal events for the same run.
+2. **Delta fallback.** If no terminal event carries usage metadata, the extractor MUST sum the per-event usage values from non-terminal events (`message_delta`, `assistant`, and any other event types that surface usage).
+
+This precedence is deterministic for both cumulative-totals shapes and delta-totals shapes regardless of the agent CLI version. SD-001 in the specification tracks empirically verifying the event shapes emitted by the configured CLI; the precedence rule above is the contract regardless of where usage ultimately lands.
+
 ### 2) Scenario Result Assembly
 
 **Purpose**: Carries token totals from a scenario run into the per-case eval result.

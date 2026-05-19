@@ -16,7 +16,7 @@
 - Token totals are recorded as input and output token counts; missing or unparseable usage data is represented as zero totals rather than failing an otherwise valid scenario run.
 - Token baseline checks compare committed per-case token envelopes with live per-case totals and emit a baseline check result without replacing existing structural baseline checks.
 - Per-sub-agent token attribution is excluded from this specification and remains owned by F1.3b.
-- The RFC touched-files matrix is amended by this specification to include the stream parsing, runner output, and shared type surfaces needed for token totals; the matrix amendment is tracked as specification debt so implementation PRs carry the governance update explicitly.
+- The RFC touched-files matrix does not yet name the stream parsing, runner output, and shared type surfaces needed for token totals; the matrix amendment is deferred to the implementation PR and tracked as SD-003 so the governance update lands alongside the code rather than as a separate planning revision.
 
 ## Artifact Hierarchy
 
@@ -112,7 +112,7 @@ Recommended implementation sequence:
 - **FR-001**: The system MUST represent token totals as separate non-negative integer input and output counts.
 - **FR-002**: Each scenario run result MUST include token totals, even when no usage metadata is present.
 - **FR-003**: Token extraction MUST read usage metadata from supported stream events without failing on unknown event shapes.
-- **FR-004**: Token extraction MUST ignore absent, null, non-numeric, negative, or non-finite usage values.
+- **FR-004**: Token extraction MUST ignore absent, null, non-numeric, non-integer (fractional, e.g., `12.3`), negative, or non-finite usage values so the non-negative integer invariant in FR-001 is preserved by construction. Numbers whose value is integral but whose JSON encoding is a float (e.g., `12.0`) are accepted as the equivalent integer.
 - **FR-005**: Scenario results MUST carry token totals through report aggregation without mutating existing structural, sub-agent, or baseline check arrays.
 - **FR-006**: The aggregate eval report MUST expose total input and output token counts across all included scenario results.
 - **FR-007**: The formatted eval report MUST render input and output token totals on every per-case line.
@@ -145,7 +145,7 @@ Recommended implementation sequence:
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | The exact stream-json event placement for usage metadata may vary by Claude CLI version. Implementers must verify whether usage appears on final result events, assistant events, or both, and must avoid double-counting if both are present for the same logical run. | Integration | High | Medium | open | — |
+| SD-001 | The exact stream-json event placement for usage metadata may vary by Claude CLI version. Implementers must verify whether usage appears on final `result` events, assistant events, or both, and apply the Stream Usage Extraction deduplication rule in the contracts document (terminal `result` event precedence, with delta-event sum as the fallback) when both are present for the same logical run. | Integration | High | Medium | open | — |
 | SD-002 | The token envelope tolerance is not calibrated until the first token-aware strike baseline is captured. Implementers should choose a conservative initial envelope and document the captured live totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | — |
 | SD-003 | The RFC touched-files matrix currently omits some token-threading surfaces needed by F1.3a. The implementation PR must amend the matrix to name all owned parsing, runner-output, report, and type surfaces touched by this feature. | Integration | Medium | High | open | — |
 
