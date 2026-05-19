@@ -1516,6 +1516,16 @@ describe('getComposedTemplates', () => {
     // Write-step marker: language about appending a new session entry.
     // Distinct from any read-step phrasing.
     expect(phase2Block.toLowerCase()).toMatch(/append[^.]*new session/);
+
+    // Issue #368 regression guard: the clarify-log path MUST live under
+    // `.smithy/clarify-logs/`, not under the RFC folder. Pin the new path
+    // and forbid the legacy path so a regression to writing the log
+    // inside the RFC folder fails this assertion. Checked across the
+    // entire composed ignite prompt — the path is referenced in Phase 2
+    // (read + append) and Phase 3 (resume bridge), so a regression in
+    // any one of those locations is enough to fail.
+    expect(ignite).toContain('.smithy/clarify-logs/');
+    expect(ignite).not.toMatch(/docs\/rfcs\/[^`\s]*\.clarify-log\.md/);
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
