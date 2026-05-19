@@ -1,0 +1,66 @@
+# Mark end-to-end eval scenario - exercises `/smithy.mark` against the
+# representative feature-map plant under `evals/fixture/rfcs/mark-eval/`.
+#
+# Spec:       specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.spec.md
+# Data model: specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md
+# Contracts:  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.contracts.md
+# Tasks:      specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/02-mark-eval-produces-spec-artifact-set.tasks.md
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the
+# single-quoted regex convention in `evals/cases/strike-health-check.yaml`.
+
+name: mark-from-features
+skill: /smithy.mark
+prompt: evals/fixture/rfcs/mark-eval/01-core.features.md 1
+# Timeout calibration: mark runs scout, four competing plan lenses, reconcile,
+# clarify, spec artifact generation, plan-review, commit, and PR creation.
+# Local sibling planning-command evals complete in the 4-10 minute band; 900s
+# leaves headroom for slower sub-agent dispatches and PR-failure-path variance.
+timeout: 900
+structural_expectations:
+  required_headings:
+    # One-shot terminal contract from
+    # `src/templates/agent-skills/snippets/one-shot-output.md`, inlined by
+    # `src/templates/agent-skills/commands/smithy.mark.prompt` Phase 6.
+    - '## Summary'
+    - '## Assumptions'
+    - '## Specification Debt'
+    - '## PR'
+  required_patterns:
+    # One-shot summary marker from the mark terminal contract.
+    - '\*\*Spec folder\*\*'
+    # Accept either successful PR creation or the documented auth/network
+    # failure branch from the one-shot output snippet.
+    - 'https://github\.com/\S+/pull/[0-9]+|PR creation failed[^\n]*artifacts are on disk at'
+  forbidden_patterns:
+    # FR-011 - strike-convention set: generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'
+# Sub-Agent Evidence - mark's template dispatches scout before planning,
+# competing plan lenses during approach planning, clarify before artifact
+# generation, refine during review-loop handling, and plan-review before PR.
+sub_agent_evidence:
+  # smithy-scout: resultText leading-heading marker from
+  # `src/templates/agent-skills/agents/smithy.scout.prompt` Output.
+  - agent: smithy-scout
+    pattern: '^## Scout Report'
+  # smithy-plan: each plan-template invocation begins with this stable
+  # resultText marker, shared with the strike scenario.
+  - agent: smithy-plan
+    pattern: '## Plan\n\n\*\*Directive\*\*'
+  # smithy-clarify: dispatch-description marker established by the strike
+  # scenario; clarify dispatches naturally open with "Clarify..." or
+  # "clarify...".
+  - agent: smithy-clarify
+    pattern: '^[Cc]larif'
+  # smithy-refine: resultText marker from the refine agent's audit scan.
+  # Fallback if the step heading proves unstable empirically: `^[Rr]efine`.
+  - agent: smithy-refine
+    pattern: '## Step [0-9]+:'
+  # smithy-plan-review: pinned to the ReviewResult return shape required by
+  # `src/templates/agent-skills/agents/smithy.plan-review.prompt` and the
+  # shared review protocol: a findings list plus summary.
+  - agent: smithy-plan-review
+    pattern: '(?=[\s\S]*\bfindings\b)(?=[\s\S]*\bsummary\b)'
