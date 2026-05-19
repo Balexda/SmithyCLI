@@ -43,7 +43,7 @@
 
 ### Tasks
 
-- [ ] **Assert orders prompt routes by `deployLocation` and surfaces missing-manifest error**
+- [x] **Assert orders prompt routes by `deployLocation` and surfaces missing-manifest error**
 
   Extend the existing `smithy.orders command delegates GitHub ops to smithy.gh-issue scripts` block in `src/templates.test.ts` with structural assertions on the composed `smithy.orders.md` content: (a) the prompt names the manifest's persisted `deployLocation` field as the source of `<manifestDir>` resolution (catches a regression to a hardcoded location); (b) both `'repo'` and `'user'` appear as inputs that drive `resolveManifestDir` (or the equivalent routing call) so neither location value is silently dropped — assert the routing of both values, not two distinct literal path-string branches, since US2's manifest-load prose may emit a single deploy-location-agnostic `<manifestDir>` placeholder rather than two location-specific path strings; (c) the prompt references `smithy init` in the missing-manifest error path. Match by content substrings, not line numbers, consistent with the convention US2 Slice 1 Task 3 establishes. Satisfies the structural side of AS 3.3, AS 3.4, and AS 3.5.
 
