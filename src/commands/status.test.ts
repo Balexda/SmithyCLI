@@ -1071,11 +1071,66 @@ describe('serializeGraphForJson', () => {
     }
   });
 
-  it('default mode filters the top-level nodes map to match visible IDs', () => {
+  it('default mode keeps every non-done node in graph.nodes (not just IDs in layers)', () => {
     const graph = makeGraph([
       { id: 'US1', status: 'done' },
       { id: 'US2', status: 'in-progress' },
     ]);
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(Object.keys(serialized.nodes)).toEqual([id('US2')]);
+    expect(serialized.nodes[id('US1')]).toBeUndefined();
+  });
+
+  it('default mode preserves pending cycle participants that Kahn omitted from layers', () => {
+    // Simulates a repo with a 2-node cycle: US1 ↔ US2. Kahn's algorithm
+    // cannot place either in `layers`, so they only appear in `cycles`.
+    // The pending-only `nodes` map must still carry their metadata so
+    // the skill's "missing from graph.nodes ⇒ done" rule stays valid.
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
+          status: 'in-progress',
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
+          status: 'not-started',
+        },
+      },
+      layers: [],
+      cycles: [[id('US1'), id('US2')]],
+      dangling_refs: [],
+    };
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(serialized.layers).toEqual([]);
+    expect(Object.keys(serialized.nodes).sort()).toEqual([id('US1'), id('US2')]);
+    expect(serialized.cycles).toEqual([[id('US1'), id('US2')]]);
+  });
+
+  it('default mode still drops done nodes even when they appear in graph.cycles', () => {
+    // A done node referenced by `cycles` should not be revived into the
+    // pending-only `nodes` map — pending-only's only purpose is dropping
+    // done. Skill rule: missing ⇒ done. Done nodes in cycles are still
+    // missing from `nodes`, and that is correct.
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
+          status: 'done',
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
+          status: 'in-progress',
+        },
+      },
+      layers: [],
+      cycles: [[id('US1'), id('US2')]],
+      dangling_refs: [],
+    };
     const serialized = serializeGraphForJson(graph, { all: false });
     expect(Object.keys(serialized.nodes)).toEqual([id('US2')]);
     expect(serialized.nodes[id('US1')]).toBeUndefined();

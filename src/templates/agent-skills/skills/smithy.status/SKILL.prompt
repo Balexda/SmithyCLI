@@ -139,14 +139,19 @@ The CLI's text renderer is authoritative.
    counts, titles, and `next_action` commands directly from the JSON.
 
    Examples:
-   - **"what's next?"** → cite the first actionable record from the lowest
-     non-empty `graph.layers[]` (or scan `records` in order, picking the
-     first whose `next_action` is non-null and `next_action.suppressed_by_ancestor`
-     is not `true`). Return its `next_action.command` plus
+   - **"what's next?"** → the canonical source is `records` plus
+     `next_action`: scan `records` in order and return the first whose
+     `next_action` is non-null and whose `next_action.suppressed_by_ancestor`
+     is not `true`. Quote its `next_action.command` plus
      `next_action.arguments`, along with the artifact's title and path.
-     In `pending-only` mode (the default), `layers[0].node_ids[0]` is
-     already the canonical answer because done nodes have been filtered
-     out.
+     `graph.layers[]` is a useful *candidate* list when the user is
+     thinking in dependency-graph terms, but it is **not** the canonical
+     answer on its own: fully-done leading layers are omitted in
+     `pending-only` mode (so `layers[0]` need not correspond to true
+     layer 0 — read `layers[0].layer` to know which layer it actually
+     is), and graph layering does not encode
+     `next_action.suppressed_by_ancestor`, so a graph-first pick may
+     still need filtering against the matching `records` entry.
    - **"how many slices for this tasks file?"** → find the matching `tasks`
      record from `records` and quote its `total` (and, when relevant, its
      `completed`) field. The CLI emits one `ArtifactRecord` per file — there

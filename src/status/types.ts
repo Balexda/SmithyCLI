@@ -376,9 +376,13 @@ export interface DependencyGraph {
  * The `mode` discriminator mirrors the `--all` flag at the CLI:
  * - `'pending-only'` (default, no `--all`): every layer omits `done` nodes
  *   from `node_ids` and reports the omitted count via `complete_count`.
- *   The top-level `nodes` map carries only the FQ IDs that survive into
- *   some layer's `node_ids`. Fully-done layers are dropped entirely
- *   (matching the text renderer's behavior).
+ *   The top-level `nodes` map carries every non-`done` entry from the
+ *   in-memory graph — including pending nodes that Kahn's algorithm
+ *   excluded from `layers` (cycle participants and nodes downstream of
+ *   cycles). This preserves the "ID missing from `graph.nodes` ⇒
+ *   already `done`" invariant the smithy.status skill relies on.
+ *   Fully-done layers are dropped entirely (matching the text
+ *   renderer's behavior).
  * - `'all'` (`--all`): `node_ids` is the full layer membership; the
  *   `pending_node_indexes` / `complete_node_indexes` arrays partition it
  *   by status without re-stating IDs. The top-level `nodes` map is
@@ -396,10 +400,17 @@ export interface SerializedGraph {
 }
 
 /**
- * Per-layer wire shape. Discriminated by the parent {@link SerializedGraph}'s
- * `mode`. Modeled as a union so a consumer cannot read `complete_count` in
- * `--all` mode (where it would mean nothing) nor the partition indexes in
- * default mode (where the done set was never on the wire).
+ * Per-layer wire shape. Each layer carries its own `mode` field as the
+ * discriminator, so consumers can switch on `layers[i].mode` directly
+ * without threading the parent {@link SerializedGraph} through. The
+ * serializer keeps every layer's `mode` equal to the parent's `mode`;
+ * the TS union doesn't statically enforce that equality (the
+ * `SerializedGraph.layers: SerializedGraphLayer[]` element type accepts
+ * either shape), but {@link serializeGraphForJson} is the only producer
+ * and guarantees it. Modeled as a union so a consumer cannot read
+ * `complete_count` in `--all` mode (where it would mean nothing) nor
+ * the partition indexes in default mode (where the done set was never
+ * on the wire).
  */
 export type SerializedGraphLayer =
   | {

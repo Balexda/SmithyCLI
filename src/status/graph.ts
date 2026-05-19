@@ -409,8 +409,14 @@ export function buildDependencyGraph(
  *   `node_ids` and report the count via `complete_count`. Layers whose
  *   members are all `done` are omitted entirely (mirrors
  *   `formatLayerBlock`'s empty-string return at `renderGraph.ts:460`).
- *   The top-level `nodes` map is shrunk to only the FQ IDs that survive
- *   into some emitted layer's `node_ids`.
+ *   The top-level `nodes` map is shrunk to every FQ ID in `graph.nodes`
+ *   whose status is not `done` — not just IDs that survive in some
+ *   emitted layer. This is what preserves the "an ID missing from
+ *   `graph.nodes` is already done" invariant the smithy.status skill
+ *   relies on, even for repos with cycles: Kahn's algorithm excludes
+ *   cycle participants (and nodes downstream of cycles) from `layers`,
+ *   but those IDs still appear in `graph.cycles`, and their metadata
+ *   must remain reachable in `nodes`.
  *
  * - `--all` (`all === true`): every node stays on the wire. `node_ids`
  *   keeps its builder-emitted order; the two index arrays partition it
@@ -460,7 +466,6 @@ export function serializeGraphForJson(
   }
 
   // Default mode: pending-only.
-  const visibleIds = new Set<string>();
   const layers: SerializedGraphLayer[] = [];
   for (const layer of graph.layers) {
     const pending: string[] = [];
@@ -472,7 +477,6 @@ export function serializeGraphForJson(
       // never want to silently drop an unresolved id).
       if (node === undefined || node.status !== 'done') {
         pending.push(id);
-        visibleIds.add(id);
       } else {
         complete_count += 1;
       }
@@ -488,10 +492,15 @@ export function serializeGraphForJson(
       complete_count,
     });
   }
+  // Populate `nodes` from every non-`done` entry in `graph.nodes`, not
+  // just the IDs surviving into emitted layers. This keeps metadata for
+  // cycle participants (and pending nodes downstream of cycles) on the
+  // wire — without this, `graph.cycles` would point at IDs that the
+  // consumer cannot resolve, and the skill's "missing ⇒ done" rule
+  // would be wrong in cyclic repos.
   const nodes: Record<string, DependencyNode> = {};
-  for (const id of visibleIds) {
-    const node = graph.nodes[id];
-    if (node !== undefined) nodes[id] = node;
+  for (const [id, node] of Object.entries(graph.nodes)) {
+    if (node.status !== 'done') nodes[id] = node;
   }
   return {
     mode: 'pending-only',
