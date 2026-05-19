@@ -54,7 +54,7 @@
 
 ### Tasks
 
-- [ ] **Author the cut-from-spec YAML scenario**
+- [x] **Author the cut-from-spec YAML scenario**
 
   Create `evals/cases/cut-from-spec.yaml` per the `EvalScenario` shape in `evals/lib/types.ts`, mirroring the precedent in `evals/cases/strike-health-check.yaml` and the planned `evals/cases/mark-from-features.yaml`. Set `skill: /smithy.cut` and `prompt` to the exact repo-relative path of the Slice 1 spec plant followed by the explicit user-story number (per FR-005). Anchor `required_headings` to the literal one-shot-snippet section headings stamped by cut's Phase output. Anchor `required_patterns` to (a) the literal `inherited from spec:` substring — carry an inline YAML comment pinning the cross-reference to Phase 1 step 3 of `src/templates/agent-skills/commands/smithy.cut.prompt` (the upstream-debt inheritance step) so future template drift is caught (AS 3.1, proxy for AS 3.2 per SD-010); (b) the `**Spec folder**:` bullet; (c) a regex alternation accepting either the PR success-branch URL marker or the documented PR-creation-failure paragraph wording (resolves inherited SD-008 via the regex-alternation option). Author `sub_agent_evidence` covering smithy-scout, smithy-clarify, and smithy-plan-review using the marker conventions from contracts §3. Include the strike-convention `forbidden_patterns` (FR-011). Calibrate `timeout:` empirically during scenario authoring and record the observed cut run-time in an inline YAML comment.
 
