@@ -1,0 +1,82 @@
+# Ignite end-to-end eval scenario - exercises `/smithy.ignite` against the
+# representative PRD plant under `evals/fixture/prds/ignite-eval/`.
+#
+# Spec:       specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.spec.md
+# Data model: specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md
+# Contracts:  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.contracts.md
+# Tasks:      specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/05-ignite-eval-produces-rfc-from-prd.tasks.md
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the
+# single-quoted regex convention in `evals/cases/strike-health-check.yaml`.
+# Structural expectations validate the terminal one-shot snippet, not the
+# on-disk RFC, because the runner validates `extracted_text` only.
+
+name: ignite-from-prd
+skill: /smithy.ignite
+prompt: prds/ignite-eval/ignite-eval.prd.md
+# Empirical calibration note: ignite is the heaviest planning-command eval
+# path (Phase 1.5 competing plan lenses, clarify, prose, plan drafting,
+# plan-review, commit, and PR creation). A 25 minute budget preserves the
+# spec's 5-10 minute observed/expected wall-clock envelope plus PR-failure
+# and sub-agent variance while avoiding the 120s default timeout.
+timeout: 1500
+structural_expectations:
+  required_headings:
+    # Ignite Phase 4 renders the shared one-shot-output snippet as the
+    # terminal contract for RFC-only generation.
+    - '## Summary'
+    - '## Assumptions'
+    - '## Specification Debt'
+    - '## PR'
+  required_patterns:
+    # One-shot-output Summary marker. For RFC-only ignite runs, Phase 4 says
+    # to use the RFC folder as the "Spec folder"; the shared snippet keeps the
+    # literal `**Spec folder**:` marker rather than emitting `**RFC path**:`.
+    # Cross-ref: src/templates/agent-skills/snippets/one-shot-output.md and
+    # src/templates/agent-skills/commands/smithy.ignite.prompt Phase 4.
+    - '\*\*Spec folder\*\*'
+    # PR creation may succeed in configured environments or fall through to
+    # the documented auth/network failure branch from one-shot-output.md.
+    - 'https://github\.com/\S+/pull/[0-9]+|PR creation failed[^\n]*artifacts are on disk at'
+  forbidden_patterns:
+    # FR-011 - strike-convention set: generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'
+# Sub-Agent Evidence - exactly the four entries in the spec matrix for
+# ignite (smithy-prose, smithy-plan, smithy-clarify, smithy-plan-review).
+# smithy-plan dispatch is `{{#ifAgent}}`-gated in
+# `src/templates/agent-skills/commands/smithy.ignite.prompt` Phase 1.5 and
+# is active here because `evals/lib/runner.ts` deploys skills with
+# `smithy init -a claude` before invoking the scenario.
+sub_agent_evidence:
+  # smithy-prose: non-terminal resultText heading marker. Ignite Phase 3a
+  # dispatches smithy-prose with `section_assignment: "Summary and Motivation
+  # / Problem Statement"` and the prose agent outputs BOTH headings:
+  # `## Summary` (narrative) and `## Motivation / Problem Statement`.
+  # `## Motivation` is absent from the terminal one-shot output (which only
+  # contains `## Summary` as a bullet-list block, plus `## Assumptions`,
+  # `## Specification Debt`, `## PR`), so this pattern forces a match against
+  # smithy-prose's dispatch resultText rather than extracted_text — avoiding
+  # the false positive that `'^## Summary'` produces because the one-shot
+  # output's `## Summary` section satisfies verifySubAgents step (a).
+  - agent: smithy-prose
+    pattern: '## Motivation'
+  # smithy-plan: every plan-template invocation begins its output with
+  # `## Plan\n\n**Directive**: ...`, matching the strike-precedent marker
+  # for competing-lens plan dispatches.
+  - agent: smithy-plan
+    pattern: '## Plan\n\n\*\*Directive\*\*'
+  # smithy-clarify: dispatch-description marker shared with strike/cut/render;
+  # clarify dispatch descriptions naturally begin with a clarify verb form.
+  - agent: smithy-clarify
+    pattern: '^[Cc]larif'
+  # smithy-plan-review: pinned to the ReviewResult return shape required by
+  # `src/templates/agent-skills/agents/smithy.plan-review.prompt` and the
+  # shared review protocol: a findings list plus summary. This is the stable
+  # resultText marker for SD-013 until a richer plan-review output heading is
+  # introduced.
+  - agent: smithy-plan-review
+    # Order-insensitive: both words must appear but either may come first.
+    pattern: '(?=[\s\S]*\bfindings\b)(?=[\s\S]*\bsummary\b)'
