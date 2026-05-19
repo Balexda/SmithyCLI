@@ -55,10 +55,13 @@ sub_agent_evidence:
   # "clarify...".
   - agent: smithy-clarify
     pattern: '^[Cc]larif'
-  # smithy-refine: resultText marker from the refine agent's audit scan.
-  # Fallback if the step heading proves unstable empirically: `^[Rr]efine`.
-  - agent: smithy-refine
-    pattern: '## Step [0-9]+:'
+  # smithy-refine is intentionally omitted: this scenario's input has
+  # `Artifact: —` for F1, so mark's routing sends control to Phase 1
+  # (new-spec creation). The template only dispatches smithy-refine in
+  # Phase 0 (Review Loop on an existing spec), which never runs here.
+  # Contracts §3 lists refine as required for `mark-from-features`; that
+  # listing is template-divergent for the unspecced-feature path and is
+  # tracked as follow-up spec debt.
   # smithy-plan-review: pinned to the ReviewResult return shape required by
   # `src/templates/agent-skills/agents/smithy.plan-review.prompt` and the
   # shared review protocol: a findings list plus summary.
