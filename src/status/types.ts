@@ -365,3 +365,58 @@ export interface DependencyGraph {
    */
   dangling_refs: Array<{ source_id: string; missing_id: string }>;
 }
+
+/**
+ * Wire-format graph emitted by `--format json`. Distinct from
+ * {@link DependencyGraph} so the in-memory full graph (which the text
+ * `--graph` renderer needs to compute "N done hidden" counts and per-layer
+ * dedup) can keep its current shape while the JSON consumer pays only for
+ * the slice it asked for.
+ *
+ * The `mode` discriminator mirrors the `--all` flag at the CLI:
+ * - `'pending-only'` (default, no `--all`): every layer omits `done` nodes
+ *   from `node_ids` and reports the omitted count via `complete_count`.
+ *   The top-level `nodes` map carries only the FQ IDs that survive into
+ *   some layer's `node_ids`. Fully-done layers are dropped entirely
+ *   (matching the text renderer's behavior).
+ * - `'all'` (`--all`): `node_ids` is the full layer membership; the
+ *   `pending_node_indexes` / `complete_node_indexes` arrays partition it
+ *   by status without re-stating IDs. The top-level `nodes` map is
+ *   complete.
+ *
+ * `cycles` and `dangling_refs` are mode-independent — they are rare and
+ * informational, and a `done` node inside a cycle is itself a signal.
+ */
+export interface SerializedGraph {
+  mode: 'pending-only' | 'all';
+  nodes: Record<string, DependencyNode>;
+  layers: SerializedGraphLayer[];
+  cycles: string[][];
+  dangling_refs: Array<{ source_id: string; missing_id: string }>;
+}
+
+/**
+ * Per-layer wire shape. Discriminated by the parent {@link SerializedGraph}'s
+ * `mode`. Modeled as a union so a consumer cannot read `complete_count` in
+ * `--all` mode (where it would mean nothing) nor the partition indexes in
+ * default mode (where the done set was never on the wire).
+ */
+export type SerializedGraphLayer =
+  | {
+      mode: 'pending-only';
+      layer: number;
+      /** Pending FQ node IDs (in-progress | not-started | unknown). */
+      node_ids: string[];
+      /** Count of `done` nodes omitted from this layer. */
+      complete_count: number;
+    }
+  | {
+      mode: 'all';
+      layer: number;
+      /** Every FQ node ID in this layer, in builder-emitted order. */
+      node_ids: string[];
+      /** Indexes into `node_ids` for nodes whose status is not `done`. */
+      pending_node_indexes: number[];
+      /** Indexes into `node_ids` for nodes whose status is `done`. */
+      complete_node_indexes: number[];
+    };

@@ -1580,9 +1580,14 @@ describe('CLI status', () => {
     // Tree connectors reappear once the descendants surface.
     expect(allOut).toMatch(/[├└]/);
 
-    // JSON mode: `--all` is a no-op; the `tree` field always reflects
-    // the uncollapsed `buildTree(records)` output verbatim so machine
-    // consumers get the complete structural projection.
+    // JSON mode: `--all` is a no-op for the `tree`, `records`, and
+    // `summary` fields — `tree` always reflects the uncollapsed
+    // `buildTree(records)` output verbatim so machine consumers get
+    // the complete structural projection. `--all` *does* affect the
+    // `graph` field: default mode hides done nodes and surfaces a
+    // `complete_count` per layer; `--all` mode emits the full graph
+    // with partition indexes. We compare the non-graph fields for
+    // structural equality and verify the graph field flips modes.
     const jsonDefault = execFileSync(
       'node',
       [CLI, 'status', '--format', 'json', '--root', tmpDir],
@@ -1593,7 +1598,23 @@ describe('CLI status', () => {
       [CLI, 'status', '--format', 'json', '--root', tmpDir, '--all'],
       { encoding: 'utf-8' },
     );
-    expect(jsonDefault).toBe(jsonAll);
+    const jsonDefaultPayload = JSON.parse(jsonDefault) as {
+      summary: unknown;
+      records: unknown;
+      tree: unknown;
+      graph: { mode: string };
+    };
+    const jsonAllPayload = JSON.parse(jsonAll) as {
+      summary: unknown;
+      records: unknown;
+      tree: unknown;
+      graph: { mode: string };
+    };
+    expect(jsonDefaultPayload.summary).toEqual(jsonAllPayload.summary);
+    expect(jsonDefaultPayload.records).toEqual(jsonAllPayload.records);
+    expect(jsonDefaultPayload.tree).toEqual(jsonAllPayload.tree);
+    expect(jsonDefaultPayload.graph.mode).toBe('pending-only');
+    expect(jsonAllPayload.graph.mode).toBe('all');
     // Sanity: the JSON tree exposes every uncollapsed descendant.
     const collapsePayload = JSON.parse(jsonDefault) as {
       tree: {

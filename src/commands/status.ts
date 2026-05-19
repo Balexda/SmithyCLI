@@ -61,6 +61,7 @@ import {
   renderGraph,
   renderTree,
   scan,
+  serializeGraphForJson,
 } from '../status/index.js';
 import type { FilterRecordsOptions, NextAction } from '../status/index.js';
 import { buildTheme, type Theme } from '../status/theme.js';
@@ -69,6 +70,7 @@ import type {
   ArtifactType,
   DependencyGraph,
   ScanSummary,
+  SerializedGraph,
   Status,
   StatusTree,
   TreeNode,
@@ -98,12 +100,18 @@ export interface StatusOptions {
    */
   type?: ArtifactType;
   /**
-   * Disable done-subtree collapsing in text mode. When truthy, every
-   * artifact surfaces in the rendered tree regardless of status —
-   * otherwise any `TreeNode` whose `record.status === 'done'` collapses
-   * to a single `DONE` line and its descendants are hidden. Has no
-   * effect on `--format json` output, which always emits the
-   * uncollapsed `buildTree(records)` structure.
+   * Disable done-subtree collapsing in text mode and disable done-hiding
+   * in the JSON `graph` field. When truthy, every artifact surfaces in
+   * the rendered tree regardless of status — otherwise any `TreeNode`
+   * whose `record.status === 'done'` collapses to a single `DONE` line
+   * and its descendants are hidden. The flag also flips the JSON `graph`
+   * serialization between its two modes: by default (no `--all`) each
+   * layer drops `done` nodes from `node_ids` and reports the omitted
+   * count via `complete_count`; under `--all` the layer keeps every
+   * member with `pending_node_indexes` / `complete_node_indexes`
+   * partitions. Has no effect on the `tree` or `records` fields in
+   * `--format json` output, which always emit the uncollapsed
+   * `buildTree(records)` / filtered record set.
    */
   all?: boolean;
   /**
@@ -113,8 +121,10 @@ export interface StatusOptions {
    * header (with the `Next:` hint) still prints above the graph view.
    * Honors `--all` for done-layer collapsing the same way the default
    * text path honors it for done-subtree collapsing. Has no effect on
-   * `--format json` output, which always emits the populated graph
-   * regardless of this flag.
+   * `--format json` output — the JSON payload is already graph-shaped
+   * (a populated `graph` field is always emitted), so `--graph` is a
+   * no-op there. `--all` is the lever that controls JSON graph
+   * filtering.
    */
   graph?: boolean;
   /**
@@ -137,17 +147,24 @@ export interface StatusOptions {
  * record set; `graph` is populated by {@link buildDependencyGraph}
  * (US10 Slice 3) over the *pre-filter* record set per SD-010 so the
  * graph reflects the full scan even when `--status` / `--type` are
- * present. All four `graph` keys (`nodes`, `layers`, `cycles`,
- * `dangling_refs`) are emitted unconditionally — including for an
- * empty repo, where they collapse to `{ nodes: {}, layers: [],
- * cycles: [], dangling_refs: [] }` — so machine consumers can depend
- * on the top-level shape.
+ * present, then projected through {@link serializeGraphForJson} into
+ * the wire-format {@link SerializedGraph}. The serializer honors the
+ * CLI `--all` flag: by default (no `--all`) every layer drops its
+ * `done` nodes from `node_ids` and reports the omitted count via
+ * `complete_count`, and the top-level `nodes` map is filtered to match;
+ * under `--all` the layer keeps every member with `pending_node_indexes`
+ * / `complete_node_indexes` partitions, and `nodes` is complete. The
+ * `mode` discriminator on the serialized graph and on each layer
+ * mirrors which mode produced the payload. The top-level shape
+ * (`summary`, `records`, `tree`, `graph` with `mode` / `nodes` /
+ * `layers` / `cycles` / `dangling_refs`) is emitted unconditionally,
+ * including for an empty repo — so machine consumers can depend on it.
  */
 export interface StatusJsonPayload {
   summary: ScanSummary;
   records: ArtifactRecord[];
   tree: StatusTree;
-  graph: DependencyGraph;
+  graph: SerializedGraph;
 }
 
 /**
@@ -268,11 +285,18 @@ export function statusAction(opts: StatusOptions = {}): void {
   // from the pre-filter scan per SD-010 — for an empty repo the
   // builder returns the canonical zero-value shape itself.
   if (opts.format === 'json') {
+    // The wire-format `graph` field is projected from the full
+    // {@link DependencyGraph} (pre-filter per SD-010) through
+    // {@link serializeGraphForJson}, which honors `--all`. Default
+    // mode drops `done` nodes from layer `node_ids` / the top-level
+    // `nodes` map and reports `complete_count` per layer, matching
+    // the text `--graph` renderer's hide-done behavior so the two
+    // outputs agree on what is and is not visible.
     const payload: StatusJsonPayload = {
       summary,
       records: filteredRecords,
       tree: buildTree(filteredRecords),
-      graph: getGraph(),
+      graph: serializeGraphForJson(getGraph(), { all: opts.all === true }),
     };
     console.log(JSON.stringify(payload, null, 2));
     return;
