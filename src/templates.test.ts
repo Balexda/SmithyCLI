@@ -1098,27 +1098,31 @@ describe('getComposedTemplates', () => {
     expect(strike).not.toContain('{{>one-shot-output}}');
   });
 
-  it('ignite template contains ## Specification Debt between ## Open Questions and ## Milestones', () => {
+  it('ignite RFC template contains ## Specification Debt between ## Decisions and ## Milestones (no Open Questions section)', () => {
     const ignite = composed.commands.get('smithy.ignite.md')!;
     expect(ignite).toBeDefined();
 
     // The RFC template code fence must be the one containing the full structure.
     // In agent mode, there's a smaller header-only block earlier; find the big one.
     const markdownBlocks = [...ignite.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g)];
-    const markdownBlockMatch = markdownBlocks.find(m => m[1]!.includes('## Open Questions'));
+    const markdownBlockMatch = markdownBlocks.find(m => m[1]!.includes('## Specification Debt'));
     expect(markdownBlockMatch).toBeDefined();
 
     const markdownBlock = markdownBlockMatch![1]!;
-    const openQuestionsIdx = markdownBlock.indexOf('\n## Open Questions\n');
+    const decisionsIdx = markdownBlock.indexOf('\n## Decisions\n');
     const debtIdx = markdownBlock.indexOf('\n## Specification Debt\n');
     const milestonesIdx = markdownBlock.indexOf('\n## Milestones\n');
 
-    expect(openQuestionsIdx).toBeGreaterThan(-1);
+    expect(decisionsIdx).toBeGreaterThan(-1);
     expect(debtIdx).toBeGreaterThan(-1);
     expect(milestonesIdx).toBeGreaterThan(-1);
 
-    expect(debtIdx).toBeGreaterThan(openQuestionsIdx);
+    expect(debtIdx).toBeGreaterThan(decisionsIdx);
     expect(debtIdx).toBeLessThan(milestonesIdx);
+
+    // Issue #367: the RFC template MUST NOT have a `## Open Questions`
+    // section heading. Unresolved uncertainty belongs in Specification Debt.
+    expect(markdownBlock).not.toContain('\n## Open Questions\n');
   });
 
   it('render template contains ## Specification Debt before ## Cross-Milestone Dependencies', () => {
@@ -1517,6 +1521,16 @@ describe('getComposedTemplates', () => {
     // Write-step marker: language about appending a new session entry.
     // Distinct from any read-step phrasing.
     expect(phase2Block.toLowerCase()).toMatch(/append[^.]*new session/);
+
+    // Issue #368 regression guard: the clarify-log path MUST live under
+    // `.smithy/clarify-logs/`, not under the RFC folder. Pin the new path
+    // and forbid the legacy path so a regression to writing the log
+    // inside the RFC folder fails this assertion. Checked across the
+    // entire composed ignite prompt — the path is referenced in Phase 2
+    // (read + append) and Phase 3 (resume bridge), so a regression in
+    // any one of those locations is enough to fail.
+    expect(ignite).toContain('.smithy/clarify-logs/');
+    expect(ignite).not.toMatch(/docs\/rfcs\/[^`\s]*\.clarify-log\.md/);
   });
 
   it('ignite default does not contain competing plan dispatch', () => {
@@ -1567,9 +1581,11 @@ describe('getComposedTemplates', () => {
     expect(personasIdx).toBeGreaterThan(outOfScopeIdx);
     expect(proposalIdx).toBeGreaterThan(personasIdx);
 
-    // Verify placeholder content exists
-    expect(markdownBlock).toContain('<Explicitly excluded capability 1>');
-    expect(markdownBlock).toContain('<Explicitly excluded capability 2>');
+    // Verify placeholder content exists. Issue #366 reworded the Out of
+    // Scope placeholders to call out true exclusions vs deferred work; the
+    // first bullet now carries a bad/good example contrast.
+    expect(markdownBlock).toContain('<Capability 1 this RFC will NOT deliver');
+    expect(markdownBlock).toContain('<Capability 2>');
     expect(markdownBlock).toContain('<Persona 1');
     expect(markdownBlock).toContain('<Persona 2');
   });
