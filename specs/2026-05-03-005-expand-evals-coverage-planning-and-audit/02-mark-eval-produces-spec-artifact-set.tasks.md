@@ -43,7 +43,7 @@
 
 ### Tasks
 
-- [ ] **Plant the mark-eval features-map and co-located RFC fixture**
+- [x] **Plant the mark-eval features-map and co-located RFC fixture**
 
   Create the scenario-isolated directory `evals/fixture/rfcs/mark-eval/` containing two files: `01-core.features.md` (the artifact the scenario prompt consumes) and `mark-eval.rfc.md` (the `**Source RFC**` target referenced by the features-map header). The features-map must conform to the canonical schema rendered by `smithy.render` — `**Source RFC**` header, at least one `### Feature 1: <Title>` section with Description / User-Facing Value / Scope Boundaries, a `## Specification Debt` placeholder, and a `## Dependency Order` 4-column table with one `F1` row whose `Artifact` cell is `—`. The RFC plant is a minimal but realistic Smithy RFC that satisfies mark's input expectations. Both files open with a top-of-file comment identifying the owning scenario (`mark-from-features`) and that the plant is representative (non-flawed) — no "do not fix" instruction is needed because there is no flaw to preserve, but the comment names the owning scenario so future maintainers see the eval-only purpose.
 
@@ -56,7 +56,7 @@
   - File contents reference no paths outside `evals/fixture/rfcs/mark-eval/` (data-model isolation rule, FR-004)
   - `evals/fixture/src/` and the existing scout `## Planted Inconsistencies` rows are untouched (FR-013)
 
-- [ ] **Add a Planted Parent Artifacts section to the fixture README**
+- [x] **Add a Planted Parent Artifacts section to the fixture README**
 
   Extend `evals/fixture/README.md` with a new `## Planted Parent Artifacts` section positioned immediately after the existing `## Planted Inconsistencies` section and before `## Usage`. The section's intro paragraph explains that these plants are representative (non-flawed) parent artifacts consumed by scenarios that exercise planning commands, and that they MUST NOT be moved, renamed, or "cleaned up" without coordinating the owning scenario. Seed the section with a 4-column table (`Path | Owner Scenario | Realism | Purpose`) carrying one row for the mark-eval plant directory. Leave the existing `## Planted Inconsistencies` section unchanged.
 
