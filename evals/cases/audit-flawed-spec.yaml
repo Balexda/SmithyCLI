@@ -13,20 +13,36 @@
 
 name: audit-flawed-spec
 skill: /smithy.audit
-prompt: evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md
+# `prompt` is resolved INSIDE the eval runner's temp copy of `evals/fixture/`
+# (see `evals/lib/runner.ts` -- `fs.cpSync(fixtureDir, tmpDir)` then the agent
+# runs with `cwd = tmpDir`). Paths here are therefore fixture-relative, not
+# repo-relative; the source-tree location of the same file is
+# `evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md`.
+prompt: specs/audit-eval/audit-eval-flawed.spec.md
 structural_expectations:
   required_headings:
     # `validateStructure` requires this array to be non-empty and matches
-    # whole lines. Audit File Argument Mode emits no ATX `## ...` headings;
-    # its output contract is the numbered prose-bold list in
-    # `src/templates/agent-skills/commands/smithy.audit.prompt`.
-    - '1. **Executive Summary**'
+    # whole lines. Audit File Argument Mode emits no template-locked verbatim
+    # heading line (its Output contract is a numbered prose-bold list whose
+    # items always carry `: <description>` -- see
+    # `src/templates/agent-skills/commands/smithy.audit.prompt` Output section).
+    # `## Audit Report` is the best-effort ATX heading agents commonly emit
+    # when rendering item 2 of that list as a section. If the first capture
+    # shows a different reliable heading (e.g. `## Findings`), recalibrate
+    # this entry then.
+    - '## Audit Report'
   required_patterns:
     # AS 1.1 / SC-004: the audit must name the planted missing section.
     - 'Dependency Order'
     # Audit's severity label is rendered as `**Critical**` by the template,
     # but this regex also accepts plain `Critical` if Markdown emphasis drifts.
     - '\*{0,2}Critical\*{0,2}'
+    # Executive-Summary marker -- moved here from `required_headings` because
+    # the audit template emits `1. **Executive Summary**: <verdict>` with a
+    # trailing colon and description, so whole-line equality never matches.
+    # This regex tolerates the leading `1. `, surrounding emphasis, and any
+    # following `: ...` description.
+    - '\*\*Executive Summary\*\*'
   forbidden_patterns:
     # FR-011 -- strike-convention set: generic refusals / non-skill responses.
     - "I'd be happy to help"
