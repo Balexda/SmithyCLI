@@ -24,6 +24,7 @@ Each plant maps to a row in smithy-scout's Severity Guidelines table (see `src/t
 |------|----------|-------|-------------------------|
 | `evals/fixture/src/routes/users.ts` | Line 14 — the `// GET /:id — get user by email address` comment above the `router.get('/:id', ...)` handler | Doc comment claims the handler fetches a user "by email address", but the handler parses `req.params.id` as an integer and matches on `u.id` — the doc comment contradicts the signature and behavior. | **Conflict** (doc comment doesn't match signature) |
 | `evals/fixture/src/routes/users.ts` | Line 25 — the `// TODO: add request validation before creating user (reject empty name/email, enforce email format)` comment above the POST handler | An explicit `TODO` marker flagging missing request validation in an otherwise scoped area. | **Warning** (TODO/FIXME marker in scoped area) |
+| `evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md` | Missing `## Dependency Order` section | Deliberately violates the canonical spec invariant that multi-story Smithy specs include a `## Dependency Order` table; owned by `audit-flawed-spec`. This plant must not be "fixed" by restoring the section. | **Critical** (missing required spec section) |
 
 Together with the **Intentional Gap** above, these plants are the fixture's twin purposes: the missing health-check endpoint drives eval scenarios that ask agents to add new behavior, and the planted inconsistencies drive eval scenarios that ask agents to detect existing flaws.
 
