@@ -1,0 +1,35 @@
+# Audit eval scenario -- exercises `/smithy.audit` against the deliberately
+# flawed spec fixture under `evals/fixture/specs/audit-eval/`.
+#
+# Spec:       specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.spec.md
+# Data model: specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.data-model.md
+# Contracts:  specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/expand-evals-coverage-planning-and-audit.contracts.md
+# Tasks:      specs/2026-05-03-005-expand-evals-coverage-planning-and-audit/01-audit-eval-catches-planted-flaw.tasks.md
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the regex
+# quoting convention in `evals/cases/strike-health-check.yaml`. Audit runs
+# single-agent in File Argument Mode, so this scenario intentionally omits
+# `sub_agent_evidence` and `timeout`.
+
+name: audit-flawed-spec
+skill: /smithy.audit
+prompt: evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md
+structural_expectations:
+  required_headings:
+    # `validateStructure` requires this array to be non-empty and matches
+    # whole lines. Audit File Argument Mode emits no ATX `## ...` headings;
+    # its output contract is the numbered prose-bold list in
+    # `src/templates/agent-skills/commands/smithy.audit.prompt`.
+    - '1. **Executive Summary**'
+  required_patterns:
+    # AS 1.1 / SC-004: the audit must name the planted missing section.
+    - 'Dependency Order'
+    # Audit's severity label is rendered as `**Critical**` by the template,
+    # but this regex also accepts plain `Critical` if Markdown emphasis drifts.
+    - '\*{0,2}Critical\*{0,2}'
+  forbidden_patterns:
+    # FR-011 -- strike-convention set: generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'
