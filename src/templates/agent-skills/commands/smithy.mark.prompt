@@ -75,8 +75,16 @@ When entering Phase 1 from a `.features.md`, carry forward:
 1. Parse the input:
    - **RFC path**: Read and extract goals, constraints, and any
      unresolved `SD-NNN` rows from the RFC's Specification-Debt table —
-     the RFC has no separate "Open Questions" section; unresolved
-     uncertainty lives in the debt table.
+     the current RFC contract has no separate "Open Questions" section;
+     unresolved uncertainty lives in the debt table. **Legacy
+     fallback**: pre-migration RFCs (drafted before the Open Questions
+     section was retired) may still contain a `## Open Questions`
+     heading. If that heading is present, also read its bullets and
+     treat them as additional unresolved-uncertainty intake alongside
+     the `SD-NNN` rows — `smithy.mark` can be invoked directly on an
+     RFC path without first running ignite's harmonization step that
+     would translate those bullets into debt rows, so dropping them
+     here would silently lose constraints.
    - **Feature description**: Treat as the starting context.
    - **Feature map** (from Routing): Use the selected feature's Title,
      Description, User-Facing Value, and Scope Boundaries as the starting
