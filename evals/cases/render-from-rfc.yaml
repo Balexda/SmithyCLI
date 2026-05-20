@@ -35,6 +35,11 @@ structural_expectations:
     - '\*\*Spec folder\*\*'
     # AS 4.1 proxy for the produced feature-map path. The runner cannot inspect
     # the on-disk artifact, so this anchors to the one-shot Summary bullet.
+    # SD-016: the `**Artifacts produced**:` wording is sourced from
+    # `src/templates/agent-skills/snippets/one-shot-output.md` (## Summary
+    # block). If that snippet renames the bullet (e.g. `**Files produced**`),
+    # this literal silently fails — update both the snippet and this pattern
+    # together.
     - '\*\*Artifacts produced\*\*:.*\.features\.md'
     # PR creation may succeed in a configured environment or fall through to
     # the documented PR-creation-failure paragraph when `gh`/remote auth is
