@@ -43,7 +43,7 @@
 
 ### Tasks
 
-- [ ] **Author the audit-flawed-spec YAML scenario**
+- [x] **Author the audit-flawed-spec YAML scenario**
 
   Create `evals/cases/audit-flawed-spec.yaml` per the `EvalScenario` shape in `evals/lib/types.ts`, mirroring the precedent in `evals/cases/strike-health-check.yaml`. Anchor `required_patterns` and `required_headings` to template-stable markers emitted by audit's File Argument Mode against the Slice 1 plant (AS 1.1–1.3, FR-007, FR-014).
 
@@ -56,7 +56,7 @@
   - `timeout` field is absent (audit is single-agent; 120s default suffices)
   - YAML loads without warning via `loadScenarios`; `--case audit-flawed-spec` selects only this scenario
 
-- [ ] **Document the audit-eval plant in the fixture README**
+- [x] **Document the audit-eval plant in the fixture README**
 
   Append one row to the `## Planted Inconsistencies` table in `evals/fixture/README.md` recording the Slice 1 plant. Use the existing 4-column table shape so the convention extends cleanly for US2–US6 follow-on plants; do not introduce a new section or schema change.
 
