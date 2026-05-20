@@ -29,7 +29,9 @@ classifyDispatchUsageEvidence(events: StreamEvent[]): DispatchUsageEvidence
 | Field | Type | Description |
 |-------|------|-------------|
 | `classification` | enum | `dispatch_attributable` when stable dispatch-level usage exists; otherwise `parent_only`. |
+| `source_capture` | string | The committed capture path reviewed for evidence. |
 | `observed_relationship` | string | The relationship used for attribution, or the reason attribution is unavailable. |
+| `reviewed_at` | string | ISO 8601 timestamp recorded when the classification was made. |
 
 #### Error Conditions
 

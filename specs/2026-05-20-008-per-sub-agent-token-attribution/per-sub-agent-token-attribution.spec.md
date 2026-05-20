@@ -141,7 +141,9 @@ Recommended implementation sequence:
 
 ## Specification Debt
 
-None - all ambiguities resolved.
+| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
+|----|-------------|-----------------|--------|------------|--------|------------|
+| — | None — all ambiguities resolved. | — | — | — | — | — |
 
 ## Out of Scope
 
