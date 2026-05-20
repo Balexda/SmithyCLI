@@ -312,10 +312,13 @@ checkbox in the target slice is now `- [x]`**.
 git show HEAD:<tasks-file-path>
 ```
 
-Forge owns the checkbox flip. The implementation sub-agents are instructed to
-flip each task's checkbox in the same commit that lands the implementation
-(see TDD protocol step 5). This re-read is the orchestrator's gate: if any
-`- [ ]` rows remain in the target slice, the slice is **not** ready to ship.
+Forge owns the checkbox flip. The implementer must flip each task's
+checkbox in the same commit that lands the implementation
+{{#ifAgent}}— in the claude variant, this is the smithy-implement
+sub-agent's responsibility per its output contract —{{/ifAgent}}
+(see TDD protocol step 5). This re-read is the orchestrator's gate:
+if any `- [ ]` rows remain in the target slice, the slice is **not**
+ready to ship.
 
 **STOP gate.** If any task in the target slice is still `- [ ]`:
 

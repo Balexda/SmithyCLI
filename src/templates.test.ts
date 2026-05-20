@@ -1214,8 +1214,7 @@ describe('getComposedTemplates', () => {
   // Issue #380: the implementation commit must include the `- [ ]` → `- [x]`
   // flip in the same commit as the code change, and the smithy-implement
   // sub-agent must not report `success` if the checkbox is still unchecked.
-  it('smithy-implement sub-agent output contract requires checkbox flip with success', async () => {
-    const claudeComposed = await getComposedTemplates('claude');
+  it('smithy-implement sub-agent output contract requires checkbox flip with success', () => {
     const implement = claudeComposed.agents.get('smithy.implement.md')!;
     expect(implement).toBeDefined();
     expect(implement).toContain('flips this task\'s checkbox per TDD protocol step 5');
