@@ -1197,6 +1197,42 @@ describe('getComposedTemplates', () => {
     expect(forge).not.toContain('{{');
   });
 
+  // Issue #380: merged PRs were landing with unchecked `- [ ]` rows in the
+  // target slice, wedging the downstream dispatch loop. Forge owns the
+  // checkbox-flip gate, so the composed prompt must contain a hard pre-PR
+  // re-read of the target slice that STOPs if any task is still unchecked.
+  it('forge prompt enforces a pre-PR slice-completion checkbox gate', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+    expect(forge).toContain('Slice Completion Check');
+    expect(forge).toContain('Forge owns the checkbox flip');
+    expect(forge).toContain('STOP gate');
+    expect(forge).toContain('wedges the downstream dispatch loop');
+    expect(forge).toContain('Unchecked tasks at PR time');
+  });
+
+  // Issue #380: the implementation commit must include the `- [ ]` → `- [x]`
+  // flip in the same commit as the code change, and the smithy-implement
+  // sub-agent must not report `success` if the checkbox is still unchecked.
+  it('smithy-implement sub-agent output contract requires checkbox flip with success', () => {
+    const implement = claudeComposed.agents.get('smithy.implement.md')!;
+    expect(implement).toBeDefined();
+    expect(implement).toContain('flips this task\'s checkbox per TDD protocol step 5');
+    expect(implement).toContain('never return `success` with the checkbox still');
+  });
+
+  // Issue #380: the shared TDD protocol snippet — used by both the
+  // sub-agent and the no-agent forge variants — must flag the checkbox
+  // flip as a mandatory part of the implementation commit (not a follow-up
+  // commit and not optional bookkeeping).
+  it('TDD protocol snippet flags the checkbox flip as mandatory in the implementation commit', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+    // The snippet is inlined into the no-agent forge variant.
+    expect(forge).toContain('Include this edit in the implementation commit');
+    expect(forge).toContain('mandatory');
+  });
+
   it('forge with claude variant renders sub-agent dispatch', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     const forge = claudeComposed.commands.get('smithy.forge.md')!;

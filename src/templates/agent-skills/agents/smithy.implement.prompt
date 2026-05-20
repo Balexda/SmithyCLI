@@ -78,6 +78,15 @@ When done, return a structured summary to the parent agent:
 
 1. **Status** — `success`, `blocked`, or `failure`
 2. **Commit SHA** — the SHA of the implementation commit (if success)
-3. **Files changed** — list of files created or modified
+3. **Files changed** — list of files created or modified (must include the
+   tasks/strike file when `Status` is `success`, because the implementation
+   commit flips this task's checkbox per TDD protocol step 5)
 4. **Blockers** — description of any issues that prevented completion (if blocked/failure)
 5. **Notes** — any observations for the orchestrator (discovered scope, risks, etc.)
+
+A `success` response **must** correspond to a single commit that contains
+both the implementation and the `- [ ]` → `- [x]` flip for this task in the
+tasks/strike file. If the work is genuinely incomplete, return `blocked`
+with the gap described — never return `success` with the checkbox still
+unflipped, since the parent forge orchestrator gates PR creation on every
+task in the slice reading `- [x]` at HEAD.
