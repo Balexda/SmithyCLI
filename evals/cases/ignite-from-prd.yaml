@@ -53,7 +53,9 @@ structural_expectations:
 sub_agent_evidence:
   # smithy-prose: non-terminal resultText heading marker. Ignite Phase 3a
   # dispatches smithy-prose with `section_assignment: "Summary and Motivation
-  # / Problem Statement"` and the prose agent outputs BOTH headings:
+  # / Problem Statement"` and the prose agent (producing template:
+  # `src/templates/agent-skills/agents/smithy.prose.prompt`, which emits the
+  # `Motivation / Problem Statement` section) outputs BOTH headings:
   # `## Summary` (narrative) and `## Motivation / Problem Statement`.
   # `## Motivation` is absent from the terminal one-shot output (which only
   # contains `## Summary` as a bullet-list block, plus `## Assumptions`,
