@@ -11,7 +11,7 @@
 
 name: mark-from-features
 skill: /smithy.mark
-prompt: evals/fixture/rfcs/mark-eval/01-core.features.md 1
+prompt: rfcs/mark-eval/01-core.features.md 1
 # Timeout calibration: mark runs scout, four competing plan lenses, reconcile,
 # clarify, spec artifact generation, plan-review, commit, and PR creation.
 # Local sibling planning-command evals complete in the 4-10 minute band; 900s
