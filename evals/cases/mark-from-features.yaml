@@ -48,9 +48,13 @@ structural_expectations:
     - "Sure, here's"
     # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
     - '^---\r?\n'
-# Sub-Agent Evidence - mark's template dispatches scout before planning,
-# competing plan lenses during approach planning, clarify before artifact
-# generation, refine during review-loop handling, and plan-review before PR.
+# Sub-Agent Evidence - on the unspecced-feature (new-spec / Phase 1) path
+# this scenario exercises, mark dispatches scout before planning, competing
+# plan lenses during approach planning, clarify before artifact generation,
+# and plan-review before PR. smithy-refine is NOT dispatched here: it runs
+# only in mark's Phase 0 review loop on an existing spec, which the plant's
+# `Artifact: —` row never reaches (see the refine note below and SD-019 in
+# the tasks file). This scenario therefore verifies four agents, not five.
 sub_agent_evidence:
   # smithy-scout: template-stable report heading from
   # `src/templates/agent-skills/agents/smithy.scout.prompt` Output
