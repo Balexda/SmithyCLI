@@ -43,12 +43,12 @@
 
 ### Tasks
 
-- [ ] **Author the audit-flawed-spec YAML scenario**
+- [x] **Author the audit-flawed-spec YAML scenario**
 
   Create `evals/cases/audit-flawed-spec.yaml` per the `EvalScenario` shape in `evals/lib/types.ts`, mirroring the precedent in `evals/cases/strike-health-check.yaml`. Anchor `required_patterns` and `required_headings` to template-stable markers emitted by audit's File Argument Mode against the Slice 1 plant (AS 1.1–1.3, FR-007, FR-014).
 
   _Acceptance criteria:_
-  - `name: audit-flawed-spec`; `skill: /smithy.audit`; `prompt` is the exact repo-relative path to the Slice 1 plant
+  - `name: audit-flawed-spec`; `skill: /smithy.audit`; `prompt` is the exact path to the Slice 1 plant, written **fixture-relative** (`specs/audit-eval/audit-eval-flawed.spec.md`), not repo-relative — the runner copies `evals/fixture/` to a temp dir and invokes the agent with `cwd` = that copy's root, so a repo-relative `evals/fixture/...` path would not resolve at run time (matches the merged `mark-from-features.yaml` convention)
   - `required_patterns` contains a pattern matching the literal token `Critical` as emitted by the audit template's Output section (which renders it as `**Critical**`) — the regex should match whether asterisks are present or absent — AND one matching `Dependency Order` (FR-007)
   - `required_headings` is non-empty: the audit template emits **no** ATX `## …` headings in File Argument Mode — its Output section is a numbered prose-bold list (`1. **Executive Summary**`, `2. **Audit Report**`, `3. **Scorecard**`, `4. **Next Steps**`). Because the loader requires `required_headings` to be non-empty and matches whole lines, pick at least one line the audit reliably emits verbatim and document the choice in a YAML comment; use `required_patterns` for the load-bearing `**Critical**` and `Dependency Order` markers
   - `forbidden_patterns` ⊇ the three strike-convention entries: `"I'd be happy to help"`, `"Sure, here's"`, `'^---\r?\n'` (FR-011)
@@ -56,7 +56,7 @@
   - `timeout` field is absent (audit is single-agent; 120s default suffices)
   - YAML loads without warning via `loadScenarios`; `--case audit-flawed-spec` selects only this scenario
 
-- [ ] **Document the audit-eval plant in the fixture README**
+- [x] **Document the audit-eval plant in the fixture README**
 
   Append one row to the `## Planted Inconsistencies` table in `evals/fixture/README.md` recording the Slice 1 plant. Use the existing 4-column table shape so the convention extends cleanly for US2–US6 follow-on plants; do not introduce a new section or schema change.
 
