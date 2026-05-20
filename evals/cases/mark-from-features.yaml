@@ -29,23 +29,42 @@ structural_expectations:
   required_patterns:
     # One-shot summary marker from the mark terminal contract.
     - '\*\*Spec folder\*\*'
-    # Accept either successful PR creation or the documented auth/network
-    # failure branch from the one-shot output snippet.
-    - 'https://github\.com/\S+/pull/[0-9]+|PR creation failed[^\n]*artifacts are on disk at'
+    # Accept either successful PR creation (auth + remote present) OR the
+    # PR-creation-failure branch (AS 2.4, SD-008/SD-017). The eval temp copy
+    # has no `origin` remote, so `gh pr create` ALWAYS fails here; the model
+    # narrates that failure in the preamble, the `## PR` section, and the raw
+    # git error, but its exact wording varies run-to-run (an earlier run
+    # paraphrased the snippet's verbatim fallback). The failure side is
+    # therefore a broad alternation over template-stable and deterministic
+    # markers rather than one verbatim sentence:
+    #   - `PR creation failed`                       — literal the one-shot snippet mandates
+    #   - `PR (could not|cannot) be (created|opened)` — observed paraphrase
+    #   - `does not appear to be a git repository`    — deterministic git error
+    #     emitted when no `origin` remote exists
+    - 'https://github\.com/\S+/pull/[0-9]+|PR creation failed|[Pp]R (could not|cannot) be (created|opened)|does not appear to be a git repository'
   forbidden_patterns:
     # FR-011 - strike-convention set: generic refusals / non-skill responses.
     - "I'd be happy to help"
     - "Sure, here's"
     # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
     - '^---\r?\n'
-# Sub-Agent Evidence - mark's template dispatches scout before planning,
-# competing plan lenses during approach planning, clarify before artifact
-# generation, refine during review-loop handling, and plan-review before PR.
+# Sub-Agent Evidence - on the unspecced-feature (new-spec / Phase 1) path
+# this scenario exercises, mark dispatches scout before planning, competing
+# plan lenses during approach planning, clarify before artifact generation,
+# and plan-review before PR. smithy-refine is NOT dispatched here: it runs
+# only in mark's Phase 0 review loop on an existing spec, which the plant's
+# `Artifact: —` row never reaches (see the refine note below and SD-019 in
+# the tasks file). This scenario therefore verifies four agents, not five.
 sub_agent_evidence:
-  # smithy-scout: resultText leading-heading marker from
-  # `src/templates/agent-skills/agents/smithy.scout.prompt` Output.
+  # smithy-scout: template-stable report heading from
+  # `src/templates/agent-skills/agents/smithy.scout.prompt` Output
+  # (`## Scout Report`). Matched UNANCHORED against the dispatch resultText —
+  # the same convention smithy-plan uses below. A leading `^` anchor fails
+  # here because verifySubAgents tests the pattern with no `m` flag, so `^`
+  # binds to position 0 of the resultText, which carries scout's preamble
+  # before the heading rather than the heading itself.
   - agent: smithy-scout
-    pattern: '^## Scout Report'
+    pattern: '## Scout Report'
   # smithy-plan: each plan-template invocation begins with this stable
   # resultText marker, shared with the strike scenario.
   - agent: smithy-plan
