@@ -28,7 +28,14 @@
  *   on the `parent_path` chain of some record in the match set. Walks
  *   use only records present in the input array — a `parent_path` that
  *   does not resolve to an input record terminates the walk quietly
- *   (consistent with `buildTree`'s "Broken Links" handling).
+ *   (consistent with `buildTree`'s "Broken Links" handling). The field
+ *   accepts either a single {@link Status} (the legacy single-value
+ *   CLI shape) or a `Status[]` (the multi-value form exposed by
+ *   `--status not-started,in-progress` and by `--pending`); in the
+ *   array form a record matches when its `status` is any member of
+ *   the set. An empty array means "no status matches", so the only
+ *   surviving records are the ancestors of `--type` matches (or none,
+ *   if `--type` is also absent).
  *
  * - **`--type` projection.** Identical to `--status` but keyed off
  *   `record.type`. Ancestor retention still applies so the renderer can
@@ -66,8 +73,12 @@ import type { ArtifactRecord, ArtifactType, Status } from './types.js';
  * All fields are optional; an empty object yields identity behavior.
  */
 export interface FilterRecordsOptions {
-  /** Keep records with this status plus their ancestors. */
-  status?: Status;
+  /**
+   * Keep records whose status matches plus their ancestors. Accepts
+   * either a single {@link Status} or a `Status[]` set; in the array
+   * form a record matches when its status is any member of the set.
+   */
+  status?: Status | Status[];
   /** Keep records with this artifact type plus their ancestors. */
   type?: ArtifactType;
   /**
@@ -110,11 +121,23 @@ export function filterRecords(
     }
   }
 
+  // Normalize the status predicate to a Set lookup so the single- and
+  // multi-value forms share one match path. An empty array means
+  // "match nothing" (the caller asked for the intersection with no
+  // statuses), which is honored by leaving `statusSet` populated but
+  // empty so `has()` always returns false.
+  const statusSet: Set<Status> | null =
+    opts.status === undefined
+      ? null
+      : Array.isArray(opts.status)
+        ? new Set(opts.status)
+        : new Set<Status>([opts.status]);
+
   const retained = new Set<ArtifactRecord>();
 
   for (const record of records) {
     const statusMatches =
-      opts.status === undefined || record.status === opts.status;
+      statusSet === null || statusSet.has(record.status);
     const typeMatches = opts.type === undefined || record.type === opts.type;
     if (!statusMatches || !typeMatches) continue;
 

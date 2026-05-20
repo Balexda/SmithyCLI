@@ -27,8 +27,10 @@ import type {
   DependencyGraph,
   NextAction,
   ScanSummary,
+  SerializedGraph,
   StatusTree,
 } from '../status/index.js';
+import { serializeGraphForJson } from '../status/index.js';
 import { createTheme, type Theme } from '../status/theme.js';
 
 const theme: Theme = createTheme({ color: false, encoding: 'utf8' });
@@ -395,18 +397,18 @@ describe('pickTopNextAction', () => {
 });
 
 /**
- * US10 Slice 1: lock in the type wiring between the JSON payload's
- * `graph` field and the canonical {@link DependencyGraph} type. The
- * compile-time assertions below would have failed against the
- * previous inline structural type (`Record<string, never>` / `[]`
- * literal tuples) because a populated `DependencyGraph` is not
- * assignable to that shape. The runtime guard re-checks the
- * zero-value stub still slots into the new type.
+ * Lock in the type wiring between the JSON payload's `graph` field and
+ * the canonical {@link SerializedGraph} type. `StatusJsonPayload.graph`
+ * used to be a raw {@link DependencyGraph}; now it is a
+ * {@link SerializedGraph} produced by {@link serializeGraphForJson}, so
+ * a hand-constructed `SerializedGraph` (matching either `mode`) must
+ * satisfy the payload's compile-time shape.
  */
-describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
-  it('accepts a populated DependencyGraph as the graph field', () => {
+describe('StatusJsonPayload.graph type wiring', () => {
+  it('accepts a populated SerializedGraph (pending-only mode) as the graph field', () => {
     const fqId = 'specs/sample/sample.spec.md#US1';
-    const populated: DependencyGraph = {
+    const populated: SerializedGraph = {
+      mode: 'pending-only',
       nodes: {
         [fqId]: {
           record_path: 'specs/sample/sample.spec.md',
@@ -419,14 +421,12 @@ describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
           status: 'not-started',
         },
       },
-      layers: [{ layer: 0, node_ids: [fqId] }],
+      layers: [
+        { mode: 'pending-only', layer: 0, node_ids: [fqId], complete_count: 0 },
+      ],
       cycles: [],
       dangling_refs: [],
     };
-    // Compile-time assertion: assigning a populated DependencyGraph
-    // to the `graph` field must typecheck. Under the previous inline
-    // type this would have produced TS2322 because `Record<string,
-    // DependencyNode>` is not assignable to `Record<string, never>`.
     const payload: StatusJsonPayload = {
       summary: {
         counts: emptyCounts(),
@@ -435,7 +435,6 @@ describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
         parse_error_count: 0,
       },
       records: [],
-      tree: { roots: [] },
       graph: populated,
     };
     expect(payload.graph.nodes[fqId]?.record_path).toBe(
@@ -444,10 +443,56 @@ describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
     expect(payload.graph.layers[0]?.node_ids).toEqual([fqId]);
   });
 
-  it('still accepts the zero-value runtime stub (Slice 1 emission unchanged)', () => {
-    // Mirrors the literal currently emitted by `statusAction` in JSON
-    // mode — Slice 3 swaps it for `buildDependencyGraph(records)`.
-    const stub: DependencyGraph = {
+  it('accepts a populated SerializedGraph (all mode) as the graph field', () => {
+    const fqId = 'specs/sample/sample.spec.md#US1';
+    const populated: SerializedGraph = {
+      mode: 'all',
+      nodes: {
+        [fqId]: {
+          record_path: 'specs/sample/sample.spec.md',
+          row: {
+            id: 'US1',
+            title: 'Sample story',
+            depends_on: [],
+            artifact_path: null,
+          },
+          status: 'done',
+        },
+      },
+      layers: [
+        {
+          mode: 'all',
+          layer: 0,
+          node_ids: [fqId],
+          pending_node_indexes: [],
+          complete_node_indexes: [0],
+        },
+      ],
+      cycles: [],
+      dangling_refs: [],
+    };
+    const payload: StatusJsonPayload = {
+      summary: {
+        counts: emptyCounts(),
+        orphan_count: 0,
+        broken_link_count: 0,
+        parse_error_count: 0,
+      },
+      records: [],
+      graph: populated,
+    };
+    const firstLayer = payload.graph.layers[0]!;
+    expect(firstLayer.mode).toBe('all');
+    if (firstLayer.mode === 'all') {
+      expect(firstLayer.complete_node_indexes).toEqual([0]);
+    }
+  });
+
+  it('still accepts the zero-value runtime stub', () => {
+    // Mirrors the canonical empty-repo emission from `statusAction`
+    // after the JSON branch was rewired through `serializeGraphForJson`.
+    const stub: SerializedGraph = {
+      mode: 'pending-only',
       nodes: {},
       layers: [],
       cycles: [],
@@ -461,9 +506,9 @@ describe('StatusJsonPayload.graph type wiring (US10 Slice 1)', () => {
         parse_error_count: 0,
       },
       records: [],
-      tree: { roots: [] },
       graph: stub,
     };
+    expect(payload.graph.mode).toBe('pending-only');
     expect(payload.graph.nodes).toEqual({});
     expect(payload.graph.layers).toEqual([]);
     expect(payload.graph.cycles).toEqual([]);
@@ -608,11 +653,16 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
 
   // --- AS 10.5: JSON graph populated unconditionally ---
 
-  it('AS 10.5: JSON `graph` is populated from buildDependencyGraph (multi-row spec)', () => {
+  it('AS 10.5: JSON `graph` is populated from buildDependencyGraph (multi-row spec, --all reveals done nodes)', () => {
     writeFourStoryFixture();
-    statusAction({ root, format: 'json' });
+    // Pass `--all` so done nodes (US1 + its tasks file) survive the
+    // serializer's default hide-done filter — this test pins the
+    // builder wiring, not the filter.
+    statusAction({ root, format: 'json', all: true });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
-    // Nodes contains every fully-qualified row.
+    // Nodes contains every fully-qualified row, including the done
+    // US1 row, because we asked for the full graph.
+    expect(payload.graph.mode).toBe('all');
     expect(Object.keys(payload.graph.nodes).length).toBeGreaterThan(0);
     expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeDefined();
     // Layers carry node_ids, not `ids`.
@@ -641,7 +691,8 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
   it('AS 10.5: JSON `graph` is the canonical zero-value shape on an empty repo', () => {
     statusAction({ root, format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
-    expect(payload.graph).toEqual<DependencyGraph>({
+    expect(payload.graph).toEqual<SerializedGraph>({
+      mode: 'pending-only',
       nodes: {},
       layers: [],
       cycles: [],
@@ -649,13 +700,77 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     });
   });
 
-  it('AS 10.5: JSON `graph` reflects the pre-filter scan even when --status excludes some records (SD-010)', () => {
+  it('JSON `graph` empty-repo shape under `--all` reports mode `all`', () => {
+    statusAction({ root, format: 'json', all: true });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.graph).toEqual<SerializedGraph>({
+      mode: 'all',
+      nodes: {},
+      layers: [],
+      cycles: [],
+      dangling_refs: [],
+    });
+  });
+
+  it('default JSON `graph` hides done nodes and reports them via complete_count (matches text --graph)', () => {
+    // writeFourStoryFixture sets US1 (and its tasks file) to done; US2
+    // is in-progress; US3/US4 not-started. Without `--all` the
+    // serializer should drop US1 from layer node_ids and from the
+    // top-level nodes map, and surface the omission via complete_count.
+    writeFourStoryFixture();
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.graph.mode).toBe('pending-only');
+    // US1 (done) is hidden from the top-level nodes map.
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeUndefined();
+    // US2/US3/US4 (pending) remain in the graph.
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US2']).toBeDefined();
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US3']).toBeDefined();
+    expect(payload.graph.nodes['specs/sample/sample.spec.md#US4']).toBeDefined();
+    // Every layer's node_ids excludes the done US1 node, and the
+    // complete_count across all layers covers the dropped done items
+    // (US1 spec row + US1 tasks-file rows).
+    const totalComplete = payload.graph.layers.reduce((sum, layer) => {
+      if (layer.mode === 'pending-only') return sum + layer.complete_count;
+      return sum;
+    }, 0);
+    expect(totalComplete).toBeGreaterThan(0);
+    for (const layer of payload.graph.layers) {
+      expect(layer.node_ids).not.toContain('specs/sample/sample.spec.md#US1');
+    }
+  });
+
+  it('default JSON `graph` omits fully-done layers entirely (matches text --graph)', () => {
+    // writeAllDoneFixture: every row in every artifact rolls up to done.
+    // Default mode should drop every layer; the all-mode JSON should
+    // keep them (proving that the omission is the serializer's choice,
+    // not the builder's).
+    writeAllDoneFixture();
+
+    statusAction({ root, format: 'json' });
+    const defaultPayload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(defaultPayload.graph.layers).toEqual([]);
+    expect(defaultPayload.graph.nodes).toEqual({});
+
+    logSpy.mockClear();
+    statusAction({ root, format: 'json', all: true });
+    const allPayload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(allPayload.graph.mode).toBe('all');
+    expect(allPayload.graph.layers.length).toBeGreaterThan(0);
+    expect(Object.keys(allPayload.graph.nodes).length).toBeGreaterThan(0);
+  });
+
+  it('AS 10.5: JSON `graph` reflects the pre-filter scan even when --status excludes some records (SD-010, with --all)', () => {
     writeFourStoryFixture();
     // US1's tasks file is fully checked → US1 rolls up to `done`.
     // Filtering by --status=in-progress would exclude it from the
     // `records` field, but the `graph` is built pre-filter so it must
-    // still carry the US1 node.
-    statusAction({ root, format: 'json', status: 'in-progress' });
+    // still carry the US1 node when the consumer asks for the full
+    // graph (`--all`). The default serializer hides done nodes on its
+    // own axis — that's covered by a separate test below; SD-010 here
+    // is about the `--status`/`--type` filters not leaking into the
+    // graph projection.
+    statusAction({ root, format: 'json', status: 'in-progress', all: true });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
     // The filter dropped done records from `payload.records`...
     const filteredHasUs1 = payload.records.some(
@@ -705,9 +820,10 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     // hint for the dim FQ id suffix when records are supplied. Lock
     // the FQ ids to the JSON payload so machine consumers still have
     // the canonical reference for every node, decoupled from text-mode
-    // styling decisions.
+    // styling decisions. Pass `--all` so done nodes (US1) survive the
+    // default hide-done filter.
     writeFourStoryFixture();
-    statusAction({ root, format: 'json' });
+    statusAction({ root, format: 'json', all: true });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
     expect(payload.graph.nodes['specs/sample/sample.spec.md#US1']).toBeDefined();
     expect(payload.graph.nodes['specs/sample/sample.spec.md#US2']).toBeDefined();
@@ -904,5 +1020,201 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     expect(stdout).toContain('Sample Spec');
     expect(stdout).toContain('smithy.forge specs/sample/');
     expect(stdout).not.toContain('specs/sample/sample.spec.md#US');
+  });
+});
+
+/**
+ * Direct coverage for `serializeGraphForJson`. Hand-built
+ * {@link DependencyGraph}s exercise the partition logic without going
+ * through the scanner pipeline, so the assertions stay focused on the
+ * serializer's two modes and on the asymmetries between them.
+ */
+describe('serializeGraphForJson', () => {
+  const SPEC = 'specs/x/x.spec.md';
+  const id = (row: string): string => `${SPEC}#${row}`;
+
+  function makeGraph(rows: Array<{ id: string; status: ArtifactRecord['status'] }>): DependencyGraph {
+    const nodes: DependencyGraph['nodes'] = {};
+    for (const r of rows) {
+      nodes[id(r.id)] = {
+        record_path: SPEC,
+        row: { id: r.id, title: r.id, depends_on: [], artifact_path: null },
+        status: r.status,
+      };
+    }
+    return {
+      nodes,
+      layers: [{ layer: 0, node_ids: rows.map((r) => id(r.id)) }],
+      cycles: [],
+      dangling_refs: [],
+    };
+  }
+
+  it('default mode (all=false) drops done nodes from node_ids and reports complete_count', () => {
+    const graph = makeGraph([
+      { id: 'US1', status: 'done' },
+      { id: 'US2', status: 'in-progress' },
+      { id: 'US3', status: 'done' },
+      { id: 'US4', status: 'not-started' },
+    ]);
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(serialized.mode).toBe('pending-only');
+    expect(serialized.layers).toHaveLength(1);
+    const layer = serialized.layers[0]!;
+    expect(layer.mode).toBe('pending-only');
+    if (layer.mode === 'pending-only') {
+      expect(layer.node_ids).toEqual([id('US2'), id('US4')]);
+      expect(layer.complete_count).toBe(2);
+    }
+  });
+
+  it('default mode keeps every non-done node in graph.nodes (not just IDs in layers)', () => {
+    const graph = makeGraph([
+      { id: 'US1', status: 'done' },
+      { id: 'US2', status: 'in-progress' },
+    ]);
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(Object.keys(serialized.nodes)).toEqual([id('US2')]);
+    expect(serialized.nodes[id('US1')]).toBeUndefined();
+  });
+
+  it('default mode preserves pending cycle participants that Kahn omitted from layers', () => {
+    // Simulates a repo with a 2-node cycle: US1 ↔ US2. Kahn's algorithm
+    // cannot place either in `layers`, so they only appear in `cycles`.
+    // The pending-only `nodes` map must still carry their metadata so
+    // the skill's "missing from graph.nodes ⇒ done" rule stays valid.
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
+          status: 'in-progress',
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
+          status: 'not-started',
+        },
+      },
+      layers: [],
+      cycles: [[id('US1'), id('US2')]],
+      dangling_refs: [],
+    };
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(serialized.layers).toEqual([]);
+    expect(Object.keys(serialized.nodes).sort()).toEqual([id('US1'), id('US2')]);
+    expect(serialized.cycles).toEqual([[id('US1'), id('US2')]]);
+  });
+
+  it('default mode still drops done nodes even when they appear in graph.cycles', () => {
+    // A done node referenced by `cycles` should not be revived into the
+    // pending-only `nodes` map — pending-only's only purpose is dropping
+    // done. Skill rule: missing ⇒ done. Done nodes in cycles are still
+    // missing from `nodes`, and that is correct.
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
+          status: 'done',
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
+          status: 'in-progress',
+        },
+      },
+      layers: [],
+      cycles: [[id('US1'), id('US2')]],
+      dangling_refs: [],
+    };
+    const serialized = serializeGraphForJson(graph, { all: false });
+    expect(Object.keys(serialized.nodes)).toEqual([id('US2')]);
+    expect(serialized.nodes[id('US1')]).toBeUndefined();
+  });
+
+  it('default mode omits a layer composed entirely of done nodes', () => {
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: [], artifact_path: null },
+          status: 'done',
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: [], artifact_path: null },
+          status: 'in-progress',
+        },
+      },
+      layers: [
+        { layer: 0, node_ids: [id('US1')] },
+        { layer: 1, node_ids: [id('US2')] },
+      ],
+      cycles: [],
+      dangling_refs: [],
+    };
+    const serialized = serializeGraphForJson(graph, { all: false });
+    // Layer 0 (all done) is omitted; Layer 1 survives, retaining its
+    // original `layer: 1` number — the serializer must not re-index.
+    expect(serialized.layers).toHaveLength(1);
+    expect(serialized.layers[0]?.layer).toBe(1);
+  });
+
+  it('--all mode keeps every node and partitions by status via indexes', () => {
+    const graph = makeGraph([
+      { id: 'US1', status: 'done' },
+      { id: 'US2', status: 'in-progress' },
+      { id: 'US3', status: 'done' },
+      { id: 'US4', status: 'not-started' },
+    ]);
+    const serialized = serializeGraphForJson(graph, { all: true });
+    expect(serialized.mode).toBe('all');
+    expect(Object.keys(serialized.nodes).sort()).toEqual([
+      id('US1'),
+      id('US2'),
+      id('US3'),
+      id('US4'),
+    ]);
+    expect(serialized.layers).toHaveLength(1);
+    const layer = serialized.layers[0]!;
+    expect(layer.mode).toBe('all');
+    if (layer.mode === 'all') {
+      expect(layer.node_ids).toEqual([id('US1'), id('US2'), id('US3'), id('US4')]);
+      expect(layer.pending_node_indexes).toEqual([1, 3]);
+      expect(layer.complete_node_indexes).toEqual([0, 2]);
+    }
+  });
+
+  it('--all mode preserves a fully-done layer that default mode would omit', () => {
+    const graph = makeGraph([
+      { id: 'US1', status: 'done' },
+      { id: 'US2', status: 'done' },
+    ]);
+    const defaultSerialized = serializeGraphForJson(graph, { all: false });
+    expect(defaultSerialized.layers).toHaveLength(0);
+    const allSerialized = serializeGraphForJson(graph, { all: true });
+    expect(allSerialized.layers).toHaveLength(1);
+    const layer = allSerialized.layers[0]!;
+    if (layer.mode === 'all') {
+      expect(layer.complete_node_indexes).toEqual([0, 1]);
+      expect(layer.pending_node_indexes).toEqual([]);
+    }
+  });
+
+  it('passes cycles and dangling_refs through verbatim in both modes', () => {
+    const graph: DependencyGraph = {
+      nodes: {},
+      layers: [],
+      cycles: [[id('US1'), id('US2')]],
+      dangling_refs: [{ source_id: id('US1'), missing_id: id('US9') }],
+    };
+    for (const all of [false, true]) {
+      const serialized = serializeGraphForJson(graph, { all });
+      expect(serialized.cycles).toEqual([[id('US1'), id('US2')]]);
+      expect(serialized.dangling_refs).toEqual([
+        { source_id: id('US1'), missing_id: id('US9') },
+      ]);
+    }
   });
 });

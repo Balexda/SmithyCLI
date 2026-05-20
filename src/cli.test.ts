@@ -1035,7 +1035,7 @@ describe('CLI status', () => {
     expect(output).toContain('--no-color');
   });
 
-  it('emits contract-shaped JSON with records, summary, tree, graph, and full per-type counts (AS 7.2)', () => {
+  it('emits contract-shaped JSON with records, summary, graph, and full per-type counts (AS 7.2)', () => {
     // Fixture stitches one record of every artifact type — rfc,
     // features, spec, tasks — through the canonical lineage so every
     // `counts[type][status]` slot in `payload.summary.counts` is
@@ -1086,15 +1086,17 @@ describe('CLI status', () => {
           suppressed_by_ancestor?: boolean;
         } | null;
       }>;
-      tree: { roots: unknown[] };
+      tree?: unknown;
       graph: { nodes: unknown; layers: unknown[]; cycles: unknown[]; dangling_refs: unknown[] };
     };
 
-    // Top-level shape matches the contracts.
+    // Top-level shape matches the contracts. `tree` was dropped from
+    // the JSON payload — consumers reconstruct it locally from
+    // `records.parent_path`.
     expect(payload).toHaveProperty('summary');
     expect(payload).toHaveProperty('records');
-    expect(payload).toHaveProperty('tree');
     expect(payload).toHaveProperty('graph');
+    expect(payload).not.toHaveProperty('tree');
 
     // Records embed the parsed dependency_order sub-object.
     const specRecord = payload.records.find((r) => r.type === 'spec');
@@ -1308,13 +1310,15 @@ describe('CLI status', () => {
     const payload = JSON.parse(output) as {
       summary: { parse_error_count: number };
       records: unknown[];
-      tree: { roots: unknown[] };
       graph: { nodes: unknown; layers: unknown[] };
+      tree?: unknown;
     };
     expect(payload.records).toEqual([]);
     expect(payload.summary.parse_error_count).toBe(0);
-    expect(payload.tree.roots).toEqual([]);
     expect(payload.graph.layers).toEqual([]);
+    // `tree` was removed from the JSON payload — consumers reconstruct
+    // it locally from `records.parent_path`.
+    expect(payload.tree).toBeUndefined();
   });
 
   it('exits 2 with a stderr message on an invalid --status value', () => {
@@ -1337,6 +1341,143 @@ describe('CLI status', () => {
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('invalid --type');
     expect(result.stderr).toContain('rfc');
+  });
+
+  it('accepts a comma-separated --status set and filters as the union of statuses', () => {
+    write(
+      'docs/rfcs/demo.rfc.md',
+      `# Demo\n\n## Dependency Order\n\n${TABLE_HEADER}\n| M1 | First Milestone | — | docs/rfcs/demo.features.md |\n`,
+    );
+    write(
+      'docs/rfcs/demo.features.md',
+      `# Demo Features\n\n## Dependency Order\n\n${TABLE_HEADER}\n| F1 | A | — | specs/a-spec/ |\n`,
+    );
+    write(
+      'specs/done-spec/done-spec.spec.md',
+      `# Feature Specification: Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Done Story | — | specs/done-spec/01-done.tasks.md |\n`,
+    );
+    write(
+      'specs/done-spec/01-done.tasks.md',
+      `# Done\n\n## Slice 1\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Slice One | — | — |\n`,
+    );
+    write(
+      'specs/a-spec/a-spec.spec.md',
+      `# Feature Specification: A\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Pending Story | — | — |\n`,
+    );
+
+    const result = spawnSync(
+      'node',
+      [
+        CLI,
+        'status',
+        '--root',
+        tmpDir,
+        '--format',
+        'json',
+        '--status',
+        'in-progress,not-started',
+      ],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      records: Array<{ path: string; status: string }>;
+    };
+    const statuses = payload.records.map((r) => r.status);
+    // No done records survive as direct matches; done parents may
+    // appear only as ancestors of pending descendants.
+    expect(statuses).not.toContain('done');
+    // Multi-value matched: both in-progress and not-started reach
+    // the wire.
+    const pendingPaths = payload.records
+      .filter((r) => r.status !== 'done')
+      .map((r) => r.path);
+    expect(pendingPaths.length).toBeGreaterThan(0);
+  });
+
+  it('rejects --status with a mix of valid and invalid tokens (exits 2 on the invalid one)', () => {
+    const result = spawnSync(
+      'node',
+      [
+        CLI,
+        'status',
+        '--root',
+        tmpDir,
+        '--status',
+        'in-progress,bogus',
+      ],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('invalid --status');
+    expect(result.stderr).toContain('bogus');
+  });
+
+  it('rejects --status with empty tokens (e.g., ",,in-progress")', () => {
+    const result = spawnSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--status', ',,in-progress'],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('invalid --status');
+  });
+
+  it('--pending is exactly equivalent to --status in-progress,not-started', () => {
+    write(
+      'specs/wip-spec/wip-spec.spec.md',
+      `# Feature Specification: WIP\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | WIP | — | — |\n`,
+    );
+    write(
+      'specs/done-spec/done-spec.spec.md',
+      `# Feature Specification: Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| US1 | Done | — | specs/done-spec/01.tasks.md |\n`,
+    );
+    write(
+      'specs/done-spec/01.tasks.md',
+      `# Done\n\n## Slice 1\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | First | — | — |\n`,
+    );
+
+    const pending = spawnSync(
+      'node',
+      [CLI, 'status', '--root', tmpDir, '--format', 'json', '--pending'],
+      { encoding: 'utf-8' },
+    );
+    const statusMulti = spawnSync(
+      'node',
+      [
+        CLI,
+        'status',
+        '--root',
+        tmpDir,
+        '--format',
+        'json',
+        '--status',
+        'in-progress,not-started',
+      ],
+      { encoding: 'utf-8' },
+    );
+    expect(pending.status).toBe(0);
+    expect(statusMulti.status).toBe(0);
+    // Byte-for-byte identical payloads — `--pending` is pure sugar.
+    expect(pending.stdout).toBe(statusMulti.stdout);
+  });
+
+  it('rejects combining --pending with --status (the user has specified two intents)', () => {
+    const result = spawnSync(
+      'node',
+      [
+        CLI,
+        'status',
+        '--root',
+        tmpDir,
+        '--pending',
+        '--status',
+        'in-progress',
+      ],
+      { encoding: 'utf-8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('--pending cannot be combined with --status');
   });
 
   it('surfaces individual parse failures as records with status unknown and exits 0', () => {
@@ -1363,11 +1504,16 @@ describe('CLI status', () => {
     expect(payload.summary.parse_error_count).toBeGreaterThan(0);
   });
 
-  it('populates tree.roots via buildTree against a full-chain + orphan + broken-link fixture', async () => {
-    // US2 Slice 1: verify the JSON payload's `tree` field is populated
-    // by `buildTree(records)` and matches byte-for-byte a tree built
-    // from the same records in-process. Fixture intentionally mixes
-    // three shapes: one full RFC→features→spec→tasks chain, one
+  it('emits records covering a full-chain + orphan + broken-link fixture, and tree-able via buildTree from records alone', async () => {
+    // US2 Slice 1 (post-tree-drop): the JSON payload no longer carries
+    // a `tree` field, but `records` still includes every artifact with
+    // its `parent_path`, so a consumer can reconstruct the same tree
+    // locally by calling `buildTree(payload.records)`. This test
+    // asserts both: (a) the records cover the full-chain + orphan +
+    // broken-link shape, and (b) re-running `buildTree` against the
+    // emitted records produces a tree whose roots include the
+    // sentinel groups and the chain's RFC. Fixture intentionally
+    // mixes three shapes: one full RFC→features→spec→tasks chain, one
     // orphaned spec, and one broken-link tasks file whose declared
     // `**Source**:` header points at a missing spec.
     const FEATURE_TABLE = `${TABLE_HEADER}\n| F1 | Chain Feature | — | specs/chain-feature/ |\n`;
@@ -1420,35 +1566,36 @@ describe('CLI status', () => {
           suppressed_by_ancestor?: boolean;
         } | null;
       }>;
-      tree: { roots: Array<{ record: { path: string; title: string }; children: unknown[] }> };
+      tree?: unknown;
     };
 
-    // Import `buildTree` from the status module so we can compute an
-    // expected tree from the records the CLI produced, and assert
-    // byte-for-byte equality against the tree the CLI emitted.
-    const { buildTree } = await import('./status/tree.js');
-    // Import the types via the records payload; we cast here because
-    // JSON.parse loses the ArtifactRecord type branding.
-    const expectedTree = buildTree(payload.records as Parameters<typeof buildTree>[0]);
+    // The payload no longer carries a `tree` field — sanity-check
+    // that explicitly so a future reintroduction is loud.
+    expect(payload.tree).toBeUndefined();
 
-    // Byte-for-byte match: serialize both sides and compare strings.
-    expect(JSON.stringify(payload.tree)).toBe(JSON.stringify(expectedTree));
+    // Reconstruct the tree locally from `records` and assert the
+    // expected structural shape. `buildTree` is the same projector
+    // the CLI used to inline; running it on `payload.records` proves
+    // the records are sufficient to recover the hierarchical view
+    // without paying for it on the wire.
+    const { buildTree } = await import('./status/tree.js');
+    const tree = buildTree(payload.records as Parameters<typeof buildTree>[0]);
 
     // Structural sanity: the tree should contain the Orphaned Specs
     // group, the Broken Links group, and a real chain root.
-    const rootPaths = payload.tree.roots.map((r) => r.record.path);
+    const rootPaths = tree.roots.map((r) => r.record.path);
     expect(rootPaths).toContain('__orphaned_specs__');
     expect(rootPaths).toContain('__broken_links__');
 
     // The Orphaned Specs group has exactly one child (our orphan spec).
-    const orphanGroup = payload.tree.roots.find(
+    const orphanGroup = tree.roots.find(
       (r) => r.record.path === '__orphaned_specs__',
     );
     expect(orphanGroup).toBeDefined();
     expect(orphanGroup?.children).toHaveLength(1);
 
     // The Broken Links group has exactly one child (our dangling tasks).
-    const brokenGroup = payload.tree.roots.find(
+    const brokenGroup = tree.roots.find(
       (r) => r.record.path === '__broken_links__',
     );
     expect(brokenGroup).toBeDefined();
@@ -1456,7 +1603,7 @@ describe('CLI status', () => {
 
     // A full-chain root (the RFC) also lives in roots, somewhere
     // below the group sentinels.
-    const realRoots = payload.tree.roots.filter(
+    const realRoots = tree.roots.filter(
       (r) => !r.record.path.startsWith('__'),
     );
     expect(realRoots.length).toBeGreaterThanOrEqual(1);
@@ -1464,16 +1611,15 @@ describe('CLI status', () => {
     // is reachable at the deepest position (AS 2.1).
     const rfcRoot = realRoots.find((r) => r.record.path.endsWith('.rfc.md'));
     expect(rfcRoot).toBeDefined();
-    const features = rfcRoot?.children as
-      | Array<{ record: { path: string }; children: Array<{ record: { path: string }; children: Array<{ record: { path: string } }> }> }>
-      | undefined;
-    expect(features?.[0]?.record.path).toBe('docs/rfcs/0001-demo.features.md');
-    expect(features?.[0]?.children[0]?.record.path).toBe(
+    expect(rfcRoot?.children[0]?.record.path).toBe(
+      'docs/rfcs/0001-demo.features.md',
+    );
+    expect(rfcRoot?.children[0]?.children[0]?.record.path).toBe(
       'specs/chain-feature/chain-feature.spec.md',
     );
-    expect(features?.[0]?.children[0]?.children[0]?.record.path).toBe(
-      'specs/chain-feature/01-chain-story.tasks.md',
-    );
+    expect(
+      rfcRoot?.children[0]?.children[0]?.children[0]?.record.path,
+    ).toBe('specs/chain-feature/01-chain-story.tasks.md');
 
     // US4 Slice 1 Task 2: at least one non-done record in this fixture
     // carries a populated `next_action` with a valid smithy command.
@@ -1580,9 +1726,15 @@ describe('CLI status', () => {
     // Tree connectors reappear once the descendants surface.
     expect(allOut).toMatch(/[├└]/);
 
-    // JSON mode: `--all` is a no-op; the `tree` field always reflects
-    // the uncollapsed `buildTree(records)` output verbatim so machine
-    // consumers get the complete structural projection.
+    // JSON mode: `--all` is a no-op for the `records` and `summary`
+    // fields. `tree` is no longer emitted in JSON at all (consumers
+    // reconstruct it from `records.parent_path` locally), so the
+    // collapsing behavior is purely a text-mode concern. `--all`
+    // *does* affect the `graph` field: default mode hides done nodes
+    // and surfaces a `complete_count` per layer; `--all` mode emits
+    // the full graph with partition indexes. We compare the non-graph
+    // fields for structural equality and verify the graph field
+    // flips modes.
     const jsonDefault = execFileSync(
       'node',
       [CLI, 'status', '--format', 'json', '--root', tmpDir],
@@ -1593,35 +1745,24 @@ describe('CLI status', () => {
       [CLI, 'status', '--format', 'json', '--root', tmpDir, '--all'],
       { encoding: 'utf-8' },
     );
-    expect(jsonDefault).toBe(jsonAll);
-    // Sanity: the JSON tree exposes every uncollapsed descendant.
-    const collapsePayload = JSON.parse(jsonDefault) as {
-      tree: {
-        roots: Array<{
-          record: { path: string };
-          children: Array<{
-            record: { path: string };
-            children: Array<{
-              record: { path: string };
-              children: Array<{ record: { path: string } }>;
-            }>;
-          }>;
-        }>;
-      };
+    const jsonDefaultPayload = JSON.parse(jsonDefault) as {
+      summary: unknown;
+      records: unknown;
+      tree?: unknown;
+      graph: { mode: string };
     };
-    const collapseRfcRoot = collapsePayload.tree.roots.find((r) =>
-      r.record.path.endsWith('.rfc.md'),
-    );
-    expect(collapseRfcRoot).toBeDefined();
-    expect(collapseRfcRoot?.children[0]?.record.path).toBe(
-      'docs/rfcs/01-milestone-one.features.md',
-    );
-    expect(collapseRfcRoot?.children[0]?.children[0]?.record.path).toBe(
-      'specs/feature-a/feature-a.spec.md',
-    );
-    expect(
-      collapseRfcRoot?.children[0]?.children[0]?.children[0]?.record.path,
-    ).toBe('specs/feature-a/01-first.tasks.md');
+    const jsonAllPayload = JSON.parse(jsonAll) as {
+      summary: unknown;
+      records: unknown;
+      tree?: unknown;
+      graph: { mode: string };
+    };
+    expect(jsonDefaultPayload.summary).toEqual(jsonAllPayload.summary);
+    expect(jsonDefaultPayload.records).toEqual(jsonAllPayload.records);
+    expect(jsonDefaultPayload.tree).toBeUndefined();
+    expect(jsonAllPayload.tree).toBeUndefined();
+    expect(jsonDefaultPayload.graph.mode).toBe('pending-only');
+    expect(jsonAllPayload.graph.mode).toBe('all');
   });
 
   it('text mode renders next-action hints beneath actionable records only (US4 Slice 2, AS 4.1–4.5)', () => {
@@ -1798,7 +1939,6 @@ describe('CLI status', () => {
           virtual?: boolean;
           parent_path?: string | null;
         }>;
-        tree: { roots: Array<{ record: { path: string } }> };
       };
       raw: string;
     } {
@@ -1915,25 +2055,18 @@ describe('CLI status', () => {
       );
     });
 
-    it('--format json emits the filtered records and tree', () => {
+    it('--format json emits only filtered records (no hierarchical tree on the wire)', () => {
       writeFilterFixture();
       const { payload } = runStatusJson(['--status', 'in-progress']);
-      // `records` and `tree.roots` are both computed from the
-      // filtered set — Feature B's tree must not leak into `tree`.
-      const treePaths: string[] = [];
-      const walk = (nodes: typeof payload.tree.roots): void => {
-        for (const n of nodes) {
-          treePaths.push(n.record.path);
-          walk(
-            (n as unknown as {
-              children: typeof payload.tree.roots;
-            }).children,
-          );
-        }
-      };
-      walk(payload.tree.roots);
-      expect(treePaths).not.toContain('specs/feature-b/feature-b.spec.md');
-      expect(treePaths).toContain('specs/feature-a/01-story-a.tasks.md');
+      // The JSON payload no longer carries `tree` — consumers
+      // reconstruct it locally from `records.parent_path`. The
+      // filter's correctness is therefore expressed entirely against
+      // `records`: Feature B's records must be dropped and Feature
+      // A's tasks records must survive.
+      expect(payload).not.toHaveProperty('tree');
+      const paths = payload.records.map((r) => r.path);
+      expect(paths).not.toContain('specs/feature-b/feature-b.spec.md');
+      expect(paths).toContain('specs/feature-a/01-story-a.tasks.md');
     });
 
     it('summary counts are byte-identical with and without filter flags against the same fixture (SD-010)', () => {

@@ -115,6 +115,8 @@ import type {
   ArtifactRecord,
   DependencyGraph,
   DependencyNode,
+  SerializedGraph,
+  SerializedGraphLayer,
 } from './types.js';
 
 const SENTINEL_PATHS: ReadonlySet<string> = new Set([
@@ -393,6 +395,119 @@ export function buildDependencyGraph(
     layers,
     cycles,
     dangling_refs,
+  };
+}
+
+/**
+ * Project a {@link DependencyGraph} into the wire-format
+ * {@link SerializedGraph} that `smithy status --format json` emits.
+ *
+ * `opts.all` mirrors the CLI `--all` flag. The two modes match the text
+ * `--graph` renderer's behavior exactly:
+ *
+ * - Default (`all === false`): drop every `done` node from layer
+ *   `node_ids` and report the count via `complete_count`. Layers whose
+ *   members are all `done` are omitted entirely (mirrors
+ *   `formatLayerBlock`'s empty-string return at `renderGraph.ts:460`).
+ *   The top-level `nodes` map is shrunk to every FQ ID in `graph.nodes`
+ *   whose status is not `done` — not just IDs that survive in some
+ *   emitted layer. This is what preserves the "an ID missing from
+ *   `graph.nodes` is already done" invariant the smithy.status skill
+ *   relies on, even for repos with cycles: Kahn's algorithm excludes
+ *   cycle participants (and nodes downstream of cycles) from `layers`,
+ *   but those IDs still appear in `graph.cycles`, and their metadata
+ *   must remain reachable in `nodes`.
+ *
+ * - `--all` (`all === true`): every node stays on the wire. `node_ids`
+ *   keeps its builder-emitted order; the two index arrays partition it
+ *   by `done` vs. non-`done` so a consumer can read either set in O(k)
+ *   without re-deriving status from `nodes`.
+ *
+ * `cycles` and `dangling_refs` are passed through verbatim in both modes
+ * — they are rare and informational, and a `done` node inside a cycle
+ * is itself a signal worth showing.
+ *
+ * Pure: does no I/O, never mutates its input, returns the same
+ * `SerializedGraph` for the same input.
+ */
+export function serializeGraphForJson(
+  graph: DependencyGraph,
+  opts: { all: boolean },
+): SerializedGraph {
+  if (opts.all) {
+    const layers: SerializedGraphLayer[] = graph.layers.map((layer) => {
+      const pending_node_indexes: number[] = [];
+      const complete_node_indexes: number[] = [];
+      for (let i = 0; i < layer.node_ids.length; i++) {
+        const id = layer.node_ids[i];
+        if (id === undefined) continue;
+        const node = graph.nodes[id];
+        if (node !== undefined && node.status === 'done') {
+          complete_node_indexes.push(i);
+        } else {
+          pending_node_indexes.push(i);
+        }
+      }
+      return {
+        mode: 'all',
+        layer: layer.layer,
+        node_ids: layer.node_ids.slice(),
+        pending_node_indexes,
+        complete_node_indexes,
+      };
+    });
+    return {
+      mode: 'all',
+      nodes: { ...graph.nodes },
+      layers,
+      cycles: graph.cycles.map((c) => c.slice()),
+      dangling_refs: graph.dangling_refs.map((d) => ({ ...d })),
+    };
+  }
+
+  // Default mode: pending-only.
+  const layers: SerializedGraphLayer[] = [];
+  for (const layer of graph.layers) {
+    const pending: string[] = [];
+    let complete_count = 0;
+    for (const id of layer.node_ids) {
+      const node = graph.nodes[id];
+      // Mirror `renderGraph.ts:435` exactly: a missing node is treated
+      // as visible (defensive — should not occur in practice, but we
+      // never want to silently drop an unresolved id).
+      if (node === undefined || node.status !== 'done') {
+        pending.push(id);
+      } else {
+        complete_count += 1;
+      }
+    }
+    if (pending.length === 0 && layer.node_ids.length > 0) {
+      // Fully-done layer: omit entirely, matching the text renderer.
+      continue;
+    }
+    layers.push({
+      mode: 'pending-only',
+      layer: layer.layer,
+      node_ids: pending,
+      complete_count,
+    });
+  }
+  // Populate `nodes` from every non-`done` entry in `graph.nodes`, not
+  // just the IDs surviving into emitted layers. This keeps metadata for
+  // cycle participants (and pending nodes downstream of cycles) on the
+  // wire — without this, `graph.cycles` would point at IDs that the
+  // consumer cannot resolve, and the skill's "missing ⇒ done" rule
+  // would be wrong in cyclic repos.
+  const nodes: Record<string, DependencyNode> = {};
+  for (const [id, node] of Object.entries(graph.nodes)) {
+    if (node.status !== 'done') nodes[id] = node;
+  }
+  return {
+    mode: 'pending-only',
+    nodes,
+    layers,
+    cycles: graph.cycles.map((c) => c.slice()),
+    dangling_refs: graph.dangling_refs.map((d) => ({ ...d })),
   };
 }
 
