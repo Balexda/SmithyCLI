@@ -1083,6 +1083,113 @@ describe('getComposedTemplates', () => {
     expect(prIdx).toBeGreaterThan(strikeDocIdx);
   });
 
+  // Issue #385: PR descriptions are too verbose. The forge PR body must
+  // carry exactly four scannable sections — Source / Slice Summary /
+  // Addresses / Validation — in both .tasks.md and .strike.md modes.
+  // The dropped sections (Tasks completed / Review / Documentation) all
+  // duplicate information that lives in the commits, the artifact's
+  // ## Specification Debt table, or the maid commits, so reviewers can
+  // navigate to it from the Source link.
+  it('forge PR body has lean four sections in .tasks.md mode (issue #385)', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+
+    // Scope assertions to the .tasks.md PR-body block so we measure the
+    // contract, not stray mentions elsewhere in the prompt.
+    const blockStart = forge.indexOf('### `.tasks.md` mode — PR body:');
+    expect(blockStart).toBeGreaterThan(-1);
+    const blockEnd = forge.indexOf('### `.strike.md` mode — PR body:', blockStart);
+    expect(blockEnd).toBeGreaterThan(blockStart);
+    const block = forge.slice(blockStart, blockEnd);
+
+    // The four kept sections.
+    expect(block).toContain('**Source**');
+    expect(block).toContain('**Slice Summary**');
+    expect(block).toContain('**Addresses**');
+    expect(block).toContain('**Validation**');
+
+    // The three dropped sections — must not appear as PR-body bullets.
+    expect(block).not.toMatch(/\*\*Tasks completed\*\*/);
+    expect(block).not.toMatch(/\*\*Review\*\*/);
+    expect(block).not.toMatch(/\*\*Documentation\*\*/);
+  });
+
+  it('forge PR body has lean four sections in .strike.md mode (issue #385)', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+
+    const blockStart = forge.indexOf('### `.strike.md` mode — PR body:');
+    expect(blockStart).toBeGreaterThan(-1);
+    // The .strike.md mode block runs until the next `---` separator.
+    const blockEnd = forge.indexOf('\n---', blockStart);
+    expect(blockEnd).toBeGreaterThan(blockStart);
+    const block = forge.slice(blockStart, blockEnd);
+
+    expect(block).toContain('**Source**');
+    expect(block).toContain('**Slice Summary**');
+    expect(block).toContain('**Addresses**');
+    expect(block).toContain('**Validation**');
+
+    expect(block).not.toMatch(/\*\*Tasks completed\*\*/);
+    expect(block).not.toMatch(/\*\*Review\*\*/);
+    expect(block).not.toMatch(/\*\*Documentation\*\*/);
+  });
+
+  it('forge no longer routes review or maid findings into the PR body (issue #385)', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toBeDefined();
+
+    // The legacy triage rows said "note the fix in the PR body" / "Flag in
+    // the PR body" / "Note in the PR body only". With the Review section
+    // gone from the PR body, those routes dangle and have been replaced by
+    // terminal-output-deliverable language.
+    expect(forge).not.toMatch(/note the fix in the PR body/i);
+    expect(forge).not.toMatch(/flag it in the PR body/i);
+    expect(forge).not.toMatch(/Note in the PR body only/i);
+
+    // The maid "Documentation Notes" PR-body section is gone.
+    expect(forge).not.toContain('Documentation Notes');
+
+    // The "No review findings" PR-body insertion is gone too.
+    expect(forge).not.toMatch(/include\s+"No review findings"\s+in the PR body/i);
+  });
+
+  it('strike PR body is Source + Slice Summary only — does not embed one-shot-output sections (issue #385)', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+
+    // Scope to the "Create the PR" step in Phase 5 so we measure the PR-body
+    // contract, not stray section markers elsewhere (the {{>one-shot-output}}
+    // partial below still renders the same headers as the terminal output).
+    const stepStart = strike.indexOf('**Create the PR**');
+    expect(stepStart).toBeGreaterThan(-1);
+    const stepEnd = strike.indexOf('**Capture the PR URL**', stepStart);
+    expect(stepEnd).toBeGreaterThan(stepStart);
+    const step = strike.slice(stepStart, stepEnd);
+
+    // The two kept sections.
+    expect(step).toContain('**Source**');
+    expect(step).toContain('**Slice Summary**');
+
+    // The dropped embedding rule must be gone — the old text instructed the
+    // agent to populate `## Summary`, `## Assumptions`, and `## Specification
+    // Debt` sections in the PR body. Those headers belong in the
+    // terminal-output one-shot block, not the PR body.
+    expect(step).not.toMatch(/Populate the other sections/i);
+    expect(step).not.toMatch(/one-shot output content produced below/i);
+    expect(step).not.toMatch(/\*\*excluding the `## PR` section\*\*/i);
+  });
+
+  it('strike review triage no longer routes findings into the PR body (issue #385)', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toBeDefined();
+
+    expect(strike).not.toMatch(/Note the fix in the PR body/i);
+    expect(strike).not.toMatch(/Flag in PR for the reviewer/i);
+    expect(strike).not.toMatch(/Note in the PR body only/i);
+    expect(strike).not.toMatch(/surface them prominently in the PR body/i);
+  });
+
   it('strike template includes all four one-shot output headers', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
