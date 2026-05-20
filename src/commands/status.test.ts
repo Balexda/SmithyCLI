@@ -435,7 +435,6 @@ describe('StatusJsonPayload.graph type wiring', () => {
         parse_error_count: 0,
       },
       records: [],
-      tree: { roots: [] },
       graph: populated,
     };
     expect(payload.graph.nodes[fqId]?.record_path).toBe(
@@ -480,7 +479,6 @@ describe('StatusJsonPayload.graph type wiring', () => {
         parse_error_count: 0,
       },
       records: [],
-      tree: { roots: [] },
       graph: populated,
     };
     const firstLayer = payload.graph.layers[0]!;
@@ -508,7 +506,6 @@ describe('StatusJsonPayload.graph type wiring', () => {
         parse_error_count: 0,
       },
       records: [],
-      tree: { roots: [] },
       graph: stub,
     };
     expect(payload.graph.mode).toBe('pending-only');

@@ -16,17 +16,21 @@
  *   5. Emit either contract-shaped JSON (`--format json`) or a per-type
  *      roll-up summary header followed by a hierarchical tree with
  *      next-action hints (default, via {@link renderTree} with
- *      `renderHints: true`). The JSON `tree` field is populated via
- *      {@link buildTree} (US2 Slice 1); the JSON `graph` field is
- *      populated via {@link buildDependencyGraph} (US10 Slice 3) and
- *      always carries the canonical four keys (`nodes`, `layers`,
- *      `cycles`, `dangling_refs`) so machine consumers can depend on
- *      the top-level shape. `--graph` (US10 Slice 3) routes text
- *      mode through {@link renderGraph}, printing topological layers
- *      with done-layer collapsing, a cycle-warning fallback, and
- *      dangling-ref diagnostics. The summary header still prints
- *      above the graph view so users keep the per-type counts and
- *      `Next:` hint they get in the default text path.
+ *      `renderHints: true`). The JSON payload carries `summary`,
+ *      `records`, and `graph` — no hierarchical `tree`, since
+ *      `records` already exposes `parent_path` on every entry and any
+ *      consumer can reconstruct the tree locally via {@link buildTree}
+ *      without paying for the duplication on the wire. The JSON
+ *      `graph` field is populated via {@link buildDependencyGraph}
+ *      (US10 Slice 3) and always carries the canonical four keys
+ *      (`nodes`, `layers`, `cycles`, `dangling_refs`) so machine
+ *      consumers can depend on the top-level shape. `--graph` (US10
+ *      Slice 3) routes text mode through {@link renderGraph},
+ *      printing topological layers with done-layer collapsing, a
+ *      cycle-warning fallback, and dangling-ref diagnostics. The
+ *      summary header still prints above the graph view so users keep
+ *      the per-type counts and `Next:` hint they get in the default
+ *      text path.
  *   6. On an empty repo (no discovered artifacts), print a friendly hint
  *      pointing at `smithy.ignite` / `smithy.mark` and exit 0 — the
  *      contracts treat this as "not an error". The empty-repo hint
@@ -43,10 +47,13 @@
  * done-subtree collapsing in text mode via the pure `collapseTree`
  * transform inserted between `buildTree` and `renderTree` (US3) and
  * also disables done-layer collapsing inside {@link renderGraph}
- * (US10); JSON mode continues to emit the uncollapsed tree structure
- * unconditionally. `--no-color` is honored via {@link buildTheme}'s
- * `noColor` flag (also picked up from the ambient `NO_COLOR` env
- * var) so every painted surface respects it.
+ * (US10); JSON mode no longer emits a hierarchical `tree` field, so
+ * `--all` affects only `records` (via the `--status` / `--type`
+ * filter set the user passed) and `graph` (via
+ * {@link serializeGraphForJson}'s `mode` discriminator) on the wire.
+ * `--no-color` is honored via {@link buildTheme}'s `noColor` flag
+ * (also picked up from the ambient `NO_COLOR` env var) so every
+ * painted surface respects it.
  */
 
 import fs from 'node:fs';
@@ -90,10 +97,24 @@ export interface StatusOptions {
   /** Output format. Defaults to `text`. */
   format?: 'text' | 'json';
   /**
-   * Filter by status. Retains matching records and every ancestor by
-   * `parent_path` so the renderer keeps context (AS 6.1).
+   * Filter by status. Accepts either a single {@link Status} or a
+   * comma-separated list (e.g., `in-progress,not-started`). Retains
+   * matching records and every ancestor by `parent_path` so the
+   * renderer keeps context (AS 6.1). At the Commander layer this is a
+   * raw string (single value, or comma-joined); {@link statusAction}
+   * splits and validates it before handing the parsed `Status[]` to
+   * {@link filterRecords}.
    */
-  status?: Status;
+  status?: string;
+  /**
+   * Shorthand for `--status in-progress,not-started` — the set of
+   * artifacts that have outstanding work to dispatch. Mutually
+   * exclusive with `--status`: combining them is an error so the CLI
+   * never has to pick a winner. When set, the effective filter set is
+   * `['in-progress', 'not-started']` and the JSON / text emission
+   * shrinks accordingly.
+   */
+  pending?: boolean;
   /**
    * Filter by artifact type. Retains matching records and their
    * ancestors as headers (AS 6.3). Descendants are hidden.
@@ -109,9 +130,10 @@ export interface StatusOptions {
    * layer drops `done` nodes from `node_ids` and reports the omitted
    * count via `complete_count`; under `--all` the layer keeps every
    * member with `pending_node_indexes` / `complete_node_indexes`
-   * partitions. Has no effect on the `tree` or `records` fields in
-   * `--format json` output, which always emit the uncollapsed
-   * `buildTree(records)` / filtered record set.
+   * partitions. Has no effect on the `records` field in `--format
+   * json` output, which always reflects the filter set applied above.
+   * The JSON payload no longer carries a `tree` field — consumers
+   * reconstruct it locally via {@link buildTree} from `records`.
    */
   all?: boolean;
   /**
@@ -142,28 +164,39 @@ export interface StatusOptions {
 }
 
 /**
- * Contract-shaped JSON payload emitted by `--format json`. `tree` is
- * populated by {@link buildTree} (US2 Slice 1) over the post-filter
- * record set; `graph` is populated by {@link buildDependencyGraph}
- * (US10 Slice 3) over the *pre-filter* record set per SD-010 so the
- * graph reflects the full scan even when `--status` / `--type` are
- * present, then projected through {@link serializeGraphForJson} into
- * the wire-format {@link SerializedGraph}. The serializer honors the
- * CLI `--all` flag: by default (no `--all`) every layer drops its
- * `done` nodes from `node_ids` and reports the omitted count via
- * `complete_count`, and the top-level `nodes` map is filtered to match;
- * under `--all` the layer keeps every member with `pending_node_indexes`
- * / `complete_node_indexes` partitions, and `nodes` is complete. The
+ * Contract-shaped JSON payload emitted by `--format json`.
+ *
+ * `records` is the post-filter `ArtifactRecord[]` from
+ * {@link filterRecords} — the canonical flat representation every
+ * machine consumer reads. `graph` is populated by
+ * {@link buildDependencyGraph} (US10 Slice 3) over the *pre-filter*
+ * record set per SD-010 so the graph reflects the full scan even when
+ * `--status` / `--type` are present, then projected through
+ * {@link serializeGraphForJson} into the wire-format
+ * {@link SerializedGraph}. The serializer honors the CLI `--all` flag:
+ * by default (no `--all`) every layer drops its `done` nodes from
+ * `node_ids` and reports the omitted count via `complete_count`, and
+ * the top-level `nodes` map is filtered to match; under `--all` the
+ * layer keeps every member with `pending_node_indexes` /
+ * `complete_node_indexes` partitions, and `nodes` is complete. The
  * `mode` discriminator on the serialized graph and on each layer
- * mirrors which mode produced the payload. The top-level shape
- * (`summary`, `records`, `tree`, `graph` with `mode` / `nodes` /
- * `layers` / `cycles` / `dangling_refs`) is emitted unconditionally,
- * including for an empty repo — so machine consumers can depend on it.
+ * mirrors which mode produced the payload.
+ *
+ * Note: the hierarchical `tree` projection is **not** emitted in JSON.
+ * The flat `records` array carries `parent_path` on every entry, so
+ * any consumer can reconstruct the same tree locally via
+ * {@link buildTree} without paying for the duplication on the wire.
+ * Dropping it cuts the default payload roughly in half. The in-memory
+ * {@link StatusTree} is still computed for text-mode rendering.
+ *
+ * The top-level shape (`summary`, `records`, `graph` with `mode` /
+ * `nodes` / `layers` / `cycles` / `dangling_refs`) is emitted
+ * unconditionally, including for an empty repo — so machine consumers
+ * can depend on it.
  */
 export interface StatusJsonPayload {
   summary: ScanSummary;
   records: ArtifactRecord[];
-  tree: StatusTree;
   graph: SerializedGraph;
 }
 
@@ -193,13 +226,52 @@ export function statusAction(opts: StatusOptions = {}): void {
   // Validated here (not via Commander `.choices()`) because the
   // contracts mandate exit code 2 for these errors, while Commander's
   // built-in invalid-choice handler exits with code 1.
-  if (opts.status !== undefined && !VALID_STATUSES.includes(opts.status)) {
-    process.stderr.write(
-      `smithy status: invalid --status value '${opts.status}'. Valid values: ${VALID_STATUSES.join(', ')}\n`,
-    );
-    process.exitCode = 2;
-    return;
+  //
+  // `--status` accepts either a single value or a comma-separated set
+  // (e.g., `in-progress,not-started`). Split on commas, trim, and
+  // validate each token; an unknown token aborts the run with the
+  // standard exit-2 message. Empty tokens (`--status ,,in-progress`)
+  // and an entirely empty value are also rejected so the failure mode
+  // is loud.
+  let parsedStatuses: Status[] | undefined;
+  if (opts.status !== undefined) {
+    const tokens = opts.status
+      .split(',')
+      .map((token) => token.trim());
+    if (tokens.length === 0 || tokens.some((token) => token.length === 0)) {
+      process.stderr.write(
+        `smithy status: invalid --status value '${opts.status}'. Valid values: ${VALID_STATUSES.join(', ')}\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    for (const token of tokens) {
+      if (!VALID_STATUSES.includes(token as Status)) {
+        process.stderr.write(
+          `smithy status: invalid --status value '${token}'. Valid values: ${VALID_STATUSES.join(', ')}\n`,
+        );
+        process.exitCode = 2;
+        return;
+      }
+    }
+    parsedStatuses = tokens as Status[];
   }
+
+  // `--pending` is a shorthand for `--status in-progress,not-started`.
+  // Combining the two is an error: the user has stated two different
+  // status intents, and silently honoring one would mask the
+  // contradiction.
+  if (opts.pending === true) {
+    if (parsedStatuses !== undefined) {
+      process.stderr.write(
+        `smithy status: --pending cannot be combined with --status (--pending is a shorthand for --status in-progress,not-started).\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    parsedStatuses = ['in-progress', 'not-started'];
+  }
+
   if (opts.type !== undefined && !VALID_TYPES.includes(opts.type)) {
     process.stderr.write(
       `smithy status: invalid --type value '${opts.type}'. Valid values: ${VALID_TYPES.join(', ')}\n`,
@@ -272,9 +344,12 @@ export function statusAction(opts: StatusOptions = {}): void {
   };
   // Build a sparse options object — `exactOptionalPropertyTypes` in
   // tsconfig forbids assigning `undefined` to optional fields, so we
-  // only set each key when Commander actually populated it.
+  // only set each key when Commander actually populated it. `status`
+  // is the parsed `Status[]` (the validation block above split,
+  // trimmed, and validated each comma-separated token); the filter
+  // accepts both the array and the legacy single-value forms.
   const filterOpts: FilterRecordsOptions = { root: resolvedRoot };
-  if (opts.status !== undefined) filterOpts.status = opts.status;
+  if (parsedStatuses !== undefined) filterOpts.status = parsedStatuses;
   if (opts.type !== undefined) filterOpts.type = opts.type;
   const filteredRecords = filterRecords(records, filterOpts);
 
@@ -295,7 +370,6 @@ export function statusAction(opts: StatusOptions = {}): void {
     const payload: StatusJsonPayload = {
       summary,
       records: filteredRecords,
-      tree: buildTree(filteredRecords),
       graph: serializeGraphForJson(getGraph(), { all: opts.all === true }),
     };
     console.log(JSON.stringify(payload, null, 2));

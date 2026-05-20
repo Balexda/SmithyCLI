@@ -98,26 +98,45 @@ The CLI's text renderer is authoritative.
 
 ## Question mode
 
-1. Run exactly one shell command:
+1. Run exactly one shell command. For most questions, prefer the
+   pending shorthand — it drops every `done` record from the payload
+   so you only pay for artifacts that still have work to dispatch:
 
    ```bash
-   smithy status --format json
+   smithy status --format json --pending
    ```
+
+   `--pending` is exactly equivalent to `--status in-progress,not-started`
+   (the `--status` flag now accepts a comma-separated set, e.g.
+   `--status in-progress,not-started,unknown` if you also want to see
+   parse errors). Drop `--pending` (i.e., run `smithy status --format
+   json`) only when the question actually requires done artifacts —
+   "how many tasks are done?", "show me everything", "is X complete?".
 
 2. Parse the JSON. The payload follows the `StatusJsonPayload` contract from
    `src/commands/status.ts`:
    - `summary` — per-type counts (`rfc`, `features`, `spec`, `tasks`) of
      `done` / `in-progress` / `not-started` / `unknown`, plus
-     `orphan_count`, `broken_link_count`, `parse_error_count`.
-   - `records` — every `ArtifactRecord` discovered, with `type`, `path`,
+     `orphan_count`, `broken_link_count`, `parse_error_count`. **The
+     summary is always aggregate over the full scan, regardless of
+     `--status` / `--pending` / `--type` (SD-010)** — so `done` counts
+     stay accurate even under `--pending`, and you can answer counting
+     questions like "how many tasks are done?" from the pending payload
+     directly without dropping the filter.
+   - `records` — the `ArtifactRecord` set surviving the filter (with
+     ancestors retained for context). Each record carries `type`, `path`,
      `title`, `status`, `parent_path`, optional `completed` / `total`
      (slice counts on `tasks` records), and `next_action`. The
      `next_action.command` and `next_action.arguments` fields are the
      authoritative "what to do next" hint for that artifact, and
-     `next_action.suppressed_by_ancestor` (when present) marks a hint that
-     was suppressed in the rendered tree because an ancestor is itself
-     not-started.
-   - `tree` — hierarchical view (`roots: TreeNode[]`).
+     `next_action.suppressed_by_ancestor` (when present) marks a hint
+     that was suppressed in the rendered tree because an ancestor is
+     itself not-started. Under `--pending`, the `records` list excludes
+     `done` artifacts but keeps their `done` ancestors as headers when a
+     pending descendant lives beneath them.
+   - There is no `tree` field on the wire. Every `ArtifactRecord` carries
+     `parent_path`, so the hierarchical view can be reconstructed locally
+     without paying for the duplication in the payload.
    - `graph` — cross-artifact dependency graph. The wire format mirrors
      the CLI `--all` flag via a top-level `mode` discriminator:
      - `mode: "pending-only"` (default, no `--all`): `nodes` is keyed
@@ -172,15 +191,18 @@ The CLI's text renderer is authoritative.
      dependency-blocked signal.)
    - **"how many tasks are done?"** → quote `summary.counts.tasks.done`
      directly.
-   - **"show me everything, including completed work"** → rerun with
-     `--all` (the only question for which `--all` is the right default;
-     for "what's next?" / "what's blocked?" / counts, the default
-     pending-only payload is both correct and cheaper).
+   - **"show me everything, including completed work"** → rerun
+     without `--pending` and with `--all`. `--pending` drops `done`
+     records from the wire entirely; `--all` keeps `done` graph nodes
+     visible with their partition indexes. Together they restore the
+     full payload — every record, every node — for the rare question
+     that genuinely needs it.
 
 4. **Do not invent data.** If the JSON does not contain enough information
    to answer the question, say so plainly and (if helpful) suggest the CLI
-   flag — `--type`, `--all`, `--root` — that would surface it. `--graph`
-   is a no-op in JSON mode and never needs to be suggested.
+   flag — `--type`, `--all`, `--status`, `--pending`, `--root` — that
+   would surface it. `--graph` is a no-op in JSON mode and never needs
+   to be suggested.
 
 5. **Do not chain extra invocations.** Issue exactly one `smithy status`
    call per user request — no follow-up runs with different flags. If a

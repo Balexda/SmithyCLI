@@ -86,7 +86,8 @@ program
   // exits with code 1, while the contracts mandate exit code 2 for
   // invalid values on these two flags. `statusAction` validates them
   // manually and sets `process.exitCode = 2`.
-  .option('--status <state>', 'Filter by status: done|in-progress|not-started|unknown')
+  .option('--status <states>', 'Filter by status (comma-separated for multi-value): done|in-progress|not-started|unknown')
+  .option('--pending', 'Shorthand for --status in-progress,not-started (the work left to dispatch)')
   .option('--type <artifact-type>', 'Filter by artifact type: rfc|features|spec|tasks')
   .option('--all', 'Disable collapsing of done subtrees so every artifact surfaces')
   .option('--graph', 'Render the cross-artifact dependency graph as topological layers (text mode)')

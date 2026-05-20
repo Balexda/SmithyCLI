@@ -421,3 +421,120 @@ describe('filterRecords — purity and ordering', () => {
     expect(result.map((r) => r.path).sort()).toEqual(['a.md', 'b.md']);
   });
 });
+
+describe('filterRecords — multi-value status predicate', () => {
+  it('treats Status[] as a set: a record matches when its status is any member', () => {
+    // Three independent specs with three distinct statuses. Asking
+    // for `[in-progress, not-started]` retains both pending statuses
+    // and drops `done`.
+    const records: ArtifactRecord[] = [
+      makeRecord({ path: 'a.spec.md', status: 'in-progress', parent_path: null }),
+      makeRecord({ path: 'b.spec.md', status: 'not-started', parent_path: null }),
+      makeRecord({ path: 'c.spec.md', status: 'done', parent_path: null }),
+    ];
+    const result = filterRecords(records, {
+      status: ['in-progress', 'not-started'],
+    });
+    expect(result.map((r) => r.path).sort()).toEqual(['a.spec.md', 'b.spec.md']);
+  });
+
+  it('retains ancestors of any multi-value match (ancestor retention applies to the union)', () => {
+    // Chain: rfc(done) → features(done) → spec(in-progress) → tasks(not-started).
+    // `[in-progress, not-started]` directly matches the spec and the
+    // tasks file; their done ancestors (rfc, features) are retained
+    // as headers.
+    const records: ArtifactRecord[] = [
+      makeRecord({
+        type: 'rfc',
+        path: 'rfc.md',
+        status: 'done',
+        parent_path: null,
+      }),
+      makeRecord({
+        type: 'features',
+        path: 'features.md',
+        status: 'done',
+        parent_path: 'rfc.md',
+      }),
+      makeRecord({
+        type: 'spec',
+        path: 'spec.md',
+        status: 'in-progress',
+        parent_path: 'features.md',
+      }),
+      makeRecord({
+        type: 'tasks',
+        path: 'tasks.md',
+        status: 'not-started',
+        parent_path: 'spec.md',
+      }),
+    ];
+    const result = filterRecords(records, {
+      status: ['in-progress', 'not-started'],
+    });
+    expect(result.map((r) => r.path)).toEqual([
+      'rfc.md',
+      'features.md',
+      'spec.md',
+      'tasks.md',
+    ]);
+  });
+
+  it('a single-element Status[] behaves identically to the legacy single-value form', () => {
+    const records = fullChain('in-progress');
+    const arrayForm = filterRecords(records, { status: ['in-progress'] });
+    const scalarForm = filterRecords(records, { status: 'in-progress' });
+    expect(arrayForm).toEqual(scalarForm);
+  });
+
+  it('an empty Status[] matches nothing (no records retained except --type ancestors)', () => {
+    const records = fullChain('in-progress');
+    const result = filterRecords(records, { status: [] });
+    expect(result).toEqual([]);
+  });
+});
+
+describe('filterRecords — multi-value status with --type intersection', () => {
+  it('record must satisfy both the status set AND --type to match directly', () => {
+    // Two specs and two tasks. `--status in-progress,not-started
+    // --type spec` matches only the two specs (regardless of tasks
+    // statuses); their ancestors are then retained.
+    const records: ArtifactRecord[] = [
+      makeRecord({
+        type: 'rfc',
+        path: 'rfc.md',
+        status: 'done',
+        parent_path: null,
+      }),
+      makeRecord({
+        type: 'spec',
+        path: 'a.spec.md',
+        status: 'in-progress',
+        parent_path: 'rfc.md',
+      }),
+      makeRecord({
+        type: 'spec',
+        path: 'b.spec.md',
+        status: 'not-started',
+        parent_path: 'rfc.md',
+      }),
+      makeRecord({
+        type: 'tasks',
+        path: 'a.tasks.md',
+        status: 'in-progress',
+        parent_path: 'a.spec.md',
+      }),
+    ];
+    const result = filterRecords(records, {
+      status: ['in-progress', 'not-started'],
+      type: 'spec',
+    });
+    // Direct matches: both specs. Ancestor retained: the RFC. Tasks
+    // record is dropped (wrong type).
+    expect(result.map((r) => r.path)).toEqual([
+      'rfc.md',
+      'a.spec.md',
+      'b.spec.md',
+    ]);
+  });
+});
