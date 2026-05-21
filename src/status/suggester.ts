@@ -25,7 +25,10 @@
  *   would fail, so redirect to the render that creates the file)
  * - `spec` → `smithy.cut <dirname(spec-path)> <first-virtual-US<N>-digits>`
  *   (only when at least one user-story row has no tasks file on disk;
- *   null otherwise so per-task hints below the spec drive the work)
+ *   null otherwise so per-task hints below the spec drive the work), or
+ *   `smithy.mark <features-path> <F<N>-digits>` for a virtual spec record
+ *   (a feature whose `.spec.md` does not yet exist — cut would fail, so
+ *   redirect to the mark that creates the file)
  * - `tasks` → `smithy.forge <tasks-path> <first-non-done-S<N>-digits>` for
  *   real tasks files (degrades to `smithy.forge <tasks-path>` when the
  *   record carries no parsed slices), or
@@ -94,27 +97,34 @@ function cutTargetFromVirtualTasks(
 }
 
 /**
- * Resolve the `smithy.render` target (RFC path + milestone digits) for a
- * virtual features record. Virtual features records carry the parent
- * RFC's path in `parent_path` and the canonical `M<N>` row id in
- * `parent_row_id`; both are populated by the scanner whenever it emits a
- * virtual.
+ * Resolve the parent-file redirect target (parent artifact path + the
+ * owning row's numeric digits) for a virtual record whose parent command
+ * takes the parent artifact's *file* path directly. Two redirects use
+ * this shape:
+ *
+ * - A virtual `features` record (a milestone whose `.features.md` does not
+ *   exist) → `smithy.render <rfc-file> <M<N>>`. Parent is the RFC file.
+ * - A virtual `spec` record (a feature whose `.spec.md` does not exist) →
+ *   `smithy.mark <features-file> <F<N>>`. Parent is the feature map file.
+ *
+ * Both carry the parent artifact's path in `parent_path` and the
+ * canonical owning-row id (`M<N>` / `F<N>`) in `parent_row_id`; the
+ * scanner populates both whenever it emits a virtual.
  *
  * Returns `null` when `parent_path` is missing or empty — in that case
- * the scanner left us without an RFC to target, so the caller falls back
- * to the legacy `smithy.mark` shape rather than producing a
- * `smithy.render` with no arguments. When `parent_path` is present but
+ * the scanner left us without a parent to target, so the caller falls
+ * back to the legacy operate-on-self command shape rather than producing
+ * a redirect with no arguments. When `parent_path` is present but
  * `parent_row_id` is missing or has no numeric suffix, returns
- * `{ rfcPath, digits: undefined }` so the caller emits an RFC-only
- * `smithy.render <rfc>` hint — the same no-digits fallback the RFC case
- * uses when every milestone is already rendered. Unlike the tasks→cut
- * redirect (which targets `dirname(parent_path)`), `smithy.render` takes
- * the RFC file path directly, so `parent_path` is passed through
- * verbatim.
+ * `{ parentPath, digits: undefined }` so the caller emits a parent-only
+ * hint. Unlike the tasks→cut redirect (which targets
+ * `dirname(parent_path)` because `smithy.cut` takes a folder),
+ * `smithy.render` and `smithy.mark` take the parent file path directly,
+ * so `parent_path` is passed through verbatim.
  */
-function renderTargetFromVirtualFeatures(
+function parentFileTargetFromVirtual(
   record: ArtifactRecord,
-): { rfcPath: string; digits: string | undefined } | null {
+): { parentPath: string; digits: string | undefined } | null {
   const parentPath = record.parent_path;
   if (typeof parentPath !== 'string' || parentPath.length === 0) {
     return null;
@@ -122,7 +132,7 @@ function renderTargetFromVirtualFeatures(
   const digits = record.parent_row_id !== undefined
     ? numericIdSuffix(record.parent_row_id)
     : undefined;
-  return { rfcPath: parentPath, digits };
+  return { parentPath, digits };
 }
 
 /**
@@ -227,7 +237,11 @@ function firstVirtualNotStartedRowDigits(
  *      when the record has zero rows but is itself `not-started`;
  *      `null` otherwise (every declared spec already exists, so the
  *      per-spec hints cover the remaining work).
- *    - `spec` → `smithy.cut [dirname(record.path), <first-virtual-row-digits>]`
+ *    - `spec` → `smithy.mark [parent_path, <parent_row_id-digits>]` for a
+ *      virtual spec record whose `.spec.md` does not yet exist (falling
+ *      back to the `smithy.cut` shape when the scanner did not populate
+ *      `parent_path`); otherwise
+ *      `smithy.cut [dirname(record.path), <first-virtual-row-digits>]`
  *      when a user story has no tasks file yet; `smithy.cut [dirname(record.path)]`
  *      only when the record has zero rows but is itself `not-started`;
  *      `null` otherwise (every declared tasks file already exists, so
@@ -305,12 +319,12 @@ export function suggestNextAction(
       // `smithy.mark` hint. This mirrors the virtual tasks → smithy.cut
       // redirect below.
       if (record.virtual === true) {
-        const renderTarget = renderTargetFromVirtualFeatures(record);
+        const renderTarget = parentFileTargetFromVirtual(record);
         if (renderTarget !== null) {
           command = 'smithy.render';
           args = renderTarget.digits !== undefined
-            ? [renderTarget.rfcPath, renderTarget.digits]
-            : [renderTarget.rfcPath];
+            ? [renderTarget.parentPath, renderTarget.digits]
+            : [renderTarget.parentPath];
           reason = renderTarget.digits !== undefined
             ? `Feature map ${record.title} does not exist yet; run smithy.render to create it from milestone M${renderTarget.digits}.`
             : `Feature map ${record.title} does not exist yet; run smithy.render to create it.`;
@@ -343,6 +357,29 @@ export function suggestNextAction(
       break;
     }
     case 'spec': {
+      // Virtual spec records point at a `.spec.md` that does not yet
+      // exist on disk, so `smithy.cut` would fail — the spec it would
+      // decompose hasn't been marked from its feature map yet. Redirect
+      // to the `smithy.mark` invocation that creates the spec in the
+      // first place. Real spec records keep the `smithy.cut` hint. This
+      // mirrors the virtual features → smithy.render redirect above and
+      // the virtual tasks → smithy.cut redirect below.
+      if (record.virtual === true) {
+        const markTarget = parentFileTargetFromVirtual(record);
+        if (markTarget !== null) {
+          command = 'smithy.mark';
+          args = markTarget.digits !== undefined
+            ? [markTarget.parentPath, markTarget.digits]
+            : [markTarget.parentPath];
+          reason = markTarget.digits !== undefined
+            ? `Spec ${record.title} does not exist yet; run smithy.mark to create it from feature F${markTarget.digits}.`
+            : `Spec ${record.title} does not exist yet; run smithy.mark to create it.`;
+          break;
+        }
+        // Defensive fallback: scanner didn't populate parent fields.
+        // Keep the legacy cut shape rather than crashing so the
+        // suggester stays total.
+      }
       command = 'smithy.cut';
       const folder = specFolderFromPath(record.path);
       const digits = firstVirtualNotStartedRowDigits(record, resolvedChildren);
