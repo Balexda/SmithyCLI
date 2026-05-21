@@ -1777,7 +1777,11 @@ describe('CLI status', () => {
     //    that flag as a gate, so its hint line is also emitted —
     //    every actionable row stays self-describing in the text view.
     //    The flag still rides along on the JSON payload for machine
-    //    consumers.
+    //    consumers. Because the features map does not exist on disk yet,
+    //    the virtual record redirects to `smithy.render` (the command
+    //    that would create it from the RFC milestone) rather than
+    //    `smithy.mark` (which would fail on a missing file) — so both
+    //    the RFC and its virtual features child surface a render hint.
     //
     // 2. An independent spec whose only tasks child is fully checked
     //    off → both records classify as `done` → neither emits a hint
@@ -1831,6 +1835,14 @@ describe('CLI status', () => {
     expect(rfcRecord?.next_action?.command).toBe('smithy.render');
     expect(rfcRecord?.next_action?.suppressed_by_ancestor).toBeUndefined();
     expect(virtualFeatures?.status).toBe('not-started');
+    // The features map has no file on disk, so the virtual record
+    // redirects to `smithy.render` (against the parent RFC) rather than
+    // `smithy.mark` against the missing file.
+    expect(virtualFeatures?.next_action?.command).toBe('smithy.render');
+    expect(virtualFeatures?.next_action?.arguments).toEqual([
+      'docs/rfcs/active.rfc.md',
+      '1',
+    ]);
     expect(virtualFeatures?.next_action?.suppressed_by_ancestor).toBe(true);
     expect(finishedTasks?.status).toBe('done');
     expect(finishedTasks?.next_action).toBeNull();
@@ -1847,23 +1859,29 @@ describe('CLI status', () => {
     const lines = textOutput.split('\n');
 
     // AS 4.4: the actionable RFC emits a hint line containing
-    // `smithy.render` and its rfc path.
+    // `smithy.render` and its rfc path. The suppressed-by-ancestor
+    // virtual features record below it ALSO surfaces a render hint \u2014
+    // every actionable row must be self-describing even when its parent
+    // is `not-started`, and a feature map with no file on disk redirects
+    // to the `smithy.render` that would create it (not `smithy.mark`,
+    // which would fail on a missing file). Both render hints therefore
+    // point at the RFC path.
     const renderHintLines = lines.filter(
       (l) => l.includes('\u2192') && l.includes('smithy.render'),
     );
-    expect(renderHintLines).toHaveLength(1);
-    expect(renderHintLines[0]).toContain('docs/rfcs/active.rfc.md');
+    expect(renderHintLines).toHaveLength(2);
+    for (const line of renderHintLines) {
+      expect(line).toContain('docs/rfcs/active.rfc.md');
+    }
 
-    // The suppressed-by-ancestor features record still surfaces its own
-    // hint in the text view: every actionable row must be self-describing
-    // even when its parent is `not-started`. The `suppressed_by_ancestor`
-    // flag remains on the JSON payload (asserted above) for machine
-    // consumers, but the renderer no longer treats it as a gate.
+    // No `smithy.mark` hint is emitted: the only features record in this
+    // fixture is virtual (its `.features.md` does not exist), so it
+    // redirects to `smithy.render` rather than suggesting a mark against
+    // a file that isn't there.
     const markHintLines = lines.filter(
       (l) => l.includes('→') && l.includes('smithy.mark'),
     );
-    expect(markHintLines).toHaveLength(1);
-    expect(markHintLines[0]).toContain('docs/rfcs/active.features.md');
+    expect(markHintLines).toHaveLength(0);
 
     // Done records emit no hint line: the finished tasks file is done
     // and must not have an arrow beneath its rendered line.

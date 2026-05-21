@@ -19,7 +19,10 @@
  *   RFC has zero rows or every milestone is already rendered
  * - `features` → `smithy.mark <features-path> <first-virtual-F<N>-digits>`
  *   (only when at least one feature row has no spec file on disk; null
- *   otherwise so per-spec hints below the features map drive the work)
+ *   otherwise so per-spec hints below the features map drive the work),
+ *   or `smithy.render <rfc-path> <M<N>-digits>` for a virtual features
+ *   record (a milestone whose `.features.md` does not yet exist — mark
+ *   would fail, so redirect to the render that creates the file)
  * - `spec` → `smithy.cut <dirname(spec-path)> <first-virtual-US<N>-digits>`
  *   (only when at least one user-story row has no tasks file on disk;
  *   null otherwise so per-task hints below the spec drive the work)
@@ -88,6 +91,38 @@ function cutTargetFromVirtualTasks(
     ? numericIdSuffix(record.parent_row_id)
     : undefined;
   return { folder, digits };
+}
+
+/**
+ * Resolve the `smithy.render` target (RFC path + milestone digits) for a
+ * virtual features record. Virtual features records carry the parent
+ * RFC's path in `parent_path` and the canonical `M<N>` row id in
+ * `parent_row_id`; both are populated by the scanner whenever it emits a
+ * virtual.
+ *
+ * Returns `null` when `parent_path` is missing or empty — in that case
+ * the scanner left us without an RFC to target, so the caller falls back
+ * to the legacy `smithy.mark` shape rather than producing a
+ * `smithy.render` with no arguments. When `parent_path` is present but
+ * `parent_row_id` is missing or has no numeric suffix, returns
+ * `{ rfcPath, digits: undefined }` so the caller emits an RFC-only
+ * `smithy.render <rfc>` hint — the same no-digits fallback the RFC case
+ * uses when every milestone is already rendered. Unlike the tasks→cut
+ * redirect (which targets `dirname(parent_path)`), `smithy.render` takes
+ * the RFC file path directly, so `parent_path` is passed through
+ * verbatim.
+ */
+function renderTargetFromVirtualFeatures(
+  record: ArtifactRecord,
+): { rfcPath: string; digits: string | undefined } | null {
+  const parentPath = record.parent_path;
+  if (typeof parentPath !== 'string' || parentPath.length === 0) {
+    return null;
+  }
+  const digits = record.parent_row_id !== undefined
+    ? numericIdSuffix(record.parent_row_id)
+    : undefined;
+  return { rfcPath: parentPath, digits };
 }
 
 /**
@@ -183,9 +218,13 @@ function firstVirtualNotStartedRowDigits(
  *    - `rfc` → `smithy.render [record.path, <first-virtual-row-digits>]`
  *      when a milestone has no feature map yet; `smithy.render [record.path]`
  *      otherwise (zero rows, or every milestone already rendered).
- *    - `features` → `smithy.mark [record.path, <first-virtual-row-digits>]`
- *      when a feature has no spec file yet; `smithy.mark [record.path]`
- *      only when the record has zero rows but is itself `not-started`;
+ *    - `features` → `smithy.render [parent_path, <parent_row_id-digits>]`
+ *      for a virtual features record whose `.features.md` does not yet
+ *      exist (falling back to the `smithy.mark` shape when the scanner
+ *      did not populate `parent_path`); otherwise
+ *      `smithy.mark [record.path, <first-virtual-row-digits>]` when a
+ *      feature has no spec file yet; `smithy.mark [record.path]` only
+ *      when the record has zero rows but is itself `not-started`;
  *      `null` otherwise (every declared spec already exists, so the
  *      per-spec hints cover the remaining work).
  *    - `spec` → `smithy.cut [dirname(record.path), <first-virtual-row-digits>]`
@@ -258,6 +297,29 @@ export function suggestNextAction(
       break;
     }
     case 'features': {
+      // Virtual features records point at a `.features.md` that does not
+      // yet exist on disk, so `smithy.mark` would fail — the feature map
+      // it would mark hasn't been rendered from its RFC milestone yet.
+      // Redirect to the `smithy.render` invocation that creates the
+      // feature map in the first place. Real features records keep the
+      // `smithy.mark` hint. This mirrors the virtual tasks → smithy.cut
+      // redirect below.
+      if (record.virtual === true) {
+        const renderTarget = renderTargetFromVirtualFeatures(record);
+        if (renderTarget !== null) {
+          command = 'smithy.render';
+          args = renderTarget.digits !== undefined
+            ? [renderTarget.rfcPath, renderTarget.digits]
+            : [renderTarget.rfcPath];
+          reason = renderTarget.digits !== undefined
+            ? `Feature map ${record.title} does not exist yet; run smithy.render to create it from milestone M${renderTarget.digits}.`
+            : `Feature map ${record.title} does not exist yet; run smithy.render to create it.`;
+          break;
+        }
+        // Defensive fallback: scanner didn't populate parent fields.
+        // Keep the legacy mark shape rather than crashing so the
+        // suggester stays total.
+      }
       command = 'smithy.mark';
       const digits = firstVirtualNotStartedRowDigits(record, resolvedChildren);
       if (digits !== undefined) {

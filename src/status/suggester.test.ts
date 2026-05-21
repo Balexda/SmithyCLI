@@ -437,6 +437,68 @@ describe('suggestNextAction — features records', () => {
     expect(action!.command).toBe('smithy.mark');
     expect(action!.arguments).toEqual(['docs/rfcs/foo.features.md']);
   });
+
+  it('redirects a virtual features record to smithy.render on its parent rfc', () => {
+    // A virtual features record has no `.features.md` on disk, so
+    // `smithy.mark` on its path would fail — the feature map has not
+    // been rendered from its RFC milestone yet. The scanner populates
+    // `parent_path` (the owning `.rfc.md`) and `parent_row_id` (`M<N>`)
+    // whenever it emits a virtual; the suggester must redirect to the
+    // `smithy.render` invocation that would create the feature map in
+    // the first place.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+      parent_path: 'docs/rfcs/2026-002-foo/foo.rfc.md',
+      parent_row_id: 'M2',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.render');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-002-foo/foo.rfc.md',
+      '2',
+    ]);
+    expect(action!.reason).toContain('M2');
+  });
+
+  it('falls back to smithy.render with rfc path only when a virtual features record lacks a row id', () => {
+    // Defensive: scanner emitted a virtual with `parent_path` but no
+    // usable `parent_row_id` digit. Still redirect to render (the file
+    // does not exist, so mark would fail) but drop the milestone digit.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+      parent_path: 'docs/rfcs/2026-002-foo/foo.rfc.md',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.render');
+    expect(action!.arguments).toEqual(['docs/rfcs/2026-002-foo/foo.rfc.md']);
+  });
+
+  it('falls back to smithy.mark on a virtual features record missing parent fields', () => {
+    // Defensive guard: if the scanner ever emits a virtual features
+    // record without `parent_path` (shouldn't happen in practice), the
+    // suggester must still produce an action rather than crashing. Fall
+    // back to the legacy mark shape.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.mark');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+    ]);
+  });
 });
 
 describe('suggestNextAction — spec records', () => {
