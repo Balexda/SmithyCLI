@@ -437,6 +437,68 @@ describe('suggestNextAction — features records', () => {
     expect(action!.command).toBe('smithy.mark');
     expect(action!.arguments).toEqual(['docs/rfcs/foo.features.md']);
   });
+
+  it('redirects a virtual features record to smithy.render on its parent rfc', () => {
+    // A virtual features record has no `.features.md` on disk, so
+    // `smithy.mark` on its path would fail — the feature map has not
+    // been rendered from its RFC milestone yet. The scanner populates
+    // `parent_path` (the owning `.rfc.md`) and `parent_row_id` (`M<N>`)
+    // whenever it emits a virtual; the suggester must redirect to the
+    // `smithy.render` invocation that would create the feature map in
+    // the first place.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+      parent_path: 'docs/rfcs/2026-002-foo/foo.rfc.md',
+      parent_row_id: 'M2',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.render');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-002-foo/foo.rfc.md',
+      '2',
+    ]);
+    expect(action!.reason).toContain('M2');
+  });
+
+  it('falls back to smithy.render with rfc path only when a virtual features record lacks a row id', () => {
+    // Defensive: scanner emitted a virtual with `parent_path` but no
+    // usable `parent_row_id` digit. Still redirect to render (the file
+    // does not exist, so mark would fail) but drop the milestone digit.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+      parent_path: 'docs/rfcs/2026-002-foo/foo.rfc.md',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.render');
+    expect(action!.arguments).toEqual(['docs/rfcs/2026-002-foo/foo.rfc.md']);
+  });
+
+  it('falls back to smithy.mark on a virtual features record missing parent fields', () => {
+    // Defensive guard: if the scanner ever emits a virtual features
+    // record without `parent_path` (shouldn't happen in practice), the
+    // suggester must still produce an action rather than crashing. Fall
+    // back to the legacy mark shape.
+    const record = makeRecord({
+      type: 'features',
+      status: 'not-started',
+      virtual: true,
+      path: 'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.mark');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-002-foo/02-subsystem-contract.features.md',
+    ]);
+  });
 });
 
 describe('suggestNextAction — spec records', () => {
@@ -613,6 +675,97 @@ describe('suggestNextAction — spec records', () => {
       false,
     );
     expect(action!.arguments).toEqual(['specs/webhooks', '2']);
+  });
+
+  it('redirects a virtual spec record to smithy.mark on its parent features map', () => {
+    // A virtual spec record has no `.spec.md` on disk, so `smithy.cut`
+    // on its folder would fail — the spec has not been marked from its
+    // feature map yet. The scanner populates `parent_path` (the owning
+    // `.features.md`) and `parent_row_id` (`F<N>`) whenever it emits a
+    // virtual; the suggester must redirect to the `smithy.mark`
+    // invocation that would create the spec in the first place.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      virtual: true,
+      path: 'specs/spawn-output-extraction/',
+      parent_path: 'docs/rfcs/2026-001-march/01-spawn.features.md',
+      parent_row_id: 'F5',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.mark');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-001-march/01-spawn.features.md',
+      '5',
+    ]);
+    expect(action!.reason).toContain('F5');
+  });
+
+  it('falls back to smithy.mark with features path only when a virtual spec record lacks a row id', () => {
+    // Defensive: scanner emitted a virtual with `parent_path` but no
+    // usable `parent_row_id` digit. Still redirect to mark (the file
+    // does not exist, so cut would fail) but drop the feature digit.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      virtual: true,
+      path: 'specs/spawn-output-extraction/',
+      parent_path: 'docs/rfcs/2026-001-march/01-spawn.features.md',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.mark');
+    expect(action!.arguments).toEqual([
+      'docs/rfcs/2026-001-march/01-spawn.features.md',
+    ]);
+  });
+
+  it('falls back to smithy.cut on a virtual spec record missing parent fields', () => {
+    // Defensive guard: if the scanner ever emits a virtual spec record
+    // without `parent_path` (shouldn't happen in practice), the
+    // suggester must still produce an action rather than crashing. Fall
+    // back to the legacy cut shape against the folder.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      virtual: true,
+      path: 'specs/spawn-output-extraction/',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual(['specs/spawn-output-extraction']);
+  });
+
+  it('keeps smithy.cut for a real (on-disk) spec with an uncut user story', () => {
+    // Regression guard for the F3/F4 case: a real spec (not virtual)
+    // whose feature map row resolves to an existing `.spec.md`. Its
+    // next-action must remain `smithy.cut <folder> <US#>` — the spec
+    // exists, so marking it again would be wrong; the next uncut user
+    // story is what needs decomposing.
+    const record = makeRecord({
+      type: 'spec',
+      status: 'not-started',
+      path: 'specs/2026-05-10-003-multi-backend/multi-backend.spec.md',
+      parent_path: 'docs/rfcs/2026-001-march/01-spawn.features.md',
+      parent_row_id: 'F3',
+      dependency_order: {
+        rows: [makeRow('US2', 'specs/2026-05-10-003-multi-backend/02-a.tasks.md'), makeRow('US3')],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const children: ArtifactRecord[] = [
+      makeChild('not-started', 'tasks'), // real — tasks file exists
+      makeRecord({ type: 'tasks', status: 'not-started', virtual: true }),
+    ];
+    const action = suggestNextAction(record, children, false);
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual([
+      'specs/2026-05-10-003-multi-backend',
+      '3',
+    ]);
   });
 });
 
