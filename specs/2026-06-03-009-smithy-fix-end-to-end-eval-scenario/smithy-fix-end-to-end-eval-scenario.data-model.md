@@ -15,7 +15,7 @@ Purpose: Represents the YAML scenario that invokes smithy.fix against offline fa
 | `name` | string | Yes | Stable scenario name. Expected value is `fix-from-issue`. |
 | `skill` | string | Yes | Smithy command under test. Expected value is `/smithy.fix`. |
 | `prompt` | string | Yes | Scenario prompt template that references the local fixture evidence exposed by the runner. |
-| `local_fixtures` | LocalFixtureSet | Yes | Declares the issue and CI-log fixture files needed for this scenario. |
+| `local_fixtures` | LocalFixtureSet | Conditional | Optional at the scenario-schema level (scenarios without local evidence omit it and remain compatible, per contracts.md §1); required for this `fix-from-issue` scenario, which declares the issue and CI-log fixture files it needs. |
 | `structural_expectations` | StructuralExpectations | Yes | Existing eval validation contract for required headings, patterns, tables, and forbidden patterns. |
 | `sub_agent_evidence` | HelperEvidenceCheck[] | No | Expected helper evidence for the observed smithy.fix path. |
 | `timeout` | integer | No | Existing per-scenario timeout override in seconds. |
@@ -24,7 +24,8 @@ Validation rules:
 
 - `name`, `skill`, and `prompt` must be non-empty strings.
 - `skill` must resolve to the deployed smithy.fix command.
-- `local_fixtures.issue` and `local_fixtures.ci_log` must resolve under the allowed eval fixture area.
+- `local_fixtures` is optional at the scenario-schema level; when absent the scenario loads without fixture injection (contracts.md §1). It is required for the `fix-from-issue` scenario.
+- When `local_fixtures` is present, `local_fixtures.issue` and `local_fixtures.ci_log` must resolve under the allowed eval fixture area.
 - Structural expectations must include at least one stable marker for diagnosis, fix action, and verification output.
 - Helper evidence is optional at schema-load time but required for the committed smithy.fix scenario once the observed helper path is known.
 
