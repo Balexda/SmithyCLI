@@ -114,7 +114,7 @@ sub_agent_evidence:
 | `prompt` | string | Yes | Prompt that names local fixture evidence. |
 | `local_fixtures` | object | Yes | Local issue and CI-log fixture declaration. |
 | `structural_expectations` | object | Yes | Existing structural validation rules. |
-| `sub_agent_evidence` | array | Yes | Helper evidence checks for the observed smithy.fix path. |
+| `sub_agent_evidence` | array | Conditional | Helper evidence checks for the observed smithy.fix path. Required only when the captured run actually dispatches helper agents; for the offline error-description path, which may dispatch none, this is empty or omitted. |
 
 #### Outputs
 
@@ -129,7 +129,7 @@ sub_agent_evidence:
 |-----------|----------|-------------|
 | smithy.fix attempts to require live GitHub access | Scenario fails because the offline contract was not honored. | The eval must remain runnable without credentials. |
 | Structural marker is missing | Structural check fails. | The report should expose workflow regressions. |
-| Expected helper evidence is missing | Helper evidence check fails. | The report should expose dispatch-path regressions. |
+| A declared helper evidence check is missing from the run | That helper evidence check fails. | The report should expose dispatch-path regressions. A run that legitimately dispatches no helpers declares no checks and does not fail on this condition. |
 | Scenario times out or exits non-zero | Standard eval timeout/error status applies while preserving captured output and tokens. | Existing runner behavior remains authoritative. |
 
 ### 4) Fix Baseline Contract

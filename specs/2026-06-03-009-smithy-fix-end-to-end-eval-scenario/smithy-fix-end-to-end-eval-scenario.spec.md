@@ -116,7 +116,7 @@ Recommended implementation sequence:
 - **FR-005**: The runner MUST expose declared local fixture paths to the scenario invocation in a deterministic way.
 - **FR-006**: The smithy.fix scenario prompt MUST direct the command to use the local fixture evidence rather than fetching live issue or CI data.
 - **FR-007**: The scenario MUST validate stable structural markers for diagnosis, fix action, and verification output.
-- **FR-008**: The scenario MUST validate expected helper-agent evidence for the smithy.fix path exercised by the fixture.
+- **FR-008**: When the smithy.fix path exercised by the fixture dispatches helper agents, the scenario MUST validate the expected helper-agent evidence for each. If the observed offline path dispatches no helpers, the scenario MUST NOT require helper evidence (no fabricated or brittle dispatch patterns).
 - **FR-009**: The scenario MUST fail clearly when a declared local fixture is missing, unreadable, or outside the allowed fixture area.
 - **FR-010**: The scenario MUST leave the source fixture checksum invariant intact; any modifications happen only inside the runner's temp copy.
 - **FR-011**: The system MUST commit a token-aware baseline for the smithy.fix scenario after the F1.3a baseline schema is available.
@@ -144,7 +144,7 @@ Recommended implementation sequence:
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | The exact helper-agent evidence set for the offline smithy.fix path is not known until the fixture is run against current smithy.fix behavior. The implementation must record the observed helper path and choose stable evidence patterns from that output. | Integration Points | Medium | Medium | open | — |
+| SD-001 | The exact helper-agent evidence set for the offline smithy.fix path is not known until the fixture is run against current smithy.fix behavior. The error-description path may dispatch no helpers at all. The implementation must record the observed helper path and choose stable evidence patterns from that output, or — if the run dispatches none — leave `sub_agent_evidence` empty rather than fabricating patterns. | Integration Points | Medium | Medium | open | — |
 | SD-002 | The initial token envelope for the smithy.fix baseline cannot be calibrated until F1.3a's token-aware baseline schema is available and the scenario has a clean captured run. Implementers should choose a conservative initial envelope and document the captured totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | — |
 
 ## Out of Scope
@@ -163,6 +163,6 @@ Recommended implementation sequence:
 - **SC-001**: A committed smithy.fix eval scenario runs from local issue and CI-log fixtures without GitHub credentials.
 - **SC-002**: Missing or invalid local fixture declarations produce clear scenario-loading or runner errors.
 - **SC-003**: The eval report includes structural pass/fail checks for the smithy.fix scenario's diagnosis, fix, and verification markers.
-- **SC-004**: The eval report includes helper evidence checks for the observed smithy.fix helper path.
+- **SC-004**: When the observed smithy.fix path dispatches helpers, the eval report includes helper evidence checks for them; when it dispatches none, the report records no helper checks rather than failing.
 - **SC-005**: A token-aware `fix-from-issue` baseline is committed and passes against a clean scenario run.
 - **SC-006**: Unit tests cover the scenario loader, runner fixture injection, offline scenario behavior, validation checks, and baseline compatibility paths.

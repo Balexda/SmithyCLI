@@ -27,7 +27,7 @@ Validation rules:
 - `local_fixtures` is optional at the scenario-schema level; when absent the scenario loads without fixture injection (contracts.md §1). It is required for the `fix-from-issue` scenario.
 - When `local_fixtures` is present, `local_fixtures.issue` and `local_fixtures.ci_log` must resolve under the allowed eval fixture area.
 - Structural expectations must include at least one stable marker for diagnosis, fix action, and verification output.
-- Helper evidence is optional at schema-load time but required for the committed smithy.fix scenario once the observed helper path is known.
+- Helper evidence is optional. It is populated for the committed smithy.fix scenario only when the captured run actually dispatches helper agents; if the observed offline error-description path dispatches none, `sub_agent_evidence` is empty or omitted and the scenario must not fail for lack of helper checks.
 
 ### 2) LocalFixtureSet (`local_fixture_set`)
 
