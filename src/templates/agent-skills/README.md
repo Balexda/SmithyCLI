@@ -108,6 +108,43 @@ section in every artifact**, using the same 4-column Markdown table schema:
   features, user stories, and slices, so the authoring commands and the
   scanner share one implementation.
 
+## Voice and Audience Tagging Convention
+
+Every `##` section in a Smithy planning artifact, forge deliverable, or
+ad-hoc planning prose carries an inline HTML-comment tag immediately under
+the heading. The full taxonomy — Reader role × Diátaxis mode plus
+conciseness budgets, diagram-first framing, and depth-control rules —
+lives in the `smithy.helper-voice` skill body. Authors of new command
+templates should follow it rather than redefining voice rules inline.
+
+The tag grammar:
+
+```
+## <Section title>
+<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|forbidden>[; applicability: <free-text>] -->
+```
+
+Keys:
+
+| Key | Values |
+|-----|--------|
+| `audience` | `stakeholder` \| `reviewer` \| `builder`; append `+ai-input` when a Smithy sub-agent is the primary consumer (e.g., `builder+ai-input`). |
+| `mode` | `explanation` \| `reference` \| `how-to` \| `tutorial`. |
+| `length` | Sentence or paragraph budget (`2-3 sentences`, `3-6 paragraphs`, `tables only`, `5-15 steps`). |
+| `diagram` | `required` \| `recommended` \| `optional`. |
+| `examples` | `required` \| `recommended` \| `discouraged` \| `forbidden`. |
+| `applicability` (optional) | Free-text condition under which the section legitimately resolves to `N/A` (e.g., `code-shaped features only` on `.data-model.md` / `.contracts.md`). |
+
+The comment renders invisibly in GitHub/Markdown preview, is grep-able
+for lint, and travels with the section across reorderings. Tag every new
+`##` section you author; in review mode, insert missing tags and revise
+prose that violates the budget. `smithy.audit` and future lint commands
+read these tags to enforce voice rules — see
+`src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` for
+the per-cell rules, three worked before/after examples, and the
+"application beyond Smithy" appendix (migration plans, ADRs, runbooks,
+READMEs, inline documentation).
+
 ## Sub-Agent Roles
 
 Sub-agents are invoked by parent commands, not directly by users:
