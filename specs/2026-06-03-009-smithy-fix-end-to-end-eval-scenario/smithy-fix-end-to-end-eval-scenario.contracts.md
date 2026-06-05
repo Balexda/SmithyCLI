@@ -1,10 +1,12 @@
 # Contracts: smithy.fix End-to-End Eval Scenario
 
 ## Overview
+<!-- audience: reviewer; mode: explanation; length: 1 paragraph; diagram: optional; examples: discouraged -->
 
 This feature introduces a local-fixture contract for eval scenarios that need committed evidence files, then uses it to run smithy.fix against offline issue and CI-log inputs. The contracts are additive to the existing scenario loader, runner invocation, validation, and baseline flows.
 
 ## Interfaces
+<!-- audience: builder+ai-input; mode: reference; length: 4 interfaces, each Purpose/Signature/Inputs/Outputs/Errors; diagram: optional; examples: required -->
 
 ### 1) Scenario Local Fixture Declaration
 
@@ -180,10 +182,12 @@ sub_agent_evidence:
 | Live token totals exceed envelope | Emit a failing token check. | Downstream token regressions become visible in the eval report. |
 
 ## Events / Hooks
+<!-- audience: builder; mode: reference; length: 1 line; diagram: forbidden; examples: forbidden; applicability: features that introduce new runtime events or webhooks -->
 
-No new runtime events or hooks are introduced. The feature uses the existing eval scenario load, runner invocation, validation, report, and baseline comparison flow.
+**N/A** — no new runtime events or hooks. The feature reuses the existing eval scenario load, runner invocation, validation, report, and baseline-comparison flow.
 
 ## Integration Boundaries
+<!-- audience: builder; mode: reference; length: 3-6 bullets; diagram: optional; examples: discouraged -->
 
 - **Scenario YAML boundary**: adds optional `local_fixtures` metadata while preserving compatibility for scenarios that omit it.
 - **Filesystem fixture boundary**: reads committed issue and CI-log evidence from the eval fixture area only.

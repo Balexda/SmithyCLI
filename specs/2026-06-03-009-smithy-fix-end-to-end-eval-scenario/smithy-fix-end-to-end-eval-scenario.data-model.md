@@ -1,10 +1,12 @@
 # Data Model: smithy.fix End-to-End Eval Scenario
 
 ## Overview
+<!-- audience: reviewer; mode: explanation; length: 1 paragraph; diagram: optional; examples: discouraged -->
 
 This feature adds data definitions for a deterministic smithy.fix eval scenario. The model extends scenario metadata with local fixture declarations, introduces committed issue and CI-log fixtures as repository artifacts, and consumes the token-aware baseline shape established by Feature 1.3a. No persistent database or external storage is introduced.
 
 ## Entities
+<!-- audience: builder+ai-input; mode: reference; length: 6 entities with field tables + validation rules; diagram: required (ER, in the Relationships section below); examples: required -->
 
 ### 1) Fix Eval Scenario (`fix_eval_scenario`)
 
@@ -115,45 +117,60 @@ Validation rules:
 - Baseline scenario name must match the scenario definition.
 
 ## Relationships
+<!-- audience: builder+ai-input; mode: reference; length: ER diagram + cardinality legend; diagram: required; examples: forbidden -->
 
-- `Fix Eval Scenario` 1:1 `LocalFixtureSet` via the scenario's local fixture declaration.
-- `LocalFixtureSet` 1:1 `Issue Fixture` via `local_fixtures.issue`.
-- `LocalFixtureSet` 1:1 `CI Log Fixture` via `local_fixtures.ci_log`.
-- `LocalFixtureSet` 1:1 `Local Fixture Injection` during runner invocation assembly.
-- `Fix Eval Scenario` 0..N `HelperEvidenceCheck` through existing sub-agent evidence validation.
-- `Fix Eval Scenario` 1:1 `Fix Baseline` after the first clean token-aware capture.
+```mermaid
+erDiagram
+    FixEvalScenario      ||--|| LocalFixtureSet        : declares
+    LocalFixtureSet      ||--|| IssueFixture           : "local_fixtures.issue"
+    LocalFixtureSet      ||--|| CILogFixture           : "local_fixtures.ci_log"
+    LocalFixtureSet      ||--|| LocalFixtureInjection  : "resolved at invocation"
+    FixEvalScenario      ||--o{ HelperEvidenceCheck    : validates
+    FixEvalScenario      ||--o| FixBaseline            : "captured after F1.3a"
+```
+
+Cardinality notes — `FixEvalScenario` 0..1 `FixBaseline` (the baseline does not exist until the F1.3a-aware capture lands); `FixEvalScenario` 0..N `HelperEvidenceCheck` (zero when the observed offline path dispatches no helpers, per FR-008).
 
 ## State Transitions
+<!-- audience: builder+ai-input; mode: reference; length: 2 state diagrams + trigger/effect tables; diagram: required; examples: forbidden -->
 
 ### Scenario lifecycle
 
-1. `declared` -> `fixtures_resolved`
-   - Trigger: the scenario loader validates local fixture declarations.
-   - Effects: issue and CI-log fixture paths are checked for allowed location and readability.
+```mermaid
+stateDiagram-v2
+    [*] --> declared
+    declared        --> fixtures_resolved : loader validates local fixtures
+    fixtures_resolved --> invocation_built : runner renders prompt
+    invocation_built  --> validated        : smithy.fix completes, checks attach
+    validated        --> baselined         : clean F1.3a-aware capture committed
+    baselined        --> [*]
+```
 
-2. `fixtures_resolved` -> `invocation_built`
-   - Trigger: the runner renders the smithy.fix invocation.
-   - Effects: local fixture paths are injected into the prompt in a deterministic form.
-
-3. `invocation_built` -> `validated`
-   - Trigger: smithy.fix completes and report validation runs.
-   - Effects: structural and helper evidence checks are attached to the eval result.
-
-4. `validated` -> `baselined`
-   - Trigger: a clean scenario run is captured after the token-aware baseline schema exists.
-   - Effects: the fix baseline is committed with structural expectations and a token envelope.
+| Transition | Trigger | Effects |
+|---|---|---|
+| `declared` → `fixtures_resolved` | Scenario loader validates local fixture declarations. | Issue and CI-log fixture paths are checked for allowed location and readability. |
+| `fixtures_resolved` → `invocation_built` | Runner renders the smithy.fix invocation. | Local fixture paths are injected into the prompt in a deterministic form. |
+| `invocation_built` → `validated` | smithy.fix completes and report validation runs. | Structural and helper evidence checks are attached to the eval result. |
+| `validated` → `baselined` | A clean scenario run is captured after the token-aware baseline schema exists. | The fix baseline is committed with structural expectations and a token envelope. |
 
 ### Fixture lifecycle
 
-1. `authored` -> `committed`
-   - Trigger: fixture files are added to the repository.
-   - Effects: offline scenario evidence becomes available to every eval runner.
+```mermaid
+stateDiagram-v2
+    [*] --> authored
+    authored  --> committed : added to repo
+    committed --> refreshed : intentional recalibration
+    refreshed --> committed
+    committed --> [*]
+```
 
-2. `committed` -> `refreshed`
-   - Trigger: the intended smithy.fix path changes and the scenario is intentionally recalibrated.
-   - Effects: fixture text and baseline expectations are updated together.
+| Transition | Trigger | Effects |
+|---|---|---|
+| `authored` → `committed` | Fixture files are added to the repository. | Offline scenario evidence becomes available to every eval runner. |
+| `committed` → `refreshed` | The intended smithy.fix path changes and the scenario is intentionally recalibrated. | Fixture text and baseline expectations are updated together. |
 
 ## Identity & Uniqueness
+<!-- audience: builder; mode: reference; length: 3-5 bullets; diagram: optional; examples: discouraged -->
 
 - The scenario is uniquely identified by `name: fix-from-issue`.
 - Fixture declarations are uniquely identified by their repository-relative paths.

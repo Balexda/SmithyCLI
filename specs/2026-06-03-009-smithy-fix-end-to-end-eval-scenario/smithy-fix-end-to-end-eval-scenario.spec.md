@@ -4,8 +4,8 @@
 **Branch**: `2026-06-03-009-smithy-fix-end-to-end-eval-scenario`
 **Created**: 2026-06-03
 **Status**: Draft
-**Input**: `docs/rfcs/2026-001-token-savings/token-savings.rfc.md` - Milestone 1 measurement-foundation feature for deterministic smithy.fix end-to-end eval coverage.
-**Source Feature Map**: `docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md` - Feature 1.4: smithy.fix End-to-End Eval Scenario
+**Input**: `docs/rfcs/2026-001-token-savings/token-savings.rfc.md` — Milestone 1: deterministic smithy.fix end-to-end eval coverage.
+**Source Feature Map**: `docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md` — Feature 1.4: smithy.fix End-to-End Eval Scenario.
 
 ## Clarifications
 <!-- audience: reviewer; mode: reference; length: 6-10 bullets; diagram: optional; examples: discouraged -->
@@ -14,10 +14,10 @@
 
 - This specification targets the Dependency Order row `F3`, which corresponds to Feature 1.4 in the measurement-foundation feature map. `[Critical Assumption]`
 - Feature 1.3a is the prerequisite token-baseline substrate; this feature consumes its token-aware baseline schema instead of redefining token extraction or comparison.
-- The smithy.fix eval is offline and deterministic: it must not call live GitHub issue, PR, or Actions APIs during scenario execution.
-- The offline issue fixture is a Markdown file under `evals/fixture/issues/`, and the offline CI-log fixture is a text log under `evals/fixture/ci-logs/`.
-- Fixture discovery is settled as a scenario-level local-fixture injection contract: a scenario may declare an issue fixture and a CI-log fixture, and the runner exposes their paths to the prompt invocation so smithy.fix can exercise its existing error-description path without network access.
-- This feature does not edit `smithy.fix.prompt`; M3 owns CI-log prompt optimizations. The eval prompt may name the local fixture paths and ask smithy.fix to diagnose that local issue/log evidence.
+- The smithy.fix eval is offline and deterministic — no live GitHub issue, PR, or Actions APIs during scenario execution.
+- Fixtures live at fixed locations: issue Markdown under `evals/fixture/issues/`, CI log text under `evals/fixture/ci-logs/`.
+- Scenarios declare an issue fixture and a CI-log fixture; the runner exposes their paths to the invocation prompt so smithy.fix can run its error-description path offline.
+- This feature does not edit `smithy.fix.prompt` (M3 owns CI-log prompt optimizations). The eval prompt names the local fixture paths and asks smithy.fix to diagnose them.
 
 ## Artifact Hierarchy
 <!-- audience: builder+ai-input; mode: reference; length: 1 line; diagram: optional; examples: forbidden -->
@@ -91,11 +91,11 @@ As a Smithy maintainer, I want a committed smithy.fix baseline in the token-awar
 
 ### Edge Cases
 
-- The local CI-log fixture may be large enough to exercise token-cost behavior but must remain small enough for deterministic repository checkout and test runtime.
-- The issue fixture and CI-log fixture can disagree if edited independently; the scenario must fail clearly when required fixture evidence is missing or inconsistent.
-- A developer may run evals without GitHub credentials; this scenario must not treat missing credentials as a scenario failure.
-- smithy.fix may choose a simple-fix path for the fixture; the expectations should assert the command's diagnosis and verification behavior without requiring a particular implementation diff shape beyond the fixture's intended fix.
-- If F1.3a's token-aware baseline schema changes during implementation, this feature consumes the landed schema and does not introduce a competing baseline shape.
+- The CI-log fixture must exercise token-cost behavior while staying small enough for deterministic checkout and test runtime.
+- Issue and CI-log fixtures can drift if edited independently; the scenario must fail clearly when required evidence is missing or inconsistent.
+- A developer may run evals without GitHub credentials; missing credentials are not a scenario failure for this case.
+- smithy.fix may choose a simple-fix path; assertions check diagnosis and verification behavior, not a specific implementation diff.
+- If F1.3a's token-aware baseline schema changes during implementation, this feature consumes the landed schema rather than defining a competing one.
 
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: forbidden -->
