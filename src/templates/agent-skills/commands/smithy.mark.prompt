@@ -11,16 +11,18 @@ data models, and interface contracts — all scoped to "what and why", not "how"
 
 ---
 
+{{>artifact-location-policy}}
+
 ## Input
 
 The user's input: $ARGUMENTS
 
 This may be:
 - A **feature description** (e.g., "add webhook support for build events").
-- A **path to an RFC** (e.g., `docs/rfcs/2026-001-webhook-support/webhook-support.rfc.md`).
+- A **path to an RFC** (e.g., `{{artifactsRoot}}docs/rfcs/2026-001-webhook-support/webhook-support.rfc.md`).
 - A **path to a `.features.md`** (feature map) with an optional feature number
-  (e.g., `docs/rfcs/2026-001-foo/01-core.features.md` or
-  `docs/rfcs/2026-001-foo/01-core.features.md 3`).
+  (e.g., `{{artifactsRoot}}docs/rfcs/2026-001-foo/01-core.features.md` or
+  `{{artifactsRoot}}docs/rfcs/2026-001-foo/01-core.features.md 3`).
 - Empty — if so, ask the user what they want to specify.
 
 ---
@@ -771,9 +773,9 @@ through Phase 0).
 
 1. **Audit findings and refinements** (if repeating the command on existing artifacts).
 2. Created/updated spec files:
-   - `specs/<date>-<NNN>-<slug>/<slug>.spec.md`
-   - `specs/<date>-<NNN>-<slug>/<slug>.data-model.md`
-   - `specs/<date>-<NNN>-<slug>/<slug>.contracts.md`
+   - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.spec.md`
+   - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.data-model.md`
+   - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.contracts.md`
 3. Summary report containing:
    - Spec folder path and branch name.
    - User story list with priorities.

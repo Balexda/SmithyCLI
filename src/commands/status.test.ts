@@ -1218,3 +1218,79 @@ describe('serializeGraphForJson', () => {
     }
   });
 });
+
+describe('statusAction artifacts-location integration', () => {
+  // The scanner is taught to read `.smithy/smithy-manifest.json` (or
+  // `~/.smithy/smithy-manifest.json`) and redirect its scan root to
+  // `~/.smithy/<repo>/` when `artifactsLocation === 'external'`. These
+  // tests exercise that wiring end-to-end via real on-disk files.
+
+  let root: string;
+  let logSpy: MockInstance<(...args: unknown[]) => void>;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'smithy-status-artifacts-'));
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    if (root) rmSync(root, { recursive: true, force: true });
+  });
+
+  function captured(): string {
+    return logSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+  }
+
+  function writeManifest(artifactsLocation?: 'repo' | 'external'): void {
+    const manifestPath = join(root, '.smithy', 'smithy-manifest.json');
+    mkdirSync(dirname(manifestPath), { recursive: true });
+    const manifest = {
+      version: 1,
+      smithyVersion: '0.0.0-test',
+      deployLocation: 'repo',
+      agents: ['claude'],
+      permissions: false,
+      ...(artifactsLocation === 'external' ? { artifactsLocation } : {}),
+      files: { claude: [] },
+    };
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  }
+
+  it('scans the in-repo root when no manifest is present (back-compat)', () => {
+    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
+    writeFileSync(
+      join(root, 'docs', 'rfcs', '2026-001-foo.rfc.md'),
+      '# RFC: Foo\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
+    );
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records.length).toBeGreaterThan(0);
+    expect(payload.records[0]!.path).toContain('docs/rfcs/2026-001-foo.rfc.md');
+  });
+
+  it('scans the in-repo root when artifactsLocation is "repo" in the manifest', () => {
+    writeManifest('repo');
+    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
+    writeFileSync(
+      join(root, 'docs', 'rfcs', '2026-001-foo.rfc.md'),
+      '# RFC: Foo\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
+    );
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]!.path).toContain('docs/rfcs/2026-001-foo.rfc.md');
+  });
+
+  it('explicit --root always wins, even when the manifest declares external', () => {
+    writeManifest('external');
+    // In-repo artifact — the scanner should find this because --root is explicit.
+    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
+    writeFileSync(
+      join(root, 'docs', 'rfcs', '2026-001-bar.rfc.md'),
+      '# RFC: Bar\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
+    );
+    statusAction({ root, format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]?.path).toContain('docs/rfcs/2026-001-bar.rfc.md');
+  });
+});

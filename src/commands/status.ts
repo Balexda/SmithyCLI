@@ -59,6 +59,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { readManifest, resolveArtifactsRoot } from '../manifest.js';
 import {
   buildDependencyGraph,
   buildTree,
@@ -318,7 +319,14 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  const records = scan(resolvedRoot);
+  // If the user didn't pass `--root` explicitly and the working directory has
+  // a smithy manifest declaring `artifactsLocation: 'external'`, redirect the
+  // scan to `~/.smithy/<repo>/` so artifacts written off-tree are still found.
+  // Explicit `--root` always wins so power users can scan an arbitrary path.
+  const scanRoot = opts.root === undefined
+    ? resolveExternalArtifactsRoot(resolvedRoot) ?? resolvedRoot
+    : resolvedRoot;
+  const records = scan(scanRoot);
   // US6: apply the `--status` / `--type` filters to the classified
   // record set before it reaches `buildTree` / the JSON emitter.
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
@@ -682,6 +690,29 @@ function findNextAction(node: TreeNode): NextAction | null {
     if (found !== null) return found;
   }
   return null;
+}
+
+/**
+ * If `<resolvedRoot>` has a smithy manifest declaring `artifactsLocation:
+ * 'external'`, return the absolute path to `~/.smithy/<repo>/` so the
+ * scanner finds artifacts that were written off-tree. Returns `null` for
+ * the in-repo case (the caller falls back to `resolvedRoot`). Either
+ * manifest location ('repo' deploy at `.smithy/...`, 'user' deploy at
+ * `~/.smithy/...`) is consulted — `artifactsLocation` is an orthogonal
+ * setting on the manifest itself, not on the manifest's own location.
+ *
+ * If the external root doesn't exist on disk yet (the user just flipped
+ * the flag and hasn't written any artifacts there), fall through to the
+ * default so the scanner reports the same friendly "no artifacts found"
+ * hint instead of bailing with a `stat` error.
+ */
+function resolveExternalArtifactsRoot(resolvedRoot: string): string | null {
+  const manifest =
+    readManifest(resolvedRoot, 'repo') ?? readManifest(resolvedRoot, 'user');
+  if (!manifest || manifest.artifactsLocation !== 'external') return null;
+  const externalRoot = resolveArtifactsRoot(resolvedRoot, 'external');
+  if (!fs.existsSync(externalRoot)) return null;
+  return externalRoot;
 }
 
 function emptyCounts(): ScanSummary['counts'] {

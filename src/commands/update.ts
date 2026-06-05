@@ -10,7 +10,7 @@ import {
   promptConfirmResetPermissions,
 } from '../interactive.js';
 import type { SmithyManifest } from '../manifest.js';
-import type { AgentName, DeployLocation } from '../interactive.js';
+import type { AgentName, ArtifactsLocation, DeployLocation } from '../interactive.js';
 import { toolchains, type LanguageToolchain } from '../permissions.js';
 import { detectPlatforms } from '../platform-detect.js';
 import {
@@ -38,6 +38,13 @@ export interface UpdateOptions {
    * don't manage Claude permissions.
    */
   resetPermissions?: boolean;
+  /**
+   * Override the manifest's stored planning-artifacts location for this
+   * update. When omitted, the manifest's existing value (default `'repo'`)
+   * is preserved. Useful for migrating an existing manifest from one mode
+   * to the other in a single command.
+   */
+  artifactsLocation?: ArtifactsLocation;
 }
 
 const knownAgents = new Set<AgentName>(['claude', 'gemini', 'codex']);
@@ -112,13 +119,20 @@ async function redeployFromManifest(
   manifest: SmithyManifest,
   targetDir: string,
   agents: AgentName[],
+  artifactsLocationOverride?: ArtifactsLocation,
 ): Promise<void> {
+  // CLI override > manifest > default ('repo'). Round-tripping when the
+  // override is absent keeps `update` byte-stable for existing manifests
+  // (no surprise migration on a routine version bump).
+  const artifactsLocation: ArtifactsLocation =
+    artifactsLocationOverride ?? manifest.artifactsLocation ?? 'repo';
   await initAction({
     agents,
     location: manifest.deployLocation,
     permissions: manifest.permissions,
     sessionTitles: manifest.sessionTitles ?? true,
     languages: validatedLanguages(manifest.languages),
+    artifactsLocation,
     targetDir,
     yes: true,
     quiet: true,
@@ -215,7 +229,7 @@ export async function updateAction(opts: UpdateOptions = {}): Promise<void> {
     // because the file already matches the baseline.
     const drift = reset ? null : collectClaudeDrift(targetDir, location, manifest);
 
-    await redeployFromManifest(manifest, targetDir, agents);
+    await redeployFromManifest(manifest, targetDir, agents, opts.artifactsLocation);
 
     if (drift) {
       const settingsPath = resolveSettingsPath(targetDir, location);

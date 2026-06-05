@@ -3,6 +3,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import {
   promptAgent,
+  promptArtifactsLocation,
   promptDeployLocation,
   promptOverwriteOrdersTemplates,
   promptPermissions,
@@ -15,13 +16,19 @@ import {
   agentGitignoreEntries,
   addToGitignore,
 } from '../utils.js';
-import { readManifest, removeStaleFiles, resolveManifestDir, writeManifest } from '../manifest.js';
+import {
+  readManifest,
+  removeStaleFiles,
+  resolveManifestDir,
+  templateArtifactsPrefix,
+  writeManifest,
+} from '../manifest.js';
 import { ORDERS_TEMPLATE_TYPES, provisionOrdersTemplates } from '../orders-templates.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
 import { agentDeployLocations } from '../interactive.js';
-import type { AgentChoice, AgentName, DeployLocation } from '../interactive.js';
+import type { AgentChoice, AgentName, ArtifactsLocation, DeployLocation } from '../interactive.js';
 
 export interface InitOptions {
   agent?: AgentChoice;
@@ -42,6 +49,13 @@ export interface InitOptions {
    * `detectPlatforms()` to infer from `process.platform`.
    */
   platforms?: PlatformPackageManager[] | undefined;
+  /**
+   * Where planning artifacts (RFCs, specs, tasks, strikes, PRDs) are written.
+   * 'repo' (default) → in-tree under docs/rfcs/, specs/, ...
+   * 'external' → out-of-tree under ~/.smithy/<repo-name>/, kept off git history.
+   * Surfaced through `--artifacts-location` and the interactive prompt.
+   */
+  artifactsLocation?: ArtifactsLocation;
   targetDir?: string;
   yes?: boolean;
   /** When true, suppresses the welcome banner and uses "Upgrade" in the completion message. */
@@ -115,6 +129,21 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // 5b. Session-title hook (Claude only). Default on; opt out via --no-session-titles.
   const deploySessionTitles = opts.sessionTitles ?? true;
 
+  // 5e. Planning artifacts location — 'repo' (in-tree, default) or 'external'
+  // (~/.smithy/<repo>/, off git history). Baked into deployed prompts via the
+  // `{{artifactsRoot}}` template variable so agents know where to write specs,
+  // tasks, RFCs, etc. The same value is persisted in the manifest so `update`
+  // can round-trip it and `smithy status` can find external artifacts.
+  let artifactsLocation: ArtifactsLocation;
+  if (opts.artifactsLocation !== undefined) {
+    artifactsLocation = opts.artifactsLocation;
+  } else if (opts.yes) {
+    artifactsLocation = 'repo';
+  } else {
+    artifactsLocation = await promptArtifactsLocation();
+  }
+  const artifactsRoot = templateArtifactsPrefix(targetDir, artifactsLocation);
+
   // 5d. Orders templates — write canonical default bodies to
   // <manifestDir>/templates/orders/. Provisioning runs BEFORE the manifest-write
   // step and never reads or alters smithy-manifest.json. The four canonical
@@ -161,9 +190,9 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
 
   for (const a of agentsToSetup) {
     if (a === 'gemini') {
-      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo', languages, platformManagers);
+      deployedFiles['gemini'] = await gemini.deploy(targetDir, deployPermissions && deployLocation === 'repo', languages, platformManagers, artifactsRoot);
     } else if (a === 'claude') {
-      deployedFiles['claude'] = await claude.deploy(targetDir, 'none', deployLocation);
+      deployedFiles['claude'] = await claude.deploy(targetDir, 'none', deployLocation, artifactsRoot);
       if (deployPermissions) {
         claude.writePermissions(targetDir, deployLocation, languages, platformManagers);
       }
@@ -173,7 +202,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
         claude.writeSessionTitleHook(targetDir, deployLocation);
       }
     } else if (a === 'codex') {
-      deployedFiles['codex'] = await codex.deploy(targetDir, deployPermissions && deployLocation === 'repo');
+      deployedFiles['codex'] = await codex.deploy(targetDir, deployPermissions && deployLocation === 'repo', artifactsRoot);
     }
   }
 
@@ -193,6 +222,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     sessionTitles: deploySessionTitles,
     languages,
     platforms: platformManagers,
+    artifactsLocation,
     files: deployedFiles,
   });
 

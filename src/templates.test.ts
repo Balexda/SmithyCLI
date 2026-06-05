@@ -102,7 +102,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(14);
+    expect(snippets.size).toBe(15);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -119,6 +119,7 @@ describe('loadSnippets', () => {
       'one-shot-output.md',
       'pr-create-tool-choice.md',
       'branch-policy.md',
+      'artifact-location-policy.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -2233,5 +2234,72 @@ describe('getComposedTemplates', () => {
     expect([...composed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
     expect([...composed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
     expect([...composed.skills.keys()].sort()).toEqual([...claudeComposed.skills.keys()].sort());
+  });
+});
+
+describe('getComposedTemplates artifactsRoot', () => {
+  // The {{artifactsRoot}} helper is the deploy-time variable that decides
+  // whether planning-artifact paths in the deployed prompts render as
+  // `docs/rfcs/...` (in-repo, default) or `~/.smithy/<repo>/docs/rfcs/...`
+  // (external mode). Each templatized command prompt must honor it; these
+  // assertions lock that in against future template rewrites.
+
+  it('defaults to an empty prefix so paths render unchanged', async () => {
+    const c = await getComposedTemplates('claude');
+    const strike = c.commands.get('smithy.strike.md')!;
+    // Path in the Phase 3 write instruction renders without a prefix.
+    expect(strike).toContain('Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`');
+    expect(strike).not.toContain('{{artifactsRoot}}');
+    // The policy snippet mentions ~/.smithy/<repo>/ as part of its explanation;
+    // that's expected. Make sure no actual artifact path got a tilde prefix.
+    expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+  });
+
+  it('substitutes the supplied prefix into every templatized path', async () => {
+    const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    const strike = c.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('~/.smithy/myrepo/specs/strikes/YYYY-MM-DD-<slug>.strike.md');
+    expect(strike).not.toContain('{{artifactsRoot}}');
+  });
+
+  it('propagates to the ignite, mark, cut, render, spark, audit, and orders prompts', async () => {
+    const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    for (const file of [
+      'smithy.ignite.md',
+      'smithy.mark.md',
+      'smithy.cut.md',
+      'smithy.render.md',
+      'smithy.spark.md',
+      'smithy.audit.md',
+      'smithy.orders.md',
+    ]) {
+      const body = c.commands.get(file)!;
+      expect(body, file).not.toContain('{{artifactsRoot}}');
+      expect(body, file).toContain('~/.smithy/myrepo/');
+    }
+  });
+
+  it('embeds the artifact-location-policy snippet in every templatized command', async () => {
+    const c = await getComposedTemplates('claude');
+    for (const file of [
+      'smithy.strike.md',
+      'smithy.ignite.md',
+      'smithy.mark.md',
+      'smithy.cut.md',
+      'smithy.render.md',
+      'smithy.spark.md',
+      'smithy.audit.md',
+      'smithy.orders.md',
+    ]) {
+      const body = c.commands.get(file)!;
+      expect(body, file).toContain('## Planning Artifacts Location');
+    }
+  });
+
+  it('renders the gemini variant with the same artifactsRoot substitution', async () => {
+    const c = await getComposedTemplates('gemini', '~/.smithy/x/');
+    const strike = c.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('~/.smithy/x/specs/strikes/');
+    expect(strike).not.toContain('{{artifactsRoot}}');
   });
 });

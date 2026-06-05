@@ -10,6 +10,8 @@ structured **RFC (Request for Comments)** with clearly defined milestones. You a
 the collaborative partner that asks the right questions to turn a spark of an idea
 into a solid, reviewable plan.
 
+{{>artifact-location-policy}}
+
 ## Input
 
 The user's idea or document path: $ARGUMENTS
@@ -34,14 +36,14 @@ Before starting, determine the mode:
    missing sub-phase, or treat a header-only file as fresh.
 2. If the input is a file path (not `.rfc.md`), read the file and go to
    **Phase 1: Intake**.
-3. If the input is a description string and no matching `docs/rfcs/` folder
+3. If the input is a description string and no matching `{{artifactsRoot}}docs/rfcs/` folder
    is found during intake, go to **Phase 1: Intake** as normal — this is the
    default new-idea path and Phase 1 proceeds unchanged for genuinely new
    ideas.
 
-**Mid-intake redirect**: During Phase 1, step 2 scans `docs/rfcs/` for existing
+**Mid-intake redirect**: During Phase 1, step 2 scans `{{artifactsRoot}}docs/rfcs/` for existing
 folders. If a folder's slug is a close match to the derived slug for the new
-idea (e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user
+idea (e.g., `{{artifactsRoot}}docs/rfcs/2026-001-plugin-system/` already exists when the user
 asks to "build a plugin system"), **stop intake** and hand control to
 **Phase 0** with the matched `.rfc.md`. Do **not** ask the user "review or
 create new" inline here — that decision is delegated to Phase 0's
@@ -55,12 +57,12 @@ decision.
 2. If the input is a file path (not `.rfc.md`), read the file and go to **Phase 1: Intake**.
 3. If the input is a description string, go to **Phase 1: Intake**.
 
-**Mid-intake redirect**: During Phase 1, step 2 scans `docs/rfcs/` for existing
+**Mid-intake redirect**: During Phase 1, step 2 scans `{{artifactsRoot}}docs/rfcs/` for existing
 folders. If a folder's slug is a close match to the derived slug for the new idea
-(e.g., `docs/rfcs/2026-001-plugin-system/` already exists when the user asks to
+(e.g., `{{artifactsRoot}}docs/rfcs/2026-001-plugin-system/` already exists when the user asks to
 "build a plugin system"), **stop intake** and ask the user:
 
-> "An existing RFC was found at `docs/rfcs/<YYYY-NNN-slug>/<slug>.rfc.md`.
+> "An existing RFC was found at `{{artifactsRoot}}docs/rfcs/<YYYY-NNN-slug>/<slug>.rfc.md`.
 > Would you like to **review and refine** the existing RFC, or **create a new one**?"
 
 - If the user chooses to review, go to **Phase 0: Review Loop** with that `.rfc.md`.
@@ -77,7 +79,7 @@ folders. If a folder's slug is a close match to the derived slug for the new ide
 
 Triggered when:
 - The input explicitly points to an existing `.rfc.md` file, **or**
-- Phase 1 detected a close-matching RFC folder during the `docs/rfcs/` scan
+- Phase 1 detected a close-matching RFC folder during the `{{artifactsRoot}}docs/rfcs/` scan
   and handed control to Phase 0 with the matched `.rfc.md` (see Routing
   above).
 
@@ -214,7 +216,7 @@ dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
 review of the refined artifact. Pass it:
 
 - **artifact_paths** — the repo-relative path to the refined RFC file
-  (`docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
+  (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
 - **artifact_type** — `rfc`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
@@ -257,14 +259,14 @@ Parse the input to set up the RFC:
 
 1. **Understand the idea.** If the input is a file path, read the file and extract
    the core idea. If it's a description string, use it directly.
-2. **Scan for existing RFCs.** List folders in `docs/rfcs/` to check for duplicates
-   and to derive the next sequential `NNN` number. If no `docs/rfcs/` folder exists,
+2. **Scan for existing RFCs.** List folders in `{{artifactsRoot}}docs/rfcs/` to check for duplicates
+   and to derive the next sequential `NNN` number. If no `{{artifactsRoot}}docs/rfcs/` folder exists,
    the next number is `001`.
 3. **Derive the slug.** Create a short kebab-case slug from the idea
    (e.g., "build a plugin system" → `plugin-system`).
 4. **Derive the year.** Use the current four-digit year (e.g., `2026`).
 5. **Confirm the target.** Tell the user:
-   - RFC folder: `docs/rfcs/<YYYY>-<NNN>-<slug>/`
+   - RFC folder: `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/`
    - RFC file: `<slug>.rfc.md`
    - Ask if the name and location look right before proceeding.
 
@@ -284,7 +286,7 @@ Pass each smithy-plan sub-agent:
 
 - **Planning context**: RFC artifact
 - **Feature/problem description**: the user's idea description or the PRD content read during intake
-- **Codebase file paths**: any existing RFC files found during the `docs/rfcs/` scan (for context on existing patterns)
+- **Codebase file paths**: any existing RFC files found during the `{{artifactsRoot}}docs/rfcs/` scan (for context on existing patterns)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
@@ -405,8 +407,8 @@ CLAUDE.md. Apply those conventions to all headings in this artifact.
 
 Before any sub-phase begins, create the RFC folder and file:
 
-1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
-2. Create `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md` with only the RFC header — nothing else:
+1. Create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
+2. Create `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md` with only the RFC header — nothing else:
 
 ```markdown
 # RFC: <Title>
@@ -732,7 +734,7 @@ dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
 review. Pass it:
 
 - **artifact_paths** — the repo-relative path to the RFC file
-  (`docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
+  (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
 - **artifact_type** — `rfc`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
@@ -795,8 +797,8 @@ and file write — proceed directly through plan-review, commit, and PR:
    in sync.
 
 {{else}}
-1. Create the folder `docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
-2. Write the RFC to `docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
+1. Create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
+2. Write the RFC to `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`.
 3. Run the Plan-Review Pass described above on the RFC file that was just
    written.
 4. Commit the RFC file on the current feature branch (capturing both the
