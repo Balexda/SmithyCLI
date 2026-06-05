@@ -1,6 +1,7 @@
 # Contributing to Smithy CLI
 
 ## Development Setup
+<!-- audience: builder; mode: how-to; length: 3-6 commands; diagram: optional; examples: required -->
 
 ```bash
 npm install
@@ -12,6 +13,7 @@ npm test             # Run all tests
 Always use `npm run` scripts. Do not use `npx tsx`, `npx vitest`, or similar direct invocations.
 
 ## Testing
+<!-- audience: builder; mode: reference; length: 3 subsections, one per tier; diagram: optional; examples: discouraged -->
 
 Smithy has three testing tiers that each require different strategies:
 
@@ -65,10 +67,12 @@ Pending:
 See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
 
 ## Automated Dependency Updates
+<!-- audience: builder; mode: reference; length: 1-2 paragraphs; diagram: optional; examples: discouraged -->
 
 This repo runs Dependabot on a monthly schedule (plus immediate security advisories) and pings GitHub Copilot Coding Agent to fix CI failures on Dependabot PRs. See **[docs/automated-dependency-updates.md](docs/automated-dependency-updates.md)** for the day-to-day flow and the one-time repo settings required.
 
 ## Pre-Release Checklist
+<!-- audience: builder; mode: how-to; length: 5 ordered steps; diagram: optional; examples: discouraged -->
 
 Before publishing a new version:
 
@@ -79,5 +83,6 @@ Before publishing a new version:
 5. Trigger the **Publish to npm** workflow with both test gate checkboxes checked
 
 ## Pull Requests
+<!-- audience: builder; mode: how-to; length: 1-2 sentences; diagram: optional; examples: discouraged -->
 
 Use the [PR template](.github/pull_request_template.md) when opening PRs. Populate the Testing section with actual outcomes.
