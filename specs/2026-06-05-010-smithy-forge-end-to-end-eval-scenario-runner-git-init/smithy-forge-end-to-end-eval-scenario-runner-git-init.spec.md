@@ -120,11 +120,11 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Declare Forge Scenarios That Require Git | - | - |
-| US2 | Initialize the Temp Fixture Copy for Forge | US1 | - |
-| US3 | Run smithy.forge Against the JavaScript Fixture | US2 | - |
-| US4 | Validate Forge Sub-Agent Evidence | US3 | - |
-| US5 | Commit the smithy.forge Token-Aware Baseline | US3, US4 | - |
+| US1 | Declare Forge Scenarios That Require Git | — | — |
+| US2 | Initialize the Temp Fixture Copy for Forge | US1 | — |
+| US3 | Run smithy.forge Against the JavaScript Fixture | US2 | — |
+| US4 | Validate Forge Sub-Agent Evidence | US3 | — |
+| US5 | Commit the smithy.forge Token-Aware Baseline | US3, US4 | — |
 
 ## Requirements *(mandatory)*
 

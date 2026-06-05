@@ -35,7 +35,7 @@ Purpose: Declares that a scenario needs git operations in its execution temp cop
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `requires_git` | boolean | No | Defaults to false when absent unless the runner intentionally preserves always-on git initialization as an implementation detail. |
+| `requires_git` | boolean | No | Defaults to false when absent; an omitted flag MUST NOT receive git setup (see FR-008/SC-004). |
 
 Validation rules:
 
