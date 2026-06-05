@@ -8,6 +8,7 @@
 **Source Feature Map**: `docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md` - Feature 1.4: smithy.fix End-to-End Eval Scenario
 
 ## Clarifications
+<!-- audience: reviewer; mode: reference; length: 6-10 bullets; diagram: optional; examples: discouraged -->
 
 ### Session 2026-06-03
 
@@ -19,10 +20,12 @@
 - This feature does not edit `smithy.fix.prompt`; M3 owns CI-log prompt optimizations. The eval prompt may name the local fixture paths and ask smithy.fix to diagnose that local issue/log evidence.
 
 ## Artifact Hierarchy
+<!-- audience: builder+ai-input; mode: reference; length: 1 line; diagram: optional; examples: forbidden -->
 
 RFC -> Milestone -> Feature -> User Story -> Slice -> Tasks
 
 ## User Scenarios & Testing *(mandatory)*
+<!-- audience: reviewer; mode: explanation; length: 1 paragraph per story; diagram: optional; examples: discouraged -->
 
 ### User Story 1: Provide Offline smithy.fix Fixtures (Priority: P1)
 
@@ -95,6 +98,7 @@ As a Smithy maintainer, I want a committed smithy.fix baseline in the token-awar
 - If F1.3a's token-aware baseline schema changes during implementation, this feature consumes the landed schema and does not introduce a competing baseline shape.
 
 ## Dependency Order
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: forbidden -->
 
 Recommended implementation sequence:
 
@@ -106,6 +110,7 @@ Recommended implementation sequence:
 | US4 | Commit the smithy.fix Token-Aware Baseline | US3 | — |
 
 ## Requirements *(mandatory)*
+<!-- audience: builder+ai-input; mode: reference; length: 10-20 bullets per subsection; diagram: recommended (entity relationships); examples: discouraged -->
 
 ### Functional Requirements
 
@@ -124,15 +129,31 @@ Recommended implementation sequence:
 - **FR-013**: Unit tests MUST cover fixture declaration loading, local fixture path injection, missing-fixture failures, offline execution behavior, structural checks, helper evidence checks, and baseline loading for the smithy.fix scenario.
 
 ### Key Entities
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: required (ER / flow); examples: required -->
 
-- **Fix Eval Scenario**: The scenario definition that invokes smithy.fix against committed local failure evidence.
-- **Issue Fixture**: A Markdown fixture containing the issue or CI-failure description used to seed smithy.fix.
-- **CI Log Fixture**: A text fixture containing deterministic build or test failure output for the high-cost CI-log path.
-- **Local Fixture Injection**: The runner contract that resolves scenario-declared fixture paths and makes them available to the invocation prompt.
-- **Fix Baseline**: The committed token-aware baseline for the smithy.fix scenario.
-- **Helper Evidence Check**: The sub-agent evidence assertion proving the expected smithy.fix helper path still ran.
+```mermaid
+flowchart LR
+    IF[Issue Fixture]
+    CL[CI Log Fixture]
+    LFI[Local Fixture Injection]
+    LFI --> S[Fix Eval Scenario]
+    IF --> LFI
+    CL --> LFI
+    S --> FB[Fix Baseline]
+    S --> HEC[Helper Evidence Check]
+```
+
+| Entity | Shape | Relationships |
+|--------|-------|---------------|
+| Fix Eval Scenario | Scenario definition that invokes smithy.fix against committed local failure evidence. | Consumes Issue Fixture and CI Log Fixture via Local Fixture Injection; produces Fix Baseline. |
+| Issue Fixture | Markdown fixture under `evals/fixture/issues/` containing the issue or CI-failure description used to seed smithy.fix. | Read by Fix Eval Scenario through Local Fixture Injection. |
+| CI Log Fixture | Text fixture under `evals/fixture/ci-logs/` containing deterministic build or test failure output for the high-cost CI-log path. | Read by Fix Eval Scenario through Local Fixture Injection. |
+| Local Fixture Injection | Runner contract that resolves scenario-declared fixture paths and exposes them to the invocation prompt. | Resolves Issue Fixture and CI Log Fixture; feeds Fix Eval Scenario. |
+| Fix Baseline | Committed token-aware baseline for the smithy.fix scenario, conforming to the F1.3a schema. | Produced by a clean run of Fix Eval Scenario; consumed by later runs for comparison. |
+| Helper Evidence Check | Sub-agent evidence assertion proving the expected smithy.fix helper path still ran. | Evaluated against Fix Eval Scenario output. |
 
 ## Assumptions
+<!-- audience: reviewer; mode: reference; length: 3-6 bullets; diagram: optional; examples: forbidden -->
 
 - Feature 1.3a lands before the smithy.fix baseline is committed, so this feature can consume the established token-envelope schema.
 - The existing eval runner temp-copy model is sufficient for smithy.fix to edit files, run verification, and keep source fixtures unchanged.
@@ -141,6 +162,7 @@ Recommended implementation sequence:
 - The expected helper-agent list is finalized from observed smithy.fix behavior at implementation time so the scenario checks the actual exercised path.
 
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: forbidden -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -148,6 +170,7 @@ Recommended implementation sequence:
 | SD-002 | The initial token envelope for the smithy.fix baseline cannot be calibrated until F1.3a's token-aware baseline schema is available and the scenario has a clean captured run. Implementers should choose a conservative initial envelope and document the captured totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | — |
 
 ## Out of Scope
+<!-- audience: reviewer; mode: reference; length: 5-10 bullets; diagram: optional; examples: forbidden -->
 
 - Editing `smithy.fix.prompt` to change CI-log handling or reduce token usage.
 - Implementing the M3 CI-log failure-extraction grep or build-output protocol changes.
@@ -157,6 +180,7 @@ Recommended implementation sequence:
 - Refreshing `.claude/` or `.smithy/` deployed snapshots.
 
 ## Success Criteria *(mandatory)*
+<!-- audience: reviewer; mode: reference; length: bullets; diagram: optional; examples: forbidden -->
 
 ### Measurable Outcomes
 
