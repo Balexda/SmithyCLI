@@ -15,7 +15,7 @@
 - The scenario targets the existing JavaScript fixture. The JVM fixture and JVM forge scenario are owned by F1.6 and F1.7.
 - Feature 1.3a is the prerequisite token-baseline substrate; this feature consumes its token-aware baseline schema instead of redefining token extraction or comparison.
 - The runner git initialization must make the temp fixture copy a working repository with a HEAD commit before forge starts. This closes RFC SD-002 for forge-shaped scenarios.
-- The current runner already initializes every temp copy as a git repository for planning-command evals. This feature tightens that into an explicit `requires_git: true` contract so git setup is requested by scenario metadata instead of by runner-wide assumption.
+- The current runner already initializes every temp copy as a git repository unconditionally for all scenarios (the planning commands are simply the ones that rely on it today). This feature tightens that into an explicit `requires_git: true` contract so git setup is requested by scenario metadata instead of by runner-wide assumption.
 - The forge scenario must be deterministic, offline, and path-stable. It must not rely on live GitHub operations, a developer's global git identity, or source fixture mutation.
 
 ## Artifact Hierarchy
@@ -168,9 +168,9 @@ Recommended implementation sequence:
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | The current runner initializes every temp copy as a git repository to support planning-command evals. This feature introduces an explicit `requires_git` scenario contract. Implementers must move forge and any other git-dependent scenarios onto the flag without regressing existing planning-command evals, and must document which existing scenarios require the flag. | Integration Points | Medium | High | open | - |
-| SD-002 | The exact single-slice forge task input path is finalized at implementation time. It should reuse the existing JavaScript fixture and avoid planting unrelated language fixtures or multi-slice stories. | Scope Within Milestone | Medium | Medium | open | - |
-| SD-003 | The initial token envelope for the forge baseline cannot be calibrated until F1.3a's token-aware baseline schema is available and the scenario has a clean captured run. Implementers should choose a conservative initial envelope and document the captured totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | - |
+| SD-001 | The current runner initializes every temp copy as a git repository to support planning-command evals. This feature introduces an explicit `requires_git` scenario contract. Implementers must move forge and any other git-dependent scenarios onto the flag without regressing existing planning-command evals, and must document which existing scenarios require the flag. | Integration Points | Medium | High | open | — |
+| SD-002 | The exact single-slice forge task input path is finalized at implementation time. It should reuse the existing JavaScript fixture and avoid planting unrelated language fixtures or multi-slice stories. | Scope Within Milestone | Medium | Medium | open | — |
+| SD-003 | The initial token envelope for the forge baseline cannot be calibrated until F1.3a's token-aware baseline schema is available and the scenario has a clean captured run. Implementers should choose a conservative initial envelope and document the captured totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | — |
 
 ## Out of Scope
 
