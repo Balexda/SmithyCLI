@@ -11,6 +11,7 @@ import type {
   ArtifactType,
   DependencyOrderTable,
   DependencyRow,
+  FeatureSummary,
   SliceSummary,
 } from './types.js';
 
@@ -305,6 +306,20 @@ export function parseArtifact(
     }
   }
 
+  if (type === 'features') {
+    try {
+      const parsed = parseFeatures(content);
+      record.features = parsed.features;
+      warnings.push(...parsed.warnings);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(
+        `parser: unexpected error while parsing features — ${message}`,
+      );
+      record.features = [];
+    }
+  }
+
   return record;
 }
 
@@ -438,6 +453,151 @@ function countSlices(content: string): {
   finalizeSlice();
 
   return { completed, total, slices };
+}
+
+/**
+ * Parse the `### Feature N:` sections of a feature map (`.features.md`)
+ * into a list of {@link FeatureSummary}. Each feature's typed metadata is
+ * read from bold-label body fields (`**Kind**`, and for `ui` features
+ * `**Phase**`, `**Design System**`, `**Bundle**`, `**Flag**`, `**Screens**`,
+ * `**Flows**`). The 4-column `## Dependency Order` table is left untouched —
+ * kind/phase live in the feature body, not the table.
+ *
+ * Best-effort and side-effect free: missing or invalid fields are left
+ * `undefined` on the summary and reported via the returned `warnings`
+ * (stable prefixes `feature_kind:`, `feature_ui_fields:`, `feature_seam:`).
+ * Never throws.
+ */
+export function parseFeatures(content: string): {
+  features: FeatureSummary[];
+  warnings: string[];
+} {
+  const lines = content.split('\n');
+  const headingRegex = /^###\s+Feature\s+(\d+):\s*(.*)$/;
+  // Any H1/H2/H3 that is not another Feature heading closes the current
+  // feature body (e.g. `## Dependency Order`, `## Specification Debt`).
+  const sectionBreakRegex = /^#{1,3}\s/;
+  const features: FeatureSummary[] = [];
+  const warnings: string[] = [];
+
+  let current: FeatureSummary | null = null;
+  let currentBody: string[] = [];
+
+  const field = (body: string[], label: string): string | undefined => {
+    const re = new RegExp(`^\\s*\\*\\*${label}\\*\\*:\\s*(.+?)\\s*$`);
+    for (const line of body) {
+      const m = re.exec(line);
+      if (m) return (m[1] ?? '').trim();
+    }
+    return undefined;
+  };
+
+  const parseList = (raw: string | undefined): string[] | undefined => {
+    if (raw === undefined) return undefined;
+    const inner = raw.replace(/^\[/, '').replace(/\]$/, '');
+    return inner
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  };
+
+  const finalize = (): void => {
+    if (current === null) return;
+    const feature = current;
+    const body = currentBody;
+
+    const kindRaw = field(body, 'Kind');
+    if (kindRaw === 'backend' || kindRaw === 'ui') {
+      feature.kind = kindRaw;
+    } else {
+      warnings.push(
+        `feature_kind: ${feature.id} has no valid Kind (expected backend | ui)`,
+      );
+    }
+
+    const phaseRaw = field(body, 'Phase');
+    if (phaseRaw === 'build' || phaseRaw === 'wire') feature.phase = phaseRaw;
+    const designSystem = field(body, 'Design System');
+    if (designSystem !== undefined) feature.design_system = designSystem;
+    const bundle = field(body, 'Bundle');
+    if (bundle !== undefined) feature.bundle = bundle;
+    const flag = field(body, 'Flag');
+    if (flag !== undefined) feature.flag = flag;
+    const screens = parseList(field(body, 'Screens'));
+    if (screens !== undefined) feature.screens = screens;
+    const flows = parseList(field(body, 'Flows'));
+    if (flows !== undefined) feature.flows = flows;
+
+    if (feature.kind === 'ui') {
+      const missing: string[] = [];
+      if (feature.phase === undefined) missing.push('Phase');
+      if (feature.design_system === undefined) missing.push('Design System');
+      if (feature.screens === undefined || feature.screens.length === 0)
+        missing.push('Screens');
+      if (feature.flows === undefined) missing.push('Flows');
+      for (const name of missing) {
+        warnings.push(
+          `feature_ui_fields: ui ${feature.id} missing required ${name}`,
+        );
+      }
+    } else if (feature.kind === 'backend') {
+      const uiOnly: Array<[string, unknown]> = [
+        ['Phase', feature.phase],
+        ['Design System', feature.design_system],
+        ['Bundle', feature.bundle],
+        ['Flag', feature.flag],
+        ['Screens', feature.screens],
+        ['Flows', feature.flows],
+      ];
+      for (const [name, val] of uiOnly) {
+        if (val !== undefined) {
+          warnings.push(
+            `feature_ui_fields: backend ${feature.id} carries ui-only field ${name}`,
+          );
+        }
+      }
+    }
+
+    features.push(feature);
+    current = null;
+    currentBody = [];
+  };
+
+  for (const line of lines) {
+    const heading = headingRegex.exec(line);
+    if (heading !== null) {
+      finalize();
+      const n = Number.parseInt(heading[1] ?? '', 10);
+      current = {
+        id: Number.isNaN(n) ? (heading[1] ?? '') : `F${n}`,
+        title: (heading[2] ?? '').trim(),
+      };
+      currentBody = [];
+      continue;
+    }
+    if (current !== null && sectionBreakRegex.test(line)) {
+      finalize();
+      continue;
+    }
+    if (current !== null) currentBody.push(line);
+  }
+  finalize();
+
+  // Build/wire seam: every build feature carrying a flag should have a wire
+  // feature sharing that exact flag value.
+  const wireFlags = new Set<string>();
+  for (const f of features) {
+    if (f.phase === 'wire' && f.flag !== undefined) wireFlags.add(f.flag);
+  }
+  for (const f of features) {
+    if (f.phase === 'build' && f.flag !== undefined && !wireFlags.has(f.flag)) {
+      warnings.push(
+        `feature_seam: build ${f.id} has Flag '${f.flag}' but no wire feature shares it`,
+      );
+    }
+  }
+
+  return { features, warnings };
 }
 
 /**

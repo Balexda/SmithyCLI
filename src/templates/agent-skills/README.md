@@ -155,6 +155,110 @@ READMEs, inline documentation) — those non-Smithy targets have no
 template to inherit from, so the taxonomy is used as authoring
 discipline rather than a metadata convention.
 
+## Feature Kinds and the Build/Wire Seam
+
+Features in a `.features.md` map are **typed**. Every feature declares a
+**kind** — `backend` or `ui` — as a bold-label field in its `### Feature N:`
+body, alongside `**Description**:`. UI features carry additional design and
+phase fields. This is the single source of truth for the schema; the same
+field set is captured once in the `feature-kinds` snippet
+(`snippets/feature-kinds.md`) and pulled into `smithy.render` (authoring) and
+`smithy.audit` (validation) via `{{>feature-kinds}}` so the three never drift.
+
+### Field schema
+
+| Field | Kind | Required | Notes |
+|-------|------|----------|-------|
+| `**Kind**` | both | Yes | `backend` or `ui`. Selects the downstream `forge` profile. |
+| `**Phase**` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
+| `**Design System**` | ui | Yes | Reference to the committed design skill (e.g. `story-spider-design`); source of truth even when a bundle is present. |
+| `**Bundle**` | ui | No | Repo-relative path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
+| `**Flag**` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
+| `**Screens**` | ui | Yes | Plural list of `ScreenId`, e.g. `[AddTitle]`. |
+| `**Flows**` | ui | No (build) / Yes (wire) | Plural list of `FlowId` the screen participates in. |
+
+`backend` features carry none of the ui-only fields; their body is the
+behavioral spec (prose delta).
+
+### Phase semantics
+
+| `**Phase**` | Means | Done when |
+|-------------|-------|-----------|
+| `build` | Implement the screen against a mock, behind `**Flag**`. No real data. | Screen renders every brief state using only design-system tokens/components, gated by the flag. |
+| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired **and** the Maestro flow + `flow.md` emitted/updated for every flow in `**Flows**`. |
+
+### The seam = two features sharing one flag
+
+"Prototype behind a flag, wire to real data later" is a **seam**, not a note.
+It is expressed as **two `### Feature N:` entries sharing a `**Flag**` value**,
+with the wire feature listing the build feature in its `## Dependency Order`
+`Depends On` cell:
+
+```
+F2 build-add-title  (Kind: ui, Phase: build, Flag: add_title_v1)
+   │  renders the screen against a mock, behind add_title_v1
+   ▼   (Depends On: F2; shares Flag: add_title_v1)
+F3 wire-add-title   (Kind: ui, Phase: wire, Flag: add_title_v1, Depends On: F1, F2)
+       wires real data, flips add_title_v1, emits the AddTitle flow
+```
+
+**Build-ahead-of-backend is legal and intended:** the `build` feature may be
+ordered before an unbuilt backend feature (`F1` above) because the flag keeps it
+on mock data; only the `wire` feature lists the backend in `Depends On`. The
+shared `**Flag**` — not a naming convention — is the contract of record.
+
+### Worked example
+
+```markdown
+### Feature 1: Persist titles to the library store
+
+**Kind**: backend
+
+**Description**: A `LibraryStore.add(title)` that persists a `Title { id, name, url }`
+and exposes it via `LibraryStore.all()`, ordered by insertion. Duplicate URLs are a
+no-op; `all()` returns `[]` (never null) before any add.
+
+### Feature 2: Add-Title screen (build)
+
+**Kind**: ui
+**Phase**: build
+**Design System**: story-spider-design
+**Bundle**: design/bundles/add-title.zip
+**Flag**: add_title_v1
+**Screens**: [AddTitle]
+**Flows**: [AddTitle]
+
+**Description**: Title field, URL field, and a confirm action reachable from the
+Library FAB, behind `add_title_v1` against an in-memory mock. Render all brief states
+(empty, valid, invalid URL, submitting) using only design-system tokens.
+
+### Feature 3: Wire Add-Title to the library store (wire)
+
+**Kind**: ui
+**Phase**: wire
+**Design System**: story-spider-design
+**Flag**: add_title_v1
+**Screens**: [AddTitle]
+**Flows**: [AddTitle]
+
+**Description**: Connect AddTitle to `LibraryStore` and flip `add_title_v1`. Confirm
+persists a real `Title`; done includes emitting `maestro/flows/AddTitle.yaml` and
+`design/flows/AddTitle.flow.md`.
+```
+
+with a `## Dependency Order` table where `F3` depends on `F1, F2` and `F2` depends
+on `—` (build-ahead-of-backend).
+
+### Naming decisions
+
+- **`**Screens**` / `**Flows**` are plural lists** — a screen can participate in
+  more than one flow, and the `wire` definition-of-done is "every flow the screen
+  participates in."
+- **`**Flag**` is a first-class field**, not just prose — it is the interface
+  contract between the build and wire features.
+- **`**Phase**` is feature-level**, not user-story/slice level — the build/wire
+  decomposition happens at the feature granularity (two features in the DAG).
+
 ## Sub-Agent Roles
 
 Sub-agents are invoked by parent commands, not directly by users:
