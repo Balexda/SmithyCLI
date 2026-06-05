@@ -199,9 +199,11 @@ suggestion in the terminal output, not an interactive branching gate.
 After writing the strike document to disk and before committing, dispatch the
 **smithy-plan-review** sub-agent to perform a self-consistency review. Pass it:
 
-- **artifact_paths** — the repo-relative path to the strike document just
-  written (for strike: the single `.strike.md` file at
-  `{{artifactsRoot}}specs/strikes/YYYY-MM-DD-<slug>.strike.md`).
+- **artifact_paths** — the path to the strike document just written, exactly
+  as it was used to write the file (for strike: the single `.strike.md` file
+  at `{{artifactsRoot}}specs/strikes/YYYY-MM-DD-<slug>.strike.md`). In
+  external-artifacts mode this is a `~/.smithy/<repo>/...` path, not a
+  repo-relative one — pass it through verbatim; do not strip the prefix.
 - **artifact_type** — `strike`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a

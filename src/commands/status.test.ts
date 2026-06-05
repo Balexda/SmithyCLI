@@ -1224,26 +1224,40 @@ describe('statusAction artifacts-location integration', () => {
   // `~/.smithy/smithy-manifest.json`) and redirect its scan root to
   // `~/.smithy/<repo>/` when `artifactsLocation === 'external'`. These
   // tests exercise that wiring end-to-end via real on-disk files.
+  //
+  // The redirect only fires when `opts.root` is `undefined` (the scanner
+  // falls back to `process.cwd()` then), so the cases that actually hit
+  // the new branch stub both `process.cwd` and `process.env.HOME` —
+  // tests that pass `root` explicitly intentionally bypass the redirect
+  // and document the "explicit --root always wins" rule.
 
-  let root: string;
+  let workdir: string;
+  let fakeHome: string;
+  let cwdSpy: MockInstance<() => string>;
   let logSpy: MockInstance<(...args: unknown[]) => void>;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'smithy-status-artifacts-'));
+    workdir = mkdtempSync(join(tmpdir(), 'smithy-status-workdir-'));
+    fakeHome = mkdtempSync(join(tmpdir(), 'smithy-status-home-'));
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(workdir);
+    vi.stubEnv('HOME', fakeHome);
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    cwdSpy.mockRestore();
+    vi.unstubAllEnvs();
     logSpy.mockRestore();
-    if (root) rmSync(root, { recursive: true, force: true });
+    if (workdir) rmSync(workdir, { recursive: true, force: true });
+    if (fakeHome) rmSync(fakeHome, { recursive: true, force: true });
   });
 
   function captured(): string {
     return logSpy.mock.calls.map((args) => args.join(' ')).join('\n');
   }
 
-  function writeManifest(artifactsLocation?: 'repo' | 'external'): void {
-    const manifestPath = join(root, '.smithy', 'smithy-manifest.json');
+  function writeManifest(at: string, artifactsLocation?: 'repo' | 'external'): void {
+    const manifestPath = join(at, '.smithy', 'smithy-manifest.json');
     mkdirSync(dirname(manifestPath), { recursive: true });
     const manifest = {
       version: 1,
@@ -1257,40 +1271,88 @@ describe('statusAction artifacts-location integration', () => {
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
   }
 
-  it('scans the in-repo root when no manifest is present (back-compat)', () => {
-    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
+  /** Write a minimal tasks-file fixture under `<root>/specs/sample/`. */
+  function writeTasksFixture(root: string): void {
+    const dir = join(root, 'specs', 'sample');
+    mkdirSync(dir, { recursive: true });
     writeFileSync(
-      join(root, 'docs', 'rfcs', '2026-001-foo.rfc.md'),
-      '# RFC: Foo\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
+      join(dir, '01-first.tasks.md'),
+      '# US1 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n| S1 | Only | — | — |\n',
     );
-    statusAction({ root, format: 'json' });
+  }
+
+  it('scans the in-repo root when no manifest is present (back-compat)', () => {
+    writeTasksFixture(workdir);
+    statusAction({ root: workdir, format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
     expect(payload.records.length).toBeGreaterThan(0);
-    expect(payload.records[0]!.path).toContain('docs/rfcs/2026-001-foo.rfc.md');
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
   });
 
   it('scans the in-repo root when artifactsLocation is "repo" in the manifest', () => {
-    writeManifest('repo');
-    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
-    writeFileSync(
-      join(root, 'docs', 'rfcs', '2026-001-foo.rfc.md'),
-      '# RFC: Foo\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
-    );
-    statusAction({ root, format: 'json' });
+    writeManifest(workdir, 'repo');
+    writeTasksFixture(workdir);
+    statusAction({ root: workdir, format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
-    expect(payload.records[0]!.path).toContain('docs/rfcs/2026-001-foo.rfc.md');
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
+  });
+
+  it('omitting --root with artifactsLocation=external redirects to ~/.smithy/<repo>/ and re-prepends the prefix on records', () => {
+    writeManifest(workdir, 'external');
+    const externalRoot = join(fakeHome, '.smithy', `${require('path').basename(workdir)}`);
+    writeTasksFixture(externalRoot);
+
+    // No `root` field — exercises the manifest-driven redirect branch.
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+
+    const expectedPrefix = `~/.smithy/${require('path').basename(workdir)}/`;
+    expect(payload.records.length).toBeGreaterThan(0);
+    expect(payload.records[0]!.path).toBe(
+      `${expectedPrefix}specs/sample/01-first.tasks.md`,
+    );
+    // Next: smithy.forge hint must carry the prefix too — the user pastes
+    // this into Claude Code running from the source repo, and the agent
+    // needs to find the file at its real on-disk location.
+    expect(payload.records[0]!.next_action?.arguments[0]).toBe(
+      `${expectedPrefix}specs/sample/01-first.tasks.md`,
+    );
+  });
+
+  it('omitting --root with no external manifest scans cwd (default behavior unchanged)', () => {
+    // No manifest at all — the redirect short-circuits and falls back to cwd.
+    writeTasksFixture(workdir);
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
+  });
+
+  it('omitting --root with artifactsLocation=external but no external dir yet falls back to cwd (friendly empty hint)', () => {
+    // User flipped the flag but hasn't written anything to ~/.smithy/<repo>/ yet.
+    writeManifest(workdir, 'external');
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    // Empty external root → fall back to cwd, which also has no artifacts → empty result.
+    expect(payload.records).toEqual([]);
   });
 
   it('explicit --root always wins, even when the manifest declares external', () => {
-    writeManifest('external');
-    // In-repo artifact — the scanner should find this because --root is explicit.
-    mkdirSync(join(root, 'docs', 'rfcs'), { recursive: true });
+    writeManifest(workdir, 'external');
+    // Pre-create both locations with different fixtures so the test can tell
+    // which root the scanner actually visited.
+    writeTasksFixture(workdir);
+    const externalRoot = join(fakeHome, '.smithy', require('path').basename(workdir));
+    mkdirSync(join(externalRoot, 'specs', 'other'), { recursive: true });
     writeFileSync(
-      join(root, 'docs', 'rfcs', '2026-001-bar.rfc.md'),
-      '# RFC: Bar\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
+      join(externalRoot, 'specs', 'other', '99-other.tasks.md'),
+      '# Other\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n',
     );
-    statusAction({ root, format: 'json' });
+    statusAction({ root: workdir, format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
-    expect(payload.records[0]?.path).toContain('docs/rfcs/2026-001-bar.rfc.md');
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
+    // No tilde-prefixed paths leaked in — the redirect was bypassed entirely.
+    for (const r of payload.records) {
+      expect(r.path.startsWith('~/.smithy/')).toBe(false);
+    }
   });
 });

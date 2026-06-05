@@ -27,8 +27,10 @@ export interface SmithyManifest {
   platforms?: string[] | undefined;
   /**
    * Where planning artifacts (RFCs, specs, tasks, strikes, PRDs) are written.
-   * Omitted when `'repo'` (the default) to keep legacy manifests byte-identical;
-   * `readManifest` normalizes a missing value to `'repo'`.
+   * Omitted when `'repo'` (the default) to keep legacy manifests byte-identical
+   * — `readManifest` returns the parsed JSON verbatim, so consumers (e.g.,
+   * `update`, `smithy status`) treat a missing value as `'repo'` via
+   * `manifest.artifactsLocation ?? 'repo'`.
    */
   artifactsLocation?: ArtifactsLocation;
   files: Record<string, string[]>;  // agent name → relative file paths
