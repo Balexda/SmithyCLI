@@ -108,6 +108,162 @@ section in every artifact**, using the same 4-column Markdown table schema:
   features, user stories, and slices, so the authoring commands and the
   scanner share one implementation.
 
+## Voice and Audience Tagging Convention
+
+Each `##` section in a Smithy planning artifact carries a voice spec —
+audience, mode, length budget, diagram requirement, examples policy —
+recorded by an HTML-comment tag with the grammar below. **The tag lives
+in the planning-artifact template** (the markdown code-fence block that
+`smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut` emit
+as the artifact shape), **not in every generated artifact instance**.
+That keeps the spec in one place, lets template authors edit it
+centrally, and gives `smithy.audit` a single file to read when checking
+voice. The full Role × Mode taxonomy — conciseness budgets, diagram-
+first framing, depth-control rules — lives in the `smithy.helper-voice`
+skill body. Authors of new command templates should follow it rather
+than redefining voice rules inline.
+
+The tag grammar (as it appears in templates):
+
+```
+## <Section title>
+<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|forbidden>[; applicability: <free-text>] -->
+```
+
+Keys:
+
+| Key | Values |
+|-----|--------|
+| `audience` | `stakeholder` \| `reviewer` \| `builder`; append `+ai-input` when a Smithy sub-agent is the primary consumer (e.g., `builder+ai-input`). |
+| `mode` | `explanation` \| `reference` \| `how-to` \| `tutorial`. |
+| `length` | Sentence or paragraph budget (`2-3 sentences`, `3-6 paragraphs`, `tables only`, `5-15 steps`). |
+| `diagram` | `required` \| `recommended` \| `optional`. |
+| `examples` | `required` \| `recommended` \| `discouraged` \| `forbidden`. |
+| `applicability` (optional) | Free-text condition under which the section legitimately resolves to `N/A` (e.g., `code-shaped features only` on `.data-model.md` / `.contracts.md`). |
+
+Authoring rule: when adding a new `##` section to a planning-artifact
+template, drop the tag immediately under the heading inside the
+template's markdown code fence. `smithy.audit` and future lint commands
+will read these tags to enforce voice rules (planned in slice 4 of EPIC
+#419). Until that slice lands and every template surface is wired
+through, the audit command will carry a hard-coded copy of the
+per-section specs that matches the eventual template-driven one. See
+`src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
+for the per-cell rules, three worked before/after examples, and the
+"application beyond Smithy" appendix (migration plans, ADRs, runbooks,
+READMEs, inline documentation) — those non-Smithy targets have no
+template to inherit from, so the taxonomy is used as authoring
+discipline rather than a metadata convention.
+
+## Feature Kinds and the Build/Wire Seam
+
+Features in a `.features.md` map are **typed**. Each `### Feature N:` carries a
+fenced `yaml` metadata block — right after the heading, before the prose
+(`**Description**:` etc.) — declaring its **kind** (`backend` or `ui`) and, for
+UI work, its design and phase fields. This README is the source of truth for the
+schema; the same field set is captured once in the `feature-kinds` snippet
+(`snippets/feature-kinds.md`) and pulled into `smithy.render` (authoring) and
+`smithy.audit` (validation) via `{{>feature-kinds}}` so the surfaces never drift.
+
+### Field schema
+
+| Key | Kind | Required | Notes |
+|-----|------|----------|-------|
+| `kind` | both | Yes | `backend` or `ui`. Selects the downstream `forge` profile. |
+| `phase` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
+| `design_system` | ui | Yes | Reference to the committed design skill (e.g. `story-spider-design`); source of truth even when a bundle is present. |
+| `bundle` | ui | No | Repo-relative path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
+| `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
+| `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
+| `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. |
+
+`backend` features carry none of the ui-only keys; their body is the behavioral
+spec (prose delta).
+
+### Phase semantics
+
+| `phase` | Means | Done when |
+|---------|-------|-----------|
+| `build` | Implement the screen against a mock, behind `flag`. No real data. | Screen renders every brief state using only design-system tokens/components, gated by the flag. |
+| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired **and** the Maestro flow + `flow.md` emitted/updated for every flow in `flows`. |
+
+### The seam = two features sharing one flag
+
+"Prototype behind a flag, wire to real data later" is a **seam**, not a note.
+It is expressed as **two `### Feature N:` entries sharing a `flag` value**, with
+the wire feature listing the build feature in its `## Dependency Order`
+`Depends On` cell:
+
+```
+F2 build-add-title  (kind: ui, phase: build, flag: add_title_v1)
+   │  renders the screen against a mock, behind add_title_v1
+   ▼   (Depends On: F2; shares flag: add_title_v1)
+F3 wire-add-title   (kind: ui, phase: wire, flag: add_title_v1, Depends On: F1, F2)
+       wires real data, flips add_title_v1, emits the AddTitle flow
+```
+
+**Build-ahead-of-backend is legal and intended:** the `build` feature may be
+ordered before an unbuilt backend feature (`F1` above) because the flag keeps it
+on mock data; only the `wire` feature lists the backend in `Depends On`. The
+shared `flag` — not a naming convention — is the contract of record.
+
+### Worked example
+
+````markdown
+### Feature 1: Persist titles to the library store
+
+```yaml
+kind: backend
+```
+
+**Description**: A `LibraryStore.add(title)` that persists a `Title { id, name, url }`
+and exposes it via `LibraryStore.all()`, ordered by insertion. Duplicate URLs are a
+no-op; `all()` returns `[]` (never null) before any add.
+
+### Feature 2: Add-Title screen (build)
+
+```yaml
+kind: ui
+phase: build
+design_system: story-spider-design
+bundle: design/bundles/add-title.zip
+flag: add_title_v1
+screens: [AddTitle]
+flows: [AddTitle]
+```
+
+**Description**: Title field, URL field, and a confirm action reachable from the
+Library FAB, behind `add_title_v1` against an in-memory mock. Render all brief states
+(empty, valid, invalid URL, submitting) using only design-system tokens.
+
+### Feature 3: Wire Add-Title to the library store (wire)
+
+```yaml
+kind: ui
+phase: wire
+design_system: story-spider-design
+flag: add_title_v1
+screens: [AddTitle]
+flows: [AddTitle]
+```
+
+**Description**: Connect AddTitle to `LibraryStore` and flip `add_title_v1`. Confirm
+persists a real `Title`; done includes emitting `maestro/flows/AddTitle.yaml` and
+`design/flows/AddTitle.flow.md`.
+````
+
+with a `## Dependency Order` table where `F3` depends on `F1, F2` and `F2` depends
+on `—` (build-ahead-of-backend).
+
+### Naming decisions
+
+- **`screens` / `flows` are lists** — a screen can participate in more than one
+  flow, and the `wire` definition-of-done is "every flow the screen participates in."
+- **`flag` is a first-class field**, not just prose — it is the interface contract
+  between the build and wire features.
+- **`phase` is feature-level**, not user-story/slice level — the build/wire
+  decomposition happens at the feature granularity (two features in the DAG).
+
 ## Sub-Agent Roles
 
 Sub-agents are invoked by parent commands, not directly by users:

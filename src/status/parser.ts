@@ -11,6 +11,7 @@ import type {
   ArtifactType,
   DependencyOrderTable,
   DependencyRow,
+  FeatureSummary,
   SliceSummary,
 } from './types.js';
 
@@ -305,6 +306,20 @@ export function parseArtifact(
     }
   }
 
+  if (type === 'features') {
+    try {
+      const parsed = parseFeatures(content);
+      record.features = parsed.features;
+      warnings.push(...parsed.warnings);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(
+        `parser: unexpected error while parsing features — ${message}`,
+      );
+      record.features = [];
+    }
+  }
+
   return record;
 }
 
@@ -438,6 +453,198 @@ function countSlices(content: string): {
   finalizeSlice();
 
   return { completed, total, slices };
+}
+
+/**
+ * Parse the `### Feature N:` sections of a feature map (`.features.md`)
+ * into a list of {@link FeatureSummary}. Each feature's typed metadata is
+ * read from a fenced ` ```yaml ` block placed right after the heading,
+ * carrying flat keys (`kind`, and for `ui` features `phase`,
+ * `design_system`, `bundle`, `flag`, `screens`, `flows`). The block is a
+ * flat scalar/inline-list map — nested YAML is not expected. The 4-column
+ * `## Dependency Order` table is left untouched: kind/phase live in the
+ * feature body, not the table.
+ *
+ * Best-effort and side-effect free: a missing block or invalid value is
+ * left `undefined` on the summary and reported via the returned `warnings`
+ * (stable prefixes `feature_kind:`, `feature_ui_fields:`, `feature_seam:`).
+ * Never throws.
+ */
+export function parseFeatures(content: string): {
+  features: FeatureSummary[];
+  warnings: string[];
+} {
+  const lines = content.split('\n');
+  const headingRegex = /^###\s+Feature\s+(\d+):\s*(.*)$/;
+  // Any H1/H2/H3 that is not another Feature heading closes the current
+  // feature body (e.g. `## Dependency Order`, `## Specification Debt`).
+  const sectionBreakRegex = /^#{1,3}\s/;
+  const fenceRegex = /^```/;
+  const features: FeatureSummary[] = [];
+  const warnings: string[] = [];
+
+  let current: FeatureSummary | null = null;
+  let currentBody: string[] = [];
+  let inFence = false;
+
+  // Extract the inner lines of the first fenced ```yaml block in a feature
+  // body, or null when the feature carries no yaml metadata block.
+  const extractYaml = (body: string[]): string[] | null => {
+    let open = false;
+    const out: string[] = [];
+    for (const line of body) {
+      if (!open) {
+        if (/^```ya?ml\s*$/i.test(line)) open = true;
+        continue;
+      }
+      if (/^```\s*$/.test(line)) return out;
+      out.push(line);
+    }
+    return open ? out : null;
+  };
+
+  // Parse a flat YAML block into a key → scalar | inline-list map.
+  const parseBlock = (yamlLines: string[]): Map<string, string | string[]> => {
+    const map = new Map<string, string | string[]>();
+    for (const raw of yamlLines) {
+      const line = raw.trim();
+      if (line === '' || line.startsWith('#')) continue;
+      const m = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
+      if (m === null) continue;
+      const key = m[1] ?? '';
+      // Drop trailing inline comments before interpreting the value.
+      const value = (m[2] ?? '').replace(/\s+#.*$/, '').trim();
+      if (value.startsWith('[') && value.endsWith(']')) {
+        map.set(
+          key,
+          value
+            .slice(1, -1)
+            .split(',')
+            .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+            .filter((s) => s.length > 0),
+        );
+      } else if (value.length > 0) {
+        map.set(key, value.replace(/^['"]|['"]$/g, ''));
+      }
+    }
+    return map;
+  };
+
+  const finalize = (): void => {
+    if (current === null) return;
+    const feature = current;
+    const yaml = extractYaml(currentBody);
+    const meta = yaml === null ? new Map<string, string | string[]>() : parseBlock(yaml);
+    const scalar = (key: string): string | undefined => {
+      const v = meta.get(key);
+      return typeof v === 'string' ? v : undefined;
+    };
+    const list = (key: string): string[] | undefined => {
+      const v = meta.get(key);
+      return Array.isArray(v) ? v : undefined;
+    };
+
+    const kind = scalar('kind');
+    if (kind === 'backend' || kind === 'ui') {
+      feature.kind = kind;
+    } else {
+      warnings.push(
+        `feature_kind: ${feature.id} has no valid kind (expected backend | ui)`,
+      );
+    }
+
+    const phase = scalar('phase');
+    if (phase === 'build' || phase === 'wire') feature.phase = phase;
+    const designSystem = scalar('design_system');
+    if (designSystem !== undefined) feature.design_system = designSystem;
+    const bundle = scalar('bundle');
+    if (bundle !== undefined) feature.bundle = bundle;
+    const flag = scalar('flag');
+    if (flag !== undefined) feature.flag = flag;
+    const screens = list('screens');
+    if (screens !== undefined) feature.screens = screens;
+    const flows = list('flows');
+    if (flows !== undefined) feature.flows = flows;
+
+    if (feature.kind === 'ui') {
+      const missing: string[] = [];
+      if (feature.phase === undefined) missing.push('phase');
+      if (feature.design_system === undefined) missing.push('design_system');
+      if (feature.screens === undefined || feature.screens.length === 0)
+        missing.push('screens');
+      if (feature.flows === undefined) missing.push('flows');
+      for (const key of missing) {
+        warnings.push(
+          `feature_ui_fields: ui ${feature.id} missing required ${key}`,
+        );
+      }
+    } else if (feature.kind === 'backend') {
+      const uiOnly: Array<[string, unknown]> = [
+        ['phase', feature.phase],
+        ['design_system', feature.design_system],
+        ['bundle', feature.bundle],
+        ['flag', feature.flag],
+        ['screens', feature.screens],
+        ['flows', feature.flows],
+      ];
+      for (const [key, val] of uiOnly) {
+        if (val !== undefined) {
+          warnings.push(
+            `feature_ui_fields: backend ${feature.id} carries ui-only key ${key}`,
+          );
+        }
+      }
+    }
+
+    features.push(feature);
+    current = null;
+    currentBody = [];
+    inFence = false;
+  };
+
+  for (const line of lines) {
+    if (!inFence) {
+      const heading = headingRegex.exec(line);
+      if (heading !== null) {
+        finalize();
+        const n = Number.parseInt(heading[1] ?? '', 10);
+        current = {
+          id: Number.isNaN(n) ? (heading[1] ?? '') : `F${n}`,
+          title: (heading[2] ?? '').trim(),
+        };
+        currentBody = [];
+        continue;
+      }
+    }
+    if (current === null) continue;
+    if (fenceRegex.test(line)) {
+      inFence = !inFence;
+      currentBody.push(line);
+      continue;
+    }
+    if (!inFence && sectionBreakRegex.test(line)) {
+      finalize();
+      continue;
+    }
+    currentBody.push(line);
+  }
+  finalize();
+
+  // Build/wire seam: every build feature carrying a flag should have a wire
+  // feature sharing that exact flag value.
+  const wireFlags = new Set<string>();
+  for (const f of features) {
+    if (f.phase === 'wire' && f.flag !== undefined) wireFlags.add(f.flag);
+  }
+  for (const f of features) {
+    if (f.phase === 'build' && f.flag !== undefined && !wireFlags.has(f.flag)) {
+      warnings.push(
+        `feature_seam: build ${f.id} has flag '${f.flag}' but no wire feature shares it`,
+      );
+    }
+  }
+
+  return { features, warnings };
 }
 
 /**

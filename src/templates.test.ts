@@ -102,7 +102,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(15);
+    expect(snippets.size).toBe(16);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -119,6 +119,7 @@ describe('loadSnippets', () => {
       'one-shot-output.md',
       'pr-create-tool-choice.md',
       'branch-policy.md',
+      'feature-kinds.md',
       'artifact-location-policy.md',
     ];
     for (const file of expectedFiles) {
@@ -296,21 +297,73 @@ describe('one-shot-output snippet', () => {
   });
 });
 
+describe('feature-kinds snippet', () => {
+  // The feature-kinds snippet is the single source of the kind/phase field
+  // schema referenced by both smithy.render (authoring) and smithy.audit
+  // (validation). These assertions lock the snippet's contract so a rename,
+  // deletion, or dropped field fails the suite immediately.
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has('feature-kinds.md')).toBe(true);
+    expect(snippets.get('feature-kinds.md')!.length).toBeGreaterThan(0);
+  });
+
+  it('snippet has no YAML frontmatter (raw Markdown per snippets README)', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('feature-kinds.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+  });
+
+  it('snippet documents the kind enum, phases, and ui-only fields', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('feature-kinds.md')!;
+    expect(content).toContain('## Feature Kinds');
+    for (const token of [
+      'backend',
+      'ui',
+      'build',
+      'wire',
+      'kind',
+      'phase',
+      'flag',
+      'screens',
+      'flows',
+    ]) {
+      expect(content).toContain(token);
+    }
+  });
+
+  it('snippet composes into any template via the {{>feature-kinds}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>feature-kinds}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Feature Kinds');
+    expect(result).not.toContain('{{>feature-kinds}}');
+  });
+});
+
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(4);
+    expect(byCategory.skills).toHaveLength(5);
   });
 
-  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, and smithy.helper-docker', () => {
+  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, and smithy.helper-voice', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
     expect(skills).toContain('smithy.gh-issue');
     expect(skills).toContain('smithy.helper-docker');
+    expect(skills).toContain('smithy.helper-voice');
   });
 
   it('commands includes expected template files', () => {
@@ -775,6 +828,104 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('smithy.helper-docker');
+  });
+
+  // Issue #420: smithy.helper-voice is a new body-only operational skill
+  // that distributes the voice & audience taxonomy (EPIC #419). These
+  // assertions back-stop the deployment contract (body-only, frontmatter
+  // retained, auto-trigger description) and the 10-section outline so a
+  // regression that drops a section, removes the auto-trigger phrases, or
+  // accidentally adds a `scripts/` subdirectory fails the suite.
+  it('smithy.helper-voice is body-only (no scripts) with frontmatter retained', () => {
+    const skill = composed.skills.get('smithy.helper-voice');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toMatch(/^---\s*\n/);
+    expect(skill!.prompt).toContain('name: smithy.helper-voice');
+    expect(skill!.scripts.size).toBe(0);
+  });
+
+  it('smithy.helper-voice description triggers on draft and review/cleanup phrasing', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Auto-trigger description (frontmatter) must name the two invocation
+    // surfaces and the deliverable types the skill covers, so calling
+    // agents recognize when to lazy-load it.
+    expect(skill.prompt).toMatch(/drafting or reviewing prose/i);
+    expect(skill.prompt).toContain('migration plans');
+    expect(skill.prompt).toContain('ADRs');
+    expect(skill.prompt).toContain('runbooks');
+    expect(skill.prompt).toContain('READMEs');
+    // The Role × Diátaxis-mode framing is the load-bearing claim of the
+    // description — if it disappears, the skill no longer advertises its
+    // actual content.
+    expect(skill.prompt).toMatch(/Role × Diátaxis-mode taxonomy/i);
+  });
+
+  it('smithy.helper-voice body covers the 10-section outline', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Per issue #420, the body must cover all ten sections of the
+    // outline. Anchor on the numbered heading prefix so a regression that
+    // renumbers or drops one section is caught.
+    expect(skill.prompt).toContain('## 1. The two axes');
+    expect(skill.prompt).toContain('## 2. The four anti-patterns');
+    expect(skill.prompt).toContain('## 3. Voice rules per Role × Mode combination');
+    expect(skill.prompt).toContain('## 4. Diagram guidance');
+    expect(skill.prompt).toContain('## 5. Embedded examples — when code helps vs. hurts');
+    expect(skill.prompt).toContain('## 6. Reference-prose anti-pattern');
+    expect(skill.prompt).toContain('## 7. Depth-control rule');
+    expect(skill.prompt).toContain('## 8. Audience tag grammar');
+    expect(skill.prompt).toContain('## 9. Three worked before/after examples');
+    expect(skill.prompt).toContain('## 10. Application beyond Smithy');
+  });
+
+  it('smithy.helper-voice documents both invocation modes', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Two first-class modes per issue #420. Both must be documented in
+    // the body so any agent loading the skill knows it can draft *or*
+    // review/cleanup.
+    expect(skill.prompt).toMatch(/Draft mode/);
+    expect(skill.prompt).toMatch(/Review \/ cleanup mode/);
+    // The side-by-side compare is the primary validation path for the
+    // cleanup mode and must be called out explicitly. Either spelling
+    // (hyphenated or whitespace-separated, potentially wrapped across a
+    // newline) counts as documenting the compare protocol.
+    expect(skill.prompt).toMatch(/side[\s-]+by[\s-]+side/i);
+  });
+
+  it('smithy.helper-voice documents the audience-tag grammar with all directive keys', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Tagging-grammar directive keys (issue #420). Every key must appear
+    // in the body so authors of new templates have one source of truth
+    // for the convention.
+    expect(skill.prompt).toContain('audience:');
+    expect(skill.prompt).toContain('mode:');
+    expect(skill.prompt).toContain('length:');
+    expect(skill.prompt).toContain('diagram:');
+    expect(skill.prompt).toContain('examples:');
+    expect(skill.prompt).toContain('applicability:');
+    // The +ai-input flag is additive on the base role and must be named.
+    expect(skill.prompt).toContain('+ai-input');
+    // The inline HTML-comment carrier and the N/A fallback for
+    // non-code-shaped Reference sections are both load-bearing pieces of
+    // the taxonomy, per issue #420 sections 6 and 8.
+    expect(skill.prompt).toMatch(/<!-- audience:/);
+    expect(skill.prompt).toMatch(/N\/A —/);
+  });
+
+  it('smithy.helper-voice is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Strip frontmatter before checking — the deploy-target name in
+    // frontmatter is "smithy.helper-voice", not a Claude-specific term.
+    const body = skill.prompt.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    // Provider-specific surfaces must not leak into the body.
+    expect(body).not.toMatch(/\$ARGUMENTS\b/);
+    expect(body).not.toMatch(/allowed-tools\s*:/);
+    expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
+    expect(body).not.toMatch(/\.gemini\/skills/);
+    expect(body).not.toMatch(/\.agents\/skills/);
+    // The body must explicitly assert its provider-neutrality so a
+    // future edit that quietly adds provider-specific syntax has to
+    // also remove the assertion.
+    expect(body).toMatch(/Provider-neutral/i);
   });
 
   it('categorizes templates correctly', () => {
@@ -1896,7 +2047,10 @@ describe('getComposedTemplates', () => {
     // categories.
     expect(render).not.toContain('## Feature Dependency Order');
 
-    const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    // The feature-map example uses a 4-backtick fence so it can embed
+    // ```yaml metadata blocks; match that outer fence (3 backticks would
+    // stop at the first inner ```yaml close).
+    const renderMarkdownMatch = render.match(/````markdown\r?\n([\s\S]*?)\r?\n````/);
     expect(renderMarkdownMatch).not.toBeNull();
     const renderMarkdownBlock = renderMarkdownMatch![1]!;
     expect(renderMarkdownBlock).not.toContain('## Feature Dependency Order');
@@ -2071,6 +2225,30 @@ describe('getComposedTemplates', () => {
     expect(render).toContain('## Specification Debt');
     expect(render).toContain('## PR');
     expect(render).toContain('## Bail-Out');
+  });
+
+  it('render template composes the feature-kinds schema and emits Kind', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    // The feature-kinds partial composed in (its unique header) and the
+    // feature-map skeleton now emits yaml metadata blocks plus the seam.
+    expect(render).toContain('## Feature Kinds');
+    expect(render).toContain('kind: ui');
+    expect(render).toContain('phase: build');
+    expect(render).toMatch(/build\/wire/i);
+    expect(render).not.toContain('{{>feature-kinds}}');
+    expect(render).not.toContain('{{>');
+  });
+
+  it('audit features checklist composes the feature-kind/seam categories', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toBeDefined();
+    expect(audit).toContain('Feature Kind');
+    expect(audit).toContain('UI Feature Fields');
+    expect(audit).toContain('Build/Wire Seam');
+    // The checklist references the shared schema snippet, which must resolve.
+    expect(audit).toContain('## Feature Kinds');
+    expect(audit).not.toContain('{{>feature-kinds}}');
   });
 
   it('render template references PR creation after artifact write-out', () => {

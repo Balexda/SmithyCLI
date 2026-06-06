@@ -11,6 +11,7 @@ export {
   extractSourceHeader,
   parseArtifact,
   parseDependencyTable,
+  parseFeatures,
   type ParsedDependencyTable,
 } from './parser.js';
 export { classifyRecord } from './classifier.js';
