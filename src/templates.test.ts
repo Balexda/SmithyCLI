@@ -1403,10 +1403,20 @@ describe('getComposedTemplates', () => {
         `  [${i}] (${b.length} chars) first line: ${b.split('\n')[0]?.slice(0, 80) ?? '(empty)'}`,
       ).join('\n');
       const containsAnchorAtAll = template.includes(anchor);
+      // Also dump every line whose trimStart() starts with ``` so we can
+      // see what the walker actually had to work with — particularly when
+      // CI sees a different fence layout than a local run.
+      const fenceLines = lines
+        .map((l, i) => [i, l] as const)
+        .filter(([, l]) => l.trimStart().startsWith('```'))
+        .map(([i, l]) => `  line ${i}: ${JSON.stringify(l)}`)
+        .join('\n');
       throw new Error(
         `no markdown fence contains anchor "${anchor}"\n` +
         `  template.includes(anchor) = ${containsAnchorAtAll}\n` +
-        `  fences found: ${fences.length}\n${firstLines}`,
+        `  template length = ${template.length}\n` +
+        `  fences found: ${fences.length}\n${firstLines}\n` +
+        `  all \`\`\` lines:\n${fenceLines}`,
       );
     }
     return match;
