@@ -97,7 +97,4 @@ function handle(record: Record<string, unknown>): void {
 ## Contracts
 <!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: required; applicability: code-shaped features only -->
 
-N/A — this exercise spec is docs-only and exposes no code-shaped contract, so
-the section legitimately resolves to a single N/A line. Because the tag
-declares an `applicability:` condition, the lint must ACCEPT this body and
-emit no length, diagram, or examples warnings for it.
+N/A — docs-only exercise spec; the `applicability:` tag licenses this single-line N/A body, which the lint must ACCEPT with no length, diagram, or examples warnings.
