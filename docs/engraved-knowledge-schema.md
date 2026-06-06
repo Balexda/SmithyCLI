@@ -3,11 +3,8 @@
 This document is the **single source of truth** for the engraved-knowledge
 artifact family: **decisions**, **invariants**, and **principles**. Every
 downstream sub-issue of the engraved EPIC builds on the schema below.
-
-The canonical machine-readable counterpart lives in
-[`src/engraved-templates.ts`](../src/engraved-templates.ts). When this
-document changes, that file must change in lockstep (and vice-versa) — a
-parity test in `src/engraved-templates.test.ts` enforces the link.
+`smithy.engrave` reads its scaffold shapes directly from the example
+records in this document — there is no parallel canonical source.
 
 ---
 
@@ -362,14 +359,11 @@ refinement) — that is in scope.
 
 ## Templates
 
-The per-kind scaffold strings live in
-[`src/engraved-templates.ts`](../src/engraved-templates.ts) (exported as
-`ENGRAVED_DEFAULT_TEMPLATES`). `smithy.engrave` (#414) will substitute
-`{{variable}}` placeholders when authoring a new record.
-
-The template strings include the full YAML frontmatter and the required
-section headings listed in `ENGRAVED_REQUIRED_SECTIONS`, so a freshly
-engraved file is structurally complete before the author adds any prose.
+The example records above are the canonical scaffold shapes. `smithy.engrave`
+(#414) emits those shapes inline when authoring a new record, substituting the
+concrete title / id / topics / scope / applies_to and leaving the body
+section skeleton for the author to fill in. There is no separate
+template-string source — the example records here are the source.
 
 ---
 
@@ -377,7 +371,7 @@ engraved file is structurally complete before the author adds any prose.
 
 | Sub-issue | What it builds on the schema |
 |-----------|-------------------------------|
-| #414 `smithy.engrave` | Authoring command. Reads the scaffold templates above, scaffolds a new record, and applies the frontmatter shape. |
+| #414 `smithy.engrave` | Authoring command. Emits the example-record shapes inline, fills frontmatter, routes the new file to the default location for its `kind` × `domain`. |
 | #415 `smithy.recall` + consult-engraved snippet | Catalog and planning-time recall. Discovers decision and invariant records by suffix (`*.decision.md`, `*.invariant.md`) and principle records by walking the constitution directory (principles have no suffix); reads `topics` / `scope` / `applies_to`, flags supersession and drift. |
 | #416 Status scanner / parser / classifier | Engraved as a first-class type. Parses frontmatter against the discriminated union; classifies by `kind`; reports `status` per kind's lifecycle. |
 | #417 Graph edges + stale-ref check | Walks `supersedes` / `superseded_by` / `establishes` / `established_by`. Flags references to superseded or deprecated decisions. |

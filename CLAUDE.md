@@ -138,13 +138,11 @@ decisions, invariants, and principles — authored with `smithy.engrave`
 `## Dependency Order` row and participate in the graph through citation
 edges (`establishes` / `established_by`, `supersedes` / `superseded_by`)
 declared in YAML frontmatter. Suffixes: `*.decision.md`, `*.invariant.md`;
-the constitution holds principles. The canonical schema, frontmatter
-fields, lifecycle, and example records live in
-[`docs/engraved-knowledge-schema.md`](docs/engraved-knowledge-schema.md);
-the machine-readable counterpart (types, lifecycle constants, scaffold
-template strings) lives in [`src/engraved-templates.ts`](src/engraved-templates.ts).
-A parity test in `src/engraved-templates.test.ts` keeps the two in
-lockstep.
+principles live as individual files in the constitution directory and have
+no dedicated suffix. The canonical schema, frontmatter fields, lifecycle,
+example records, and the scaffold shapes `smithy.engrave` emits all live
+in [`docs/engraved-knowledge-schema.md`](docs/engraved-knowledge-schema.md)
+— that doc is the single source of truth for the family.
 
 ## Development
 

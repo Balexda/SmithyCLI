@@ -52,8 +52,7 @@ and the PR that forge then consumes.
 > Order` row and are not part of the lineage below. They participate in the
 > graph through citation edges only. See
 > [`docs/engraved-knowledge-schema.md`](../../../docs/engraved-knowledge-schema.md)
-> and [`src/engraved-templates.ts`](../../engraved-templates.ts) for the
-> schema.
+> for the schema.
 
 Every planning artifact produced by Smithy fits into a single strict lineage:
 

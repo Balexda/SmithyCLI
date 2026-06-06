@@ -298,7 +298,7 @@ describe('one-shot-output snippet', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(10);
+    expect(byCategory.commands).toHaveLength(11);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
     expect(byCategory.skills).toHaveLength(5);
@@ -325,6 +325,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.fix.md');
     expect(commands).toContain('smithy.orders.md');
     expect(commands).toContain('smithy.spark.md');
+    expect(commands).toContain('smithy.engrave.md');
     expect(commands).not.toContain('smithy.status.md');
   });
 
@@ -2332,5 +2333,113 @@ describe('getComposedTemplates', () => {
     expect([...composed.prompts.keys()].sort()).toEqual([...claudeComposed.prompts.keys()].sort());
     expect([...composed.agents.keys()].sort()).toEqual([...claudeComposed.agents.keys()].sort());
     expect([...composed.skills.keys()].sort()).toEqual([...claudeComposed.skills.keys()].sort());
+  });
+
+  // The engrave command is the first user of the engraved-knowledge schema
+  // (EPIC #412). These assertions pin its contract against the schema doc:
+  // the prompt must teach the three kinds, the four operations
+  // (create/update/supersede/exception), the Known-Exceptions ledger
+  // column shape, the YAML-safe quoted-title rule, and the explicit
+  // "engraved records are not Dependency Order rows" carve-out. Any of
+  // these going missing would silently let the agent emit non-schema
+  // records that the future parser (#416) and audit (#418) would reject.
+  it('engrave template teaches the three engraved kinds', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toBeDefined();
+    expect(engrave).toMatch(/decision/);
+    expect(engrave).toMatch(/invariant/);
+    expect(engrave).toMatch(/principle/);
+    // The three trigger forms must all be present.
+    expect(engrave).toContain('decision: <topic>');
+    expect(engrave).toContain('invariant: <topic>');
+    expect(engrave).toContain('principle: <topic>');
+  });
+
+  it('engrave template defines every authoring operation the schema requires', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // Each operation gets its own phase heading; the audit (#418) and the
+    // parser (#416) inherit the operation taxonomy from this template.
+    expect(engrave).toMatch(/## Phase 3a: Create a decision/);
+    expect(engrave).toMatch(/## Phase 3b: Create an invariant/);
+    expect(engrave).toMatch(/## Phase 3c: Create a principle/);
+    expect(engrave).toMatch(/## Phase 4: Update an existing record/);
+    expect(engrave).toMatch(/## Phase 5: Supersede a decision/);
+    expect(engrave).toMatch(/## Phase 6: Add or resolve a Known-Exceptions ledger row/);
+  });
+
+  it('engrave template pins the Known-Exceptions ledger column order', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // The ledger header row is load-bearing across the schema doc, the
+    // engrave scaffolds, and the eventual audit / parser. Drift here
+    // breaks every downstream consumer silently.
+    expect(engrave).toContain(
+      '| Where | What diverges | Disposition + Why | Tracking Issue | Severity |',
+    );
+  });
+
+  it('engrave template requires quoted YAML titles to survive colon-bearing topics', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // The schema doc + engrave scaffolds use quoted titles so titles
+    // containing `: ` (e.g. `CLI: require JSON status`) survive the YAML
+    // parser. The rule is asserted explicitly in the engrave prompt body.
+    expect(engrave).toContain('title: "<topic>"');
+    expect(engrave).toMatch(/Always quote the title/);
+  });
+
+  it('engrave template enforces the alignment-derivation rule from the ledger', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // Both alignment states must appear, and the derivation rule must
+    // mention recomputing from the ledger — the audit (#418) inherits
+    // this rule directly from the engrave template.
+    expect(engrave).toMatch(/status: aligned/);
+    expect(engrave).toMatch(/status: drifting/);
+    expect(engrave).toMatch(/recompute/i);
+  });
+
+  it('engrave template states the "engraved records are not Dependency Order rows" rule', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // The carve-out is the load-bearing distinction between engraved
+    // records and the planning-artifact hierarchy. Without it, an agent
+    // could silently add engraved records to a parent artifact's table
+    // and break the status graph.
+    expect(engrave).toMatch(/NOT in `## Dependency Order` tables/);
+  });
+
+  it('engrave template links to the canonical schema doc as the source of truth', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // The schema doc is the only canonical source for the family. The
+    // engrave template must direct readers to it rather than redefining
+    // the schema inline.
+    expect(engrave).toContain('docs/engraved-knowledge-schema.md');
+  });
+
+  it('engrave template uses canonical id prefixes for each kind', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // The schema doc's conventional id prefixes are D- (decision),
+    // INV- (invariant), P- (principle). The engrave prompt must use
+    // the same prefixes when assigning new ids.
+    expect(engrave).toMatch(/D-<N>/);
+    expect(engrave).toMatch(/INV-<N>/);
+    expect(engrave).toMatch(/P-<N>/);
+  });
+
+  it('engrave template wires the per-kind default repo locations from the schema', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // Each kind × domain has a canonical default directory the schema
+    // doc commits to. The engrave prompt must propose the same paths.
+    expect(engrave).toContain('docs/decisions/');
+    expect(engrave).toContain('docs/invariants/');
+    expect(engrave).toContain('docs/constitution/');
+    expect(engrave).toContain('docs/design/decisions/');
+    expect(engrave).toContain('docs/design/invariants/');
+    expect(engrave).toContain('docs/design/constitution/');
+  });
+
+  it('engrave template states the supersede-by-new-file invariant', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    // Decisions are append-only — supersession creates a new file and
+    // patches the old one's frontmatter, never rewrites the body.
+    expect(engrave).toMatch(/append-only/);
+    expect(engrave).toMatch(/Never rewrite an accepted or superseded decision body/i);
   });
 });
