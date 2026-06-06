@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   DECISION_STATUSES,
   ENGRAVED_DEFAULT_DOMAIN,
@@ -18,6 +19,9 @@ import {
   type InvariantFrontmatter,
   type PrincipleFrontmatter,
 } from './engraved-templates.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SCHEMA_DOC_PATH = path.join(
   __dirname,
