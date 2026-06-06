@@ -1367,11 +1367,13 @@ describe('getComposedTemplates', () => {
   // prose, where prompts use code-quoted forms like
   // `` `## Problem Statement` `` instead.
   //
-  // The implementation walks line-by-line tracking fence depth, then picks
-  // the fence whose body contains the anchor. This handles composed
-  // snippets (like `one-shot-output`) that bring additional indented
-  // ` ```markdown ` / ` ``` ` blocks into the template downstream of the
-  // artifact fence.
+  // The implementation walks line-by-line toggling an in-fence flag at
+  // every ` ```markdown ` opener and ` ``` ` closer (it does not track
+  // nested-fence depth — composed snippets like `one-shot-output` are
+  // emitted with indented inner fences but each one is paired, so a flat
+  // toggle still produces the right outer-fence boundaries). After
+  // collecting every top-level markdown fence, pick the one whose body
+  // contains the anchor.
   function extractFenceByAnchor(template: string, anchor: string): string {
     const lines = template.split('\n');
     const fences: string[] = [];
