@@ -834,6 +834,146 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy.helper-docker');
   });
 
+  // Issue #408 (EPIC #404): smithy.forge is parameterized by feature `kind`
+  // and `phase` WITHOUT forking the pipeline. The four UI paths are:
+  //   build × no-bundle, build × bundle, wire × (flow emission), plus the
+  //   ui reviewer profile. The backend path must stay unchanged. These tests
+  //   are structural — they isolate the routing section and assert each path's
+  //   distinguishing instruction is present without pinning exact wording.
+  describe('smithy.forge kind/phase routing (#408)', () => {
+    // Helper: slice out the Feature Kind Routing section so assertions don't
+    // accidentally match unrelated prose elsewhere in the prompt.
+    const routingSection = (forge: string): string => {
+      const start = forge.indexOf('## Feature Kind Routing');
+      expect(start).toBeGreaterThan(-1);
+      const end = forge.indexOf('\n## ', start + 1);
+      expect(end).toBeGreaterThan(start);
+      return forge.slice(start, end);
+    };
+
+    it('advertises the two UI helper skills in the operational skills table', () => {
+      const forge = composed.commands.get('smithy.forge.md')!;
+      expect(forge).toContain('smithy.helper-screen-design');
+      expect(forge).toContain('smithy.helper-flow-definition');
+    });
+
+    it('has a Feature Kind Routing section that resolves kind from the feature map and defaults to backend', () => {
+      const section = routingSection(composed.commands.get('smithy.forge.md')!);
+      // Reads kind/phase/design_system/bundle from the feature (#405 schema).
+      expect(section).toContain('Source Feature Map');
+      expect(section).toContain('kind');
+      expect(section).toContain('phase');
+      expect(section).toContain('design_system');
+      expect(section).toContain('bundle');
+      // Default-to-backend keeps pre-#404 tasks/strike files on the old path.
+      expect(section).toMatch(/default.*backend/i);
+    });
+
+    it('keeps the backend path explicitly unchanged', () => {
+      const section = routingSection(composed.commands.get('smithy.forge.md')!);
+      const backendRow = section
+        .split('\n')
+        .find((l) => l.includes('`backend`') && /unchanged/i.test(l));
+      expect(backendRow).toBeDefined();
+    });
+
+    // Path 1 — UI build, no bundle: Compose from prose + committed skill.
+    it('routes UI build with no bundle to Compose from prose + the committed design skill', () => {
+      const section = routingSection(composed.commands.get('smithy.forge.md')!);
+      const buildNoBundle = section
+        .split('\n')
+        .find((l) => l.includes('`build`') && /absent/i.test(l));
+      expect(buildNoBundle).toBeDefined();
+      expect(buildNoBundle!).toMatch(/compose/i);
+      expect(buildNoBundle!).toMatch(/prose/i);
+      expect(buildNoBundle!).toContain('design_system');
+    });
+
+    // Path 2 — UI build, with bundle: translate to Compose under conflict rule.
+    it('routes UI build with a bundle to a Compose translation under the bundle-vs-skill conflict rule', () => {
+      const section = routingSection(composed.commands.get('smithy.forge.md')!);
+      const buildBundle = section
+        .split('\n')
+        .find((l) => l.includes('`build`') && /present/i.test(l));
+      expect(buildBundle).toBeDefined();
+      // Conflict rule: bundle wins on layout/visual intent; skill wins on dialect.
+      expect(buildBundle!).toMatch(/bundle wins on layout/i);
+      expect(buildBundle!).toMatch(/skill wins on implementation dialect/i);
+    });
+
+    it('preloads the design_system skill as implementer context for every UI profile', () => {
+      const section = routingSection(composed.commands.get('smithy.forge.md')!);
+      expect(section).toMatch(/preload the `design_system` skill/i);
+    });
+
+    // Path 3 — UI wire: definition-of-done emits/updates the Maestro flow + flow.md.
+    it('routes UI wire so the definition-of-done emits/updates the Maestro flow + flow.md for participating flows', () => {
+      const forge = composed.commands.get('smithy.forge.md')!;
+      const section = routingSection(forge);
+      const wireRow = section
+        .split('\n')
+        .find((l) => l.includes('`wire`'));
+      expect(wireRow).toBeDefined();
+      expect(wireRow!).toMatch(/maestro flow/i);
+      expect(wireRow!).toContain('flow.md');
+      // The wire gate is a real STOP gate, not a note.
+      const gateStart = forge.indexOf('## Wire Definition-of-Done');
+      expect(gateStart).toBeGreaterThan(-1);
+      const gate = forge.slice(gateStart, forge.indexOf('\n## ', gateStart + 1));
+      expect(gate).toContain('design/flows/<FlowId>.flow.md');
+      expect(gate).toContain('maestro/flows/<FlowId>.yaml');
+      expect(gate).toMatch(/testID-keyed/i);
+      expect(gate).toMatch(/STOP gate/);
+    });
+
+    // Path 4 — reviewer profile selection for kind: ui.
+    it('selects a structural-conformance reviewer profile for kind: ui that does not judge visual fidelity', () => {
+      const forge = composed.commands.get('smithy.forge.md')!;
+      const start = forge.indexOf('### Review profile selection');
+      expect(start).toBeGreaterThan(-1);
+      const profile = forge.slice(start, forge.indexOf('\n{{#ifAgent}}', start));
+      // Structural conformance checks from the issue.
+      expect(profile).toMatch(/tokens-only/i);
+      expect(profile).toMatch(/no hardcoded hex|raw color literal/i);
+      expect(profile).toMatch(/component reuse/i);
+      expect(profile).toMatch(/M2 convention|Material-2/i);
+      expect(profile).toMatch(/every brief state|brief state present/i);
+      expect(profile).toMatch(/touch-target/i);
+      expect(profile).toMatch(/contrast/i);
+      // Explicitly does NOT judge visual fidelity, and stays read-only.
+      expect(profile).toMatch(/does not judge visual fidelity/i);
+      expect(profile).toMatch(/read-only|no-write/i);
+    });
+
+    it('carries the routing and reviewer-profile selection into the Codex (non-agent) variant too', () => {
+      // Routing is agent-independent: it changes inputs + review profile, not
+      // orchestration, so the Codex inline path must see it as well.
+      const forge = codexComposed.commands.get('smithy.forge.md')!;
+      expect(forge).toContain('## Feature Kind Routing');
+      expect(forge).toContain('### Review profile selection');
+      expect(forge).toMatch(/does not judge visual fidelity/i);
+    });
+  });
+
+  it('smithy-implementation-review carries a ui structural-conformance profile that excludes visual fidelity', () => {
+    const review = composed.agents.get('smithy.implementation-review.md')!;
+    expect(review).toBeDefined();
+    // Profile selection input + the two profiles.
+    expect(review).toContain('Review profile');
+    expect(review).toMatch(/`backend` profile/);
+    expect(review).toMatch(/`ui` profile/);
+    // ui profile = structural conformance only, no visual fidelity.
+    expect(review).toMatch(/structural conformance only/i);
+    expect(review).toMatch(/do not judge visual fidelity/i);
+    // ui category vocabulary covers the issue's structural checks.
+    expect(review).toMatch(/Hardcoded design value/i);
+    expect(review).toMatch(/Component reuse/i);
+    expect(review).toMatch(/M2 convention/i);
+    expect(review).toMatch(/Missing brief state/i);
+    expect(review).toMatch(/Accessibility role/i);
+    expect(review).toMatch(/Flow conformance/i);
+  });
+
   // Issue #420: smithy.helper-voice is a new body-only operational skill
   // that distributes the voice & audience taxonomy (EPIC #419). These
   // assertions back-stop the deployment contract (body-only, frontmatter

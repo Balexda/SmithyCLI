@@ -32,6 +32,9 @@ The parent agent passes you:
    - Contracts (`.contracts.md`) — interfaces and API surface
 5. **Changed files** — list of files modified between BASE_SHA and HEAD.
 6. **Raw diff** — the full `git diff BASE_SHA HEAD` output.
+7. **Review profile** — `backend` (default) or `ui`. For `ui`, the parent also
+   passes the `phase` (`build` | `wire`), the `design_system` skill reference,
+   and the `screens` / `flows` lists.
 
 Read the reference files and changed files to understand both the requirements
 and the implementation. You have only read-only tools (Read, Grep, Glob) —
@@ -43,10 +46,51 @@ you cannot modify files or run commands that mutate state.
 
 ---
 
+## Review profiles
+
+The **Review profile** input selects which categories apply. Use exactly one
+profile per run.
+
+### `backend` profile (default)
+
+Use the six categories under "Categories" below. This is the unchanged code
+review profile.
+
+### `ui` profile (`kind: ui` features)
+
+Review **structural conformance only**. **Do not judge visual fidelity** —
+pixel matching, exact spacing, palette taste, and overall look-and-feel are a
+human glance upstream on the design canvas, never a finding here. A screen that
+conforms structurally but "looks off" is **not** a review finding. Load
+`smithy.helper-screen-design` (and, at `phase: wire`,
+`smithy.helper-flow-definition`) for the authoring contracts you are checking
+against. Classify each `ui`-profile finding's `category` as one of:
+
+- **Hardcoded design value** — a raw color literal (hex, `Color(0x…)`), raw
+  dimension, or other token-able value used instead of a `design_system` token.
+- **Component reuse** — a bespoke widget hand-rolled where a design-system
+  component exists, or a design-system component used against its contract.
+- **M2 convention violation** — diverges from the design dialect (teal-only
+  palette, 4dp corners, no second hue, Material-2 conventions from the
+  `design_system` skill).
+- **Missing brief state** — a state the brief requires (empty, valid,
+  error/invalid, loading/submitting) that the screen does not render.
+- **Accessibility role** — a touch target below the minimum size or a
+  contrast/accessibility role that is not satisfied.
+- **Flow conformance** (`phase: wire` only) — a flow in `flows` whose
+  `flow.md` + Maestro yaml pair is missing, uses visible-text/layout-index
+  selectors instead of testIDs, or asserts a guard in `flow.md` that has no
+  matching `assertVisible` / `assertNotVisible` in the yaml.
+
+Severity × confidence and the `Finding` structure are identical across profiles
+— only the category vocabulary changes.
+
+---
+
 ## Categories
 
-When reviewing an implementation diff, classify each finding's `category`
-as one of:
+These are the **`backend`-profile** categories. When reviewing a backend
+implementation diff, classify each finding's `category` as one of:
 
 - **Missing tests** — behavior introduced without corresponding test coverage,
   or a contract surface that is exercised only in the happy path.
@@ -77,8 +121,9 @@ Return a single `ReviewResult` to smithy-forge. The result has two fields:
 - **`findings`** — a list of `Finding` entries in the structure documented
   in the shared review protocol (`category`, `severity`, `confidence`,
   `description`, `artifact_path`, `proposed_fix`). Emit one finding per
-  distinct issue. Use the six categories listed above for the `category`
-  field.
+  distinct issue. Use the category vocabulary for the **selected review
+  profile** (`backend` six categories, or `ui` structural-conformance
+  categories) for the `category` field.
 - **`summary`** — a short, human-readable summary of what was reviewed and
   the overall assessment (e.g., counts per severity, whether any Critical
   items are present, whether the implementation appears to satisfy the

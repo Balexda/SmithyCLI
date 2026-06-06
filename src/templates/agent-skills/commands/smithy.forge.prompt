@@ -24,6 +24,8 @@ the canonical set of fallbacks for problems that recur across forge runs.
 | Skill | Load when |
 |-------|-----------|
 | `smithy.helper-docker` | A docker command appears stuck (>60s without progress), a container exits unexpectedly, or validation fails with docker-related errors. |
+| `smithy.helper-screen-design` | Implementing or reviewing a `kind: ui` feature — for the screen design-context annotation schema and the bundle-vs-skill conflict rule. |
+| `smithy.helper-flow-definition` | Implementing or reviewing a `kind: ui` feature at `phase: wire` — for the `flow.md` + Maestro yaml entity pair, the testID convention, and the wire definition-of-done. |
 
 ---
 
@@ -84,6 +86,52 @@ This may be:
    - **Goal** — from the `## Goal` section
    - **Tasks** — the ordered checklist under `### Tasks` within `## Single Slice`
    - **Context** — read inline sections (Summary, Requirements, Data Model, Contracts, etc.) instead of external spec files. There are no FR/AS cross-references to extract.
+
+---
+
+## Feature Kind Routing
+
+Smithy features are **typed** — `kind: backend | ui` — as documented in the
+"Feature Kinds and the Build/Wire Seam" section of the agent-skills README. The
+kind and, for UI work, the phase/design fields select the forge **profile**: the
+*same* implementer → tester → reviewer → PR pipeline runs in every case, with
+different inputs and a different review profile. **Routing changes inputs and the
+review profile, not the orchestration.** Resolve the profile once here and carry
+it through Implementation and Review.
+
+### Resolve the feature kind
+
+Determine `kind`, and for UI also `phase`, `design_system`, `bundle`, `screens`,
+and `flows`:
+
+1. **`.tasks.md` mode** — read the spec's `**Source Feature Map**` header
+   (`<path-to-.features.md> — Feature <N>`). Open that `.features.md`, find the
+   `### Feature <N>` heading, and read its fenced ` ```yaml ` metadata block
+   (placed right after the heading, before the prose). If the spec carries no
+   `**Source Feature Map**` header, or the feature has no yaml block, treat the
+   feature as `kind: backend`.
+2. **`.strike.md` mode** — read a `kind:`/`phase:` block from the strike header
+   if one is present; otherwise treat the slice as `kind: backend`.
+3. **No metadata found** — default to `kind: backend`. This keeps every
+   pre-#404 tasks/strike file on the unchanged backend path.
+
+### Profiles
+
+| Kind | Phase | Bundle | Forge profile |
+|------|-------|--------|---------------|
+| `backend` | — | — | **Backend (unchanged).** Tests are behavioral; review is the structural code review below. Everything behaves exactly as it did before this routing existed. |
+| `ui` | `build` | absent | **UI build from prose.** Generate Jetpack Compose for the screen from the screen prose + the committed `design_system` skill. Render *every* brief state (empty, valid, error/invalid, loading/submitting), behind the feature `flag`, against a mock — no real data. |
+| `ui` | `build` | present | **UI build from bundle.** Translate the web bundle (HTML/React/Tailwind) into Compose — it is a visual+structural *reference*, not a drop-in. **Conflict rule: the bundle wins on layout & visual intent; the `design_system` skill wins on implementation dialect** (Compose tokens, teal-only palette, 4dp corners, no second hue). Same flag-gated, mock-data, all-states requirement as the no-bundle build. |
+| `ui` | `wire` | either | **UI wire.** Connect the screen to real data/actions and flip the `flag`. **Definition-of-done includes emitting/updating the Maestro flow + `flow.md` for every flow in `flows`** (per the flow entity pair, #406) — the flow test is a build output, not optional follow-up. See the Wire Definition-of-Done gate below. |
+
+For any `kind: ui` profile, **preload the `design_system` skill as implementer
+context** — it is the source of truth for the design dialect even when a bundle
+is present. Load `smithy.helper-screen-design` (screen annotation schema +
+conflict rule) for build, and additionally `smithy.helper-flow-definition` (flow
+pair + testID convention) for wire.
+
+A `kind: backend` slice skips every UI step in this command; its path is exactly
+as before. The remainder of this prompt notes where the UI profiles diverge.
 
 ---
 
@@ -152,6 +200,29 @@ Store this value for later.
 
 Execute each task from the slice's checklist **in order**:
 
+### UI profile inputs (`kind: ui` only)
+
+When the resolved profile is `kind: ui`, every task is "implement a screen from a
+spec" — the same TDD flow, with extra context the implementer must apply:
+
+- **Preload the `design_system` skill** (e.g. `story-spider-design`) as implementer
+  context — it owns the Compose dialect (tokens, teal-only palette, 4dp corners,
+  no second hue) and is the source of truth even when a bundle is present.
+- **`build` profile** — render the screen against a mock behind the feature
+  `flag`, covering *every* brief state (empty, valid, error/invalid,
+  loading/submitting). No real data. Use **only** design-system tokens and
+  components — no hardcoded hex, no bespoke widgets where a design-system
+  component exists. With a `bundle`, translate it to Compose under the conflict
+  rule (bundle wins on layout/visual intent; skill wins on implementation
+  dialect). Emit/update the screen's `design/screens/<ScreenId>.design.md`
+  annotation per `smithy.helper-screen-design` (intent only — never re-describe
+  layout).
+- **`wire` profile** — connect the screen to real data/actions and flip the
+  `flag`. Additionally, the slice is **not done** until the Maestro flow +
+  `flow.md` are emitted/updated for every flow in `flows`, per
+  `smithy.helper-flow-definition` (testID-keyed selectors; asserts traversal
+  **and** guards). See the Wire Definition-of-Done gate.
+
 {{#ifAgent}}
 Dispatch a sub-agent for each task.
 
@@ -162,6 +233,10 @@ For each task, use the **smithy-implement** sub-agent. Pass it:
 - **Slice goal**: The slice's stated goal
 - **File paths**: The spec, contracts, data-model, and tasks/strike file paths
 - **Branch**: The current branch name
+- **Feature profile** (UI only): `kind`, `phase`, `design_system`, `bundle`,
+  `screens`, `flows`, and the flag — so the sub-agent loads the design skill,
+  applies the conflict rule, and (at `wire`) knows the flow-emission
+  definition-of-done.
 
 After the sub-agent returns:
 
@@ -190,6 +265,33 @@ guidance.
 
 After all tasks are complete:
 
+### Review profile selection
+
+The reviewer profile is selected by the resolved feature kind. **The reviewer
+stays read-only / plan-and-no-write in every profile** — it returns findings;
+forge owns every on-disk change.
+
+- **`kind: backend`** — the default structural code-review profile (categories
+  below / shared review protocol). Unchanged.
+- **`kind: ui`** — the **structural-conformance** profile. The reviewer checks
+  *only* structural conformance and **does not judge visual fidelity** (pixel
+  matching, exact spacing, taste — that is a human glance upstream on the design
+  canvas, never a forge gate). Specifically it checks:
+  - **Tokens-only** — no hardcoded hex / raw color literals; colors and
+    dimensions come from design-system tokens.
+  - **Component reuse** — design-system components are reused, not re-implemented
+    bespoke where a component exists.
+  - **M2 conventions** — Material-2 conventions hold (teal-only palette, 4dp
+    corners, no second hue, the design dialect from the `design_system` skill).
+  - **Every brief state present** — empty, valid, error/invalid, and
+    loading/submitting states are all rendered.
+  - **Touch-target / contrast roles** — minimum touch-target sizes and
+    contrast/accessibility roles are satisfied.
+  - **At `phase: wire`** — additionally, the Maestro flow + `flow.md` pair exists
+    for every flow in `flows`, is testID-keyed (no visible-text or layout-index
+    selectors), and asserts both traversal and guards (per
+    `smithy.helper-flow-definition`).
+
 {{#ifAgent}}
 Compute the diff and changed file list:
 
@@ -207,6 +309,11 @@ Use the **smithy-implementation-review** sub-agent. Pass it:
 - **File paths**: Spec, contracts, data-model files
 - **Changed files**: The list of files changed between BASE_SHA and HEAD
 - **Raw diff**: The full diff output
+- **Review profile**: `backend` (default) or `ui` — and for `ui`, the `phase`,
+  `design_system`, `screens`, and `flows`. The sub-agent applies the
+  structural-conformance profile (tokens-only, component reuse, M2 conventions,
+  every brief state present, touch-target/contrast roles; flow-pair conformance
+  at `wire`) and **does not judge visual fidelity**.
 
 `smithy-implementation-review` is **read-only**. It returns a `ReviewResult`
 containing a list of `Finding` entries (`category`, `severity`, `confidence`,
@@ -333,6 +440,34 @@ ready to ship.
 
 Only after every task in the target slice reads `- [x]` at HEAD may you
 proceed to the Pull Request step.
+
+---
+
+## Wire Definition-of-Done (`kind: ui`, `phase: wire` only)
+
+This gate applies **only** when the resolved profile is `kind: ui` at
+`phase: wire`. Backend slices and `build`-phase UI slices skip it entirely.
+
+For a `wire` slice, the Maestro flow + `flow.md` pair is a **build output**, not
+optional follow-up. Before opening the PR, verify that **for every `FlowId` in
+the feature's `flows`** both of these exist at HEAD and were produced/updated by
+this slice:
+
+- `design/flows/<FlowId>.flow.md` — thin intent annotation (front-matter `id` /
+  `screens` / `maestro`; rationale-only body).
+- `maestro/flows/<FlowId>.yaml` — executable body, **testID-keyed** (no
+  visible-text or layout-index selectors), asserting both the traversal **and**
+  the guards named in the `.flow.md`.
+
+Validate the pair against the `smithy.helper-flow-definition` review checklist.
+
+**STOP gate.** If any flow in `flows` is missing its pair, the pair uses
+text/position selectors, or a guard named in `flow.md` has no matching
+`assertVisible` / `assertNotVisible` in the yaml, the wire slice is **not** done.
+Either emit/fix the flow pair in this slice or, if the work is genuinely out of
+scope, stop and report — do **not** open the PR with the flow emission missing.
+A green PR that omits the flow pair silently drops the durable behavioral test
+the wire phase exists to produce.
 
 ---
 
