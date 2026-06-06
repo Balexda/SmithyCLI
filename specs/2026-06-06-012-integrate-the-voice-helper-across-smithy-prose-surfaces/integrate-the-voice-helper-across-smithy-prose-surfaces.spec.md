@@ -13,14 +13,15 @@
 - "All smithy skills" means a systematic sweep of **prose-bearing** surfaces (drafting sub-agent, narrative command sections, forge deliverables, review steps, the `smithy.engrave` decision/invariant prose) — not a literal pass over every skill. `[Critical Assumption]`
 - `smithy.implementation-review` is excluded: it reviews code diffs, not prose. `[Critical Assumption]`
 - Controlling invariant: integrations **reference the skill by name and load it on a trigger; they never inline its taxonomy.** Re-inlining would recreate the very drift EPIC #419 set out to remove. `[Critical Assumption]`
-- Draft mode loads at authoring time inside prose-producing agents; review mode loads inside the post-generation review loop. No surface loads both for the same content in the same pass (the no-double-work split). `[Critical Assumption]`
+- Draft mode loads at authoring time inside prose-producing agents and commands; review / cleanup mode loads inside the post-generation review loop. No surface loads both for the same content in the same pass (the no-double-work split). `[Critical Assumption]`
 - Review-mode voice is **qualitative** and scoped to narrative (Explanation) sections; the already-shipped audit voice-tag lint stays **mechanical** and owns tag-grammar / Reference-table enforcement. The two must not overlap. `[Critical Assumption]`
 - Forge advertises the skill via its Operational Skills table (the `smithy.helper-docker` pattern); `smithy.maid` **flags** voice issues without fixing them (it is read-only by design). `[Critical Assumption]`
 - The `.claude/` snapshot is **not** regenerated, templates stay parseable (`src/templates.test.ts`), and verification leans on `npm run eval` plus the template-parse test rather than new unit assertions. `[Critical Assumption]`
 - `smithy.prose` deploys to `.claude/agents/` only (Claude), so the trim's lazy-skill-load semantics are uniform for that surface; command templates that reference the skill must still parse/deploy cleanly for all three agents. `[Critical Assumption]`
+- `smithy.prose` is invoked **only by `smithy.spark` (PRD) and `smithy.ignite` (RFC Summary / Motivation / Personas)** — confirmed by grep across the command templates. The prose the other planning commands author (`smithy.render` feature map; `smithy.mark` spec / data-model / contracts; `smithy.cut` tasks; `smithy.strike`) is written **directly by the command**, not via `smithy.prose`. Therefore draft-mode voice for those artifacts is wired into the **commands themselves** (mirroring the forge model in US2), not by widening `smithy.prose`'s responsibility. `[Critical Assumption]`
 - The current state is **tags without invocation**: the six command templates carry `<!-- audience: … -->` tags (shipped by #422) but **no template anywhere actually invokes `Skill("smithy.helper-voice")`**. "Integration" therefore means real invocation/advertisement wiring, not more tags.
 - Data model is legitimately `N/A` (prose-template editing, no code-shaped contract).
-- Terminology is locked to: **draft mode** / **review mode** (the skill's two modes), **review category** (the named category added to refine / plan-review), **advertise** (frontmatter-level availability without auto-load, as forge does for `helper-docker`).
+- Terminology is locked to: **draft mode** and **review / cleanup mode** (the skill's two canonical mode names; this spec uses "review mode" only as shorthand for "review / cleanup mode"), **review category** (the named category added to refine / plan-review), **advertise** (frontmatter-level availability without auto-load, as forge does for `helper-docker`).
 
 ## Artifact Hierarchy
 
@@ -28,11 +29,11 @@ RFC → Milestone → Feature → User Story → Slice → Tasks
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1: Prose-drafting agents consult the skill in draft mode (Priority: P1)
+### User Story 1: Prose-drafting surfaces consult the skill in draft mode (Priority: P1)
 
-As a Smithy maintainer, I want the prose-drafting sub-agent to load `smithy.helper-voice` for shared voice taxonomy instead of carrying its own copy, so that there is one source of truth for voice and the duplication tracked by sub-issue #423 is removed.
+As a Smithy maintainer, I want both the prose-drafting sub-agent **and** the planning commands that author prose directly to load `smithy.helper-voice` for shared voice taxonomy, so that there is one source of truth for voice across every artifact — not just the spark/ignite narrative that `smithy.prose` happens to cover — and the duplication tracked by sub-issue #423 is removed.
 
-**Why this priority**: This is the canonical duplication EPIC #419 named, it has an open sub-issue (#423), and it is the lowest-risk, highest-clarity surface. It also establishes the controlling invariant the other stories follow.
+**Why this priority**: This is the canonical duplication EPIC #419 named, it has an open sub-issue (#423), and it is the highest-leverage surface. `smithy.prose` is invoked only by spark and ignite, so most planning-artifact prose (the feature map, spec user stories / acceptance scenarios, data-model and contracts prose, tasks) reaches the page through the **command**, not the sub-agent — those commands must invoke the voice helper directly (the same model US2 applies to forge). It also establishes the controlling invariant the other stories follow.
 
 **Independent Test**: Read `agents/smithy.prose.prompt`; confirm the **Prose principles — follow these on every sentence** list and the **Anti-pattern to avoid** block under `### Step 3: Draft the Sections` are replaced by a `Skill("smithy.helper-voice")` draft-mode reference, while the section-specific protocol (gap-marker rule, no-invented-figures, Summary / Motivation / Personas structure) remains. Run the ignite/spark eval scenarios and confirm no narrative-quality regression.
 
@@ -40,7 +41,7 @@ As a Smithy maintainer, I want the prose-drafting sub-agent to load `smithy.help
 
 1. **Given** `smithy.prose` is invoked to draft a Summary, **When** it begins drafting, **Then** it references `smithy.helper-voice` for the shared voice taxonomy rather than relying on an inlined copy of the lead-with-impact / anti-pattern guidance.
 2. **Given** the trimmed `smithy.prose`, **When** the file is inspected, **Then** the duplicated shared-principles and anti-pattern block is gone but every prose-specific rule the skill does **not** carry (gap markers `[X hours]`, no-invented-figures, per-section structure) is retained verbatim.
-3. **Given** the narrative-producing command templates (`ignite`, `render`, `mark`, `cut`, `strike`) and the `engrave` decision/invariant/principle prose, **When** a narrative section is drafted, **Then** the template points to the skill at draft time rather than inlining voice prose.
+3. **Given** the planning commands that author prose directly — `spark` (PRD), `ignite` (RFC narrative), `render` (feature map), `mark` (spec / data-model / contracts), `cut` (tasks), `strike`, and the `engrave` decision/invariant/principle prose — **When** a prose section is drafted, **Then** the command invokes `Skill("smithy.helper-voice")` in draft mode rather than inlining voice prose. (`spark` and `ignite` continue to delegate their narrative to the trimmed `smithy.prose`, which now loads the skill per FR-001; the remaining commands invoke the skill directly.)
 4. **Given** any integration edit in this story, **When** the edited prompt is inspected, **Then** no taxonomy text has been pasted inline — only a named skill reference (controlling invariant).
 
 ---
@@ -124,7 +125,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| US1 | Prose-drafting agents consult the skill in draft mode | — | — |
+| US1 | Prose-drafting surfaces consult the skill in draft mode (smithy.prose trim + planning commands invoke directly) | — | — |
 | US2 | Forge advertises the voice skill for deliverable prose | — | — |
 | US3 | Review steps apply voice review-mode as a named category | — | — |
 | US4 | Reliable trigger for arbitrary-text voice cleanup | — | — |
@@ -136,8 +137,8 @@ All five stories edit largely disjoint template files and share no data-flow pre
 
 ### Functional Requirements
 
-- **FR-001**: `smithy.prose` MUST consult `smithy.helper-voice` for the shared voice taxonomy in draft mode and MUST remove its inlined duplicate shared-principles / anti-pattern block, while retaining its section-specific protocol (gap-marker rule, no-invented-figures, Summary / Motivation / Personas structure). *(US1; closes #423)*
-- **FR-002**: The narrative-producing command templates (`ignite`, `render`, `mark`, `cut`, `strike` narrative sections, and `engrave` decision/invariant/principle prose) MUST reference `smithy.helper-voice` at draft time rather than inlining voice guidance. *(US1)*
+- **FR-001**: `smithy.prose` (invoked only by `smithy.spark` and `smithy.ignite`) MUST consult `smithy.helper-voice` for the shared voice taxonomy in draft mode and MUST remove its inlined duplicate shared-principles / anti-pattern block, while retaining its section-specific protocol (gap-marker rule, no-invented-figures, Summary / Motivation / Personas structure). *(US1; closes #423)*
+- **FR-002**: The planning commands that author prose directly — `spark`, `ignite`, `render`, `mark`, `cut`, `strike`, and `engrave` (decision/invariant/principle prose) — MUST invoke `Skill("smithy.helper-voice")` in draft mode for the prose they write, rather than inlining voice guidance. Because `smithy.prose` covers only the spark/ignite narrative sections, the other commands' artifact prose (feature map, spec user stories / acceptance scenarios, data-model, contracts, tasks) reaches the page through the command itself and must be wired at that layer — mirroring the forge advertisement model in US2. *(US1)*
 - **FR-003**: No integration in this feature MUST inline the skill's taxonomy text; every integration MUST reference the skill by name and load it on a trigger (controlling invariant). *(US1, US2, US3)*
 - **FR-004**: `smithy.forge` MUST advertise `smithy.helper-voice` in its Operational Skills table with a load-when trigger covering README, ADR, runbook, migration-plan, and substantive inline-doc authoring. *(US2)*
 - **FR-005**: `smithy.maid` MUST be permitted to **flag** (never fix) voice anti-patterns in prose it already scans, emitting them through its existing read-only finding channel. *(US2)*

@@ -5,8 +5,9 @@
 This feature introduces no new function or CLI surface. `smithy.helper-voice`
 is a prose-only skill. The contracts below are the **invocation and finding
 conventions** every integration plugs into — the already-stable two-mode skill
-contract plus the new wiring conventions. They are Reference-shaped: tables and
-signatures, no narrative.
+contract plus the new wiring conventions. They are Reference-shaped: prefer
+tables and signatures over narrative, keeping any prose to the minimum needed
+to frame the tables below.
 
 ## Interfaces
 
@@ -24,7 +25,8 @@ not change them.
 
 | Convention | Surface | Shape |
 |------------|---------|-------|
-| Draft-mode load | `smithy.prose`; narrative sections of `ignite` / `render` / `mark` / `cut` / `strike`; `engrave` decision/invariant prose | `Skill("smithy.helper-voice")` invoked at draft start; no taxonomy text inlined |
+| Draft-mode load (sub-agent) | `smithy.prose` (invoked only by `spark` + `ignite`) | Loads `Skill("smithy.helper-voice")` for shared taxonomy; no taxonomy text inlined |
+| Draft-mode load (command) | `spark`, `ignite`, `render`, `mark`, `cut`, `strike`, `engrave` (decision/invariant prose) | Command invokes `Skill("smithy.helper-voice")` directly at draft start for the prose it authors; no taxonomy text inlined |
 | Voice review category | `smithy.refine` (parent-supplied category), `smithy.plan-review` (owned category list) | New category `Voice & Audience`; fires only on prose-bearing / Explanation sections; routes through existing triage |
 | Forge skill advertisement | `smithy.forge` Operational Skills table | New row: skill name + load-when trigger (README / ADR / runbook / migration-plan / substantive inline-doc authoring) |
 | Maid flag | `smithy.maid` | Voice anti-pattern emitted as a **flag** finding only — never an in-place edit |
