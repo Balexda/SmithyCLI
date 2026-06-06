@@ -109,7 +109,7 @@ Recommended specification sequence:
 | F3 | Feature 1.4: smithy.fix End-to-End Eval Scenario | F1 | specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/ |
 | F4 | Feature 1.5: smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1 | specs/2026-06-05-010-smithy-forge-end-to-end-eval-scenario-runner-git-init/ |
 | F5 | Feature 1.6: JVM Multi-Language Fixture | — | specs/2026-06-06-011-jvm-multi-language-fixture/ |
-| F6 | Feature 1.7: Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1, F4, F5 | — |
+| F6 | Feature 1.7: Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1, F4, F5 | specs/2026-06-06-012-forge-jvm-eval-scenario-m1-baseline-set-completeness-gate/ |
 
 Feature 1.1 and Feature 1.2 are referenced-only rows with no implementation work, so they are intentionally omitted from the Dependency Order table. No spec will be authored against them in this milestone because they are inherited substrate / cross-RFC dependency.
 
