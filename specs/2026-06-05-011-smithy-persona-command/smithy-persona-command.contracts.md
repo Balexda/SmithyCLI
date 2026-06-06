@@ -61,7 +61,7 @@ code APIs — Smithy commands are `.prompt` files deployed to AI coding agents.
 neither command prompt restates the literal path.
 
 ```markdown
-# Persona: <Name / Role>
+# Persona: <Name/Role>
 
 **Created**: YYYY-MM-DD
 
@@ -99,7 +99,7 @@ clobber surface is the step that replaces the `## Personas` section in place).
 
 | Step | Contract |
 |------|----------|
-| Detect source | Determine whether the current `## Personas` content was sourced from `.persona.md` files in 3b. |
+| Detect source | Determine whether the current `## Personas` content was sourced from `.persona.md` files in 3b. *The provenance-detection mechanism — marker, sidecar state, or deterministic re-discovery — is open; it must survive a resume from the on-disk RFC with no in-memory record of 3b. See SD-004.* |
 | Preserve | If file-sourced, the repair MUST re-project from the source files, NOT regenerate from `clarify_output`. Only position/formatting may be normalized. |
 | Repair gap | The existing cold-draft repair behavior remains for personas that were not file-sourced. |
 
@@ -107,7 +107,7 @@ clobber surface is the step that replaces the `## Personas` section in place).
 
 **Purpose**: The new command and ignite 3b both want smithy-prose to draft/project a
 persona from an existing `.persona.md`.
-**Provider**: `agents/smithy.prose.prompt`.
+**Provider**: `src/templates/agent-skills/agents/smithy.prose.prompt`.
 **Current contract params**: `section_assignment`, `idea_description`, `clarify_output`,
 `rfc_file_path`, `tone_directives` — *none accept existing-persona-file context.*
 

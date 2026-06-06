@@ -63,10 +63,10 @@ A persona file has a minimal lifecycle in v1:
    - Trigger: `smithy.persona` writes the file (free-text or RFC mode).
    - Effects: a new `.persona.md` appears at the documented path.
 
-2. `created` → `created` (collision, RFC mode)
-   - Trigger: RFC mode targets a slug that already exists.
+2. `created` → `created` (collision — either mode)
+   - Trigger: free-text or RFC mode derives a slug that already exists on disk.
    - Effects: **skip-and-report** — the existing file is left untouched; the persona is
-     reported as skipped. No overwrite.
+     reported as skipped. No overwrite, in either mode.
 
 > An explicit `created` → `updated` (re-run updates in place) transition is **deferred**
 > (Out of Scope). v1 never mutates an existing persona file.
