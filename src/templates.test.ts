@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Dotprompt } from 'dotprompt';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   stripFrontmatter,
   parseFrontmatterName,
@@ -353,16 +355,17 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(5);
+    expect(byCategory.skills).toHaveLength(6);
   });
 
-  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, and smithy.helper-voice', () => {
+  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, smithy.helper-voice, and smithy.helper-screen-design', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
     expect(skills).toContain('smithy.gh-issue');
     expect(skills).toContain('smithy.helper-docker');
     expect(skills).toContain('smithy.helper-voice');
+    expect(skills).toContain('smithy.helper-screen-design');
   });
 
   it('commands includes expected template files', () => {
@@ -925,6 +928,136 @@ describe('getComposedTemplates', () => {
     // future edit that quietly adds provider-specific syntax has to
     // also remove the assertion.
     expect(body).toMatch(/Provider-neutral/i);
+  });
+
+  // Issue #407 (EPIC #404): smithy.helper-screen-design is a body-only,
+  // lazy-loaded operational skill that owns the authoring contract for
+  // `design/screens/<ScreenId>.design.md`. The skill body is the single
+  // source of truth for the YAML front-matter schema, the rationale-only
+  // body rule, the skeleton template, and the worked Library example, so
+  // downstream commands (`smithy.forge` once #408 wires UI emission and
+  // `smithy.audit` / `flow-lint` once #409 lands) Skill() it instead of
+  // composing a partial. These assertions back-stop the deployment contract
+  // (body-only, frontmatter retained, auto-trigger description) and every
+  // load-bearing piece of the schema so a regression that drops a section,
+  // weakens the no-re-description guard, or relocates the artifact path
+  // fails the suite immediately.
+  it('smithy.helper-screen-design is body-only (no scripts) with frontmatter retained', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toMatch(/^---\s*\n/);
+    expect(skill!.prompt).toContain('name: smithy.helper-screen-design');
+    expect(skill!.scripts.size).toBe(0);
+  });
+
+  it('smithy.helper-screen-design description triggers on authoring and auditing UI screens', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    // Auto-trigger description (frontmatter) must name the artifact path,
+    // the two invocation modes (authoring + auditing), and the four
+    // front-matter keys so calling agents recognize when to lazy-load it.
+    expect(skill.prompt).toContain('design/screens/<ScreenId>.design.md');
+    expect(skill.prompt).toMatch(/authoring or auditing/i);
+    expect(skill.prompt).toContain('kind: ui');
+    // The four schema keys are the load-bearing claim of the description.
+    expect(skill.prompt).toMatch(/id\s*\/\s*composable\s*\/\s*design_system\s*\/\s*bundle/);
+  });
+
+  it('smithy.helper-screen-design body documents the four front-matter fields', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    expect(skill.prompt).toContain('## YAML front-matter schema');
+    for (const field of ['`id`', '`composable`', '`design_system`', '`bundle`']) {
+      expect(skill.prompt).toContain(field);
+    }
+    // Explicit YAML labeling — the front-matter is YAML between `---` fences,
+    // not a Smithy-specific format. Guard against a future edit that drops
+    // the YAML labeling and leaves only an implicit convention.
+    expect(skill.prompt).toMatch(/YAML front-matter/);
+    expect(skill.prompt).toMatch(/between `---`[\s\S]*fences/);
+  });
+
+  it('smithy.helper-screen-design body documents the three rationale-only sections', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    expect(skill.prompt).toContain('## Body shape');
+    for (const section of [
+      'Why this screen exists',
+      'Deliberate choices',
+      'Deferred',
+    ]) {
+      expect(skill.prompt).toContain(section);
+    }
+  });
+
+  it('smithy.helper-screen-design enforces the no-re-description rule', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    // The whole point of the annotation is that it is NOT a parallel screen
+    // spec — the composable owns layout/behavior, this file owns intent.
+    // Guard against a future edit that softens the rule.
+    expect(skill.prompt).toMatch(/thin/i);
+    expect(skill.prompt).toMatch(/intent/i);
+    expect(skill.prompt).toMatch(/rationale only/i);
+    // The forbidden-sections list keeps the rule operational rather than
+    // aspirational — the review checklist must call them out by name.
+    expect(skill.prompt).toMatch(/no `## Layout`, `## States`, or `## Flow`/);
+  });
+
+  it('smithy.helper-screen-design ships the skeleton template and the Library example', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    expect(skill.prompt).toContain('## Skeleton template');
+    expect(skill.prompt).toContain('## Worked example — `Library.design.md`');
+    // Library example must be filled out, not a placeholder — at least the
+    // composable path and the rationale sections from the issue.
+    expect(skill.prompt).toContain('id: Library');
+    expect(skill.prompt).toContain('LibraryScreen.kt');
+    expect(skill.prompt).toContain('story-spider-design');
+  });
+
+  it('smithy.helper-screen-design ships a review checklist for the audit/lint surfaces', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!;
+    // The checklist is what makes the skill usable by smithy.audit (and
+    // later flow-lint #409) — it converts the prose contract into a
+    // line-by-line list of findings. Guard the items that matter most.
+    expect(skill.prompt).toContain('## Review checklist');
+    expect(skill.prompt).toMatch(/Missing required front-matter key/i);
+    expect(skill.prompt).toMatch(/composable[\s\S]*does not resolve/i);
+    // The forbidden body sections must be named explicitly in the checklist —
+    // a vague "no layout content" wouldn't give the audit a hit-list.
+    for (const heading of [
+      '`## Layout`',
+      '`## States`',
+      '`## Flow`',
+      '`## Steps`',
+      '`## Walkthrough`',
+    ]) {
+      expect(skill.prompt).toContain(heading);
+    }
+  });
+
+  it('agent-skills README points at the smithy.helper-screen-design skill instead of redefining the schema', () => {
+    // The README intentionally does not duplicate the schema (so the two
+    // cannot drift). It must, however, point at the skill so contributors
+    // can find the source of truth.
+    const readmePath = path.join(
+      process.cwd(),
+      'src',
+      'templates',
+      'agent-skills',
+      'README.md',
+    );
+    const readme = fs.readFileSync(readmePath, 'utf8');
+    expect(readme).toContain('## Screen Design-Context Annotations');
+    expect(readme).toContain('smithy.helper-screen-design');
+    expect(readme).toContain('skills/smithy.helper-screen-design/SKILL.prompt');
+    // README must NOT carry the schema body itself anymore. Naming the
+    // worked example by filename is fine ("a worked `Library.design.md`
+    // example lives in the skill") — what must NOT appear is the example
+    // body or screen-specific field semantics. These load-bearing strings
+    // appear only in the SKILL; if a future edit copies them back into the
+    // README, the guard fires.
+    expect(readme).not.toContain('FAB rather than an');
+    expect(readme).not.toContain('Empty state owns the screen');
+    expect(readme).not.toContain('LibraryScreen.kt');
+    expect(readme).not.toContain('owning Compose file');
+    expect(readme).not.toContain('bundle wins on layout');
   });
 
   it('categorizes templates correctly', () => {
