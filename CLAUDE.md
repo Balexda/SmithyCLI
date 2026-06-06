@@ -130,6 +130,22 @@ Every `## Dependency Order` section at every level uses the same 4-column Markdo
 
 The canonical schema and rules live in `src/templates/agent-skills/README.md`. When adding, refactoring, or documenting any smithy command template, link to that README rather than redefining the format — the goal is one source of truth.
 
+### Engraved Knowledge (Decisions, Invariants, Principles)
+
+A separate root-level artifact family captures **durable commitments** —
+decisions, invariants, and principles — authored with `smithy.engrave`
+(EPIC #412, in-flight). These records are **roots**: they have no
+`## Dependency Order` row and participate in the graph through citation
+edges (`establishes` / `established_by`, `supersedes` / `superseded_by`)
+declared in YAML frontmatter. Suffixes: `*.decision.md`, `*.invariant.md`;
+principles live as individual files in the constitution directory and have
+no dedicated suffix. The full schema (frontmatter fields, lifecycle,
+Known-Exceptions ledger column rules, scaffold shapes for each kind)
+lives inline in
+[`src/templates/agent-skills/commands/smithy.engrave.prompt`](src/templates/agent-skills/commands/smithy.engrave.prompt)
+— that prompt is the single source of truth for the family, and gets
+deployed verbatim into every target repo's agent-skill tree.
+
 ## Development
 
 ```bash

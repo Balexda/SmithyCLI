@@ -535,6 +535,7 @@ export const claudeToolPermissions: string[] = [
   // wildcard below temporarily for older Claude versions that accepted it.
   "Skill(smithy.audit *)",
   "Skill(smithy.cut *)",
+  "Skill(smithy.engrave *)",
   "Skill(smithy.fix *)",
   "Skill(smithy.forge *)",
   "Skill(smithy.gh-issue *)",
