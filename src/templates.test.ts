@@ -323,11 +323,11 @@ describe('feature-kinds snippet', () => {
       'ui',
       'build',
       'wire',
-      '**Kind**',
-      '**Phase**',
-      '**Flag**',
-      '**Screens**',
-      '**Flows**',
+      'kind',
+      'phase',
+      'flag',
+      'screens',
+      'flows',
     ]) {
       expect(content).toContain(token);
     }
@@ -2046,7 +2046,10 @@ describe('getComposedTemplates', () => {
     // categories.
     expect(render).not.toContain('## Feature Dependency Order');
 
-    const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    // The feature-map example uses a 4-backtick fence so it can embed
+    // ```yaml metadata blocks; match that outer fence (3 backticks would
+    // stop at the first inner ```yaml close).
+    const renderMarkdownMatch = render.match(/````markdown\r?\n([\s\S]*?)\r?\n````/);
     expect(renderMarkdownMatch).not.toBeNull();
     const renderMarkdownBlock = renderMarkdownMatch![1]!;
     expect(renderMarkdownBlock).not.toContain('## Feature Dependency Order');
@@ -2227,10 +2230,10 @@ describe('getComposedTemplates', () => {
     const render = composed.commands.get('smithy.render.md')!;
     expect(render).toBeDefined();
     // The feature-kinds partial composed in (its unique header) and the
-    // feature-map skeleton now emits a Kind field plus the build/wire seam.
+    // feature-map skeleton now emits yaml metadata blocks plus the seam.
     expect(render).toContain('## Feature Kinds');
-    expect(render).toContain('**Kind**');
-    expect(render).toContain('**Phase**');
+    expect(render).toContain('kind: ui');
+    expect(render).toContain('phase: build');
     expect(render).toMatch(/build\/wire/i);
     expect(render).not.toContain('{{>feature-kinds}}');
     expect(render).not.toContain('{{>');

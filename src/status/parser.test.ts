@@ -7,6 +7,11 @@ import { parseArtifact, parseDependencyTable, parseFeatures } from './index.js';
 const featureWarnings = (warnings: string[]): string[] =>
   warnings.filter((w) => w.startsWith('feature_'));
 
+// A literal triple-backtick fence, built from a single-quoted string so the
+// feature-map fixtures below can embed ```yaml metadata blocks inside
+// template literals without terminating them.
+const FENCE = '```';
+
 describe('parseFeatures', () => {
   it('parses a backend feature and records no ui fields', () => {
     const md = `# Feature Map: Demo
@@ -15,7 +20,9 @@ describe('parseFeatures', () => {
 
 ### Feature 1: Title store
 
-**Kind**: backend
+${FENCE}yaml
+kind: backend
+${FENCE}
 
 **Description**: Persists titles to the library store.
 
@@ -40,30 +47,36 @@ describe('parseFeatures', () => {
 
 ### Feature 1: Title store
 
-**Kind**: backend
+${FENCE}yaml
+kind: backend
+${FENCE}
 
 **Description**: backend dep.
 
 ### Feature 2: Add-Title screen
 
-**Kind**: ui
-**Phase**: build
-**Design System**: story-spider-design
-**Bundle**: design/bundles/add-title.zip
-**Flag**: add_title_v1
-**Screens**: [AddTitle]
-**Flows**: [AddTitle]
+${FENCE}yaml
+kind: ui
+phase: build
+design_system: story-spider-design
+bundle: design/bundles/add-title.zip
+flag: add_title_v1
+screens: [AddTitle]
+flows: [AddTitle]
+${FENCE}
 
 **Description**: Build against a mock behind the flag.
 
 ### Feature 3: Wire Add-Title
 
-**Kind**: ui
-**Phase**: wire
-**Design System**: story-spider-design
-**Flag**: add_title_v1
-**Screens**: [AddTitle]
-**Flows**: [AddTitle]
+${FENCE}yaml
+kind: ui
+phase: wire
+design_system: story-spider-design
+flag: add_title_v1
+screens: [AddTitle]
+flows: [AddTitle]
+${FENCE}
 
 **Description**: Wire real data and flip the flag.
 
@@ -91,7 +104,7 @@ describe('parseFeatures', () => {
     expect(warnings.filter((w) => w.startsWith('feature_seam:'))).toEqual([]);
   });
 
-  it('warns when a feature has no Kind', () => {
+  it('warns when a feature has no kind block', () => {
     const md = `## Features
 
 ### Feature 1: Untyped
@@ -103,40 +116,46 @@ describe('parseFeatures', () => {
     expect(warnings.some((w) => w.startsWith('feature_kind:'))).toBe(true);
   });
 
-  it('warns on an invalid Kind value', () => {
+  it('warns on an invalid kind value', () => {
     const md = `### Feature 1: Bad kind
 
-**Kind**: service
+${FENCE}yaml
+kind: service
+${FENCE}
 `;
     const { features, warnings } = parseFeatures(md);
     expect(features[0]?.kind).toBeUndefined();
     expect(warnings.some((w) => w.startsWith('feature_kind:'))).toBe(true);
   });
 
-  it('warns when a ui feature is missing a required field', () => {
+  it('warns when a ui feature is missing a required key', () => {
     const md = `### Feature 1: Screen without phase
 
-**Kind**: ui
-**Design System**: story-spider-design
-**Screens**: [AddTitle]
-**Flows**: [AddTitle]
+${FENCE}yaml
+kind: ui
+design_system: story-spider-design
+screens: [AddTitle]
+flows: [AddTitle]
+${FENCE}
 `;
     const { warnings } = parseFeatures(md);
     expect(
-      warnings.some((w) => w.startsWith('feature_ui_fields:') && w.includes('Phase')),
+      warnings.some((w) => w.startsWith('feature_ui_fields:') && w.includes('phase')),
     ).toBe(true);
   });
 
-  it('warns when a backend feature carries a ui-only field', () => {
+  it('warns when a backend feature carries a ui-only key', () => {
     const md = `### Feature 1: Backend with a flag
 
-**Kind**: backend
-**Flag**: stray_flag
+${FENCE}yaml
+kind: backend
+flag: stray_flag
+${FENCE}
 `;
     const { warnings } = parseFeatures(md);
     expect(
       warnings.some(
-        (w) => w.startsWith('feature_ui_fields:') && w.includes('ui-only field Flag'),
+        (w) => w.startsWith('feature_ui_fields:') && w.includes('ui-only key flag'),
       ),
     ).toBe(true);
   });
@@ -144,12 +163,14 @@ describe('parseFeatures', () => {
   it('warns when a build flag has no matching wire feature', () => {
     const md = `### Feature 1: Build only
 
-**Kind**: ui
-**Phase**: build
-**Design System**: ds
-**Flag**: lonely_flag
-**Screens**: [S]
-**Flows**: [F]
+${FENCE}yaml
+kind: ui
+phase: build
+design_system: ds
+flag: lonely_flag
+screens: [S]
+flows: [F]
+${FENCE}
 `;
     const { warnings } = parseFeatures(md);
     expect(
@@ -197,7 +218,9 @@ describe('parseArtifact feature-map integration', () => {
 
 ### Feature 1: Looks like a feature but is a spec
 
-**Kind**: ui
+${FENCE}yaml
+kind: ui
+${FENCE}
 `;
     const record = parseArtifact('specs/a/foo.spec.md', md);
     expect(record.type).toBe('spec');

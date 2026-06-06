@@ -264,16 +264,15 @@ Use the **smithy-clarify** sub-agent. Pass it:
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
-Using the workshopped answers from Phase 2, draft a structured `.features.md` with
-this format.
-
-Every feature carries a **Kind** (`backend` or `ui`); ui features add design and
-phase fields, and flag-gated UI work splits into a build feature and a wire feature
-sharing one `**Flag**`. Follow this shared schema:
+Using the workshopped answers from Phase 2, draft a structured `.features.md`. Every
+feature is typed per the shared schema below:
 
 {{>feature-kinds}}
 
-```markdown
+Assemble the feature map in this format (a backend feature and a build/wire UI pair
+are shown to illustrate the seam):
+
+````markdown
 # Feature Map: <Milestone Title>
 
 **Source RFC**: `<docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
@@ -284,7 +283,9 @@ sharing one `**Flag**`. Follow this shared schema:
 
 ### Feature 1: <Title>
 
-**Kind**: backend
+```yaml
+kind: backend
+```
 
 **Description**: <What this feature delivers — one to two sentences.>
 
@@ -296,13 +297,15 @@ sharing one `**Flag**`. Follow this shared schema:
 
 ### Feature 2: <Title>
 
-**Kind**: ui
-**Phase**: build
-**Design System**: <committed design skill, e.g. story-spider-design>
-**Bundle**: <optional path to a Claude Design export, or omit the field>
-**Flag**: <feature-flag name gating this screen>
-**Screens**: [<ScreenId>]
-**Flows**: [<FlowId>]
+```yaml
+kind: ui
+phase: build
+design_system: <committed design skill, e.g. story-spider-design>
+bundle: <optional Claude Design export path, or omit the key>
+flag: <feature-flag name gating this screen>
+screens: [<ScreenId>]
+flows: [<FlowId>]
+```
 
 **Description**: <What this screen delivers, built against a mock behind the flag.>
 
@@ -314,12 +317,14 @@ sharing one `**Flag**`. Follow this shared schema:
 
 ### Feature 3: <Title> (wire)
 
-**Kind**: ui
-**Phase**: wire
-**Design System**: <same skill as the build feature>
-**Flag**: <same flag as the build feature — the shared contract>
-**Screens**: [<ScreenId>]
-**Flows**: [<FlowId>]
+```yaml
+kind: ui
+phase: wire
+design_system: <same skill as the build feature>
+flag: <same flag as the build feature — the shared contract>
+screens: [<ScreenId>]
+flows: [<FlowId>]
+```
 
 **Description**: <Connect the screen to real data and flip the flag; done includes
 emitting/updating the Maestro flow + flow.md for each flow above.>
@@ -330,8 +335,7 @@ emitting/updating the Maestro flow + flow.md for each flow above.>
 - Includes: <what is in scope>
 - Excludes: <what is explicitly out of scope>
 
-<!-- Repeat for each feature. Omit the ui-only fields (Phase / Design System /
-     Bundle / Flag / Screens / Flows) for backend features. -->
+<!-- Repeat for each feature. backend features carry only `kind: backend`. -->
 
 <!-- Specification Debt appears here for templates without ## Assumptions sections -->
 ## Specification Debt
@@ -361,7 +365,7 @@ Direction must be either `depends on` or `depended upon by`.
 | Milestone <X>: <title> | depends on | <what this milestone needs from or provides to the other> |
 
 _If no cross-milestone dependencies exist, state "None — this milestone is self-contained."_
-```
+````
 
 ## Phase 4: Write & Create PR
 
@@ -474,15 +478,9 @@ here, by render.
   comma-separated list of same-table IDs. The `Artifact` column starts as `—`
   and is populated by `smithy.mark` when it creates the spec folder. Do NOT
   use checkboxes in the `## Dependency Order` section.
-- **DO** declare a `**Kind**` (`backend` or `ui`) on every feature. For `ui`
-  features also set `**Phase**` (`build`|`wire`), `**Design System**`,
-  `**Screens**`, and `**Flows**`; `**Bundle**` is optional and `**Flag**` is the
-  build/wire contract. `backend` features carry none of these ui-only fields.
-- **DO** model flag-gated UI as two features sharing one `**Flag**`: a `build`
-  feature (against a mock) and a `wire` feature that flips the flag and lists the
-  build feature in its `Depends On` cell. Build-ahead-of-backend is fine — only the
-  wire feature depends on the backend feature. See `{{>feature-kinds}}` and the
-  "Feature Kinds and the Build/Wire Seam" section of the agent-skills README.
+- **DO** type every feature with a `yaml` metadata block per the `feature-kinds`
+  schema in Phase 3 (every feature has a `kind`; flag-gated UI splits into a
+  `build` + `wire` pair sharing one `flag`).
 
 ---
 
