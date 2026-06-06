@@ -47,6 +47,14 @@ and the PR that forge then consumes.
 
 ## Artifact Hierarchy and Dependency Order Format
 
+> **Engraved-knowledge records** (decisions, invariants, principles) are a
+> separate, root-level artifact family — they have **no** `## Dependency
+> Order` row and are not part of the lineage below. They participate in the
+> graph through citation edges only. See
+> [`docs/engraved-knowledge-schema.md`](../../../docs/engraved-knowledge-schema.md)
+> and [`src/engraved-templates.ts`](../../engraved-templates.ts) for the
+> schema.
+
 Every planning artifact produced by Smithy fits into a single strict lineage:
 
 ```
