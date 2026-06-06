@@ -131,19 +131,19 @@ with this format:
 <Single meaningful outcome this strike delivers.>
 
 ## Out of Scope
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: bullets or table; diagram: optional; examples: discouraged -->
 
 - <Explicitly excluded item 1>
 - <Explicitly excluded item 2>
 
 ## Requirements
-<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: recommended -->
+<!-- audience: builder+ai-input; mode: reference; length: bullets or table; diagram: optional; examples: recommended -->
 
 - **FR-001**: <Numbered functional requirement>
 - **FR-002**: <Numbered functional requirement>
 
 ## Success Criteria
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: optional -->
+<!-- audience: reviewer; mode: reference; length: bullets or table; diagram: optional; examples: optional -->
 
 - **SC-001**: <Numbered testable outcome>
 - **SC-002**: <Numbered testable outcome>
