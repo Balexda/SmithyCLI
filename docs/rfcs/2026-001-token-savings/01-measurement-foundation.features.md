@@ -107,7 +107,7 @@ Recommended specification sequence:
 | F1 | Feature 1.3a: Per-Case Token Totals in EvalReport | — | specs/2026-05-18-007-per-case-token-totals-in-evalreport/ |
 | F2 | Feature 1.3b: Per-Sub-Agent Token Attribution | F1 | specs/2026-05-20-008-per-sub-agent-token-attribution/ |
 | F3 | Feature 1.4: smithy.fix End-to-End Eval Scenario | F1 | specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/ |
-| F4 | Feature 1.5: smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1 | — |
+| F4 | Feature 1.5: smithy.forge End-to-End Eval Scenario + Runner git-init (RFC SD-002) | F1 | specs/2026-06-05-010-smithy-forge-end-to-end-eval-scenario-runner-git-init/ |
 | F5 | Feature 1.6: JVM Multi-Language Fixture | — | — |
 | F6 | Feature 1.7: Forge-JVM Eval Scenario + M1 Baseline-Set Completeness Gate | F1, F4, F5 | — |
 
