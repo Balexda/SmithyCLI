@@ -1361,12 +1361,17 @@ describe('getComposedTemplates', () => {
 
   // Helper: extract a specific ```markdown ... ``` fence from a composed
   // command template by an anchor substring that uniquely identifies the
-  // canonical artifact-template fence (e.g., `# Strike: <Title>`). Each
-  // composed prompt contains multiple markdown fences (write-back examples,
-  // PRD header snippets, indented inner fences inside the one-shot-output
-  // snippet, etc.); a regex-based scan would miscount nested fences, so we
-  // walk line-by-line and track fence depth instead. The anchor pins us
-  // to the single fence that defines the artifact's section structure.
+  // canonical artifact-template fence (e.g., `# Strike: <Title>`). The
+  // anchor is the artifact's H1 (e.g., `# Feature Map: <Milestone Title>`),
+  // which only appears inside the template fence — not in surrounding
+  // prose, where prompts use code-quoted forms like
+  // `` `## Problem Statement` `` instead.
+  //
+  // The implementation walks line-by-line tracking fence depth, then picks
+  // the fence whose body contains the anchor. This handles composed
+  // snippets (like `one-shot-output`) that bring additional indented
+  // ` ```markdown ` / ` ``` ` blocks into the template downstream of the
+  // artifact fence.
   function extractFenceByAnchor(template: string, anchor: string): string {
     const lines = template.split('\n');
     const fences: string[] = [];
@@ -1389,8 +1394,20 @@ describe('getComposedTemplates', () => {
       }
     }
     const match = fences.find(b => b.includes(anchor));
-    expect(match, `no markdown fence contains anchor "${anchor}"`).toBeDefined();
-    return match!;
+    if (!match) {
+      // Surface a diagnostic the next reader (or CI) can act on rather than
+      // hiding behind a bare assertion failure.
+      const firstLines = fences.map((b, i) =>
+        `  [${i}] (${b.length} chars) first line: ${b.split('\n')[0]?.slice(0, 80) ?? '(empty)'}`,
+      ).join('\n');
+      const containsAnchorAtAll = template.includes(anchor);
+      throw new Error(
+        `no markdown fence contains anchor "${anchor}"\n` +
+        `  template.includes(anchor) = ${containsAnchorAtAll}\n` +
+        `  fences found: ${fences.length}\n${firstLines}`,
+      );
+    }
+    return match;
   }
 
   // Helper: return the list of `## Heading` titles inside a markdown fence
