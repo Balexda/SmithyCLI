@@ -34,8 +34,12 @@ const SMITHY_SKILL_SCRIPT_RULES = [
 /**
  * Deploy Codex templates. Returns the list of deployed file paths (relative to targetDir).
  */
-export async function deploy(targetDir: string, initPermissions: boolean): Promise<string[]> {
-  const templates = await getComposedTemplates('codex');
+export async function deploy(
+  targetDir: string,
+  initPermissions: boolean,
+  artifactsRoot: string = '',
+): Promise<string[]> {
+  const templates = await getComposedTemplates('codex', artifactsRoot);
   const deployedFiles: string[] = [];
 
   // Deploy prompts -> tools/codex/prompts/

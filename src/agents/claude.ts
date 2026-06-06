@@ -26,10 +26,19 @@ export const SESSION_TITLE_HOOK_COMMAND =
 
 /**
  * Deploy Claude templates. Returns the list of deployed file paths (relative to baseDir).
+ *
+ * `artifactsRoot` is the prefix baked into deployed prompts via the
+ * `{{artifactsRoot}}` template variable — empty string for in-repo planning
+ * artifacts (default), `~/.smithy/<repo>/` for the external-artifacts mode.
  */
-export async function deploy(targetDir: string, permissionLevel: PermissionLevel, location: DeployLocation = 'repo'): Promise<string[]> {
+export async function deploy(
+  targetDir: string,
+  permissionLevel: PermissionLevel,
+  location: DeployLocation = 'repo',
+  artifactsRoot: string = '',
+): Promise<string[]> {
   const baseDir = location === 'user' ? os.homedir() : targetDir;
-  const templates = await getComposedTemplates('claude');
+  const templates = await getComposedTemplates('claude', artifactsRoot);
   const deployedFiles: string[] = [];
 
   // Deploy commands -> .claude/commands/

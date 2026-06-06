@@ -13,12 +13,13 @@ export async function deploy(
   initPermissions: boolean,
   languages?: LanguageToolchain[],
   platformManagers?: PlatformPackageManager[],
+  artifactsRoot: string = '',
 ): Promise<string[]> {
   const destDir = path.join(targetDir, '.gemini');
   const skillsDir = path.join(destDir, 'skills');
   console.log(picocolors.green(`\nInitializing Gemini CLI workspace skills in ${skillsDir}...`));
 
-  const templates = await getComposedTemplates('gemini');
+  const templates = await getComposedTemplates('gemini', artifactsRoot);
   const deployedFiles: string[] = [];
 
   // Deploy commands and prompts as skills (skip agents — they are sub-agents, not invocable)

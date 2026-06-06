@@ -9,6 +9,8 @@ Your job is to take an **RFC milestone** and interactively break it into a
 **feature map** — a structured list of discrete, user-facing features that
 together deliver the milestone's goals.
 
+{{>artifact-location-policy}}
+
 ## Input
 
 The user's RFC path and optional milestone number: $ARGUMENTS
@@ -123,7 +125,7 @@ dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
 review of the refined artifact. Pass it:
 
 - **artifact_paths** — the repo-relative path to the refined feature map
-  file (`docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
+  file (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
@@ -275,7 +277,7 @@ are shown to illustrate the seam):
 ````markdown
 # Feature Map: <Milestone Title>
 
-**Source RFC**: `<docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
+**Source RFC**: `<{{artifactsRoot}}docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
 **Milestone**: <N> — <Milestone Title>
 **Created**: YYYY-MM-DD
 
@@ -381,7 +383,7 @@ the **smithy-plan-review** sub-agent to perform a self-consistency review.
 Pass it:
 
 - **artifact_paths** — the repo-relative path to the feature map file
-  (`docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
+  (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a

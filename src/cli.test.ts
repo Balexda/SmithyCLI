@@ -124,6 +124,99 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(output).not.toContain('--no-issue-templates');
   });
 
+  describe('--artifacts-location', () => {
+    it('defaults to repo mode — no artifactsLocation field in the manifest, no tilde prefix in deployed prompts', () => {
+      execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
+        encoding: 'utf-8',
+        cwd: tmpDir,
+      });
+      const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(manifest.artifactsLocation).toBeUndefined();
+
+      const strike = fs.readFileSync(
+        path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
+        'utf8',
+      );
+      // Path in the Phase 3 write instruction renders without a prefix.
+      expect(strike).toContain(
+        'Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`',
+      );
+      expect(strike).not.toContain('{{artifactsRoot}}');
+      // The policy snippet mentions ~/.smithy/<repo>/ as part of its explanation
+      // — that's expected. Make sure no actual artifact path got a tilde prefix.
+      expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+    });
+
+    it('--artifacts-location external persists in the manifest and bakes ~/.smithy/<repo>/ into deployed prompts', () => {
+      execFileSync(
+        'node',
+        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
+        { encoding: 'utf-8', cwd: tmpDir },
+      );
+      const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(manifest.artifactsLocation).toBe('external');
+
+      const expectedPrefix = `~/.smithy/${path.basename(tmpDir)}/`;
+      const strike = fs.readFileSync(
+        path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
+        'utf8',
+      );
+      expect(strike).toContain(`${expectedPrefix}specs/strikes/`);
+      expect(strike).toContain('## Planning Artifacts Location');
+      expect(strike).not.toContain('{{artifactsRoot}}');
+    });
+
+    it('update round-trips the artifactsLocation field — no flag required', () => {
+      execFileSync(
+        'node',
+        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
+        { encoding: 'utf-8', cwd: tmpDir },
+      );
+      execFileSync('node', [CLI, 'update', '-y'], {
+        encoding: 'utf-8',
+        cwd: tmpDir,
+      });
+      const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(manifest.artifactsLocation).toBe('external');
+
+      const expectedPrefix = `~/.smithy/${path.basename(tmpDir)}/`;
+      const strike = fs.readFileSync(
+        path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
+        'utf8',
+      );
+      expect(strike).toContain(`${expectedPrefix}specs/strikes/`);
+    });
+
+    it('update --artifacts-location repo migrates an external manifest back to in-repo paths', () => {
+      execFileSync(
+        'node',
+        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
+        { encoding: 'utf-8', cwd: tmpDir },
+      );
+      execFileSync(
+        'node',
+        [CLI, 'update', '-y', '--artifacts-location', 'repo'],
+        { encoding: 'utf-8', cwd: tmpDir },
+      );
+
+      const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      expect(manifest.artifactsLocation).toBeUndefined();
+
+      const strike = fs.readFileSync(
+        path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
+        'utf8',
+      );
+      expect(strike).toContain(
+        'Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`',
+      );
+      expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+    });
+  });
+
   it('skips permissions with --no-permissions', () => {
     // Also pass --no-session-titles so settings.json is not created at all.
     execFileSync('node', [CLI, 'init', '-a', 'claude', '--no-permissions', '--no-session-titles', '-y'], {

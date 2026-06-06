@@ -59,6 +59,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { readManifest, resolveArtifactsRoot } from '../manifest.js';
 import {
   buildDependencyGraph,
   buildTree,
@@ -318,7 +319,24 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  const records = scan(resolvedRoot);
+  // If the user didn't pass `--root` explicitly and the working directory has
+  // a smithy manifest declaring `artifactsLocation: 'external'`, redirect the
+  // scan to `~/.smithy/<repo>/` so artifacts written off-tree are still found.
+  // Explicit `--root` always wins so power users can scan an arbitrary path.
+  const externalScanRoot =
+    opts.root === undefined ? resolveExternalArtifactsRoot(resolvedRoot) : null;
+  const scanRoot = externalScanRoot ?? resolvedRoot;
+  const records = scan(scanRoot);
+  // The scanner returns paths relative to `scanRoot`. When we redirected, those
+  // paths read like `specs/foo/01.tasks.md` but the actual files live at
+  // `~/.smithy/<repo>/specs/foo/01.tasks.md`. Re-prepend the tilde prefix so the
+  // rendered tree, JSON records, and `Next: smithy.forge <path> <N>` hints all
+  // point at the real on-disk location. Skipped in the in-repo case (the cheap
+  // common path) where `externalScanRoot` is `null`.
+  if (externalScanRoot !== null) {
+    const externalPrefix = `~/.smithy/${path.basename(resolvedRoot)}/`;
+    applyExternalPrefix(records, externalPrefix);
+  }
   // US6: apply the `--status` / `--type` filters to the classified
   // record set before it reaches `buildTree` / the JSON emitter.
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
@@ -682,6 +700,59 @@ function findNextAction(node: TreeNode): NextAction | null {
     if (found !== null) return found;
   }
   return null;
+}
+
+/**
+ * When the scan was redirected to `~/.smithy/<repo>/`, every `ArtifactRecord`
+ * the scanner returns carries paths relative to that external root (the
+ * scanner has no concept of "this isn't the working repo"). Walk the records
+ * and prepend `externalPrefix` to every path-shaped field so the rendered
+ * tree, JSON output, and `Next:` commands all surface the real on-disk
+ * location.
+ *
+ * Path-shaped fields covered: `path`, `parent_path`, and any
+ * `next_action.arguments[]` entry whose value looks like a path (contains a
+ * `/` or ends with `.md` or `/`). Numeric digit arguments (slice numbers,
+ * milestone numbers) are left alone.
+ *
+ * Mutates records in place — the records are freshly built by `scan` on
+ * each invocation, so no external caller relies on the pre-prefix shape.
+ */
+function applyExternalPrefix(records: ArtifactRecord[], externalPrefix: string): void {
+  const prefixIfPath = (value: string): string =>
+    value.includes('/') || value.endsWith('.md') ? `${externalPrefix}${value}` : value;
+  for (const record of records) {
+    record.path = `${externalPrefix}${record.path}`;
+    if (typeof record.parent_path === 'string' && record.parent_path.length > 0) {
+      record.parent_path = `${externalPrefix}${record.parent_path}`;
+    }
+    if (record.next_action && record.next_action !== null) {
+      record.next_action.arguments = record.next_action.arguments.map(prefixIfPath);
+    }
+  }
+}
+
+/**
+ * If `<resolvedRoot>` has a smithy manifest declaring `artifactsLocation:
+ * 'external'`, return the absolute path to `~/.smithy/<repo>/` so the
+ * scanner finds artifacts that were written off-tree. Returns `null` for
+ * the in-repo case (the caller falls back to `resolvedRoot`). Either
+ * manifest location ('repo' deploy at `.smithy/...`, 'user' deploy at
+ * `~/.smithy/...`) is consulted — `artifactsLocation` is an orthogonal
+ * setting on the manifest itself, not on the manifest's own location.
+ *
+ * If the external root doesn't exist on disk yet (the user just flipped
+ * the flag and hasn't written any artifacts there), fall through to the
+ * default so the scanner reports the same friendly "no artifacts found"
+ * hint instead of bailing with a `stat` error.
+ */
+function resolveExternalArtifactsRoot(resolvedRoot: string): string | null {
+  const manifest =
+    readManifest(resolvedRoot, 'repo') ?? readManifest(resolvedRoot, 'user');
+  if (!manifest || manifest.artifactsLocation !== 'external') return null;
+  const externalRoot = resolveArtifactsRoot(resolvedRoot, 'external');
+  if (!fs.existsSync(externalRoot)) return null;
+  return externalRoot;
 }
 
 function emptyCounts(): ScanSummary['counts'] {

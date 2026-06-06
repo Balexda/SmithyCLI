@@ -7,6 +7,16 @@ export type AgentChoice = AgentName | 'all';
 export type DeployLocation = 'repo' | 'user';
 export type PermissionLevel = 'repo' | 'user' | 'none';
 export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;
+/**
+ * Where smithy planning artifacts (RFCs, specs, tasks, strikes, PRDs)
+ * are written:
+ *   - 'repo'     → in-tree under `docs/rfcs/`, `specs/`, etc. (default).
+ *   - 'external' → out-of-tree under `~/.smithy/<repo-name>/` so the
+ *     planning files stay off the team's git history. The flag is
+ *     persisted in the manifest and baked into the deployed prompts via
+ *     the `{{artifactsRoot}}` template variable.
+ */
+export type ArtifactsLocation = 'repo' | 'external';
 
 /** Deploy locations supported by each agent. */
 export const agentDeployLocations: Record<AgentChoice, DeployLocation[]> = {
@@ -149,6 +159,24 @@ export async function promptConfirmResetPermissions(location: DeployLocation): P
       `Reset ${location} Claude permissions to the Smithy baseline? ` +
       'This will overwrite the allow/ask/deny lists in settings.json — any custom entries you added will be removed.',
     default: false,
+  });
+}
+
+export async function promptArtifactsLocation(): Promise<ArtifactsLocation> {
+  return await select<ArtifactsLocation>({
+    message: 'Where should Smithy planning artifacts (RFCs, specs, tasks, strikes) live?',
+    choices: [
+      {
+        name: 'Repo',
+        value: 'repo',
+        description: 'Committed in-tree under docs/rfcs/, specs/, ... (default)',
+      },
+      {
+        name: 'External (~/.smithy/<repo>/)',
+        value: 'external',
+        description: 'Stored in your user home, kept out of the repo\'s git history',
+      },
+    ],
   });
 }
 

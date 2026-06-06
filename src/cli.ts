@@ -34,6 +34,10 @@ program
   .option('--no-permissions', 'Skip permissions setup')
   .option('--no-session-titles', 'Skip the Claude Code session-title hook')
   .option('--toolchains <list>', 'Comma-separated language toolchains to include in permissions (node,java,rust,python)')
+  .addOption(
+    new Option('--artifacts-location <location>', 'Where planning artifacts (RFCs, specs, tasks, strikes) live')
+      .choices(['repo', 'external'])
+  )
   .option('-d, --target-dir <path>', 'Target directory')
   .option('-y, --yes', 'Accept defaults for unset options (non-interactive)')
   .action((opts: Record<string, unknown>) => {
@@ -68,6 +72,10 @@ program
   .option(
     '--reset-permissions',
     'Replace Claude permissions in settings.json with the canonical Smithy baseline (drops user customizations and stale entries)',
+  )
+  .addOption(
+    new Option('--artifacts-location <location>', 'Override the manifest\'s planning-artifacts location')
+      .choices(['repo', 'external'])
   )
   .action((opts: Record<string, unknown>) => updateAction(opts as UpdateOptions));
 
