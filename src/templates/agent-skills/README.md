@@ -281,6 +281,28 @@ a worked `Library.design.md` example, naming decisions, and a review checklist
 annotation; this README intentionally does not duplicate the schema so the two
 cannot drift.
 
+## Flow Definitions
+
+Each `FlowId` listed under a UI feature's `flows:` field resolves — in the
+**app repo, not in Smithy** — to a durable **1:1 pair** of files:
+`design/flows/<FlowId>.flow.md` (thin intent annotation) and
+`maestro/flows/<FlowId>.yaml` (executable behavioral body). The yaml owns
+the steps and guard assertions a UI driver replays; the `.flow.md` owns
+*why* — the product truth the flow preserves, why the guards exist,
+deliberate entry / exit, and a coverage caveat for anything below what a UI
+driver can observe.
+
+The full authoring contract — YAML front-matter schema (`id`, `screens`,
+`maestro`), the rationale-only body rule, the Maestro selector contract
+(testID-keyed only, asserts traversal AND guards), the testID naming
+convention, skeleton templates for both halves, a worked `AddTitle` example,
+naming decisions, the audio-service coverage caveat, and a review checklist
+— lives in the body-on-demand skill **`smithy.helper-flow-definition`**
+(`skills/smithy.helper-flow-definition/SKILL.prompt`). Agents lazy-load it
+via `Skill("smithy.helper-flow-definition")` when authoring or auditing a
+flow definition (typically at a UI feature's `wire` phase); this README
+intentionally does not duplicate the schema so the two cannot drift.
+
 ## Sub-Agent Roles
 
 Sub-agents are invoked by parent commands, not directly by users:
