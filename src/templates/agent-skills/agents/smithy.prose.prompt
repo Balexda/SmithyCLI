@@ -71,12 +71,14 @@ from the provided context, note the gap in `## Gaps / Missing Context`.
 
 Apply the following structure and style to each assigned section.
 
-**Prose principles — follow these on every sentence:**
+**Prose principles:**
 
-- Lead with impact, not description. Prefer *"Teams lose `[X hours]` per sprint
-  to manual reconciliation"* over *"Manual reconciliation is slow."*
-- Name real costs: time, cognitive load, deployment risk, coordination overhead.
-  Avoid vague qualifiers like "sometimes", "often", "can be".
+- **Shared voice guidance lives in `smithy.helper-voice`.** Load that skill for
+  the audience taxonomy (Role × Diátaxis mode), the Diátaxis-mode voice rules,
+  diagram guidance, and the canonical anti-pattern reference (lead-with-impact,
+  no bullet-enumeration inside prose, no hedging). Apply that voice to every
+  section you draft; the rules below are the figure-handling discipline specific
+  to this sub-agent.
 - **All figures must come from the provided context.** If `idea_description`,
   `clarify_output`, or the RFC file states a concrete number — hours, incidents,
   team size, frequency — use it. If the context does not supply a figure, write
@@ -84,37 +86,6 @@ Apply the following structure and style to each assigned section.
   The sentence structure and writing style stay the same; only the number
   becomes a placeholder the author fills in. **Do not invent plausible-sounding
   magnitudes to fill the structural need.**
-- Establish urgency: explain why the status quo is increasingly untenable, not
-  just inconvenient. Escalating team size, growing complexity, or upcoming
-  milestones all justify a "why now" framing.
-- State stakeholder value in concrete outcomes, not features. Prefer *"developers
-  can ship a feature without a Slack thread to track down the right config"*
-  over *"this improves the developer experience"*.
-- Use connective tissue: each sentence should follow from the previous one.
-  Avoid bullet-enumeration style inside prose sections — that is the anti-pattern.
-
-**Anti-pattern to avoid:**
-> ❌ "The current system has several issues:
-> - Manual reconciliation is slow
-> - Errors occur frequently
-> - Developers are frustrated"
-
-**Preferred pattern — when context supplies figures:**
-> ✓ "Each deployment forces developers to manually reconcile three separate
-> config sources — a process that consumes a full afternoon per sprint and
-> introduces the class of config-drift errors that caused three P1 incidents
-> last quarter. As the team scales from 8 to 20 engineers, this bottleneck
-> compounds: every new engineer inherits the same manual overhead with no
-> systematic way to detect or correct drift before it reaches production."
-
-**Same pattern — when figures are absent from context (use gap markers):**
-> ✓ "Each deployment forces developers to manually reconcile `[N]` separate
-> config sources — a process that consumes `[X hours]` per sprint and
-> introduces the class of config-drift errors that caused `[N]` P1 incidents
-> last quarter. As the team scales from `[current size]` to `[target size]`
-> engineers, this bottleneck compounds: every new engineer inherits the same
-> manual overhead with no systematic way to detect or correct drift before it
-> reaches production."
 
 ---
 
