@@ -264,6 +264,23 @@ on `—` (build-ahead-of-backend).
 - **`phase` is feature-level**, not user-story/slice level — the build/wire
   decomposition happens at the feature granularity (two features in the DAG).
 
+## Screen Design-Context Annotations
+
+Each `ScreenId` listed under a UI feature's `screens:` field resolves — in the
+**app repo, not in Smithy** — to a thin durable annotation at
+`design/screens/<ScreenId>.design.md`. The composable is the screen's body; this
+file carries the screen's *intent* (why it exists, deliberate choices, deferred
+bits) colocated with the code so it travels and versions with the composable.
+
+The full authoring contract — YAML front-matter schema (`id`, `composable`,
+`design_system`, `bundle`), the rationale-only body rule, the skeleton template,
+a worked `Library.design.md` example, naming decisions, and a review checklist
+— lives in the body-on-demand skill **`smithy.helper-screen-design`**
+(`skills/smithy.helper-screen-design/SKILL.prompt`). Agents lazy-load it via
+`Skill("smithy.helper-screen-design")` when authoring or auditing a screen
+annotation; this README intentionally does not duplicate the schema so the two
+cannot drift.
+
 ## Sub-Agent Roles
 
 Sub-agents are invoked by parent commands, not directly by users:
