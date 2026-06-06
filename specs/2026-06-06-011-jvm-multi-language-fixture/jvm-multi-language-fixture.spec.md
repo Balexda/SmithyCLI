@@ -13,7 +13,7 @@
 
 - This specification targets the Dependency Order row `F5`, which corresponds to Feature 1.6 in the measurement-foundation feature map. `[Critical Assumption]`
 - The existing eval fixture at `evals/fixture/` remains the default JavaScript fixture. This feature adds an additional JVM fixture and a scenario-level selection mechanism rather than replacing the current fixture.
-- The scenario YAML field is specified as `fixture:`. Values are relative paths under `evals/fixture/`; omitted values continue to use the existing JavaScript fixture root.
+- The scenario YAML field is specified as `fixture:`. Values are relative paths under `evals/fixture/`; an omitted value preserves the existing defaulting behavior — the global `--fixture` argument when set, otherwise the `evals/fixture/` JavaScript fixture root.
 - A scenario-level `fixture:` value overrides the global `--fixture` CLI argument for that scenario. The global flag remains the default when a scenario omits `fixture:`.
 - F1.5 owns git initialization around fixture copy and process spawn. This feature owns fixture path resolution and the JVM fixture contents; second-to-land changes in `evals/lib/runner.ts` must rebase without rewriting F1.5 git behavior.
 - This feature creates substrate only. The JVM forge eval scenario and JVM baseline are owned by F1.7.
@@ -30,13 +30,13 @@ As a Smithy maintainer, I want eval scenarios to declare which fixture they run 
 
 **Why this priority**: The JVM fixture is unusable by future scenarios until scenario metadata can select it deterministically.
 
-**Independent Test**: Load scenarios with omitted, valid, and malformed `fixture` values and verify the loaded scenario model preserves valid fixture selection while rejecting invalid metadata.
+**Independent Test**: Load scenarios with omitted, valid, and malformed `fixture` values and verify the loaded scenario model preserves valid fixture selection while `loadScenarios` skips files with invalid metadata.
 
 **Acceptance Scenarios**:
 
 1. **Given** a scenario YAML omits `fixture`, **When** `loadScenarios` parses it, **Then** the loaded scenario remains valid and uses the existing default fixture behavior.
 2. **Given** a scenario YAML includes `fixture: jvm`, **When** `loadScenarios` parses it, **Then** the loaded scenario exposes the fixture selector to the runner.
-3. **Given** a scenario YAML includes an empty, absolute, parent-traversing, or non-string `fixture` value, **When** scenario validation runs, **Then** the scenario is rejected or skipped with a field-specific validation error.
+3. **Given** a scenario YAML includes an empty, absolute, parent-traversing, or non-string `fixture` value, **When** `loadScenarios` parses it, **Then** the offending file is skipped (not the whole run) with a single stderr line naming the `fixture` field — matching the existing loader policy where `loadScenarios` skips invalid files and `loadScenarioFromFile` throws. This feature adds no new failure-handling mode.
 
 ---
 
@@ -114,7 +114,7 @@ Recommended implementation sequence:
 
 - **FR-001**: The `EvalScenario` type MUST support an optional `fixture` string.
 - **FR-002**: `loadScenarios` MUST preserve omitted `fixture` values as the existing default fixture behavior.
-- **FR-003**: `loadScenarios` MUST reject malformed `fixture` values with an error that names the `fixture` field.
+- **FR-003**: `loadScenarios` MUST skip files with malformed `fixture` values, emitting a single stderr line that names the `fixture` field (consistent with its existing skip-and-continue policy); `loadScenarioFromFile` MUST throw on the same input.
 - **FR-004**: Valid `fixture` values MUST be relative paths under `evals/fixture/`.
 - **FR-005**: Valid `fixture` values MUST reject absolute paths, empty strings, parent traversal, and path forms that escape `evals/fixture/`.
 - **FR-006**: The runner MUST resolve the effective fixture directory per scenario using this precedence: scenario `fixture` value, then global `--fixture`, then default `evals/fixture/`.
@@ -130,10 +130,10 @@ Recommended implementation sequence:
 ### Key Entities
 
 - **Fixture Selector**: Optional scenario metadata naming a fixture subdirectory under `evals/fixture/`.
+- **Eval Scenario**: The existing YAML-loaded scenario shape, extended with the additive optional `fixture` selector.
 - **Effective Fixture Directory**: The concrete directory copied into the temp run for a scenario after applying precedence rules.
-- **JVM Fixture**: The committed Gradle project under `evals/fixture/jvm/`.
+- **JVM Fixture**: The committed Gradle project under `evals/fixture/jvm/`, including its README maintenance notes that document intentional failures and generated-file boundaries.
 - **Fixture Resolver**: Runner logic that turns scenario metadata and CLI defaults into the effective fixture directory.
-- **Fixture Maintenance Notes**: Documentation in the JVM fixture that explains intentional failures and generated-file boundaries.
 
 ## Assumptions
 

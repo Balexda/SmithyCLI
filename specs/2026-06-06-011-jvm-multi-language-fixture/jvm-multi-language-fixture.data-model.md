@@ -40,7 +40,7 @@ Purpose: Existing YAML-loaded scenario shape with additive fixture metadata.
 Validation rules:
 
 - Existing field validation remains unchanged.
-- Fixture validation failure skips or rejects only the offending scenario.
+- Fixture validation failure skips only the offending file in `loadScenarios` (single stderr line), and throws in `loadScenarioFromFile`; other scenarios are unaffected.
 - Omitted fixture metadata must not change the loaded shape of current scenarios except for the absence of the new optional field.
 
 ### 3) Effective Fixture Directory (`effective_fixture_directory`)
@@ -95,7 +95,7 @@ Purpose: Runner logic that computes the effective fixture directory.
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `scenario_fixture` | string | No | Scenario metadata value. |
-| `global_fixture` | string | No | Existing CLI `--fixture` value. |
+| `global_fixture` | string | Yes | Existing CLI `--fixture` value. Always set: `run-evals.ts` defaults the `--fixture` option to `evals/fixture`, so the resolver always receives a string. Matches the required `globalFixtureDir` parameter in `contracts.md`. |
 | `repo_fixture_root` | string | Yes | Repository `evals/fixture/` root used for scenario selectors. |
 | `effective_fixture` | string | Yes | Directory copied into the temp run. |
 

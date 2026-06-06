@@ -35,10 +35,10 @@ fixture: jvm
 | Condition | Response | Description |
 |-----------|----------|-------------|
 | Field is absent | Load scenario normally and use the global or default fixture path. | Existing scenarios remain compatible. |
-| Field is empty | Reject or skip the scenario with a validation error naming `fixture`. | Empty selectors have no stable meaning. |
-| Field is non-string | Reject or skip the scenario with a validation error naming `fixture`. | Keeps scenario metadata typed. |
-| Field is absolute | Reject or skip the scenario with a validation error naming `fixture`. | Scenario YAML cannot select arbitrary machine paths. |
-| Field contains `..` | Reject or skip the scenario with a validation error naming `fixture`. | Prevents escaping `evals/fixture/`. |
+| Field is empty | Skipped by `loadScenarios` (single stderr line naming `fixture`); thrown by `loadScenarioFromFile`. No new failure mode. | Empty selectors have no stable meaning. |
+| Field is non-string | Skipped by `loadScenarios` (single stderr line naming `fixture`); thrown by `loadScenarioFromFile`. No new failure mode. | Keeps scenario metadata typed. |
+| Field is absolute | Skipped by `loadScenarios` (single stderr line naming `fixture`); thrown by `loadScenarioFromFile`. No new failure mode. | Scenario YAML cannot select arbitrary machine paths. |
+| Field contains `..` | Skipped by `loadScenarios` (single stderr line naming `fixture`); thrown by `loadScenarioFromFile`. No new failure mode. | Prevents escaping `evals/fixture/`. |
 
 ### 2) Fixture Resolution
 
