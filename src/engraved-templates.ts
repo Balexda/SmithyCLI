@@ -22,8 +22,11 @@
  * Records are **roots** in the planning graph — they have no `## Dependency
  * Order` row and never appear as parent/child entries in milestone, feature,
  * story, or slice tables. They participate in the graph via *citation edges*:
- * `establishes` / `established_by`, `supersedes` / `superseded_by`, and
- * `applies_to` / `scope`.
+ * `establishes` / `established_by` and `supersedes` / `superseded_by`. The
+ * `applies_to` / `scope` / `topics` fields are recall / filter metadata, not
+ * graph edges — `smithy.recall` (#415) uses them to surface relevant
+ * records at planning time, but they never become nodes or edges in the
+ * status graph (#416, #417).
  *
  * Placeholder syntax in the template bodies is `{{variable}}` (matches the
  * convention established in `src/orders-templates.ts`). Variables are filled
@@ -92,23 +95,35 @@ export const KNOWN_EXCEPTION_SEVERITIES = ['low', 'medium', 'high'] as const;
 export type KnownExceptionSeverity = (typeof KNOWN_EXCEPTION_SEVERITIES)[number];
 
 /**
- * Disposition of a known exception:
+ * Disposition of a known exception. These constants are **normalized
+ * lowercase keys** used by tooling (parser, scanner, audit). The canonical
+ * on-disk token in the "Disposition + Why" column of an invariant's
+ * Known-Exceptions ledger is the Capitalized form — `Accepted: <reason>`
+ * or `Temporary: <reason>` — to match the example records and the
+ * scaffold template body. Parsers MUST lowercase the on-disk token
+ * before comparing to these constants.
  *
- *   - `accepted` — a permanent carve-out the team has decided to live with.
- *   - `temporary` — a known divergence with an open tracking issue; the
- *     team intends to close the gap.
+ *   - `accepted` (on-disk: `Accepted:`) — a permanent carve-out the team
+ *     has decided to live with.
+ *   - `temporary` (on-disk: `Temporary:`) — a known divergence with an
+ *     open tracking issue; the team intends to close the gap.
  */
 export const KNOWN_EXCEPTION_DISPOSITIONS = ['accepted', 'temporary'] as const;
 export type KnownExceptionDisposition = (typeof KNOWN_EXCEPTION_DISPOSITIONS)[number];
 
 /**
- * File suffix conventions. Engraved records are discovered by suffix:
+ * File suffix conventions. Decision and invariant records are discovered by
+ * suffix:
  *
  *   - `*.decision.md` — a decision record.
  *   - `*.invariant.md` — an invariant record.
- *   - the constitution is a single principle file (kind: principle) at a
- *     well-known path; principles do not carry a dedicated suffix because
- *     the family is intentionally small and centralized.
+ *
+ * Principle records carry **no dedicated suffix** — the family is
+ * intentionally small and centralized. Each principle is its own
+ * `kind: principle` file under the constitution directory (see
+ * {@link ENGRAVED_DEFAULT_LOCATIONS}); the "constitution" is the union of
+ * every such file in that directory. Scanners discover principles by
+ * walking the constitution directory, not by suffix.
  */
 export const ENGRAVED_SUFFIXES: Readonly<Record<Exclude<EngravedKind, 'principle'>, string>> = {
   decision: '.decision.md',
@@ -232,7 +247,7 @@ export const ENGRAVED_DEFAULT_TEMPLATES: Readonly<Record<EngravedKind, string>> 
 id: {{id}}
 kind: decision
 domain: {{domain}}
-title: {{title}}
+title: "{{title}}"
 status: proposed
 decided_at: {{decided_at}}
 topics: [{{topics}}]
@@ -268,7 +283,7 @@ establishes: [{{establishes}}]
 id: {{id}}
 kind: invariant
 domain: {{domain}}
-title: {{title}}
+title: "{{title}}"
 status: aligned
 topics: [{{topics}}]
 scope: [{{scope}}]
@@ -303,7 +318,7 @@ this table has at least one \`Temporary\` row, otherwise \`aligned\`.
 id: {{id}}
 kind: principle
 domain: {{domain}}
-title: {{title}}
+title: "{{title}}"
 status: active
 topics: [{{topics}}]
 scope: [{{scope}}]
