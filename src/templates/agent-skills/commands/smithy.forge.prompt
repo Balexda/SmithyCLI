@@ -101,8 +101,10 @@ it through Implementation and Review.
 
 ### Resolve the feature kind
 
-Determine `kind`, and for UI also `phase`, `design_system`, `bundle`, `screens`,
-and `flows`:
+Determine `kind`, and for UI also `phase`, `design_system`, `bundle`, `flag`,
+`screens`, and `flows`. The `flag` is load-bearing downstream — it gates the
+mock build, is flipped at `wire`, and is passed into the implementer and
+reviewer sub-agents — so resolve it here alongside the other UI fields:
 
 1. **`.tasks.md` mode** — read the spec's `**Source Feature Map**` header
    (`<path-to-.features.md> — Feature <N>`). Open that `.features.md`, find the
@@ -314,6 +316,13 @@ Use the **smithy-implementation-review** sub-agent. Pass it:
   structural-conformance profile (tokens-only, component reuse, M2 conventions,
   every brief state present, touch-target/contrast roles; flow-pair conformance
   at `wire`) and **does not judge visual fidelity**.
+- **Helper checklist context** (`ui` only): the reviewer's tools are
+  `Read`/`Grep`/`Glob` — it cannot invoke the Skill mechanism — so **inline the
+  relevant helper-skill review checklist** in this dispatch rather than naming a
+  skill for it to load: the `smithy.helper-screen-design` review checklist for
+  every UI review, plus the `smithy.helper-flow-definition` review checklist at
+  `phase: wire`. This is what lets the reviewer enforce the flow-pair contract
+  (testID-keyed selectors, guard assertions) without loading a skill.
 
 `smithy-implementation-review` is **read-only**. It returns a `ReviewResult`
 containing a list of `Finding` entries (`category`, `severity`, `confidence`,

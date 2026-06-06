@@ -61,10 +61,15 @@ review profile.
 Review **structural conformance only**. **Do not judge visual fidelity** —
 pixel matching, exact spacing, palette taste, and overall look-and-feel are a
 human glance upstream on the design canvas, never a finding here. A screen that
-conforms structurally but "looks off" is **not** a review finding. Load
-`smithy.helper-screen-design` (and, at `phase: wire`,
-`smithy.helper-flow-definition`) for the authoring contracts you are checking
-against. Classify each `ui`-profile finding's `category` as one of:
+conforms structurally but "looks off" is **not** a review finding. Your tools
+are `Read`/`Grep`/`Glob` only — you do **not** invoke the Skill mechanism. The
+parent (`smithy.forge`) inlines the relevant authoring checklist into your
+dispatch — the `smithy.helper-screen-design` checklist for every UI review, plus
+the `smithy.helper-flow-definition` checklist at `phase: wire` — so you enforce
+the screen and flow-pair contracts from the passed context (if a deployed skill
+file is reachable in the repo you may `Read` it directly, but the category list
+below is self-contained). Classify each `ui`-profile finding's `category` as one
+of:
 
 - **Hardcoded design value** — a raw color literal (hex, `Color(0x…)`), raw
   dimension, or other token-able value used instead of a `design_system` token.

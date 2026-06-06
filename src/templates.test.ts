@@ -865,6 +865,14 @@ describe('getComposedTemplates', () => {
       expect(section).toContain('phase');
       expect(section).toContain('design_system');
       expect(section).toContain('bundle');
+      // The resolve instruction must explicitly include `flag` — downstream
+      // steps gate the mock build, flip at wire, and pass it into sub-agents,
+      // so forge must resolve it alongside the other UI fields (PR #434 review).
+      const resolveLine = section
+        .split('\n')
+        .find((l) => /Determine `kind`/.test(l));
+      expect(resolveLine).toBeDefined();
+      expect(resolveLine!).toContain('`flag`');
       // Default-to-backend keeps pre-#404 tasks/strike files on the old path.
       expect(section).toMatch(/default.*backend/i);
     });
@@ -912,7 +920,7 @@ describe('getComposedTemplates', () => {
       const section = routingSection(forge);
       const wireRow = section
         .split('\n')
-        .find((l) => l.includes('`wire`'));
+        .find((l) => l.trimStart().startsWith('|') && l.includes('`wire`'));
       expect(wireRow).toBeDefined();
       expect(wireRow!).toMatch(/maestro flow/i);
       expect(wireRow!).toContain('flow.md');
