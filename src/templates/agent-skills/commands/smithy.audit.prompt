@@ -97,6 +97,10 @@ Use the checklist matching the artifact's extension. Each checklist defines what
 
 ---
 
+{{>audit-checklist-voice}}
+
+---
+
 ## Read-Only Enforcement
 
 **CRITICAL**: The audit is strictly read-only.

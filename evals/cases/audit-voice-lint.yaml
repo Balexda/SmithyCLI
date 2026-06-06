@@ -1,0 +1,58 @@
+# Voice & audience tag-lint eval scenario (EPIC #419, issue #424).
+#
+# Exercises the cross-cutting Voice & Audience Tag Lint added to
+# `/smithy.audit` against the planted fixture under
+# `evals/fixture/specs/audit-voice/`. The fixture carries seven tagged `##`
+# sections; six plant a distinct tag/content defect and one is clean. This
+# single scenario asserts the audit surfaces the defects at the right
+# severity, mirroring how `audit-flawed-spec.yaml` bundles several planted
+# flaws into one audit run rather than paying for a separate live invocation
+# per flaw.
+#
+# Section → planted condition (see the fixture header for the authoritative
+# map):
+#   ## Summary      — CLEAN (no finding).
+#   ## Goals        — unknown KEY  `audiance:`             → Critical.
+#   ## Approach     — unknown VALUE `mode: reference-guide`→ Critical.
+#   ## Background   — length budget violated               → Warning.
+#   ## Architecture — `diagram: required` w/o mermaid      → Warning.
+#   ## Data Handling— `examples: forbidden` w/ code block  → Warning.
+#   ## Contracts    — `applicability:` + `N/A —` body      → accepted.
+#
+# Mirrors the EvalScenario shape in `evals/lib/types.ts` and the single-quote
+# regex convention in `evals/cases/strike-health-check.yaml`. Audit runs
+# single-agent in File Argument Mode, so this scenario omits
+# `sub_agent_evidence` and `timeout`.
+
+name: audit-voice-lint
+skill: /smithy.audit
+# Fixture-relative path (resolved inside the runner's temp copy of
+# `evals/fixture/`; see `audit-flawed-spec.yaml` for the same convention). The
+# source-tree location is `evals/fixture/specs/audit-voice/audit-voice-tagged.spec.md`.
+prompt: specs/audit-voice/audit-voice-tagged.spec.md
+structural_expectations:
+  required_headings:
+    # Best-effort ATX heading the audit emits when rendering Output item 2 as a
+    # section — same anchor used by `audit-flawed-spec.yaml`.
+    - '## Audit Report'
+  required_patterns:
+    # Two planted ERROR conditions (unknown key + unknown value) must produce
+    # at least one Critical finding. `\*{0,2}` tolerates Markdown emphasis.
+    - '\*{0,2}Critical\*{0,2}'
+    # Unknown-key finding must quote the misspelled key verbatim.
+    - 'audiance'
+    # diagram: required → the missing-diagram finding names the mermaid block
+    # the section lacks (the lint rule is phrased "no fenced ```mermaid block").
+    - 'mermaid'
+    # At least one of the three WARN conditions (length / diagram / forbidden
+    # examples) must render a Warning severity label.
+    - '\*{0,2}Warning\*{0,2}'
+    # Executive-Summary marker — audit emits `1. **Executive Summary**: ...`;
+    # this tolerates the emphasis and trailing description.
+    - '\*\*Executive Summary\*\*'
+  forbidden_patterns:
+    # Generic refusals / non-skill responses.
+    - "I'd be happy to help"
+    - "Sure, here's"
+    # Leading YAML frontmatter; `\r?\n` tolerates CRLF.
+    - '^---\r?\n'

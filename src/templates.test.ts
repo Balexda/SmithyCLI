@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(16);
+    expect(snippets.size).toBe(17);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -112,6 +112,7 @@ describe('loadSnippets', () => {
       'audit-checklist-spec.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
+      'audit-checklist-voice.md',
       'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
       'competing-lenses-scoping.md',
@@ -137,6 +138,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('audit-checklist-spec.md')).toContain('Audit Checklist (.spec.md)');
     expect(snippets.get('audit-checklist-tasks.md')).toContain('Audit Checklist (.tasks.md)');
     expect(snippets.get('audit-checklist-strike.md')).toContain('Audit Checklist (.strike.md)');
+    expect(snippets.get('audit-checklist-voice.md')).toContain('Voice & Audience Tag Lint');
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
     expect(snippets.get('review-protocol.md')).toContain('Review Protocol');
@@ -2485,6 +2487,21 @@ describe('getComposedTemplates', () => {
     // The retired row labels must no longer appear in the audit template
     expect(audit).not.toContain('Persona Clarity');
     expect(audit).not.toContain('Scope Boundaries');
+  });
+
+  it('audit template renders the voice/audience tag lint snippet', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toBeDefined();
+
+    // The cross-cutting voice lint partial must be resolved (no unresolved ref).
+    expect(audit).not.toContain('{{>audit-checklist-voice}}');
+
+    // Key surfaces of the lint rule must be present in the composed prompt.
+    expect(audit).toContain('Voice & Audience Tag Lint');
+    expect(audit).toContain('Unknown key');
+    expect(audit).toContain('Unknown value');
+    expect(audit).toContain('mermaid');
+    expect(audit).toContain('applicability');
   });
 
   it('render with claude variant renders competing plan dispatch', async () => {
