@@ -32,12 +32,17 @@ Validation rules:
 
 Purpose: Stores the committed baseline envelope for the JVM forge scenario.
 
+This entity reuses the established token-aware baseline shape (the `Baseline`
+interface in `evals/lib/types.ts` extended with `token_envelope` per F1.5
+`forge_baseline`, consuming F1.3a) — it does not introduce a new JSON shape.
+
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `name` | string | Yes | Matches `forge-tdd-slice-jvm`. |
-| `structural` | object | Yes | Existing structural baseline envelope. |
-| `tokens` | object | Yes | Token-aware envelope established by F1.3a. |
-| `metadata` | object | No | Stable baseline metadata if supported by the schema. |
+| `scenario_name` | string | Yes | Matches `forge-tdd-slice-jvm`. |
+| `captured_at` | string | Yes | ISO 8601 capture timestamp. |
+| `headings` | string[] | Yes | Structural heading expectations inherited from the baseline contract. |
+| `tables` | object[] | No | Structural table expectations inherited from the baseline contract. |
+| `token_envelope` | TokenEnvelope | Yes | Accepted token bounds (`input`/`output` `{min,max}`) using the F1.3a token-aware schema. |
 
 Validation rules:
 

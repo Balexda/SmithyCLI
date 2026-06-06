@@ -76,8 +76,8 @@ The JSON shape follows the token-aware baseline schema established by F1.3a.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | scenario result | EvalResult | Yes | Successful JVM forge result used to generate the baseline. |
-| token totals | object | Yes | Input and output token envelope. |
-| structural envelope | object | Yes | Expected structural result envelope. |
+| measured token totals | object | Yes | Per-run input/output token *counts* from the result, used to derive the committed `token_envelope` (`input`/`output` `{min,max}`) bounds — distinct from the envelope itself. |
+| structural expectations | object | Yes | Expected headings/tables captured as the structural baseline. |
 
 #### Outputs
 
