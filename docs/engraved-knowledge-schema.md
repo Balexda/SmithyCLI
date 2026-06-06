@@ -1,8 +1,5 @@
 # Engraved Knowledge — Artifact Model and Frontmatter Schema
 
-_Part of [EPIC #412](https://github.com/Balexda/SmithyCLI/issues/412) — durable
-knowledge family for Smithy._
-
 This document is the **single source of truth** for the engraved-knowledge
 artifact family: **decisions**, **invariants**, and **principles**. Every
 downstream sub-issue of the engraved EPIC builds on the schema below.
@@ -302,13 +299,13 @@ Everything else cites them.
 
 ### Suffix and location
 
-- The constitution is a single file: `docs/constitution/constitution.md`
-  (or `docs/design/constitution/constitution.md` for the design domain).
-- Each principle is a top-level `##` section within that file? **No** — each
-  principle is its own record with its own `kind: principle` frontmatter
-  and its own file. The constitution directory holds them; conventionally
-  they live as separate `.md` files named after the principle's slug (no
-  dedicated suffix because the family is intentionally small).
+- Each principle is its own record with its own `kind: principle`
+  frontmatter and its own file. The constitution directory
+  (`docs/constitution/`, or `docs/design/constitution/` for the design
+  domain) holds them; they live as separate `.md` files named after the
+  principle's slug. Principles do **not** carry a dedicated suffix
+  because the family is intentionally small and centralized — the
+  directory walk is sufficient discovery.
 - The "constitution" is the union of every `kind: principle` file in the
   constitution directory.
 
@@ -381,7 +378,7 @@ engraved file is structurally complete before the author adds any prose.
 | Sub-issue | What it builds on the schema |
 |-----------|-------------------------------|
 | #414 `smithy.engrave` | Authoring command. Reads the scaffold templates above, scaffolds a new record, and applies the frontmatter shape. |
-| #415 `smithy.recall` + consult-engraved snippet | Catalog and planning-time recall. Discovers records by suffix, reads `topics` / `scope` / `applies_to`, flags supersession and drift. |
+| #415 `smithy.recall` + consult-engraved snippet | Catalog and planning-time recall. Discovers decision and invariant records by suffix (`*.decision.md`, `*.invariant.md`) and principle records by walking the constitution directory (principles have no suffix); reads `topics` / `scope` / `applies_to`, flags supersession and drift. |
 | #416 Status scanner / parser / classifier | Engraved as a first-class type. Parses frontmatter against the discriminated union; classifies by `kind`; reports `status` per kind's lifecycle. |
 | #417 Graph edges + stale-ref check | Walks `supersedes` / `superseded_by` / `establishes` / `established_by`. Flags references to superseded or deprecated decisions. |
 | #418 Orders templates + engrave audit checklist | Issue body templates for engraving work; audit checklist asserts the body structure listed above (e.g., the Known-Exceptions ledger column shape). |
