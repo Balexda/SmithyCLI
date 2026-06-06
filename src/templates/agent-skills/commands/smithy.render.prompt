@@ -275,6 +275,7 @@ this format:
 **Created**: YYYY-MM-DD
 
 ## Features
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 ### Feature 1: <Title>
 
@@ -300,6 +301,7 @@ this format:
 
 <!-- Specification Debt appears here for templates without ## Assumptions sections -->
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -308,6 +310,7 @@ this format:
 _If no debt items, write: "None — all ambiguities resolved."_
 
 ## Dependency Order
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 Recommended specification sequence:
 
@@ -317,6 +320,7 @@ Recommended specification sequence:
 | F2 | <Title> | — | — |
 
 ## Cross-Milestone Dependencies
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: recommended; examples: discouraged -->
 
 Direction must be either `depends on` or `depended upon by`.
 

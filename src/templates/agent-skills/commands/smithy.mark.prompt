@@ -228,6 +228,7 @@ invoked inside a linked worktree)*
 **Source Feature Map**: `<path-to-.features.md>` — Feature <N>: <Title> *(include only when input is a `.features.md`)*
 
 ## Clarifications
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 ### Session YYYY-MM-DD
 
@@ -235,10 +236,12 @@ invoked inside a linked worktree)*
 - _Assumption text_
 
 ## Artifact Hierarchy
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 RFC → Milestone → Feature → User Story → Slice → Tasks
 
 ## User Scenarios & Testing *(mandatory)*
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: optional -->
 
 ### User Story 1: <Title> (Priority: P<N>)
 
@@ -263,6 +266,7 @@ As a <persona>, I want <goal> so that <benefit>.
 - ...
 
 ## Dependency Order
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 Recommended implementation sequence:
 
@@ -273,6 +277,7 @@ Recommended implementation sequence:
 | USN | <Title> | — | — |
 
 ## Requirements *(mandatory)*
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: recommended -->
 
 ### Functional Requirements
 
@@ -285,10 +290,12 @@ Recommended implementation sequence:
 - ...
 
 ## Assumptions
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 - ...
 
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -297,10 +304,12 @@ Recommended implementation sequence:
 _If no debt items, write: "None — all ambiguities resolved."_
 
 ## Out of Scope
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 - ...
 
 ## Success Criteria *(mandatory)*
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 ### Measurable Outcomes
 
@@ -336,20 +345,37 @@ Guidelines for the spec:
 
 Draft the `<slug>.data-model.md` file.
 
+**Reference voice only.** `.data-model.md` is a Builder × Reference artifact: its
+body is tables, schema definitions, validation rules, and state-transition
+matrices — never narrative prose explaining what the entities mean. If a
+section would otherwise be a paragraph of Explanation, either compress it
+into the structured artifact (the table, the schema literal) or drop it.
+
+**Non-overlap with `.contracts.md`.** `.data-model.md` covers **entities,
+schema, validation, lifecycle, and state transitions**. Interfaces,
+signatures, integration boundaries, and event/hook surfaces belong in
+`.contracts.md` instead — do not restate them here. If the same concept
+shows up in both files, the data-model row defines the persisted shape and
+the contracts row defines the call/event surface; they are complementary,
+not duplicative.
+
+**Applicability — code-shaped features only.** `.data-model.md` is
+mandatory only when the feature introduces or modifies persisted entities,
+types, or state. For non-code-shaped features (docs-only changes,
+template/prompt refactors, configuration toggles, process updates), the
+file MUST still exist but its body is a single `N/A` line with a
+one-sentence reason. Do not invent prose entities to fill the section.
+
 If the feature implies data storage, new types, or state management:
 
 ```markdown
 # Data Model: <Title>
-
-## Overview
-
-<One paragraph describing what this model supports.>
+<!-- applicability: code-shaped features only -->
 
 ## Entities
+<!-- audience: builder; mode: reference; length: tables only; diagram: required; examples: recommended; applicability: code-shaped features only -->
 
 ### 1) <Entity Name> (`<storage_name>`)
-
-Purpose: <what this entity represents and why it exists>
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -363,11 +389,13 @@ Validation rules:
 ### 2) ...
 
 ## Relationships
+<!-- audience: builder; mode: reference; length: tables only; diagram: required; examples: recommended; applicability: code-shaped features only -->
 
 - <Entity A> 1:N <Entity B> via `foreign_key`.
 - ...
 
 ## State Transitions
+<!-- audience: builder; mode: reference; length: tables only; diagram: required; examples: recommended; applicability: code-shaped features only -->
 
 ### <Entity/Process> lifecycle
 
@@ -378,17 +406,20 @@ Validation rules:
 2. ...
 
 ## Identity & Uniqueness
+<!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: recommended; applicability: code-shaped features only -->
 
 - <How entities are uniquely identified and deduplicated.>
 ```
 
-If the feature does NOT involve data changes, write a minimal file:
+If the feature does NOT involve data changes, write a one-line fallback —
+do not invent prose entities, do not pad the file with explanatory
+paragraphs:
 
 ```markdown
 # Data Model: <Title>
+<!-- applicability: code-shaped features only -->
 
-No new data entities, storage changes, or type definitions are required for this feature.
-Existing data structures are sufficient as-is.
+N/A — <one-sentence reason this feature has no code-shaped data changes (e.g., "docs-only change to README", "template refactor with no persisted state", "configuration toggle with no schema impact").>
 ```
 
 ---
@@ -397,16 +428,35 @@ Existing data structures are sufficient as-is.
 
 Draft the `<slug>.contracts.md` file.
 
+**Reference voice only.** `.contracts.md` is a Builder × Reference artifact:
+its body is signatures, input/output tables, and error-condition tables —
+the signatures *are* the deliverable. Never wrap the interfaces in
+narrative paragraphs explaining what they do; the signature itself, plus
+the input/output tables next to it, is the contract.
+
+**Non-overlap with `.data-model.md`.** `.contracts.md` covers **interfaces,
+signatures, integration boundaries, and event/hook surfaces**. Entity
+shapes, validation rules, lifecycles, and state transitions belong in
+`.data-model.md` instead — do not restate them here. The contracts file
+describes the call/event surface; the data-model file describes the
+persisted shape.
+
+**Applicability — code-shaped features only.** `.contracts.md` is
+mandatory only when the feature introduces or modifies an interface, API
+boundary, or integration surface. For non-code-shaped features (docs-only
+changes, template/prompt refactors, configuration toggles, process
+updates), the file MUST still exist but its body is a single `N/A` line
+with a one-sentence reason. Do not invent prose interfaces to fill the
+section.
+
 If the feature involves interfaces, API boundaries, or integration points:
 
 ```markdown
 # Contracts: <Title>
-
-## Overview
-
-<One paragraph describing the integration boundaries this feature touches.>
+<!-- applicability: code-shaped features only -->
 
 ## Interfaces
+<!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: required; applicability: code-shaped features only -->
 
 ### <Interface/Contract Name>
 
@@ -440,22 +490,28 @@ Use language-appropriate pseudo-signatures — not full implementation code.>
 ### ...
 
 ## Events / Hooks
+<!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: required; applicability: code-shaped features only -->
 
-<If the feature publishes or subscribes to events, document them here.>
+<If the feature publishes or subscribes to events, document them here as a
+table of event name → trigger → payload shape. No narrative wrappers.>
 
 ## Integration Boundaries
+<!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: required; applicability: code-shaped features only -->
 
-<Describe where this feature touches external systems, third-party APIs,
-or other internal modules — and what the contract is at each boundary.>
+<List external systems, third-party APIs, or other internal modules this
+feature touches, with the contract at each boundary. Table format
+preferred — boundary | direction | contract | failure mode.>
 ```
 
-If the feature does NOT involve contracts or interfaces, write a minimal file:
+If the feature does NOT involve contracts or interfaces, write a one-line
+fallback — do not invent prose interfaces, do not pad the file with
+explanatory paragraphs:
 
 ```markdown
 # Contracts: <Title>
+<!-- applicability: code-shaped features only -->
 
-No new interfaces, API contracts, or integration boundaries are introduced by this feature.
-Existing contracts remain unchanged.
+N/A — <one-sentence reason this feature has no code-shaped interface changes (e.g., "docs-only change to README", "template refactor with no new API surface", "configuration toggle that reuses existing CLI flag handling").>
 ```
 
 ---

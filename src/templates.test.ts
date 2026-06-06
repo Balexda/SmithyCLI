@@ -1351,6 +1351,192 @@ describe('getComposedTemplates', () => {
     expect(strike).not.toContain('{{>');
   });
 
+  // Issue #422: every `##` heading inside the artifact code-fence template
+  // of each artifact-producing command must carry an `<!-- audience: ... -->`
+  // comment immediately below it. The tag grammar lives in
+  // `smithy.helper-voice` (#420) and the convention is documented in
+  // `src/templates/agent-skills/README.md`. These assertions back-stop the
+  // contract so a regression that drops a tag or breaks the grammar is
+  // caught at test time rather than at audit time.
+
+  // Helper: extract a specific ```markdown ... ``` fence from a composed
+  // command template by an anchor substring that uniquely identifies the
+  // canonical artifact-template fence (e.g., `# Strike: <Title>`). Each
+  // composed prompt contains multiple markdown fences (write-back examples,
+  // PRD header snippets, indented inner fences inside the one-shot-output
+  // snippet, etc.); a regex-based scan would miscount nested fences, so we
+  // walk line-by-line and track fence depth instead. The anchor pins us
+  // to the single fence that defines the artifact's section structure.
+  function extractFenceByAnchor(template: string, anchor: string): string {
+    const lines = template.split('\n');
+    const fences: string[] = [];
+    let inFence = false;
+    let fenceLines: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trimStart();
+      if (!inFence && trimmed.startsWith('```markdown')) {
+        inFence = true;
+        fenceLines = [];
+        continue;
+      }
+      if (inFence && trimmed.startsWith('```')) {
+        fences.push(fenceLines.join('\n'));
+        inFence = false;
+        continue;
+      }
+      if (inFence) {
+        fenceLines.push(line);
+      }
+    }
+    const match = fences.find(b => b.includes(anchor));
+    expect(match, `no markdown fence contains anchor "${anchor}"`).toBeDefined();
+    return match!;
+  }
+
+  // Helper: return the list of `## Heading` titles inside a markdown fence
+  // string. We ignore `###` and deeper because the voice tag convention
+  // attaches to top-level `##` sections only.
+  function h2Headings(fence: string): string[] {
+    const matches = [...fence.matchAll(/^## ([^\n]+)$/gm)];
+    return matches.map(m => m[1]!.trim());
+  }
+
+  // Helper: assert that each `## Heading` inside a fence is immediately
+  // followed (after at most a blank line) by an audience-tag HTML comment
+  // matching the issue #422 grammar.
+  function expectAudienceTagPerH2(fence: string, label: string) {
+    // Matches: `## <title>\n\n<!-- audience: <role>[+ai-input]; mode: <mode>; ... -->`
+    // We allow zero or one blank lines between the heading and the tag.
+    const headingsWithTag = [...fence.matchAll(
+      /^## ([^\n]+)\n(?:\n)?<!--\s*audience:\s*(stakeholder|reviewer|builder)(\+ai-input)?\s*;\s*mode:\s*(explanation|reference|how-to|tutorial)\s*;[^\n]*-->/gm
+    )];
+    const tagged = new Set(headingsWithTag.map(m => m[1]!.trim()));
+    const all = h2Headings(fence);
+    const missing = all.filter(h => !tagged.has(h));
+    expect(missing, `${label}: ## headings missing audience tag: ${missing.join(', ')}`).toEqual([]);
+  }
+
+  it('strike artifact template tags every ## section with an audience comment (issue #422)', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    const fence = extractFenceByAnchor(strike, '# Strike: <Title>');
+    expectAudienceTagPerH2(fence, 'smithy.strike');
+    // Spot-check section→role mapping called out in the issue.
+    expect(fence).toMatch(/## Summary\n+<!-- audience: stakeholder; mode: explanation;/);
+    expect(fence).toMatch(/## Data Model\n+<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    expect(fence).toMatch(/## Contracts\n+<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    // Issue #422: tasks slice bodies use examples: forbidden.
+    expect(fence).toMatch(/## Single Slice\n+<!-- audience: builder; mode: how-to;[^>]*examples: forbidden/);
+  });
+
+  it('spark PRD template tags every ## section with an audience comment (issue #422)', () => {
+    const spark = composed.commands.get('smithy.spark.md')!;
+    // Anchor on the PRD template reference fence — not the header-only
+    // fence used by the Phase 3 PRD File Creation step.
+    const fence = extractFenceByAnchor(spark, '## Problem Statement');
+    expectAudienceTagPerH2(fence, 'smithy.spark');
+    expect(fence).toMatch(/## Problem Statement\n+<!-- audience: stakeholder; mode: explanation;/);
+    expect(fence).toMatch(/## Alternatives \/ Build-vs-Buy\n+<!-- audience: reviewer; mode: explanation;[^>]*examples: recommended/);
+  });
+
+  it('ignite RFC template tags every ## section with an audience comment (issue #422)', () => {
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    const fence = extractFenceByAnchor(ignite, '## Motivation / Problem Statement');
+    expectAudienceTagPerH2(fence, 'smithy.ignite');
+    // Issue #422 mapping: RFC Proposal → diagram: recommended; examples: recommended.
+    expect(fence).toMatch(/## Proposal\n+<!-- audience: reviewer; mode: explanation;[^>]*diagram: recommended;[^>]*examples: recommended/);
+    // Dependency Order is the LLM-consumed graph table.
+    expect(fence).toMatch(/## Dependency Order\n+<!-- audience: builder\+ai-input; mode: reference;/);
+  });
+
+  it('render feature-map template tags every ## section with an audience comment (issue #422)', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    const fence = extractFenceByAnchor(render, '# Feature Map: <Milestone Title>');
+    expectAudienceTagPerH2(fence, 'smithy.render');
+    // Issue #422 mapping: Cross-Milestone Deps → diagram: recommended.
+    expect(fence).toMatch(/## Cross-Milestone Dependencies\n+<!-- audience: reviewer; mode: reference;[^>]*diagram: recommended/);
+  });
+
+  it('mark spec template tags every ## section with an audience comment (issue #422)', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    const fence = extractFenceByAnchor(mark, '# Feature Specification: <Title>');
+    expectAudienceTagPerH2(fence, 'smithy.mark spec');
+    // Issue #422 mapping: Spec Acceptance Scenarios → examples: optional.
+    expect(fence).toMatch(/## User Scenarios & Testing[^\n]*\n+<!-- audience: builder\+ai-input; mode: reference;[^>]*examples: optional/);
+    expect(fence).toMatch(/## Requirements[^\n]*\n+<!-- audience: builder\+ai-input; mode: reference;[^>]*examples: recommended/);
+  });
+
+  it('mark data-model template is Reference-voice with applicability and N/A fallback (issue #422)', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    // Scope to Phase 4 so we are measuring the data-model template fences,
+    // not the spec fence.
+    const phase4Idx = mark.indexOf('## Phase 4: Model');
+    expect(phase4Idx).toBeGreaterThan(-1);
+    const phase5Idx = mark.indexOf('## Phase 5: Contract', phase4Idx);
+    expect(phase5Idx).toBeGreaterThan(phase4Idx);
+    const phase4 = mark.slice(phase4Idx, phase5Idx);
+
+    // Applicability directive applied at the file top of the rendered
+    // data-model.md template.
+    expect(phase4).toMatch(/# Data Model: <Title>\n<!-- applicability: code-shaped features only -->/);
+    // Section-level voice tags applied to every ## section, all carrying
+    // the same applicability constraint.
+    expect(phase4).toMatch(/## Entities\n<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    expect(phase4).toMatch(/## Relationships\n<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    expect(phase4).toMatch(/## State Transitions\n<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    expect(phase4).toMatch(/## Identity & Uniqueness\n<!-- audience: builder; mode: reference;[^>]*applicability: code-shaped features only/);
+    // Issue #422 directive mapping for Data Model Entities.
+    expect(phase4).toMatch(/## Entities\n<!-- audience: builder; mode: reference;[^>]*diagram: required;[^>]*examples: recommended/);
+    // N/A fallback documented in the template itself, not just in prose.
+    expect(phase4).toMatch(/N\/A — <one-sentence reason this feature has no code-shaped data changes/);
+    // The dense-prose `## Overview` heading that emitted Explanation prose
+    // is gone.
+    expect(phase4).not.toMatch(/```markdown[\s\S]*?## Overview[\s\S]*?```/);
+    // Non-overlap with .contracts.md is stated in the prompt text itself so
+    // the drafting agent has the rule visible without consulting the skill.
+    expect(phase4).toMatch(/entities,\s*schema,\s*validation,\s*lifecycle,\s*and state transitions/i);
+  });
+
+  it('mark contracts template is Reference-voice with applicability and N/A fallback (issue #422)', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    // Scope to Phase 5 — Phase 0/Phase 6/Phase 0c also touch contracts in
+    // prose, but we are measuring the contracts.md template fences here.
+    const phase5Idx = mark.indexOf('## Phase 5: Contract');
+    expect(phase5Idx).toBeGreaterThan(-1);
+    const phase6Idx = mark.indexOf('## Phase 6:', phase5Idx);
+    expect(phase6Idx).toBeGreaterThan(phase5Idx);
+    const phase5 = mark.slice(phase5Idx, phase6Idx);
+
+    expect(phase5).toMatch(/# Contracts: <Title>\n<!-- applicability: code-shaped features only -->/);
+    // Issue #422 directive mapping for Contracts Interfaces.
+    expect(phase5).toMatch(/## Interfaces\n<!-- audience: builder; mode: reference;[^>]*examples: required;[^>]*applicability: code-shaped features only/);
+    expect(phase5).toMatch(/## Events \/ Hooks\n<!-- audience: builder; mode: reference;[^>]*examples: required;[^>]*applicability: code-shaped features only/);
+    expect(phase5).toMatch(/## Integration Boundaries\n<!-- audience: builder; mode: reference;[^>]*examples: required;[^>]*applicability: code-shaped features only/);
+    // N/A fallback documented in the template itself.
+    expect(phase5).toMatch(/N\/A — <one-sentence reason this feature has no code-shaped interface changes/);
+    // The dense-prose `## Overview` heading that emitted Explanation prose
+    // is gone.
+    expect(phase5).not.toMatch(/```markdown[\s\S]*?## Overview[\s\S]*?```/);
+    // Non-overlap with .data-model.md is stated in the prompt text itself.
+    expect(phase5).toMatch(/interfaces,\s*signatures,\s*integration boundaries,\s*and event\/hook surfaces/i);
+  });
+
+  it('cut tasks template tags every ## section and forbids examples in slice bodies (issue #422)', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    const fence = extractFenceByAnchor(cut, '# Tasks: <User Story Title>');
+    expectAudienceTagPerH2(fence, 'smithy.cut');
+    // Issue #422 mapping: Tasks slice bodies → examples: forbidden.
+    // Slice 1 and Slice 2 must both carry the forbidden directive.
+    const sliceTags = [...fence.matchAll(/## Slice \d+: [^\n]+\n<!-- ([^\n]+) -->/g)].map(m => m[1]!);
+    expect(sliceTags.length).toBeGreaterThanOrEqual(2);
+    for (const tag of sliceTags) {
+      expect(tag).toMatch(/audience: builder/);
+      expect(tag).toMatch(/mode: how-to/);
+      expect(tag).toMatch(/examples: forbidden/);
+    }
+    // Issue #422 mapping: Tasks Dependency Order → diagram: recommended.
+    expect(fence).toMatch(/## Dependency Order\n<!-- audience: builder\+ai-input; mode: reference;[^>]*diagram: recommended/);
+  });
+
   it('prompt templates are included without modification', () => {
     const titles = composed.prompts.get('smithy.titles.md')!;
     expect(titles).toBeDefined();

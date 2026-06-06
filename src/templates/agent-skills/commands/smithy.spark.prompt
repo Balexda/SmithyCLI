@@ -395,25 +395,30 @@ path to trigger another Phase 0 review loop.
 **Created**: YYYY-MM-DD  |  **Status**: Draft
 
 ## Problem Statement
+<!-- audience: stakeholder; mode: explanation; length: 2-3 paragraphs; diagram: optional; examples: discouraged -->
 
 <2–3 paragraphs from smithy-prose. Concrete user pain leading to the outcome
 we want.>
 
 ## Proposed Solution
+<!-- audience: stakeholder; mode: explanation; length: 1-2 paragraphs; diagram: optional; examples: discouraged -->
 
 <1–2 paragraphs, WHAT-not-HOW. The capability the user will observe.>
 
 ## Target Users
+<!-- audience: stakeholder; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 - <Named user or role 1 — how they encounter the problem today>
 - <Named user or role 2>
 
 ## Success Signals
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: optional -->
 
 - <Observable outcome 1>
 - <Observable outcome 2>
 
 ## Alternatives / Build-vs-Buy
+<!-- audience: reviewer; mode: explanation; length: 3-6 paragraphs; diagram: optional; examples: recommended -->
 
 ### Alternatives Considered
 
@@ -426,11 +431,13 @@ we want.>
 <1–2 paragraph narrative citing concrete gaps of the closest candidate.>
 
 ## Assumptions
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 - [Critical Assumption] <promoted Critical+High item, if any>
 - <ordinary assumption>
 
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -439,6 +446,7 @@ we want.>
 _If no debt items, write: "None — all ambiguities resolved."_
 
 ## Open Questions
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 - <Genuinely unresolved item that needs stakeholder input or experimentation>
 ```
