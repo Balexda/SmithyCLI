@@ -46,23 +46,11 @@ Tests that templates compose correctly (snippet/partial resolution, frontmatter 
 
 ### Tier 3: Agent-Skill Execution Behavior (evals)
 
-Tests that the deployed skills actually *work* when invoked by an AI agent — slash commands trigger, output has the correct structure, sub-agents are dispatched, and results meet quality expectations. Run via `npm run eval` (local on-demand, not CI).
+Tests that the deployed skills actually *work* when invoked by an AI agent — slash commands trigger, output has the correct structure, sub-agents are dispatched, and results meet quality expectations. Run via `npm run eval` (local on-demand, not CI — LLM cost).
 
-The evals framework (under `evals/`) — implemented:
-- Executes skills via a selected headless agent CLI (`claude`, `gemini`, or local `codex exec`) against a reference fixture codebase
-- Runs locally on demand (`npm run eval`), not in CI, due to LLM cost
-- Structural output validation (`validateStructure` — required headings, patterns, tables, forbidden patterns)
-- Sub-agent invocation verification (`verifySubAgents` — pattern matching against extracted text and dispatch events)
-- Eval summary report library (`scenarioRunToResult`, `buildReport`, `formatReport`, `EvalReport` — pure, fully unit-tested)
-- Baseline regression library (`loadBaseline`, `compareToBaseline` — convention-based JSON loader and pure structural diff; wired into the orchestrator with a committed `strike-health-check.json` baseline)
-- Dedicated evals test suite runnable via `npm run test:evals` (independent of `npm test`)
-- Strike and scout end-to-end scenarios (`strikeScenario`, `scoutScenario`) wired into the orchestrator; `--case <name>` filter selects a single scenario by name
-- Reference fixture carries documented planted inconsistencies (`evals/fixture/README.md` — Planted Inconsistencies section) that the scout scenario asserts are detected
+The framework (`evals/`) runs scenarios through a selected headless agent CLI (`claude`, `gemini`, or `codex exec`) against the reference fixture codebase. It validates structural output, sub-agent dispatch, and token / baseline regressions. Scenarios are loaded from `evals/cases/*.yaml`; the `--case <name>` filter selects a single scenario. The framework's own unit tests run independently via `npm run test:evals`.
 
-Pending:
-- YAML-defined scenario loading (`evals/cases/`)
-
-See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification.
+See **[specs/2026-04-06-003-smithy-evals-framework/](specs/2026-04-06-003-smithy-evals-framework/)** for the feature specification and per-user-story status.
 
 ## Automated Dependency Updates
 

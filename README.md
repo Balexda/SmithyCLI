@@ -1,6 +1,6 @@
 # Smithy CLI
 
-An initialization tool for the **Smithy Agentic Development Workflow**. This package provides a CLI that easily sets up the `smithy` prompt templates for various AI assistant workflows, including Claude, Gemini CLI, and Codex.
+Stop hand-crafting the same RFC → spec → tasks → PR scaffolding for every AI-assisted change. **Smithy** installs a structured pipeline of slash commands — `/smithy.ignite`, `/smithy.render`, `/smithy.mark`, `/smithy.cut`, `/smithy.forge`, plus the `/smithy.strike` fast track — into your repo so Claude Code, Gemini CLI, or Codex can drive it. One `smithy init` deploys the same prompts, permissions, and skills across every supported assistant.
 
 ## Installation
 
@@ -41,7 +41,7 @@ The Smithy Industrial Pipeline follows a structured path from broad ideas to ver
 | **Shortcut** | `smithy.strike` | **Direct**: Strike while the iron is hot (Idea -> Tasks). |
 | **Review** | `smithy.audit` | **Audit**: Universal auditor for any Smithy artifact. |
 
-### Visualization
+### Pipeline Diagram
 
 ```mermaid
 graph TD

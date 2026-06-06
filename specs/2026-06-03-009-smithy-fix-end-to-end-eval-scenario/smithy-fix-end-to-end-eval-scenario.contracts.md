@@ -181,7 +181,7 @@ sub_agent_evidence:
 
 ## Events / Hooks
 
-No new runtime events or hooks are introduced. The feature uses the existing eval scenario load, runner invocation, validation, report, and baseline comparison flow.
+**N/A** — no new runtime events or hooks. The feature reuses the existing eval scenario load, runner invocation, validation, report, and baseline-comparison flow.
 
 ## Integration Boundaries
 

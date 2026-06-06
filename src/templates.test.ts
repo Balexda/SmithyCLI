@@ -301,15 +301,16 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(10);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(13);
-    expect(byCategory.skills).toHaveLength(4);
+    expect(byCategory.skills).toHaveLength(5);
   });
 
-  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, and smithy.helper-docker', () => {
+  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, and smithy.helper-voice', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
     expect(skills).toContain('smithy.gh-issue');
     expect(skills).toContain('smithy.helper-docker');
+    expect(skills).toContain('smithy.helper-voice');
   });
 
   it('commands includes expected template files', () => {
@@ -774,6 +775,104 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('smithy.helper-docker');
+  });
+
+  // Issue #420: smithy.helper-voice is a new body-only operational skill
+  // that distributes the voice & audience taxonomy (EPIC #419). These
+  // assertions back-stop the deployment contract (body-only, frontmatter
+  // retained, auto-trigger description) and the 10-section outline so a
+  // regression that drops a section, removes the auto-trigger phrases, or
+  // accidentally adds a `scripts/` subdirectory fails the suite.
+  it('smithy.helper-voice is body-only (no scripts) with frontmatter retained', () => {
+    const skill = composed.skills.get('smithy.helper-voice');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toMatch(/^---\s*\n/);
+    expect(skill!.prompt).toContain('name: smithy.helper-voice');
+    expect(skill!.scripts.size).toBe(0);
+  });
+
+  it('smithy.helper-voice description triggers on draft and review/cleanup phrasing', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Auto-trigger description (frontmatter) must name the two invocation
+    // surfaces and the deliverable types the skill covers, so calling
+    // agents recognize when to lazy-load it.
+    expect(skill.prompt).toMatch(/drafting or reviewing prose/i);
+    expect(skill.prompt).toContain('migration plans');
+    expect(skill.prompt).toContain('ADRs');
+    expect(skill.prompt).toContain('runbooks');
+    expect(skill.prompt).toContain('READMEs');
+    // The Role × Diátaxis-mode framing is the load-bearing claim of the
+    // description — if it disappears, the skill no longer advertises its
+    // actual content.
+    expect(skill.prompt).toMatch(/Role × Diátaxis-mode taxonomy/i);
+  });
+
+  it('smithy.helper-voice body covers the 10-section outline', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Per issue #420, the body must cover all ten sections of the
+    // outline. Anchor on the numbered heading prefix so a regression that
+    // renumbers or drops one section is caught.
+    expect(skill.prompt).toContain('## 1. The two axes');
+    expect(skill.prompt).toContain('## 2. The four anti-patterns');
+    expect(skill.prompt).toContain('## 3. Voice rules per Role × Mode combination');
+    expect(skill.prompt).toContain('## 4. Diagram guidance');
+    expect(skill.prompt).toContain('## 5. Embedded examples — when code helps vs. hurts');
+    expect(skill.prompt).toContain('## 6. Reference-prose anti-pattern');
+    expect(skill.prompt).toContain('## 7. Depth-control rule');
+    expect(skill.prompt).toContain('## 8. Audience tag grammar');
+    expect(skill.prompt).toContain('## 9. Three worked before/after examples');
+    expect(skill.prompt).toContain('## 10. Application beyond Smithy');
+  });
+
+  it('smithy.helper-voice documents both invocation modes', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Two first-class modes per issue #420. Both must be documented in
+    // the body so any agent loading the skill knows it can draft *or*
+    // review/cleanup.
+    expect(skill.prompt).toMatch(/Draft mode/);
+    expect(skill.prompt).toMatch(/Review \/ cleanup mode/);
+    // The side-by-side compare is the primary validation path for the
+    // cleanup mode and must be called out explicitly. Either spelling
+    // (hyphenated or whitespace-separated, potentially wrapped across a
+    // newline) counts as documenting the compare protocol.
+    expect(skill.prompt).toMatch(/side[\s-]+by[\s-]+side/i);
+  });
+
+  it('smithy.helper-voice documents the audience-tag grammar with all directive keys', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Tagging-grammar directive keys (issue #420). Every key must appear
+    // in the body so authors of new templates have one source of truth
+    // for the convention.
+    expect(skill.prompt).toContain('audience:');
+    expect(skill.prompt).toContain('mode:');
+    expect(skill.prompt).toContain('length:');
+    expect(skill.prompt).toContain('diagram:');
+    expect(skill.prompt).toContain('examples:');
+    expect(skill.prompt).toContain('applicability:');
+    // The +ai-input flag is additive on the base role and must be named.
+    expect(skill.prompt).toContain('+ai-input');
+    // The inline HTML-comment carrier and the N/A fallback for
+    // non-code-shaped Reference sections are both load-bearing pieces of
+    // the taxonomy, per issue #420 sections 6 and 8.
+    expect(skill.prompt).toMatch(/<!-- audience:/);
+    expect(skill.prompt).toMatch(/N\/A —/);
+  });
+
+  it('smithy.helper-voice is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Strip frontmatter before checking — the deploy-target name in
+    // frontmatter is "smithy.helper-voice", not a Claude-specific term.
+    const body = skill.prompt.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    // Provider-specific surfaces must not leak into the body.
+    expect(body).not.toMatch(/\$ARGUMENTS\b/);
+    expect(body).not.toMatch(/allowed-tools\s*:/);
+    expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
+    expect(body).not.toMatch(/\.gemini\/skills/);
+    expect(body).not.toMatch(/\.agents\/skills/);
+    // The body must explicitly assert its provider-neutrality so a
+    // future edit that quietly adds provider-specific syntax has to
+    // also remove the assertion.
+    expect(body).toMatch(/Provider-neutral/i);
   });
 
   it('categorizes templates correctly', () => {
