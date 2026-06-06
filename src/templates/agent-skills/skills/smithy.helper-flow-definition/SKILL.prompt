@@ -197,9 +197,9 @@ appId: <reverse-domain.app.id>
 # Guard: <invariant from flow.md Guards section>.
 - assertNotVisible:
     id: "<guarded-state-test-id>"
-- inputText:
+- tapOn:
     id: "<field-test-id>"
-    text: "<...>"
+- inputText: "<...>"
 # Guard: <invariant becomes reachable once preconditions hold>.
 - assertVisible:
     id: "<guarded-state-test-id>"
@@ -281,12 +281,12 @@ appId: com.storyspider.app
 # Guard: confirm is disabled until the URL is valid.
 - assertNotVisible:
     id: "add-title-confirm-button-enabled"
-- inputText:
+- tapOn:
     id: "add-title-title-field"
-    text: "The Magic Circle"
-- inputText:
+- inputText: "The Magic Circle"
+- tapOn:
     id: "add-title-url-field"
-    text: "https://example.com/magic-circle.mp3"
+- inputText: "https://example.com/magic-circle.mp3"
 # Guard: with a valid URL, confirm becomes reachable.
 - assertVisible:
     id: "add-title-confirm-button-enabled"
