@@ -91,7 +91,7 @@ group together alphabetically and stand visually apart from slash commands
 
 - **smithy.pr-review** — GitHub PR review operations (find-pr, list inline comments, reply to comment) backed by shell scripts in `scripts/`. Used by `smithy.fix` when handling review feedback. Predates the `helper-` convention.
 - **smithy.helper-docker** — Diagnostic procedures for Docker container failures: bound waits, inspect/log triage, recover-vs-escalate rules, pre-flight checks. Body-only (no scripts). Advertised by `smithy.forge` so it can fall back when validation hits docker problems.
-- **smithy.helper-voice** — Voice and audience guidance for any prose (planning artifacts, migration plans, ADRs, runbooks, READMEs, inline documentation). Provides a Role × Diátaxis-mode taxonomy, conciseness budgets, diagram-first framing, depth-control rules, and an `<!-- audience: ... -->` per-section tagging grammar enforced by `smithy.audit`. Body-only; lazy-loaded for both draft and review/cleanup modes.
+- **smithy.helper-voice** — Voice and audience guidance for any prose (planning artifacts, migration plans, ADRs, runbooks, READMEs, inline documentation). Provides a Role × Diátaxis-mode taxonomy, conciseness budgets, diagram-first framing, depth-control rules, and an `<!-- audience: ... -->` per-section tagging grammar that future `smithy.audit` lint rules will enforce (planned in slice 4 of EPIC #419). Body-only; lazy-loaded for both draft and review/cleanup modes.
 
 ## Key Concepts
 

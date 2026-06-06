@@ -140,7 +140,7 @@ audit command knows when `N/A` is legitimate:
 
 ```
 ## Contracts
-<!-- audience: builder; mode: reference; applicability: code-shaped features only; examples: required -->
+<!-- audience: builder; mode: reference; length: tables only; diagram: recommended; examples: required; applicability: code-shaped features only -->
 ```
 
 In review mode, treat any multi-paragraph Reference section without
@@ -176,11 +176,11 @@ Each section's voice is described by a small set of keys: `audience`,
 used by the generating command (`smithy.ignite`, `smithy.render`,
 `smithy.mark`, `smithy.cut`) — not inline in every generated artifact.
 One source of truth, no per-file drift; the artifact itself stays
-clean prose. `smithy.audit` reads the same template files to know
-what voice spec to enforce per section. Until the template surface is
-fully wired through, the audit command carries a hard-coded copy of
-the specs so the enforcement surface matches the eventual
-template-driven one.
+clean prose. `smithy.audit` will read the same template files to know
+what voice spec to enforce per section (planned in slice 4 of EPIC
+#419). Until the template surface is wired through and that slice
+lands, the audit command will carry a hard-coded copy of the specs so
+the enforcement surface matches the eventual template-driven one.
 
 **For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,
 inline documentation), there is no template to inherit from. Use the
@@ -258,7 +258,7 @@ artifacts the specs live in the template, not in the rendered file):
 
 ```
 ## Goals
-<!-- audience: reviewer; mode: explanation; length: 1-2 paragraphs; examples: discouraged -->
+<!-- audience: reviewer; mode: explanation; length: 1-2 paragraphs; diagram: optional; examples: discouraged -->
 
 Users should be able to see status across all artifacts in one place,
 stable enough to wire into CI.

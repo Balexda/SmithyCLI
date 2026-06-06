@@ -144,8 +144,9 @@ Keys:
 Authoring rule: when adding a new `##` section to a planning-artifact
 template, drop the tag immediately under the heading inside the
 template's markdown code fence. `smithy.audit` and future lint commands
-read these tags to enforce voice rules; until every template surface
-is wired through, the audit command carries a hard-coded copy of the
+will read these tags to enforce voice rules (planned in slice 4 of EPIC
+#419). Until that slice lands and every template surface is wired
+through, the audit command will carry a hard-coded copy of the
 per-section specs that matches the eventual template-driven one. See
 `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
 for the per-cell rules, three worked before/after examples, and the
