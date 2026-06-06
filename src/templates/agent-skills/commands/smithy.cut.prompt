@@ -339,6 +339,7 @@ Draft the tasks file with this structure:
 ---
 
 ## Slice 1: <Title>
+<!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
 
 **Goal**: <What this slice delivers as a standalone working increment.>
 
@@ -362,12 +363,14 @@ Draft the tasks file with this structure:
 ---
 
 ## Slice 2: <Title>
+<!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
 
 ...
 
 ---
 
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -378,6 +381,7 @@ _If no debt items, write: "None — all ambiguities resolved."_
 ---
 
 ## Dependency Order
+<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: recommended; examples: discouraged -->
 
 Recommended implementation sequence:
 

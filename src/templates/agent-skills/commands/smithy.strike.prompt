@@ -123,45 +123,55 @@ with this format:
 **Date:** YYYY-MM-DD  |  **Branch:** <resolved-branch>  |  **Status:** Ready
 
 ## Summary
+<!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 
 <What is being built and why, in plain English.>
 
 ## Goal
+<!-- audience: stakeholder; mode: explanation; length: 1 sentence; diagram: optional; examples: discouraged -->
 
 <Single meaningful outcome this strike delivers.>
 
 ## Out of Scope
+<!-- audience: reviewer; mode: reference; length: bullets or table; diagram: optional; examples: discouraged -->
 
 - <Explicitly excluded item 1>
 - <Explicitly excluded item 2>
 
 ## Requirements
+<!-- audience: builder+ai-input; mode: reference; length: bullets or table; diagram: optional; examples: recommended -->
 
 - **FR-001**: <Numbered functional requirement>
 - **FR-002**: <Numbered functional requirement>
 
 ## Success Criteria
+<!-- audience: reviewer; mode: reference; length: bullets or table; diagram: optional; examples: optional -->
 
 - **SC-001**: <Numbered testable outcome>
 - **SC-002**: <Numbered testable outcome>
 
 ## User Flow
+<!-- audience: stakeholder; mode: explanation; length: 1-3 paragraphs; diagram: recommended; examples: discouraged -->
 
 <Behavior from the user's point of view — what the user does and what happens.>
 
 ## Data Model
+<!-- audience: builder; mode: reference; length: tables only; diagram: recommended; examples: recommended; applicability: code-shaped features only -->
 
-<Inline, minimal description of any data changes. Write "N/A" if not needed.>
+<Inline, minimal description of any data changes. Write `N/A — <one-sentence reason>` if the strike has no code-shaped data changes.>
 
 ## Contracts
+<!-- audience: builder; mode: reference; length: tables only; diagram: optional; examples: required; applicability: code-shaped features only -->
 
-<Inline, minimal description of any interface changes. Write "N/A" if not needed.>
+<Inline, minimal description of any interface changes. Write `N/A — <one-sentence reason>` if the strike has no code-shaped interface changes.>
 
 ## Decisions
+<!-- audience: reviewer; mode: explanation; length: 1-3 paragraphs; diagram: optional; examples: discouraged -->
 
 <Important decisions and tradeoffs made during the planning phase.>
 
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -170,6 +180,7 @@ with this format:
 _If no debt items, write: "None — all ambiguities resolved."_
 
 ## Single Slice
+<!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
 
 **Goal**: <What this slice delivers as a standalone increment.>
 
