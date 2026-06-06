@@ -16,6 +16,8 @@ permissions stay narrow and predictable.
 
 ---
 
+{{>artifact-location-policy}}
+
 ## Input
 
 The artifact file path: $ARGUMENTS
@@ -351,7 +353,7 @@ For **each** milestone extracted in Phase 3, perform the following steps:
    - `{{next_step}}` ← the literal string `smithy.render <rfc_path> <milestone_number>`
      per the data-model next-step mapping, **with `<rfc_path>` and
      `<milestone_number>` already substituted using the values captured
-     above** (e.g., `smithy.render docs/rfcs/2026-03-21-001-foo.rfc.md 3`).
+     above** (e.g., `smithy.render {{artifactsRoot}}docs/rfcs/2026-03-21-001-foo.rfc.md 3`).
      Compose `{{next_step}}`'s value first, before running the global
      substitution pass on the template body, so the rendered body's
      `{{next_step}}` becomes the fully-resolved command rather than a

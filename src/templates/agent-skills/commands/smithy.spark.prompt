@@ -1,6 +1,6 @@
 ---
 name: smithy-spark
-description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces docs/prds/<YYYY>-<NNN>-<slug>.prd.md as an optional upstream input to smithy.ignite."
+description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces a docs/prds/<YYYY>-<NNN>-<slug>.prd.md (or ~/.smithy/<repo>/docs/prds/... in external-artifacts mode) as an optional upstream input to smithy.ignite."
 ---
 # smithy-spark
 
@@ -16,6 +16,8 @@ write → summary with **no intermediate STOP gates**. Unresolved ambiguities
 become specification debt in the PRD; they do not interrupt the pipeline.
 
 ---
+
+{{>artifact-location-policy}}
 
 ## Input
 
@@ -82,14 +84,14 @@ Parse the input to set up the PRD:
 
 1. **Understand the idea.** If the input is a file path, read the file and
    extract the core idea. If it's a description string, use it directly.
-2. **Scan for existing PRDs.** List files in `docs/prds/` to check for
+2. **Scan for existing PRDs.** List files in `{{artifactsRoot}}docs/prds/` to check for
    duplicates and to derive the next sequential `NNN` number. If no
-   `docs/prds/` folder exists, the next number is `001`.
+   `{{artifactsRoot}}docs/prds/` folder exists, the next number is `001`.
 3. **Derive the slug.** Create a short kebab-case slug from the idea
    (e.g., "a linter for smithy prompt templates" → `prompt-lint`).
 4. **Derive the year.** Use the current four-digit year (e.g., `2026`).
 5. **Fix the target path.** The PRD will be written as a single flat file:
-   `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`. **Do not** create a folder for
+   `{{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md`. **Do not** create a folder for
    the PRD — spark deliberately uses a flat layout because a one-pager
    does not benefit from sidecar files.
 
@@ -173,10 +175,10 @@ H1 follows the pattern `# PRD: <Title>`.
 
 ### PRD File Creation
 
-1. Create the `docs/prds/` directory if it does not already exist. Phase 1
+1. Create the `{{artifactsRoot}}docs/prds/` directory if it does not already exist. Phase 1
    explicitly allows this folder to be missing on repositories that have
    never run spark before — the first write will fail otherwise.
-2. Create the PRD file `docs/prds/<YYYY>-<NNN>-<slug>.prd.md` with only the
+2. Create the PRD file `{{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md` with only the
    header — nothing else:
 
 ```markdown
@@ -193,7 +195,7 @@ format — do not copy it into the file.
 ### Append-and-Continue Protocol
 
 After each sub-phase returns its drafted content, append it to
-`docs/prds/<YYYY>-<NNN>-<slug>.prd.md` before the next sub-phase begins. The
+`{{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md` before the next sub-phase begins. The
 next sub-phase reads the accumulating file for context rather than relying on
 the context window.
 
@@ -345,10 +347,10 @@ drafted). All Phase 2 data is available. Output in this order:
    ambiguities resolved.` as appropriate.
 
 4. **PRD path** — the full path to the file on disk:
-   `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`.
+   `{{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md`.
 
 5. **Handoff hint** — close with:
-   > Ready for `smithy.ignite docs/prds/<YYYY>-<NNN>-<slug>.prd.md` to expand
+   > Ready for `smithy.ignite {{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md` to expand
    > this PRD into an RFC.
 
 ### Variant B: After Phase 0 (review loop)

@@ -19,6 +19,7 @@ its contents. The snippet file itself is never deployed.
 | `audit-checklist-rfc.md` | Audit checklist for RFC artifacts | smithy.audit |
 | `audit-checklist-features.md` | Audit checklist for feature map artifacts | smithy.audit |
 | `audit-checklist-tasks.md` | Audit checklist for task plan artifacts | smithy.audit |
+| `feature-kinds.md` | Feature kind (`backend`/`ui`) + build/wire phase field schema and the two-feature seam; the single source of the kind/phase fields | smithy.render, smithy.audit |
 | `review-protocol.md` | Read-only findings protocol shared by review agents (Finding structure, severity × confidence triage, no file edits) | smithy.plan-review, smithy.implementation-review |
 | `guidance-shell.md` | Shell environment guidance | smithy.guidance |
 | `tdd-protocol.md` | TDD workflow protocol | smithy.implement |

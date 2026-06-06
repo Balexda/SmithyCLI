@@ -12,6 +12,8 @@ Before running any shell commands, read and follow the `smithy.guidance` prompt 
 
 ---
 
+{{>artifact-location-policy}}
+
 ## Input
 
 The target for review: $ARGUMENTS
@@ -40,9 +42,9 @@ When a file path is provided, detect the artifact type by its file extension:
 
    | Target extension | Context to gather |
    |-----------------|-------------------|
-   | `.rfc.md` | Any `.features.md` files in the same RFC folder (`docs/rfcs/<YYYY-NNN-slug>/`) |
+   | `.rfc.md` | Any `.features.md` files in the same RFC folder (`{{artifactsRoot}}docs/rfcs/<YYYY-NNN-slug>/`) |
    | `.features.md` | The `.rfc.md` in the same RFC folder, to verify RFC alignment |
-   | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
+   | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`{{artifactsRoot}}specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
    | `.tasks.md` | The `.spec.md`, `.data-model.md`, and `.contracts.md` in the same spec folder, to verify FR traceability and slice-to-requirement mapping |
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
 

@@ -221,8 +221,19 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
  * block helper that renders the main block; without a variant, the {{else}}
  * branch renders instead. Variant-specific .prompt files also override
  * their base files.
+ *
+ * `artifactsRoot` is the prefix substituted into deployed prompts via the
+ * `{{artifactsRoot}}` template variable. Templates write paths like
+ * `{{artifactsRoot}}docs/rfcs/...`; with an empty prefix (in-repo mode) the
+ * path renders as `docs/rfcs/...`, and with `~/.smithy/<repo>/` (external
+ * mode) it renders as `~/.smithy/<repo>/docs/rfcs/...`. Implemented as a
+ * zero-arg Handlebars helper so Dotprompt's `knownHelpersOnly` mode accepts
+ * the reference (same plumbing pattern as `{{#ifAgent}}`).
  */
-export async function getComposedTemplates(variant?: string): Promise<ComposedTemplates> {
+export async function getComposedTemplates(
+  variant?: string,
+  artifactsRoot: string = '',
+): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
   const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
   const supportsSubAgents = variant === 'claude' || variant === 'gemini';
@@ -236,6 +247,14 @@ export async function getComposedTemplates(variant?: string): Promise<ComposedTe
       return variant === agentName ? options.fn(this) : options.inverse(this);
     }
     return supportsSubAgents ? options.fn(this) : options.inverse(this);
+  });
+
+  // Register {{artifactsRoot}} as a zero-arg helper rather than relying on
+  // Dotprompt's data context. Handlebars resolves `{{name}}` as either a
+  // variable lookup or a known helper invocation, and since dotprompt runs
+  // with knownHelpersOnly the helper form is the reliable path.
+  renderer.defineHelper('artifactsRoot', function () {
+    return artifactsRoot;
   });
 
   const resolve = async (dir: string): Promise<Map<string, string>> => {

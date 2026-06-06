@@ -64,12 +64,12 @@ alphanumeric characters only.
 
 | Artifact | Folder Pattern | Example |
 |----------|----------------|---------|
-| PRD | `docs/prds/<YYYY>-<NNN>-<slug>.prd.md` (flat file, no folder) | `docs/prds/2026-001-prompt-lint.prd.md` |
-| RFC | `docs/rfcs/<YYYY>-<NNN>-<slug>/` | `docs/rfcs/2026-001-plugin-system/` |
-| Feature Map | Co-located in RFC folder | `docs/rfcs/2026-001-plugin-system/01-core-pipeline.features.md` |
-| Spec | `specs/<YYYY-MM-DD>-<NNN>-<slug>/` | `specs/2026-03-14-001-webhook-support/` |
-| Tasks | Co-located in spec folder | `specs/.../03-send-webhook.tasks.md` |
-| Strike | `specs/strikes/` | `specs/strikes/2026-03-14-verbose-flag.strike.md` |
+| PRD | `{{artifactsRoot}}docs/prds/<YYYY>-<NNN>-<slug>.prd.md` (flat file, no folder) | `{{artifactsRoot}}docs/prds/2026-001-prompt-lint.prd.md` |
+| RFC | `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` | `{{artifactsRoot}}docs/rfcs/2026-001-plugin-system/` |
+| Feature Map | Co-located in RFC folder | `{{artifactsRoot}}docs/rfcs/2026-001-plugin-system/01-core-pipeline.features.md` |
+| Spec | `{{artifactsRoot}}specs/<YYYY-MM-DD>-<NNN>-<slug>/` | `{{artifactsRoot}}specs/2026-03-14-001-webhook-support/` |
+| Tasks | Co-located in spec folder | `{{artifactsRoot}}specs/.../03-send-webhook.tasks.md` |
+| Strike | `{{artifactsRoot}}specs/strikes/` | `{{artifactsRoot}}specs/strikes/2026-03-14-verbose-flag.strike.md` |
 
 **Numbering**:
 - `<NNN>` is zero-padded to 3 digits (001, 002, ...).

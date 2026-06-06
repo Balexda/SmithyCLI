@@ -5,7 +5,29 @@ import {
   type DependencyGraph,
   type DependencyNode,
   type DependencyRow,
+  type FeatureSummary,
 } from './index.js';
+
+describe('status type surface — FeatureSummary', () => {
+  it('FeatureSummary carries id/title plus optional kind/phase + ui fields', () => {
+    const backend: FeatureSummary = { id: 'F1', title: 'Title store', kind: 'backend' };
+    const ui: FeatureSummary = {
+      id: 'F2',
+      title: 'Add-Title screen',
+      kind: 'ui',
+      phase: 'build',
+      design_system: 'story-spider-design',
+      bundle: 'design/bundles/add-title.zip',
+      flag: 'add_title_v1',
+      screens: ['AddTitle'],
+      flows: ['AddTitle'],
+    };
+    expect(backend.kind).toBe('backend');
+    expect(backend.phase).toBeUndefined();
+    expect(ui).toMatchObject({ kind: 'ui', phase: 'build', flag: 'add_title_v1' });
+    expect(ui.screens).toEqual(['AddTitle']);
+  });
+});
 
 /**
  * Compile-time + runtime assertions that `DependencyGraph` and
