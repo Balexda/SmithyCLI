@@ -192,6 +192,15 @@ export interface ArtifactRecord {
    */
   slices?: SliceSummary[];
   /**
+   * Per-feature breakdown for feature-map (`.features.md`) files. One
+   * entry per `### Feature N:` H3 section, in source order, carrying the
+   * feature's typed metadata (`kind`, and for `ui` features the build/wire
+   * `phase` plus design fields). Omitted on non-features records. Parsing
+   * is best-effort: malformed or missing fields are left `undefined` and a
+   * warning is recorded rather than throwing.
+   */
+  features?: FeatureSummary[];
+  /**
    * Repo-relative path to the parent artifact. `null` means "no parent"
    * (top-level RFCs, orphans); an omitted field means "unknown".
    */
@@ -252,6 +261,41 @@ export interface SliceSummary {
    * `in-progress`.
    */
   status: 'done' | 'in-progress' | 'not-started';
+}
+
+/** Feature kind declared by a `**Kind**` field on a feature-map entry. */
+export type FeatureKind = 'backend' | 'ui';
+
+/** Build/wire phase declared by a `**Phase**` field on a `ui` feature. */
+export type FeaturePhase = 'build' | 'wire';
+
+/**
+ * Per-feature summary captured from a feature map's `### Feature N:` H3
+ * sections. Mirrors {@link SliceSummary} for tasks files: the scanner
+ * surfaces the feature's typed metadata so downstream tooling can route on
+ * `kind`/`phase` without re-parsing the Markdown. UI-only fields are
+ * omitted for `backend` features (and left `undefined` when absent on a
+ * `ui` feature, with a warning recorded on the owning record).
+ */
+export interface FeatureSummary {
+  /** Canonical feature id (`F<N>`, no leading zeros) from heading order. */
+  id: string;
+  /** Title text after `### Feature <N>:` on the heading line. */
+  title: string;
+  /** `backend` or `ui`; `undefined` when missing or invalid. */
+  kind?: FeatureKind;
+  /** `build` or `wire`; `ui` features only. */
+  phase?: FeaturePhase;
+  /** Reference to the committed design skill; `ui` features only. */
+  design_system?: string;
+  /** Optional path to a Claude Design export; `ui` features only. */
+  bundle?: string;
+  /** Feature-flag name; the shared build/wire contract. `ui` features only. */
+  flag?: string;
+  /** ScreenIds the feature builds or touches; `ui` features only. */
+  screens?: string[];
+  /** FlowIds the screen participates in; `ui` features only. */
+  flows?: string[];
 }
 
 /**

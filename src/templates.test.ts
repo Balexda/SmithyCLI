@@ -102,7 +102,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(14);
+    expect(snippets.size).toBe(15);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -119,6 +119,7 @@ describe('loadSnippets', () => {
       'one-shot-output.md',
       'pr-create-tool-choice.md',
       'branch-policy.md',
+      'feature-kinds.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -292,6 +293,57 @@ describe('one-shot-output snippet', () => {
     expect(result).toContain('## Specification Debt');
     expect(result).toContain('## PR');
     expect(result).not.toContain('{{>one-shot-output}}');
+  });
+});
+
+describe('feature-kinds snippet', () => {
+  // The feature-kinds snippet is the single source of the kind/phase field
+  // schema referenced by both smithy.render (authoring) and smithy.audit
+  // (validation). These assertions lock the snippet's contract so a rename,
+  // deletion, or dropped field fails the suite immediately.
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has('feature-kinds.md')).toBe(true);
+    expect(snippets.get('feature-kinds.md')!.length).toBeGreaterThan(0);
+  });
+
+  it('snippet has no YAML frontmatter (raw Markdown per snippets README)', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('feature-kinds.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+  });
+
+  it('snippet documents the kind enum, phases, and ui-only fields', () => {
+    const snippets = loadSnippets();
+    const content = snippets.get('feature-kinds.md')!;
+    expect(content).toContain('## Feature Kinds');
+    for (const token of [
+      'backend',
+      'ui',
+      'build',
+      'wire',
+      'kind',
+      'phase',
+      'flag',
+      'screens',
+      'flows',
+    ]) {
+      expect(content).toContain(token);
+    }
+  });
+
+  it('snippet composes into any template via the {{>feature-kinds}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>feature-kinds}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Feature Kinds');
+    expect(result).not.toContain('{{>feature-kinds}}');
   });
 });
 
@@ -1994,7 +2046,10 @@ describe('getComposedTemplates', () => {
     // categories.
     expect(render).not.toContain('## Feature Dependency Order');
 
-    const renderMarkdownMatch = render.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    // The feature-map example uses a 4-backtick fence so it can embed
+    // ```yaml metadata blocks; match that outer fence (3 backticks would
+    // stop at the first inner ```yaml close).
+    const renderMarkdownMatch = render.match(/````markdown\r?\n([\s\S]*?)\r?\n````/);
     expect(renderMarkdownMatch).not.toBeNull();
     const renderMarkdownBlock = renderMarkdownMatch![1]!;
     expect(renderMarkdownBlock).not.toContain('## Feature Dependency Order');
@@ -2169,6 +2224,30 @@ describe('getComposedTemplates', () => {
     expect(render).toContain('## Specification Debt');
     expect(render).toContain('## PR');
     expect(render).toContain('## Bail-Out');
+  });
+
+  it('render template composes the feature-kinds schema and emits Kind', () => {
+    const render = composed.commands.get('smithy.render.md')!;
+    expect(render).toBeDefined();
+    // The feature-kinds partial composed in (its unique header) and the
+    // feature-map skeleton now emits yaml metadata blocks plus the seam.
+    expect(render).toContain('## Feature Kinds');
+    expect(render).toContain('kind: ui');
+    expect(render).toContain('phase: build');
+    expect(render).toMatch(/build\/wire/i);
+    expect(render).not.toContain('{{>feature-kinds}}');
+    expect(render).not.toContain('{{>');
+  });
+
+  it('audit features checklist composes the feature-kind/seam categories', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toBeDefined();
+    expect(audit).toContain('Feature Kind');
+    expect(audit).toContain('UI Feature Fields');
+    expect(audit).toContain('Build/Wire Seam');
+    // The checklist references the shared schema snippet, which must resolve.
+    expect(audit).toContain('## Feature Kinds');
+    expect(audit).not.toContain('{{>feature-kinds}}');
   });
 
   it('render template references PR creation after artifact write-out', () => {

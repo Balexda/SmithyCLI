@@ -264,10 +264,15 @@ Use the **smithy-clarify** sub-agent. Pass it:
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
-Using the workshopped answers from Phase 2, draft a structured `.features.md` with
-this format:
+Using the workshopped answers from Phase 2, draft a structured `.features.md`. Every
+feature is typed per the shared schema below:
 
-```markdown
+{{>feature-kinds}}
+
+Assemble the feature map in this format (a backend feature and a build/wire UI pair
+are shown to illustrate the seam):
+
+````markdown
 # Feature Map: <Milestone Title>
 
 **Source RFC**: `<docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
@@ -277,6 +282,10 @@ this format:
 ## Features
 
 ### Feature 1: <Title>
+
+```yaml
+kind: backend
+```
 
 **Description**: <What this feature delivers — one to two sentences.>
 
@@ -288,7 +297,17 @@ this format:
 
 ### Feature 2: <Title>
 
-**Description**: <What this feature delivers.>
+```yaml
+kind: ui
+phase: build
+design_system: <committed design skill, e.g. story-spider-design>
+bundle: <optional Claude Design export path, or omit the key>
+flag: <feature-flag name gating this screen>
+screens: [<ScreenId>]
+flows: [<FlowId>]
+```
+
+**Description**: <What this screen delivers, built against a mock behind the flag.>
 
 **User-Facing Value**: <Why a user cares about this feature.>
 
@@ -296,7 +315,27 @@ this format:
 - Includes: <what is in scope>
 - Excludes: <what is explicitly out of scope>
 
-<!-- Repeat for each feature -->
+### Feature 3: <Title> (wire)
+
+```yaml
+kind: ui
+phase: wire
+design_system: <same skill as the build feature>
+flag: <same flag as the build feature — the shared contract>
+screens: [<ScreenId>]
+flows: [<FlowId>]
+```
+
+**Description**: <Connect the screen to real data and flip the flag; done includes
+emitting/updating the Maestro flow + flow.md for each flow above.>
+
+**User-Facing Value**: <Why a user cares about this feature.>
+
+**Scope Boundaries**:
+- Includes: <what is in scope>
+- Excludes: <what is explicitly out of scope>
+
+<!-- Repeat for each feature. backend features carry only `kind: backend`. -->
 
 <!-- Specification Debt appears here for templates without ## Assumptions sections -->
 ## Specification Debt
@@ -315,6 +354,7 @@ Recommended specification sequence:
 |----|-------|-----------|----------|
 | F1 | <Title> | — | — |
 | F2 | <Title> | — | — |
+| F3 | <Title> | F1, F2 | — |
 
 ## Cross-Milestone Dependencies
 
@@ -325,7 +365,7 @@ Direction must be either `depends on` or `depended upon by`.
 | Milestone <X>: <title> | depends on | <what this milestone needs from or provides to the other> |
 
 _If no cross-milestone dependencies exist, state "None — this milestone is self-contained."_
-```
+````
 
 ## Phase 4: Write & Create PR
 
@@ -438,6 +478,9 @@ here, by render.
   comma-separated list of same-table IDs. The `Artifact` column starts as `—`
   and is populated by `smithy.mark` when it creates the spec folder. Do NOT
   use checkboxes in the `## Dependency Order` section.
+- **DO** type every feature with a `yaml` metadata block per the `feature-kinds`
+  schema in Phase 3 (every feature has a `kind`; flag-gated UI splits into a
+  `build` + `wire` pair sharing one `flag`).
 
 ---
 
