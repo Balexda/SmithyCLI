@@ -1553,33 +1553,38 @@ describe('getComposedTemplates', () => {
   // prose, where prompts use code-quoted forms like
   // `` `## Problem Statement` `` instead.
   //
-  // The implementation walks line-by-line toggling an in-fence flag at
-  // every ` ```markdown ` opener and ` ``` ` closer (it does not track
-  // nested-fence depth — composed snippets like `one-shot-output` are
-  // emitted with indented inner fences but each one is paired, so a flat
-  // toggle still produces the right outer-fence boundaries). After
-  // collecting every top-level markdown fence, pick the one whose body
-  // contains the anchor.
+  // The implementation follows CommonMark fence matching: an opener uses
+  // **N backticks** (3 or more) followed by `markdown`, and is closed only
+  // by a line of **at least N backticks** with no other content. This
+  // handles fences that wrap content already containing 3-backtick
+  // yaml/bash blocks — e.g., render's artifact template uses a 4-backtick
+  // wrapper because it now embeds 3-backtick `\`\`\`yaml metadata blocks
+  // from the `feature-kinds` snippet. A flat 3-backtick toggle would
+  // mistake those inner blocks for the outer fence's closer.
   function extractFenceByAnchor(template: string, anchor: string): string {
     const lines = template.split('\n');
     const fences: string[] = [];
-    let inFence = false;
+    let openerCount = 0; // 0 == not in fence; >0 == number of opening backticks
     let fenceLines: string[] = [];
+    const fenceOpenerRe = /^(`{3,})markdown\b/;
+    const bareFenceRe = /^(`{3,})\s*$/;
     for (const line of lines) {
       const trimmed = line.trimStart();
-      if (!inFence && trimmed.startsWith('```markdown')) {
-        inFence = true;
-        fenceLines = [];
+      if (openerCount === 0) {
+        const openMatch = trimmed.match(fenceOpenerRe);
+        if (openMatch) {
+          openerCount = openMatch[1]!.length;
+          fenceLines = [];
+        }
         continue;
       }
-      if (inFence && trimmed.startsWith('```')) {
+      const closeMatch = trimmed.match(bareFenceRe);
+      if (closeMatch && closeMatch[1]!.length >= openerCount) {
         fences.push(fenceLines.join('\n'));
-        inFence = false;
+        openerCount = 0;
         continue;
       }
-      if (inFence) {
-        fenceLines.push(line);
-      }
+      fenceLines.push(line);
     }
     const match = fences.find(b => b.includes(anchor));
     if (!match) {
@@ -1589,10 +1594,7 @@ describe('getComposedTemplates', () => {
         `  [${i}] (${b.length} chars) first line: ${b.split('\n')[0]?.slice(0, 80) ?? '(empty)'}`,
       ).join('\n');
       const containsAnchorAtAll = template.includes(anchor);
-      // Also dump every line whose trimStart() starts with ``` so we can
-      // see what the walker actually had to work with — particularly when
-      // CI sees a different fence layout than a local run.
-      const fenceLines = lines
+      const fenceLineDump = lines
         .map((l, i) => [i, l] as const)
         .filter(([, l]) => l.trimStart().startsWith('```'))
         .map(([i, l]) => `  line ${i}: ${JSON.stringify(l)}`)
@@ -1602,7 +1604,7 @@ describe('getComposedTemplates', () => {
         `  template.includes(anchor) = ${containsAnchorAtAll}\n` +
         `  template length = ${template.length}\n` +
         `  fences found: ${fences.length}\n${firstLines}\n` +
-        `  all \`\`\` lines:\n${fenceLines}`,
+        `  all \`\`\` lines:\n${fenceLineDump}`,
       );
     }
     return match;
