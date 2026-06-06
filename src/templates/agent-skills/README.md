@@ -50,9 +50,8 @@ and the PR that forge then consumes.
 > **Engraved-knowledge records** (decisions, invariants, principles) are a
 > separate, root-level artifact family — they have **no** `## Dependency
 > Order` row and are not part of the lineage below. They participate in the
-> graph through citation edges only. See
-> [`docs/engraved-knowledge-schema.md`](../../../docs/engraved-knowledge-schema.md)
-> for the schema.
+> graph through citation edges only. The full schema lives inline in
+> [`commands/smithy.engrave.prompt`](commands/smithy.engrave.prompt).
 
 Every planning artifact produced by Smithy fits into a single strict lineage:
 

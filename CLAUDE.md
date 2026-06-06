@@ -139,10 +139,12 @@ decisions, invariants, and principles — authored with `smithy.engrave`
 edges (`establishes` / `established_by`, `supersedes` / `superseded_by`)
 declared in YAML frontmatter. Suffixes: `*.decision.md`, `*.invariant.md`;
 principles live as individual files in the constitution directory and have
-no dedicated suffix. The canonical schema, frontmatter fields, lifecycle,
-example records, and the scaffold shapes `smithy.engrave` emits all live
-in [`docs/engraved-knowledge-schema.md`](docs/engraved-knowledge-schema.md)
-— that doc is the single source of truth for the family.
+no dedicated suffix. The full schema (frontmatter fields, lifecycle,
+Known-Exceptions ledger column rules, scaffold shapes for each kind)
+lives inline in
+[`src/templates/agent-skills/commands/smithy.engrave.prompt`](src/templates/agent-skills/commands/smithy.engrave.prompt)
+— that prompt is the single source of truth for the family, and gets
+deployed verbatim into every target repo's agent-skill tree.
 
 ## Development
 

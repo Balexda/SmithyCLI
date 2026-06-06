@@ -10,12 +10,6 @@ invariants, and principles. These records are *engraved*: long-lived
 pseudo-specifications that planning artifacts cite, never rows in a
 `## Dependency Order` table.
 
-The canonical schema for the artifact family lives in
-[`docs/engraved-knowledge-schema.md`](../docs/engraved-knowledge-schema.md).
-**Read it before authoring.** The example records in that doc are the
-canonical scaffold shapes — emit them inline with the user's title / id /
-topics filled in. Do not invent fields the schema does not list.
-
 ---
 
 ## Input
@@ -43,12 +37,104 @@ If the input is empty or you cannot determine the mode, ask:
 
 ---
 
+## The engraved-knowledge schema
+
+### Kinds at a glance
+
+| Kind | Role | Mutability | Status axis |
+|------|------|------------|-------------|
+| **decision** | Immutable record putting forward a desired rule. | Append-only; supersession replaces, never edits. | `proposed → accepted → superseded \| deprecated` |
+| **invariant** | Lightweight tracker for a rule's *current* alignment with reality, with a Known-Exceptions ledger. | Living; ledger updated as drift opens / closes. | `aligned` ↔ `drifting` (derived from the ledger) |
+| **principle** | Apex commitment — the project constitution. Cross-domain. Cited by decisions. | Rarely changes. | `active` |
+
+### Shared frontmatter (every kind)
+
+| Field | Value |
+|-------|-------|
+| `id` | Globally unique within the repo. Prefixes: `D-<N>` (decision), `INV-<N>` (invariant), `P-<N>` (principle). Stable across renames; never reused. |
+| `kind` | `decision` \| `invariant` \| `principle`. |
+| `domain` | `system` (default) \| `design`. Ownership / recall partition; separates UI / interaction commitments owned by design from architectural ones owned by engineering. |
+| `title` | Human-readable title. Always quoted (`title: "<topic>"`) so a `: ` inside the title does not break the YAML. Also rendered as the H1 in the body. |
+| `topics` | Searchable tags (lowercase-kebab — e.g. `offline-first`, `agent-router`). Consumed by `smithy.recall` (#415). |
+| `scope` | Code paths, modules, or layers the record governs (repo-relative globs or package names). |
+| `applies_to` | User-visible surfaces the record affects (e.g. `CLI`, `Status JSON`, `init flow`). |
+
+`topics` / `scope` / `applies_to` are **recall / filter metadata**, not graph
+edges. The only graph edges are `establishes` / `established_by` (decision →
+invariant) and `supersedes` / `superseded_by` (decision → decision).
+
+### Per-kind extensions
+
+**Decision** adds: `status` (lifecycle above), `decided_at` (ISO 8601 date —
+never updated, even on supersession), `supersedes` (decision IDs replaced;
+`[]` if none), `superseded_by` (`[]` until a newer decision supersedes
+this one), `establishes` (invariant IDs created by this decision).
+
+**Invariant** adds: `status` (`aligned` if the Known-Exceptions ledger has
+zero `Temporary:` rows; `drifting` if it has at least one), `established_by`
+(decision IDs — required; an invariant always traces back to ≥1 decision).
+
+**Principle** adds: `status: active`. No supersession or establishes edges
+— principles are retired by removing them from the constitution in a
+single discrete change, not by a lifecycle field.
+
+### Body sections (order is load-bearing)
+
+| Kind | Sections, in order |
+|------|--------------------|
+| decision | `## Context`, `## Decision`, `## Consequences`, `## Establishes` (`None.` if `establishes: []`), `## Citations` |
+| invariant | `## Rule`, `## Rationale`, `## Known Exceptions`, `## Citations` |
+| principle | `## Statement`, `## Why this is apex`, `## How decisions cite this` |
+
+### Known-Exceptions ledger (invariants only)
+
+The 5-column table that lives directly under `## Known Exceptions`:
+
+| Where | What diverges | Disposition + Why | Tracking Issue | Severity |
+|-------|---------------|-------------------|----------------|----------|
+
+Column rules:
+
+- **Where** — repo-relative path, module, or product surface.
+- **What diverges** — what reality does, vs. what the rule says. One sentence.
+- **Disposition + Why** — `Accepted: <reason>` for a permanent carve-out
+  the team has decided to live with, or `Temporary: <reason>` for a known
+  gap with an open tracking issue. The Capitalized `Accepted:` /
+  `Temporary:` token is the canonical on-disk form.
+- **Tracking Issue** — `#NNN` for `Temporary` rows; `—` for `Accepted` rows.
+- **Severity** — `low` \| `medium` \| `high`. `high` rows MAY block
+  planning artifacts that would compound the drift.
+
+**Empty ledger** — write a single row with `—` in every cell; the table
+shape stays load-bearing for the audit.
+
+**Alignment derivation** — recompute `status` from the ledger every time
+it changes: `aligned` when zero `Temporary:` rows are present; `drifting`
+when at least one is. `Accepted:` rows alone never flip the status.
+
+### Suffixes and default locations
+
+| Kind | Suffix | Default location (`system`) | Default location (`design`) |
+|------|--------|-----------------------------|-----------------------------|
+| decision | `*.decision.md` | `docs/decisions/` | `docs/design/decisions/` |
+| invariant | `*.invariant.md` | `docs/invariants/` | `docs/design/invariants/` |
+| principle | *(no suffix)* — discovered by directory walk | `docs/constitution/` | `docs/design/constitution/` |
+
+### Roots in the planning graph
+
+Engraved records are **roots**. They are NOT in `## Dependency Order` tables,
+they are NOT assigned `M<N>` / `F<N>` / `US<N>` / `S<N>` IDs, and they
+NEVER appear as rows in a parent artifact's table. They participate in the
+graph only through the citation edges enumerated above.
+
+---
+
 ## Phase 1: Inclusion test
 
 Engraved records capture **pivot-level commitments** — things that would
-only be unseated by a substantial pivot in goals. Examples: "offline-first",
-"every agent call goes through a router layer", "the constitution requires
-deterministic parsing for status output".
+only be unseated by a substantial pivot in goals (e.g. "offline-first",
+"every agent call goes through a router layer", "tooling never asks an LLM
+to reconstruct deterministic data").
 
 **Do NOT engrave**:
 
@@ -57,12 +143,12 @@ deterministic parsing for status output".
 - Things that belong as ordinary docs and can be cited without becoming
   durable commitments.
 
-For **create** modes (`decision:`, `invariant:`, `principle:`): before
-scaffolding, summarize the topic to the user in one sentence and ask:
-"Is this pivot-level — would only a substantial change in project goals
-unseat it? (yes / no / unsure)". If the answer is `no` or `unsure`,
-**stop** and recommend the user keep the commitment as an ordinary doc
-and cite it from there. If the answer is `yes`, proceed.
+For **create** modes (`decision:`, `invariant:`, `principle:`): summarize
+the topic to the user in one sentence and ask: "Is this pivot-level —
+would only a substantial change in project goals unseat it? (yes / no /
+unsure)". If the answer is `no` or `unsure`, stop and recommend the user
+keep the commitment as an ordinary doc and cite it from there. If `yes`,
+proceed.
 
 For **update** modes (existing path, `supersede`, `exception`): the
 inclusion question was answered when the original record was authored.
@@ -79,38 +165,28 @@ Determine the operation:
 | `decision: <topic>` | Create decision | Phase 3a |
 | `invariant: <topic>` | Create invariant | Phase 3b |
 | `principle: <topic>` | Create principle | Phase 3c |
-| `<existing path>` (no extra token) | Open + ask the user what to update | Phase 4 |
+| `<existing path>` (no extra token) | Open + ask what to update | Phase 4 |
 | `<existing decision path> supersede` | Create supersession decision | Phase 5 |
 | `<existing invariant path> exception` | Edit Known-Exceptions ledger | Phase 6 |
 
-Resolve the **domain** before authoring:
+Resolve **domain**:
 
 - If a path was provided, infer from the path: any path under
   `docs/design/` → `design`; otherwise → `system`.
 - For create modes, default to `system`. Accept `--design` anywhere in
   `$ARGUMENTS` to flip to `design`.
 
-Resolve the **default location** from the schema doc's "Suffix and
-location" sections:
+Resolve **path**:
 
-| Kind | Domain `system` | Domain `design` |
-|------|-----------------|-----------------|
-| decision | `docs/decisions/` | `docs/design/decisions/` |
-| invariant | `docs/invariants/` | `docs/design/invariants/` |
-| principle | `docs/constitution/` | `docs/design/constitution/` |
+- Look up the default location for `kind` × `domain` in the suffixes /
+  default-locations table above.
+- Slugify the topic: lowercase, replace non-alphanumeric runs with `-`,
+  collapse and trim hyphens.
+- File name: `<slug>.decision.md` / `<slug>.invariant.md` for those two
+  kinds; `<slug>.md` for principles (no dedicated suffix).
 
-Slugify the topic: lowercase, replace non-alphanumeric runs with `-`,
-collapse and trim hyphens. File name: `<slug>.decision.md` /
-`<slug>.invariant.md` / `<slug>.md` (principles have no suffix).
-
-Assign the `id` by scanning the existing records for the highest used
-number in the kind's prefix sequence and incrementing by one:
-
-- decisions: `D-<N>` (scan `*.decision.md` files in both `docs/decisions/`
-  and `docs/design/decisions/`).
-- invariants: `INV-<N>` (scan `*.invariant.md` files).
-- principles: `P-<N>` (scan files under both constitution directories).
-
+Assign **id**: scan existing records of the same kind across both domain
+trees, take the highest existing `<N>` for the prefix, increment by one.
 If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
 
 ---
@@ -123,24 +199,52 @@ If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
    record should supersede them instead of standing alone (jump to
    Phase 5 if yes).
 2. Ask the user the four authoring questions:
-   - **Context**: what prompted the decision; what was on the table?
-   - **Decision**: the rule being put forward, stated in the present tense.
-   - **Consequences**: what follows (good and bad).
-   - **Establishes**: should this decision also `establishes:` an
-     invariant? If yes, capture the invariant title and short rule body —
-     you will scaffold it in step 5.
-3. Resolve frontmatter fields: `id`, `kind: decision`, `domain`,
-   `title` (the topic, properly cased), `topics`, `scope`, `applies_to`,
-   `status: proposed`, `decided_at` (today, ISO 8601), `supersedes: []`,
-   `superseded_by: []`, `establishes: [<inv id>]` or `[]`.
-4. Write the decision file to its resolved path, using the exact section
-   ordering from the schema doc's decision example: `## Context`,
-   `## Decision`, `## Consequences`, `## Establishes`, `## Citations`.
-   Use the YAML-safe quoted form for the title — `title: "<topic>"` —
-   so titles containing `: ` do not split the frontmatter.
-5. If the user wanted to also establish an invariant, run Phase 3b for
-   that invariant, passing this decision's `id` as `established_by`.
-6. Commit and report. Commit message format:
+   - **Context** — what prompted the decision; what was on the table.
+   - **Decision** — the rule being put forward, stated in the present tense.
+   - **Consequences** — what follows (good and bad).
+   - **Establishes** — should this decision also `establishes:` an
+     invariant? If yes, capture the invariant title and short rule body;
+     scaffold it via Phase 3b in step 4.
+3. Write the decision file at the resolved path with this exact shape
+   (substituting `<placeholders>`; never invent fields not listed above):
+
+   ```markdown
+   ---
+   id: D-<N>
+   kind: decision
+   domain: <system|design>
+   title: "<topic>"
+   status: proposed
+   decided_at: <YYYY-MM-DD>
+   topics: [<comma-separated>]
+   scope: [<comma-separated>]
+   applies_to: [<comma-separated>]
+   supersedes: []
+   superseded_by: []
+   establishes: [<invariant-id-or-empty>]
+   ---
+   # <topic>
+
+   ## Context
+   <context the user gave>
+
+   ## Decision
+   <rule, present tense>
+
+   ## Consequences
+   <good and bad>
+
+   ## Establishes
+   <invariant-id and one-line summary, or "None.">
+
+   ## Citations
+   <inbound principles, outbound references, or "None.">
+   ```
+
+4. If the user wanted to also establish an invariant, run Phase 3b for
+   that invariant, passing this decision's `id` as `established_by`, then
+   patch this decision's `establishes:` to include the new invariant id.
+5. Commit and report. Commit message:
    ```
    engrave(decision): D-<N> <title>
    ```
@@ -151,28 +255,44 @@ If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
 
 1. Confirm the **establishing decision**: invariants always cite at least
    one decision in `established_by`. If the caller did not pass one,
-   either reference an existing decision (search for the closest match
-   by topic) or scaffold a fresh decision via Phase 3a first.
-2. Resolve frontmatter: `id`, `kind: invariant`, `domain`,
-   `title: "<topic>"`, `topics`, `scope`, `applies_to`,
-   `status: aligned` (fresh invariants always start aligned — the
-   ledger is empty), `established_by: [<decision id>, ...]`.
-3. Write the invariant file with section ordering from the schema doc:
-   `## Rule`, `## Rationale`, `## Known Exceptions`, `## Citations`.
-   The Known-Exceptions section MUST contain the 5-column table with
-   the canonical header row:
+   either reference an existing decision (closest match by topic) or
+   scaffold a fresh decision via Phase 3a first.
+2. Write the invariant file with this shape:
 
-   ```
+   ```markdown
+   ---
+   id: INV-<N>
+   kind: invariant
+   domain: <system|design>
+   title: "<topic>"
+   status: aligned
+   topics: [<comma-separated>]
+   scope: [<comma-separated>]
+   applies_to: [<comma-separated>]
+   established_by: [<decision-id>, ...]
+   ---
+   # <topic>
+
+   ## Rule
+   <the desired rule, present tense, 1–2 paragraphs max>
+
+   ## Rationale
+   <one paragraph; pointer to establishing decisions for the full argument>
+
+   ## Known Exceptions
+
    | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
    |-------|---------------|-------------------|----------------|----------|
    | — | — | — | — | — |
+
+   ## Citations
+   <establishing decisions, any planning artifacts that reference this>
    ```
 
-   Use the literal em-dash row for an empty ledger — the row is a
-   structural placeholder, not a row to interpret.
-4. If a fresh establishing decision was scaffolded in step 1, patch its
-   `establishes:` list to include this invariant's id.
-5. Commit and report. Commit message format:
+   Fresh invariants always start `status: aligned` — the ledger is empty.
+3. If a fresh establishing decision was scaffolded in step 1, patch its
+   `establishes:` to include this invariant's id.
+4. Commit and report. Commit message:
    ```
    engrave(invariant): INV-<N> <title>
    ```
@@ -187,16 +307,38 @@ new principle is rare. Before scaffolding, confirm with the user:
 > "Principles are apex, cross-domain, and resistant to release-to-release
 > churn. Would a `decision` referencing a principle work instead?"
 
-If the user still wants a principle, proceed:
+If the user still wants a principle, write the file with this shape:
 
-1. Resolve frontmatter: `id`, `kind: principle`, `domain`,
-   `title: "<topic>"`, `topics`, `scope`, `applies_to`, `status: active`.
-2. Write the principle file with section ordering from the schema doc:
-   `## Statement`, `## Why this is apex`, `## How decisions cite this`.
-3. Commit and report. Commit message format:
-   ```
-   engrave(principle): P-<N> <title>
-   ```
+```markdown
+---
+id: P-<N>
+kind: principle
+domain: <system|design>
+title: "<topic>"
+status: active
+topics: [<comma-separated>]
+scope: [<comma-separated>]
+applies_to: [<comma-separated>]
+---
+# <topic>
+
+## Statement
+<the principle in one paragraph — the rule>
+
+## Why this is apex
+<load-bearing, cross-domain, resistant to churn; what distinguishes it
+from a decision>
+
+## How decisions cite this
+<guidance for authors of decisions that cite this principle — what to
+say, what NOT to say, what the principle does and does not commit to>
+```
+
+Commit and report. Commit message:
+
+```
+engrave(principle): P-<N> <title>
+```
 
 ---
 
@@ -206,16 +348,16 @@ Open the file at the provided path and present its current frontmatter
 and section headings to the user. Ask: "What do you want to update?"
 Common update operations:
 
-- **Frontmatter only** (e.g., add a `topics` tag, extend `applies_to`):
+- **Frontmatter only** (add a `topics` tag, extend `applies_to`, etc.):
   patch the field, keep the body intact, commit.
-- **Body section**: locate the heading, replace its content, commit. Do
-  not reorder or rename headings — the schema-doc section ordering is
-  load-bearing for the audit (#418) and the parser (#416).
+- **Body section**: locate the heading, replace its content, commit.
+  Do not reorder or rename headings — the section ordering above is
+  load-bearing for the audit (#418) and parser (#416).
 - **Decision lifecycle change** (`proposed → accepted`): patch
   `status:` and leave the body intact. Decisions are append-only — never
-  rewrite the Context/Decision/Consequences once `status: accepted`. If
-  the user wants to retire a decision without a replacement, set
-  `status: deprecated`. If they want to replace it with a new rule,
+  rewrite the Context / Decision / Consequences sections once
+  `status: accepted`. If the user wants to retire a decision without a
+  replacement, set `status: deprecated`. If they want to replace the rule,
   route to Phase 5 (supersession) instead.
 
 Commit message: `engrave(<kind>): update <id> — <one-line summary>`.
@@ -227,21 +369,21 @@ Commit message: `engrave(<kind>): update <id> — <one-line summary>`.
 Supersession is **never** a rewrite. The old decision stays exactly as
 authored; a *new* decision is created that cites it.
 
-1. Read the old decision file and capture: its `id`, `title`, `status`.
-   Abort if `status` is already `superseded` or `deprecated` — that
-   decision is no longer load-bearing and superseding it would be
-   misleading; tell the user and stop.
+1. Read the old decision file: capture `id`, `title`, `status`. Abort if
+   `status` is already `superseded` or `deprecated` — that decision is no
+   longer load-bearing and superseding it would be misleading; tell the
+   user and stop.
 2. Run Phase 3a to author the new decision. The four authoring questions
    should focus on **what changes** vs. the old rule. Set the new
-   decision's `supersedes: [<old id>]`.
+   decision's `supersedes: [<old-id>]`.
 3. Patch the old decision file: set `status: superseded` and append the
    new decision's `id` to `superseded_by:`. Do not touch the old
-   decision's body sections.
-4. If the old decision had `establishes:` invariants, ask the user
-   whether each invariant should now cite the new decision in
-   `established_by:` (and optionally drop the old decision's id, or
-   keep both). Patch the affected invariant frontmatter.
-5. Commit both files in a single commit:
+   decision's body.
+4. If the old decision had `establishes:` invariants, ask whether each
+   invariant should now cite the new decision in `established_by:` (and
+   optionally drop the old decision's id, or keep both). Patch the
+   affected invariant frontmatter.
+5. Commit both files together:
    ```
    engrave(decision): D-<N> supersedes D-<old N> — <one-line summary>
    ```
@@ -255,26 +397,18 @@ its alignment status from the ledger.
 
 Ask the user which sub-operation:
 
-- **Add exception**: append a row. Capture `Where`, `What diverges`,
+- **Add exception** — append a row. Capture `Where`, `What diverges`,
   disposition (`Accepted: <reason>` or `Temporary: <reason>`),
   `Tracking Issue` (`#NNN` for `Temporary` rows; `—` for `Accepted`
   rows), `Severity` (`low` / `medium` / `high`).
-- **Resolve exception**: identify the row (by `Where` or row index) and
-  either remove it (the divergence is gone) or change a `Temporary:`
-  row to `Accepted:` (the team has decided to live with it
-  indefinitely).
+- **Resolve exception** — identify the row (by `Where` or row index)
+  and either remove it (the divergence is gone) or change a `Temporary:`
+  row to `Accepted:` (the team has decided to live with it indefinitely).
 
-After patching the ledger, **recompute** `status` from the ledger and
-patch the frontmatter:
-
-- `status: aligned` when the ledger contains **zero** `Temporary:` rows
-  (an empty ledger or only `Accepted:` rows).
-- `status: drifting` when the ledger contains **at least one**
-  `Temporary:` row.
-
-If the ledger ends up empty after a resolution, restore the canonical
-em-dash placeholder row so the table shape stays load-bearing for the
-audit (#418).
+After patching the ledger, **recompute** `status` and patch the
+frontmatter (`aligned` if zero `Temporary:` rows remain; `drifting`
+otherwise). If the ledger ends up empty after a resolution, restore the
+canonical em-dash placeholder row.
 
 Commit message:
 
@@ -286,14 +420,14 @@ engrave(invariant): <add|resolve> exception on <INV id> — <one-line summary>
 
 ## Rules
 
-- **One record per commit.** Exception: a supersession commit patches
-  both the new and the old decision file together (Phase 5 step 5);
-  a "create decision that also establishes an invariant" commit may
-  include both files together (Phase 3a step 5).
+- **One record per commit.** Exceptions: a Phase 5 supersession commit
+  patches the new and old decision file together; a Phase 3a "create
+  decision that also establishes an invariant" commit may include both
+  files together.
 - **Never rewrite an accepted or superseded decision body.** Decisions
   are append-only. To change the rule, supersede.
-- **Never invent frontmatter fields** the schema does not list. If the
-  schema doc does not say a field exists for that kind, do not add it.
+- **Never invent frontmatter fields** the per-kind tables above do not
+  list. If a field is not in the schema, do not add it.
 - **Always quote the title** in YAML frontmatter — `title: "<topic>"` —
   so titles containing `: ` survive the YAML parser.
 - **The Known-Exceptions ledger column order is load-bearing.** Use

@@ -2388,11 +2388,13 @@ describe('getComposedTemplates', () => {
 
   it('engrave template enforces the alignment-derivation rule from the ledger', () => {
     const engrave = composed.commands.get('smithy.engrave.md')!;
-    // Both alignment states must appear, and the derivation rule must
-    // mention recomputing from the ledger — the audit (#418) inherits
-    // this rule directly from the engrave template.
+    // Both alignment states must appear (the scaffold seeds `status:
+    // aligned`; `drifting` shows up in the recompute rule and the
+    // kinds-at-a-glance table), and the derivation rule must mention
+    // recomputing from the ledger. The audit (#418) inherits this rule
+    // directly from the engrave template.
     expect(engrave).toMatch(/status: aligned/);
-    expect(engrave).toMatch(/status: drifting/);
+    expect(engrave).toMatch(/\bdrifting\b/);
     expect(engrave).toMatch(/recompute/i);
   });
 
@@ -2405,12 +2407,17 @@ describe('getComposedTemplates', () => {
     expect(engrave).toMatch(/NOT in `## Dependency Order` tables/);
   });
 
-  it('engrave template links to the canonical schema doc as the source of truth', () => {
+  it('engrave template inlines the schema instead of linking out to an undeployed doc', () => {
     const engrave = composed.commands.get('smithy.engrave.md')!;
-    // The schema doc is the only canonical source for the family. The
-    // engrave template must direct readers to it rather than redefining
-    // the schema inline.
-    expect(engrave).toContain('docs/engraved-knowledge-schema.md');
+    // The schema doc was deleted (PR #428 reshape) because `smithy init`
+    // does not deploy `docs/`, so any cross-doc link would resolve to a
+    // missing file in the target repo. The engrave prompt is now the
+    // canonical source for the family; tests below assert the schema
+    // content lives here. This assertion catches a reintroduction of
+    // the broken cross-doc link.
+    expect(engrave).not.toContain('docs/engraved-knowledge-schema.md');
+    // The inlined schema heading must be present.
+    expect(engrave).toMatch(/## The engraved-knowledge schema/);
   });
 
   it('engrave template uses canonical id prefixes for each kind', () => {
