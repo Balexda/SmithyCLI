@@ -135,8 +135,8 @@ form. Two valid fixes:
    docs-only change, a process update, a configuration toggle. The
    section is one line: `N/A — <one-sentence reason>`.
 
-Record applicability in the section tag so reviewers and linters know
-when `N/A` is legitimate:
+Record applicability in the template's tag for this section so the
+audit command knows when `N/A` is legitimate:
 
 ```
 ## Contracts
@@ -166,13 +166,29 @@ once, split it.
 
 ---
 
-## 8. Audience-tagging convention
+## 8. Audience tag grammar
 
-Every `##` section gets an inline HTML-comment tag immediately under the
-heading. The comment is invisible in rendered Markdown, grep-able for
-lint, and travels with the section through reorderings.
+Each section's voice is described by a small set of keys: `audience`,
+`mode`, `length`, `diagram`, `examples`, and an optional
+`applicability`. **For Smithy planning artifacts** (`.rfc.md`,
+`.features.md`, `.spec.md`, `.tasks.md`, `.contracts.md`,
+`.data-model.md`), the spec for each section lives in the *template*
+used by the generating command (`smithy.ignite`, `smithy.render`,
+`smithy.mark`, `smithy.cut`) — not inline in every generated artifact.
+One source of truth, no per-file drift; the artifact itself stays
+clean prose. `smithy.audit` reads the same template files to know
+what voice spec to enforce per section. Until the template surface is
+fully wired through, the audit command carries a hard-coded copy of
+the specs so the enforcement surface matches the eventual
+template-driven one.
 
-Grammar:
+**For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,
+inline documentation), there is no template to inherit from. Use the
+taxonomy as authoring discipline — pick Role × Mode before drafting
+and stay in it — but do not litter the file with HTML-comment
+metadata.
+
+Grammar (the syntax templates use):
 
 ```
 ## <Section title>
@@ -193,15 +209,14 @@ Keys:
   section legitimately resolves to `N/A` (e.g., `code-shaped features
   only`).
 
-Example:
+Example — the `## Summary` section's voice spec, as it would appear
+in a `.spec.md` template (and as the audit command would cite it in a
+finding):
 
 ```
 ## Summary
 <!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 ```
-
-Linters and `smithy.audit` read these tags to enforce budgets, diagram
-requirements, and `examples:` rules.
 
 ---
 
@@ -237,7 +252,9 @@ section, not in the Motivation.
 > `state`, `path`. Reviewers will want to confirm the JSON shape is
 > stable before we wire status into CI.
 
-**After** — split into two sections, each with its own tag:
+**After** — split into two sections, each governed by its own template
+voice spec (shown inline below for the reader's benefit; in real Smithy
+artifacts the specs live in the template, not in the rendered file):
 
 ```
 ## Goals

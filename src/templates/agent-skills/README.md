@@ -110,14 +110,20 @@ section in every artifact**, using the same 4-column Markdown table schema:
 
 ## Voice and Audience Tagging Convention
 
-Every `##` section in a Smithy planning artifact, forge deliverable, or
-ad-hoc planning prose carries an inline HTML-comment tag immediately under
-the heading. The full taxonomy — Reader role × Diátaxis mode plus
-conciseness budgets, diagram-first framing, and depth-control rules —
-lives in the `smithy.helper-voice` skill body. Authors of new command
-templates should follow it rather than redefining voice rules inline.
+Each `##` section in a Smithy planning artifact carries a voice spec —
+audience, mode, length budget, diagram requirement, examples policy —
+recorded by an HTML-comment tag with the grammar below. **The tag lives
+in the planning-artifact template** (the markdown code-fence block that
+`smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut` emit
+as the artifact shape), **not in every generated artifact instance**.
+That keeps the spec in one place, lets template authors edit it
+centrally, and gives `smithy.audit` a single file to read when checking
+voice. The full Role × Mode taxonomy — conciseness budgets, diagram-
+first framing, depth-control rules — lives in the `smithy.helper-voice`
+skill body. Authors of new command templates should follow it rather
+than redefining voice rules inline.
 
-The tag grammar:
+The tag grammar (as it appears in templates):
 
 ```
 ## <Section title>
@@ -135,15 +141,18 @@ Keys:
 | `examples` | `required` \| `recommended` \| `discouraged` \| `forbidden`. |
 | `applicability` (optional) | Free-text condition under which the section legitimately resolves to `N/A` (e.g., `code-shaped features only` on `.data-model.md` / `.contracts.md`). |
 
-The comment renders invisibly in GitHub/Markdown preview, is grep-able
-for lint, and travels with the section across reorderings. Tag every new
-`##` section you author; in review mode, insert missing tags and revise
-prose that violates the budget. `smithy.audit` and future lint commands
-read these tags to enforce voice rules — see
-`src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` for
-the per-cell rules, three worked before/after examples, and the
+Authoring rule: when adding a new `##` section to a planning-artifact
+template, drop the tag immediately under the heading inside the
+template's markdown code fence. `smithy.audit` and future lint commands
+read these tags to enforce voice rules; until every template surface
+is wired through, the audit command carries a hard-coded copy of the
+per-section specs that matches the eventual template-driven one. See
+`src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
+for the per-cell rules, three worked before/after examples, and the
 "application beyond Smithy" appendix (migration plans, ADRs, runbooks,
-READMEs, inline documentation).
+READMEs, inline documentation) — those non-Smithy targets have no
+template to inherit from, so the taxonomy is used as authoring
+discipline rather than a metadata convention.
 
 ## Sub-Agent Roles
 

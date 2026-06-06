@@ -3,7 +3,6 @@
 Stop hand-crafting the same RFC → spec → tasks → PR scaffolding for every AI-assisted change. **Smithy** installs a structured pipeline of slash commands — `/smithy.ignite`, `/smithy.render`, `/smithy.mark`, `/smithy.cut`, `/smithy.forge`, plus the `/smithy.strike` fast track — into your repo so Claude Code, Gemini CLI, or Codex can drive it. One `smithy init` deploys the same prompts, permissions, and skills across every supported assistant.
 
 ## Installation
-<!-- audience: builder; mode: how-to; length: 2-5 commands; diagram: optional; examples: required -->
 
 You can run Smithy directly via `npx` (recommended):
 
@@ -19,14 +18,12 @@ smithy init
 ```
 
 ## Supported AI Assistants
-<!-- audience: stakeholder; mode: reference; length: 3-5 bullets; diagram: optional; examples: discouraged -->
 
 - **Claude:** Installs commands, prompts, and sub-agents into `.claude/` for use within your Claude Code workflows.
 - **Gemini CLI:** Installs workspace skills (`.gemini/skills/`) so you can type `/skills reload` and immediately use Smithy workflow commands.
 - **Codex:** Installs project skills into `.agents/skills/` and reference prompts into `tools/codex/prompts/`, with `smithy.forge` and `smithy.fix` ready for Codex-driven implementation and repair workflows.
 
 ## Workflow Industrial Pipeline
-<!-- audience: stakeholder; mode: explanation; length: 1 paragraph + table + diagram; diagram: required; examples: discouraged -->
 
 The Smithy Industrial Pipeline follows a structured path from broad ideas to verified implementations, incorporating "Fast Track" shortcuts and built-in "Review Loops" at every stage.
 
@@ -81,6 +78,5 @@ graph TD
 ```
 
 ## Contributing
-<!-- audience: builder; mode: how-to; length: 1 line (link); diagram: optional; examples: discouraged -->
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing strategy, and pre-release checklist.

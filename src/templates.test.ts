@@ -819,7 +819,7 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('## 5. Embedded examples — when code helps vs. hurts');
     expect(skill.prompt).toContain('## 6. Reference-prose anti-pattern');
     expect(skill.prompt).toContain('## 7. Depth-control rule');
-    expect(skill.prompt).toContain('## 8. Audience-tagging convention');
+    expect(skill.prompt).toContain('## 8. Audience tag grammar');
     expect(skill.prompt).toContain('## 9. Three worked before/after examples');
     expect(skill.prompt).toContain('## 10. Application beyond Smithy');
   });

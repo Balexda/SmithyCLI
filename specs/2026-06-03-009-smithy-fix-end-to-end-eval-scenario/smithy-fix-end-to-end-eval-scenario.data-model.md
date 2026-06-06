@@ -1,12 +1,10 @@
 # Data Model: smithy.fix End-to-End Eval Scenario
 
 ## Overview
-<!-- audience: reviewer; mode: explanation; length: 1 paragraph; diagram: optional; examples: discouraged -->
 
 This feature adds data definitions for a deterministic smithy.fix eval scenario. The model extends scenario metadata with local fixture declarations, introduces committed issue and CI-log fixtures as repository artifacts, and consumes the token-aware baseline shape established by Feature 1.3a. No persistent database or external storage is introduced.
 
 ## Entities
-<!-- audience: builder+ai-input; mode: reference; length: 6 entities with field tables + validation rules; diagram: required (ER, in the Relationships section below); examples: required -->
 
 ### 1) Fix Eval Scenario (`fix_eval_scenario`)
 
@@ -117,7 +115,6 @@ Validation rules:
 - Baseline scenario name must match the scenario definition.
 
 ## Relationships
-<!-- audience: builder+ai-input; mode: reference; length: ER diagram + cardinality legend; diagram: required; examples: forbidden -->
 
 ```mermaid
 erDiagram
@@ -132,7 +129,6 @@ erDiagram
 Cardinality notes — `FixEvalScenario` 0..1 `FixBaseline` (the baseline does not exist until the F1.3a-aware capture lands); `FixEvalScenario` 0..N `HelperEvidenceCheck` (zero when the observed offline path dispatches no helpers, per FR-008).
 
 ## State Transitions
-<!-- audience: builder+ai-input; mode: reference; length: 2 state diagrams + trigger/effect tables; diagram: required; examples: forbidden -->
 
 ### Scenario lifecycle
 
@@ -170,7 +166,6 @@ stateDiagram-v2
 | `committed` → `refreshed` | The intended smithy.fix path changes and the scenario is intentionally recalibrated. | Fixture text and baseline expectations are updated together. |
 
 ## Identity & Uniqueness
-<!-- audience: builder; mode: reference; length: 3-5 bullets; diagram: optional; examples: discouraged -->
 
 - The scenario is uniquely identified by `name: fix-from-issue`.
 - Fixture declarations are uniquely identified by their repository-relative paths.

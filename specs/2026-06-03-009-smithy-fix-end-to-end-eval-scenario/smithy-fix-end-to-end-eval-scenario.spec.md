@@ -8,7 +8,6 @@
 **Source Feature Map**: `docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md` — Feature 1.4: smithy.fix End-to-End Eval Scenario.
 
 ## Clarifications
-<!-- audience: reviewer; mode: reference; length: 6-10 bullets; diagram: optional; examples: discouraged -->
 
 ### Session 2026-06-03
 
@@ -20,12 +19,10 @@
 - This feature does not edit `smithy.fix.prompt` (M3 owns CI-log prompt optimizations). The eval prompt names the local fixture paths and asks smithy.fix to diagnose them.
 
 ## Artifact Hierarchy
-<!-- audience: builder+ai-input; mode: reference; length: 1 line; diagram: optional; examples: forbidden -->
 
 RFC -> Milestone -> Feature -> User Story -> Slice -> Tasks
 
 ## User Scenarios & Testing *(mandatory)*
-<!-- audience: reviewer; mode: explanation; length: 1 paragraph per story; diagram: optional; examples: discouraged -->
 
 ### User Story 1: Provide Offline smithy.fix Fixtures (Priority: P1)
 
@@ -98,7 +95,6 @@ As a Smithy maintainer, I want a committed smithy.fix baseline in the token-awar
 - If F1.3a's token-aware baseline schema changes during implementation, this feature consumes the landed schema rather than defining a competing one.
 
 ## Dependency Order
-<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: forbidden -->
 
 Recommended implementation sequence:
 
@@ -110,7 +106,6 @@ Recommended implementation sequence:
 | US4 | Commit the smithy.fix Token-Aware Baseline | US3 | — |
 
 ## Requirements *(mandatory)*
-<!-- audience: builder+ai-input; mode: reference; length: 10-20 bullets per subsection; diagram: recommended (entity relationships); examples: discouraged -->
 
 ### Functional Requirements
 
@@ -129,7 +124,6 @@ Recommended implementation sequence:
 - **FR-013**: Unit tests MUST cover fixture declaration loading, local fixture path injection, missing-fixture failures, offline execution behavior, structural checks, helper evidence checks, and baseline loading for the smithy.fix scenario.
 
 ### Key Entities
-<!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: required (ER / flow); examples: required -->
 
 ```mermaid
 flowchart LR
@@ -153,7 +147,6 @@ flowchart LR
 | Helper Evidence Check | Sub-agent evidence assertion proving the expected smithy.fix helper path still ran. | Evaluated against Fix Eval Scenario output. |
 
 ## Assumptions
-<!-- audience: reviewer; mode: reference; length: 3-6 bullets; diagram: optional; examples: forbidden -->
 
 - Feature 1.3a lands before the smithy.fix baseline is committed, so this feature can consume the established token-envelope schema.
 - The existing eval runner temp-copy model is sufficient for smithy.fix to edit files, run verification, and keep source fixtures unchanged.
@@ -162,7 +155,6 @@ flowchart LR
 - The expected helper-agent list is finalized from observed smithy.fix behavior at implementation time so the scenario checks the actual exercised path.
 
 ## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: forbidden -->
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
@@ -170,7 +162,6 @@ flowchart LR
 | SD-002 | The initial token envelope for the smithy.fix baseline cannot be calibrated until F1.3a's token-aware baseline schema is available and the scenario has a clean captured run. Implementers should choose a conservative initial envelope and document the captured totals in the implementation PR. | Non-Functional Quality | Medium | Medium | open | — |
 
 ## Out of Scope
-<!-- audience: reviewer; mode: reference; length: 5-10 bullets; diagram: optional; examples: forbidden -->
 
 - Editing `smithy.fix.prompt` to change CI-log handling or reduce token usage.
 - Implementing the M3 CI-log failure-extraction grep or build-output protocol changes.
@@ -180,7 +171,6 @@ flowchart LR
 - Refreshing `.claude/` or `.smithy/` deployed snapshots.
 
 ## Success Criteria *(mandatory)*
-<!-- audience: reviewer; mode: reference; length: bullets; diagram: optional; examples: forbidden -->
 
 ### Measurable Outcomes
 
