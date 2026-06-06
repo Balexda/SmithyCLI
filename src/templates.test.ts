@@ -1422,17 +1422,38 @@ describe('getComposedTemplates', () => {
 
   // Helper: assert that each `## Heading` inside a fence is immediately
   // followed (after at most a blank line) by an audience-tag HTML comment
-  // matching the issue #422 grammar.
+  // matching the full issue #422 / #420 grammar. The regex enforces that
+  // every directive key documented by `smithy.helper-voice` is present and
+  // in canonical order: `audience` (enum) → `mode` (enum) → `length`
+  // (free text) → `diagram` (enum) → `examples` (enum), with the optional
+  // `applicability` clause trailing. Values for `length` are free-form so
+  // section authors can write `2-3 sentences`, `tables only`,
+  // `5-15 steps`, `bullets or table`, etc., per the skill's grammar.
   function expectAudienceTagPerH2(fence: string, label: string) {
-    // Matches: `## <title>\n\n<!-- audience: <role>[+ai-input]; mode: <mode>; ... -->`
-    // We allow zero or one blank lines between the heading and the tag.
-    const headingsWithTag = [...fence.matchAll(
-      /^## ([^\n]+)\n(?:\n)?<!--\s*audience:\s*(stakeholder|reviewer|builder)(\+ai-input)?\s*;\s*mode:\s*(explanation|reference|how-to|tutorial)\s*;[^\n]*-->/gm
-    )];
+    const audienceTagRe = new RegExp(
+      String.raw`^## ([^\n]+)\n(?:\n)?<!--\s*` +
+        // audience: stakeholder|reviewer|builder, optional +ai-input
+        String.raw`audience:\s*(?:stakeholder|reviewer|builder)(?:\+ai-input)?\s*;\s*` +
+        // mode: explanation|reference|how-to|tutorial
+        String.raw`mode:\s*(?:explanation|reference|how-to|tutorial)\s*;\s*` +
+        // length: free-form value (everything up to the next ;)
+        String.raw`length:\s*[^;]+;\s*` +
+        // diagram: required|recommended|optional
+        String.raw`diagram:\s*(?:required|recommended|optional)\s*;\s*` +
+        // examples: required|recommended|discouraged|forbidden|optional
+        // (`optional` is used by sections like Spec Acceptance Scenarios
+        // per the issue #422 directive mapping, beyond the four values
+        // listed in the helper-voice grammar table)
+        String.raw`examples:\s*(?:required|recommended|discouraged|forbidden|optional)\s*` +
+        // optional trailing applicability clause
+        String.raw`(?:;\s*applicability:\s*[^>]+)?\s*-->`,
+      'gm',
+    );
+    const headingsWithTag = [...fence.matchAll(audienceTagRe)];
     const tagged = new Set(headingsWithTag.map(m => m[1]!.trim()));
     const all = h2Headings(fence);
     const missing = all.filter(h => !tagged.has(h));
-    expect(missing, `${label}: ## headings missing audience tag: ${missing.join(', ')}`).toEqual([]);
+    expect(missing, `${label}: ## headings missing well-formed audience tag: ${missing.join(', ')}`).toEqual([]);
   }
 
   it('strike artifact template tags every ## section with an audience comment (issue #422)', () => {
