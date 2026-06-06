@@ -13,7 +13,8 @@ Purpose: Represents the JVM variant of the forge end-to-end eval case.
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
 | `name` | string | Yes | Canonical value: `forge-tdd-slice-jvm`. |
-| `skill` | string | Yes | Existing forge skill under test. |
+| `skill` | string | Yes | Existing forge skill under test, in slash-command form (`/smithy.forge`). |
+| `prompt` | string | Yes | Non-empty forge task-file invocation; the scenario loader rejects a missing/empty prompt. |
 | `fixture` | string | Yes | Uses the F1.6 selector for the JVM fixture. |
 | `requires_git` | boolean | Yes | Uses the F1.5 git-initialization contract. |
 | `structural_expectations` | StructuralExpectations | Yes | Validates forge completion and expected output shape. |

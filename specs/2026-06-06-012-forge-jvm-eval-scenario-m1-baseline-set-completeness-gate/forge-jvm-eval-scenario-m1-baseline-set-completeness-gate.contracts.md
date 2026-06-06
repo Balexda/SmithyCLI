@@ -16,17 +16,26 @@ This feature defines the contracts for the JVM forge eval scenario, its committe
 
 ```yaml
 name: forge-tdd-slice-jvm
-skill: smithy.forge
+skill: /smithy.forge
+prompt: <forge task-file invocation, mirroring the F1.5 forge-JS scenario>
 fixture: jvm
 requires_git: true
 ```
+
+The `skill` value uses the slash-command form (`/smithy.forge`), matching every
+committed scenario YAML: the runner invokes non-Codex agents as
+`${scenario.skill} ${scenario.prompt}` (`evals/lib/runner.ts`), so the bare
+`smithy.forge` would be sent as plain text and never trigger the forge skill.
+The `prompt` field is required and must be a non-empty string — the scenario
+loader skips any case missing it (`evals/lib/scenario-loader.ts`).
 
 #### Inputs
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `name` | string | Yes | Stable JVM scenario identity. |
-| `skill` | string | Yes | Forge skill invocation target. |
+| `skill` | string | Yes | Forge skill invocation target in slash-command form (`/smithy.forge`). |
+| `prompt` | string | Yes | Non-empty forge task-file invocation; loader rejects a missing/empty prompt. |
 | `fixture` | string | Yes | JVM fixture selector from F1.6. |
 | `requires_git` | boolean | Yes | Git-initialization opt-in from F1.5. |
 | `structural_expectations` | object | Yes | Forge completion expectations for this scenario. |
