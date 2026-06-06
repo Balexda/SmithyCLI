@@ -6,6 +6,7 @@ import { toolchains, type LanguageToolchain } from './permissions.js';
 import { uninitAction } from './commands/uninit.js';
 import { updateAction, type UpdateOptions } from './commands/update.js';
 import { statusAction, type StatusOptions } from './commands/status.js';
+import { flowLintAction, type FlowLintOptions } from './commands/flow-lint.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -104,6 +105,24 @@ program
   .action((opts: Record<string, unknown>) => {
     const statusOpts: StatusOptions = { ...opts } as StatusOptions;
     return statusAction(statusOpts);
+  });
+
+program
+  .command('flow-lint')
+  .description('Deterministic check that the UI flow/screen graph resolves (CI lint)')
+  .option('--root <path>', 'Repo root to lint (defaults to current working directory)')
+  .option('--design-dir <path>', "Directory holding flows/ and screens/ (default 'design')")
+  .option('--maestro-dir <path>', "Directory holding Maestro yaml files (default 'maestro/flows')")
+  .addOption(
+    new Option('--format <format>', 'Output format')
+      .choices(['text', 'json'])
+      .default('text'),
+  )
+  .option('--strict', 'Promote warnings (e.g. missing composable) to failures')
+  .option('--no-color', 'Suppress ANSI color output')
+  .action((opts: Record<string, unknown>) => {
+    const flowLintOpts: FlowLintOptions = { ...opts } as FlowLintOptions;
+    return flowLintAction(flowLintOpts);
   });
 
 program.parse(process.argv);

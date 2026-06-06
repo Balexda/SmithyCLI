@@ -141,6 +141,7 @@ npm run test:evals   # Run evals unit tests (structural, parse-stream, runner, f
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow
 node dist/cli.js update  # Test update flow
+node dist/cli.js flow-lint   # Lint the UI flow/screen graph (see docs/flow-lint.md)
 ```
 
 **Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.

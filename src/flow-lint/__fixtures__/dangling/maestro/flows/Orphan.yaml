@@ -1,0 +1,9 @@
+# PLANTED BREAK: this Maestro flow is an orphan — no `design/flows/*.flow.md`
+# references `maestro/flows/Orphan.yaml` via its `maestro:` field. flow-lint
+# must report `maestro-orphan` naming this path (a test guarding a product path
+# that the flow graph has forgotten).
+appId: com.storyspider.app
+---
+- launchApp
+- assertVisible:
+    id: "library-list"

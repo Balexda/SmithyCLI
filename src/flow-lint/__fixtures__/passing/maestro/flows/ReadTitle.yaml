@@ -1,0 +1,10 @@
+# Selectors are keyed to testIDs. Never visible text, never layout position.
+appId: com.storyspider.app
+---
+- launchApp
+- assertVisible:
+    id: "library-list"
+- tapOn:
+    id: "library-row-the-magic-circle"
+- assertVisible:
+    id: "player-surface"

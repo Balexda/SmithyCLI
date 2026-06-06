@@ -1,0 +1,10 @@
+# A valid Maestro flow, claimed by AddTitle.flow.md — present so the tree has
+# at least one resolving flow→yaml link. The breakage is the AddTitle *screen*,
+# not this yaml.
+appId: com.storyspider.app
+---
+- launchApp
+- assertVisible:
+    id: "library-fab"
+- tapOn:
+    id: "library-fab"
