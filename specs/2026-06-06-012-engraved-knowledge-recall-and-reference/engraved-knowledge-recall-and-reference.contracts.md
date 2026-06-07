@@ -125,7 +125,7 @@ via the `smithy.gh-issue` skill's `create-issue` script.
 | `Temporary:` exception added | Create a drift-tracking issue (title from the divergence; body = invariant id/title + divergence + establishing decision(s)); write the returned `#NNN` into the row's `Tracking Issue` column. |
 | `Accepted:` exception added | No issue; `Tracking Issue` stays `—`. |
 | Issue creation fails | Write the ledger row with `Tracking Issue` `—`, surface the failure, do not roll back. |
-| `Temporary:` exception resolved | Linked-issue handling per SD-003 (auto-close / leave / comment). |
+| `Temporary:` exception resolved | Leave the linked issue **open**; a human closes it. Engrave never auto-closes or comments (mutates GitHub only on creation). |
 
 ### Audit Checklist
 

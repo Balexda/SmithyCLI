@@ -75,7 +75,7 @@ As a developer adding a `Temporary:` exception to an invariant, I want `smithy.e
 1. **Given** `smithy.engrave <invariant-path> exception` adds a `Temporary:` row, **When** the row is written, **Then** a GitHub issue is scaffolded (via the `smithy.gh-issue` skill) titled from the divergence and bodied with the invariant id/title, the divergence, and the establishing decision(s), and its `#NNN` is written into that row's `Tracking Issue` column.
 2. **Given** an `Accepted:` exception is added (a permanent carve-out, not drift), **When** the row is written, **Then** no issue is created and the row's `Tracking Issue` cell stays `—`.
 3. **Given** issue creation fails (auth/network), **When** the exception is added, **Then** the ledger row is still written (with `Tracking Issue` left `—`) and the failure is surfaced — the engrave operation does not roll back.
-4. **Given** a `Temporary:` exception is later resolved (drift closed, or converted to `Accepted:`), **When** the ledger is updated, **Then** the linked issue is handled per the resolution of SD-003.
+4. **Given** a `Temporary:` exception is later resolved (drift closed, or converted to `Accepted:`), **When** the ledger is updated, **Then** engrave leaves the linked drift-tracking issue **open** for a human to close — it does not auto-close or comment on the issue (engrave mutates GitHub only on exception creation).
 
 ---
 
@@ -170,7 +170,7 @@ All four user stories are independent — four parallel entry points with no cro
 |----|-------------|-----------------|--------|------------|--------|------------|
 | SD-001 | Which agent-context files projection manages by default (CLAUDE.md only, also AGENTS.md, also `.github/copilot-instructions.md`) and whether the target set is configurable. | Integration | Medium | Medium | open | — |
 | SD-002 | Whether the optional `design`-domain locations (`docs/design/{decisions,invariants,constitution}`) are in scope for recall and the projection pointer now, or deferred. | Functional Scope | Low | Medium | open | — |
-| SD-003 | When a `Temporary:` exception is later resolved (removed or converted to `Accepted:`), whether engrave should auto-close the linked drift-tracking issue, leave it open, or comment-and-leave. | Integration | Low | Medium | open | — |
+| SD-003 | When a `Temporary:` exception is later resolved (removed or converted to `Accepted:`), whether engrave should auto-close the linked drift-tracking issue, leave it open, or comment-and-leave. | Integration | Low | Medium | resolved | Resolved 2026-06-06 — engrave leaves the linked issue **open** for a human to close. Engrave mutates GitHub only when a `Temporary:` exception is created, never on resolve. |
 
 ## Out of Scope
 
