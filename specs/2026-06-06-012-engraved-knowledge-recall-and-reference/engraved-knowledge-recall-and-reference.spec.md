@@ -110,7 +110,7 @@ Recommended implementation sequence:
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
 | US1 | Planning Commands Recall Relevant Engraved Knowledge | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/01-planning-commands-recall-relevant-engraved-knowledge.tasks.md |
-| US2 | Engrave Projects an Engraved-Knowledge Pointer into Agent-Context Files | — | — |
+| US2 | Engrave Projects an Engraved-Knowledge Pointer into Agent-Context Files | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/02-engrave-projects-an-engraved-knowledge-pointer-into-agent-context-files.tasks.md |
 | US3 | Engrave Scaffolds a Drift-Tracking Issue for Temporary Exceptions | — | — |
 | US4 | Audit Validates Engraved Record Quality | — | — |
 
