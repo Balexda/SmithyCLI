@@ -16,7 +16,7 @@ truth.
 
 | Key | Kind | Required | Notes |
 |-----|------|----------|-------|
-| `kind` | both | Yes | `backend` or `ui`. |
+| `kind` | both | Yes (new) | `backend` or `ui`. Missing on legacy maps → `backend`. |
 | `phase` | ui | Yes | `build` or `wire` (feature-level). |
 | `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. |
 | `bundle` | ui | No | Path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |

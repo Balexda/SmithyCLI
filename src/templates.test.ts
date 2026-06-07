@@ -2911,7 +2911,7 @@ describe('getComposedTemplates', () => {
       'README.md',
     );
     const readme = fs.readFileSync(readmePath, 'utf8');
-    expect(readme).toContain("branches on the selected\nfeature's `kind`");
+    expect(readme).toMatch(/branches on the selected\s+feature's `kind`/);
     expect(readme).toContain('absent-kind legacy features');
     expect(readme).toContain('owns the durable design truth');
     expect(readme).toContain('Selects the `smithy.mark` authoring path');
