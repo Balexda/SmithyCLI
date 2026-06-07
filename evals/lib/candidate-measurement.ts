@@ -10,9 +10,25 @@ export interface ForgeSliceShape {
   slice_number: number;
 }
 
+/**
+ * The actual bounded context each strategy delivers for a given fixture.
+ *
+ * This is what makes a measurement valid: `pre_pasted_excerpts` carries the
+ * acceptance excerpts the parent flow pastes ahead of the run, while
+ * `per_task_brief` carries the generated brief. Because forge does not parse
+ * strategy *names*, the harness must embed the strategy's real context into the
+ * run so the two candidates exercise materially different inputs rather than the
+ * same normal forge path under different labels.
+ */
+export interface CandidateContext {
+  pre_pasted_excerpts: string;
+  per_task_brief: string;
+}
+
 export interface FixtureInput {
   fixture: ForgeFixture;
   fixture_dir: string;
+  candidate_context: CandidateContext;
 }
 
 export interface CandidateMeasurementRun {
@@ -22,6 +38,8 @@ export interface CandidateMeasurementRun {
   tasks_file: string;
   slice_number: number;
   skill: '/smithy.forge';
+  /** The strategy-specific context embedded into this run's prompt. */
+  context: string;
   prompt: string;
   measurement_mode: true;
 }
@@ -64,10 +82,14 @@ const STRATEGIES: CandidateStrategy[] = [
 /**
  * Build isolated smithy.forge eval runs for candidate measurement.
  *
- * The returned scenarios all use the same forge slice arguments and only vary
- * the candidate context strategy and fixture. This keeps candidate measurement
- * outside normal forge dispatch while still letting the eval runner execute
- * each strategy independently against JS and JVM fixtures.
+ * The returned scenarios share the same forge slice arguments but embed each
+ * strategy's *actual* bounded context (pre-pasted excerpts vs. generated brief)
+ * into the run prompt. Embedding the real context — rather than just naming the
+ * strategy — is what makes the two candidates exercise materially different
+ * inputs, so their token and quality results are attributable to the strategy
+ * that was actually applied. This keeps candidate measurement outside normal
+ * forge dispatch while still letting the eval runner execute each strategy
+ * independently against JS and JVM fixtures.
  */
 export function buildCandidateMeasurementPlan(
   slice: ForgeSliceShape,
@@ -89,21 +111,39 @@ export function buildCandidateMeasurementPlan(
       throw new Error(`fixture_dir for ${fixture.fixture} must be non-empty`);
     }
 
-    return STRATEGIES.map((strategy) => ({
-      strategy,
-      fixture: fixture.fixture,
-      fixture_dir: fixture.fixture_dir,
-      tasks_file: slice.tasks_file,
-      slice_number: slice.slice_number,
-      skill: '/smithy.forge' as const,
-      prompt: [
-        `${slice.tasks_file} ${slice.slice_number}`,
-        '',
-        `Candidate measurement mode: ${strategy}.`,
-        'Keep normal smithy.forge build-output, test-command, TDD-protocol, and model-assignment behavior unchanged.',
-      ].join('\n'),
-      measurement_mode: true as const,
-    }));
+    return STRATEGIES.map((strategy) => {
+      const context = fixture.candidate_context?.[strategy];
+      if (typeof context !== 'string' || context.trim().length === 0) {
+        throw new Error(
+          `${fixture.fixture}/${strategy} candidate_context must be a non-empty string`,
+        );
+      }
+
+      return {
+        strategy,
+        fixture: fixture.fixture,
+        fixture_dir: fixture.fixture_dir,
+        tasks_file: slice.tasks_file,
+        slice_number: slice.slice_number,
+        skill: '/smithy.forge' as const,
+        context,
+        prompt: [
+          `${slice.tasks_file} ${slice.slice_number}`,
+          '',
+          `Candidate measurement mode: ${strategy}.`,
+          'The parent forge flow supplies the bounded acceptance context below so',
+          'each task uses it instead of re-reading the full planning artifacts.',
+          'Use only this supplied context for task acceptance details.',
+          '',
+          `--- BEGIN ${strategy} CONTEXT ---`,
+          context,
+          `--- END ${strategy} CONTEXT ---`,
+          '',
+          'Keep normal smithy.forge build-output, test-command, TDD-protocol, and model-assignment behavior unchanged.',
+        ].join('\n'),
+        measurement_mode: true as const,
+      };
+    });
   });
 }
 

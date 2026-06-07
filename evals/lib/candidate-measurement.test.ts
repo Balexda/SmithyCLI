@@ -7,6 +7,15 @@ import {
 } from './candidate-measurement.js';
 
 describe('candidate measurement plan', () => {
+  const jsContext = {
+    pre_pasted_excerpts: 'JS pre-pasted acceptance excerpts for the slice.',
+    per_task_brief: 'JS generated per-task brief for the slice.',
+  };
+  const jvmContext = {
+    pre_pasted_excerpts: 'JVM pre-pasted acceptance excerpts for the slice.',
+    per_task_brief: 'JVM generated per-task brief for the slice.',
+  };
+
   it('creates isolated runs for both strategies across JS and JVM fixtures', () => {
     const runs = buildCandidateMeasurementPlan(
       {
@@ -15,8 +24,16 @@ describe('candidate measurement plan', () => {
         slice_number: 1,
       },
       [
-        { fixture: 'js', fixture_dir: 'evals/fixture' },
-        { fixture: 'jvm', fixture_dir: 'evals/fixture/jvm' },
+        {
+          fixture: 'js',
+          fixture_dir: 'evals/fixture',
+          candidate_context: jsContext,
+        },
+        {
+          fixture: 'jvm',
+          fixture_dir: 'evals/fixture/jvm',
+          candidate_context: jvmContext,
+        },
       ],
     );
 
@@ -38,10 +55,62 @@ describe('candidate measurement plan', () => {
     }
   });
 
+  it('embeds the strategy-specific context so the two candidates differ materially', () => {
+    const runs = buildCandidateMeasurementPlan(
+      { tasks_file: 'specs/example/01-story.tasks.md', slice_number: 1 },
+      [
+        {
+          fixture: 'js',
+          fixture_dir: 'evals/fixture',
+          candidate_context: jsContext,
+        },
+      ],
+    );
+
+    const prePasted = runs.find((r) => r.strategy === 'pre_pasted_excerpts')!;
+    const perTaskBrief = runs.find((r) => r.strategy === 'per_task_brief')!;
+
+    // Each run carries — and embeds into its prompt — only its own strategy's
+    // context, so token/quality results are attributable to the applied strategy.
+    expect(prePasted.context).toBe(jsContext.pre_pasted_excerpts);
+    expect(prePasted.prompt).toContain(jsContext.pre_pasted_excerpts);
+    expect(prePasted.prompt).not.toContain(jsContext.per_task_brief);
+
+    expect(perTaskBrief.context).toBe(jsContext.per_task_brief);
+    expect(perTaskBrief.prompt).toContain(jsContext.per_task_brief);
+    expect(perTaskBrief.prompt).not.toContain(jsContext.pre_pasted_excerpts);
+
+    expect(prePasted.prompt).not.toBe(perTaskBrief.prompt);
+  });
+
+  it('blocks a run when a strategy context payload is missing or empty', () => {
+    expect(() =>
+      buildCandidateMeasurementPlan(
+        { tasks_file: 'specs/example/01-story.tasks.md', slice_number: 1 },
+        [
+          {
+            fixture: 'js',
+            fixture_dir: 'evals/fixture',
+            candidate_context: {
+              pre_pasted_excerpts: 'present',
+              per_task_brief: '   ',
+            },
+          },
+        ],
+      ),
+    ).toThrow(/js\/per_task_brief candidate_context must be a non-empty string/);
+  });
+
   it('converts a candidate run to an eval scenario without changing forge command syntax', () => {
     const runs = buildCandidateMeasurementPlan(
       { tasks_file: 'specs/example/01-story.tasks.md', slice_number: 2 },
-      [{ fixture: 'js', fixture_dir: 'evals/fixture' }],
+      [
+        {
+          fixture: 'js',
+          fixture_dir: 'evals/fixture',
+          candidate_context: jsContext,
+        },
+      ],
     );
     const run = runs[0]!;
 
