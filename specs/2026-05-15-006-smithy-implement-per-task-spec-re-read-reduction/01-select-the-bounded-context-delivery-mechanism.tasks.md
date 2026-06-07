@@ -36,6 +36,7 @@
   - Each candidate/fixture result records input, output, total, and delta-from-baseline tokens (AS 1.1)
   - Results distinguish JS and JVM fixture measurements
   - Structural-eval outcome is present for every candidate/fixture result
+  - Sampled-review outcome (`pass`, `fail`, or `not_reviewed`) is recorded for every candidate/fixture result, since `MeasurementResult` requires `sampled_review_result` and the Slice 2 decision contract rejects records that omit it
   - Missing baseline or incomplete candidate data blocks the measurement result instead of producing a misleading comparison
   - Unit or eval coverage proves token deltas are computed from the matching fixture baseline
 
