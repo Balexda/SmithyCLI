@@ -35,16 +35,17 @@
   - The prompt still forbids invented figures when context lacks numbers.
   - Summary, Motivation / Problem Statement, and Personas guidance remains present.
 
-- [ ] **Validate prose template parsing and eval coverage**
+- [ ] **Add prose-trim regression coverage and validate**
 
-  Run the repository's template parse test and the spark/ignite eval scenarios after editing `smithy.prose`. Record any eval limitations in the implementation notes rather than widening this slice beyond FR-001 and FR-016.
+  Add focused coverage in `src/templates.test.ts` (or its existing helpers) asserting that the composed `smithy.prose` template carries a named `Skill("smithy.helper-voice")` reference and no longer contains the removed shared-principles heading or anti-pattern block. Keep assertions structural: check for stable markers — the helper reference and the removed `Prose principles — follow these on every sentence` heading / anti-pattern block — and do **not** assert on long taxonomy paragraphs or sentences whose wording may change. Then run the parse test and the spark/ignite eval scenarios, recording any eval limitation in the PR notes rather than widening this slice beyond FR-001 and FR-016.
 
   _Acceptance criteria:_
-  - `npm test` passes, including `src/templates.test.ts`.
-  - The spark and ignite eval scenarios complete without a narrative-quality regression attributable to the trim.
+  - A test asserts `smithy.prose` composes with a `Skill("smithy.helper-voice")` reference and that the old `Prose principles — follow these on every sentence` heading and anti-pattern block are absent (marker/heading checks only — no long-taxonomy-string assertions).
+  - `npm test` (including `src/templates.test.ts`) and `npm run typecheck` pass.
+  - The spark and ignite eval scenarios complete and demonstrate at least one actual `Skill("smithy.helper-voice")` invocation (SC-001) without a narrative-quality regression attributable to the trim; any unavailable scenario is documented with the exact limitation.
   - The `.claude/` snapshot and `.smithy/smithy-manifest.json` remain unchanged.
 
-**PR Outcome**: Spark and ignite narrative drafting now reaches shared voice guidance through `smithy.prose`, with the duplicated taxonomy removed and prose-specific rules preserved.
+**PR Outcome**: Spark and ignite narrative drafting now reaches shared voice guidance through `smithy.prose`, with the duplicated taxonomy removed, prose-specific rules preserved, and a regression test guarding both the helper reference and the removed blocks.
 
 ---
 
@@ -85,16 +86,16 @@
   - The task format remains the mandatory checkbox task structure consumed by forge.
   - No helper taxonomy text is pasted into the cut template.
 
-- [ ] **Validate reference command templates**
+- [ ] **Add reference-command regression coverage and validate**
 
-  Run template parsing after the render, mark, and cut edits. Add or adjust focused regression coverage only if the existing parse tests do not compose the edited templates.
+  Add focused coverage in `src/templates.test.ts` (or its helpers) asserting that the composed `smithy.render`, `smithy.mark`, and `smithy.cut` templates each carry a named `Skill("smithy.helper-voice")` reference and parse cleanly. Keep assertions structural — check for the named helper reference, not exact taxonomy wording. Then run the parse test after the render, mark, and cut edits.
 
   _Acceptance criteria:_
-  - `npm test` passes, including composed template parsing for render, mark, and cut.
+  - Tests assert render, mark, and cut compose with a named `Skill("smithy.helper-voice")` reference (marker check only — no taxonomy-string assertions).
+  - `npm test` (including composed parsing for render, mark, and cut) and `npm run typecheck` pass.
   - No `.claude/` or `.smithy/smithy-manifest.json` files are regenerated.
-  - A grep for `Skill("smithy.helper-voice")` shows the new command-level invocations.
 
-**PR Outcome**: Planning artifacts authored directly by render, mark, and cut now load the shared voice helper as a Reference/How-to discipline guard without duplicating taxonomy text.
+**PR Outcome**: Planning artifacts authored directly by render, mark, and cut now load the shared voice helper as a Reference/How-to discipline guard, with regression tests guarding the helper references and no duplicated taxonomy text.
 
 ---
 
@@ -144,66 +145,17 @@
   - Decision, invariant, and principle schemas remain unchanged.
   - No helper taxonomy text is pasted into the engrave prompt.
 
-- [ ] **Validate narrative command templates**
+- [ ] **Add narrative-command regression coverage and validate**
 
-  Run the repository's template parse tests and relevant eval scenarios after editing spark, ignite, strike, and engrave. Keep the `.claude/` snapshot unchanged per FR-016.
+  Add focused coverage in `src/templates.test.ts` (or its helpers) asserting that the composed `smithy.spark`, `smithy.ignite`, `smithy.strike`, and `smithy.engrave` templates each carry a named `Skill("smithy.helper-voice")` reference and parse cleanly. Keep assertions structural — check for the named helper reference, not exact taxonomy wording. Then run the parse tests and the relevant eval scenarios after editing spark, ignite, strike, and engrave; keep the `.claude/` snapshot unchanged per FR-016.
 
   _Acceptance criteria:_
-  - `npm test` passes for composed command templates.
-  - Relevant eval scenarios complete or any unavailable scenario is explicitly noted.
+  - Tests assert spark, ignite, strike, and engrave compose with a named `Skill("smithy.helper-voice")` reference (marker check only — no taxonomy-string assertions).
+  - `npm test` (composed command templates) and `npm run typecheck` pass.
+  - Relevant eval scenarios complete — or any unavailable scenario is explicitly noted with the exact limitation.
   - `.claude/` and `.smithy/smithy-manifest.json` remain unchanged.
 
-**PR Outcome**: Spark, ignite, strike, and engrave load the shared voice helper for direct prose authoring while preserving existing delegation boundaries and artifact schemas.
-
----
-
-## Slice 4: Add Voice Integration Regression Coverage
-
-**Goal**: Tests and evals prove the draft-mode integrations exist, templates remain parseable, and no prompt in this story reintroduces inlined helper taxonomy.
-
-**Justification**: The integration touches multiple prompt templates, so a final verification slice gives maintainers a durable guardrail after the prompt edits land. This slice is independently useful because it turns the story's controlling invariant into automated checks without changing the authoring behavior itself.
-
-**Addresses**: FR-001, FR-002, FR-003, FR-016; AS 1.1, AS 1.2, AS 1.3, AS 1.4
-
-### Tasks
-
-- [ ] **Add template regression tests for helper loads**
-
-  Add focused coverage in `src/templates.test.ts` or the existing template-test helpers to assert that `smithy.prose` and the direct prose-authoring commands compose with `Skill("smithy.helper-voice")` references. Keep the assertions structural and avoid testing exact prose strings that would make future wording changes brittle.
-
-  _Acceptance criteria:_
-  - Tests cover `smithy.prose`, render, mark, cut, spark, ignite, strike, and engrave template composition.
-  - Tests assert named helper references are present where the story requires them.
-  - Tests do not require exact taxonomy wording copied from the helper skill.
-
-- [ ] **Add no-inline-taxonomy regression check**
-
-  Add or extend a test that fails if the removed `smithy.prose` shared-principles heading or anti-pattern block returns in the edited templates. Scope the check to the story's touched templates so unrelated documentation can still describe the helper at a high level.
-
-  _Acceptance criteria:_
-  - The old `Prose principles — follow these on every sentence` heading is absent from `smithy.prose`.
-  - The old anti-pattern block is absent from `smithy.prose`.
-  - The story's command templates reference the helper by name instead of embedding copied taxonomy text.
-
-- [ ] **Exercise evals for draft-mode activation**
-
-  Run `npm run eval` with the scenarios that cover spark, ignite, and any available command-template smoke cases for direct authoring. Capture whether at least one scenario demonstrates an actual `Skill("smithy.helper-voice")` invocation per SC-001.
-
-  _Acceptance criteria:_
-  - `npm run eval` completes or unsupported cases are documented with the exact limitation.
-  - At least one eval or smoke output demonstrates a `Skill("smithy.helper-voice")` invocation.
-  - Spark and ignite narrative output shows no regression from the `smithy.prose` trim.
-
-- [ ] **Run final repository validation**
-
-  Run the required repository validation commands after the prompt and test changes. Confirm generated snapshots remain untouched and summarize any skipped eval coverage in the PR notes.
-
-  _Acceptance criteria:_
-  - `npm test` passes.
-  - `npm run typecheck` passes.
-  - `.claude/` and `.smithy/smithy-manifest.json` have no diff.
-
-**PR Outcome**: CI and eval coverage guard the draft-mode voice integrations, ensuring future prompt edits keep helper loads parseable and avoid reintroducing duplicated taxonomy.
+**PR Outcome**: Spark, ignite, strike, and engrave load the shared voice helper for direct prose authoring while preserving existing delegation boundaries and artifact schemas, with regression tests guarding the helper references.
 
 ---
 
@@ -226,7 +178,6 @@ Recommended implementation sequence:
 | S1 | Trim smithy.prose to Load the Voice Skill | — | — |
 | S2 | Wire Reference Planning Commands to Draft-Mode Discipline | S1 | — |
 | S3 | Wire Narrative and Durable-Knowledge Commands | S1 | — |
-| S4 | Add Voice Integration Regression Coverage | S1, S2, S3 | — |
 
 ### Cross-Story Dependencies
 
