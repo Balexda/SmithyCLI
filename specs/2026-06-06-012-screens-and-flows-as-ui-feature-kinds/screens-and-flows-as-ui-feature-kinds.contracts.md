@@ -85,7 +85,7 @@ skills; this file defines the command behavior around them.
 | Output | Kind | Description |
 |--------|------|-------------|
 | UI component + tests | screen-build | Flagged, mock data, every brief state, tokens only; bundle translated per conflict rule if present. |
-| Real wiring + flow test | flow-wire | Connect real data, honor/flip flag, emit/update executable test body + `.flow.md`, run as a gate. |
+| Real wiring + flow test | flow-wire | Connect real data, honor/flip flag, emit/update the executable test body (the `.flow.md` is mark's — `forge` does not modify it), run as a gate. |
 | Backend code + tests | backend-story | As today. |
 | PR | all | Same implementer → tester → reviewer → PR pipeline. |
 

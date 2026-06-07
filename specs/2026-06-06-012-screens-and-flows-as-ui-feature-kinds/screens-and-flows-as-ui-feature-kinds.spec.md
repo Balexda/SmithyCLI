@@ -3,6 +3,7 @@
 **Spec Folder**: `2026-06-06-012-screens-and-flows-as-ui-feature-kinds`
 **Branch**: `feature/epic-404-ui-specs` *(pre-staged linked worktree; branch preserved per branch policy)*
 **Created**: 2026-06-06
+**Status**: Draft
 **Input**: User description — "add implementation of EPIC #404 and its sub-issues to the smithy system": let a `.features.md` produce durable `.screen.md`/`.flow.md` artifacts alongside `.spec.md`, decide the command path from feature → screen/flow → built output, decide screen/flow/spec dependency handling, and adjust `render` to be a cleaner UI-aware entry point.
 **Source EPIC**: [#404 — Screens & flows as first-class Smithy feature kinds](https://github.com/Balexda/SmithyCLI/issues/404) (sub-issues #405–#410)
 
@@ -18,7 +19,7 @@
 - _Smithy templates are **tool-agnostic**: the AI detects and uses whatever UI framework and test driver the target project actually uses (Jetpack Compose + Maestro + `story-spider-design` are illustrative examples only). An Electron/React project gets React components + Playwright/Cypress._ `[Critical Assumption]`
 - _`.flow.md` stays **intent-only** (why, guards, entry/exit) and **never** enumerates steps; the ordered "series of user actions and UI responses" the user described lives in the **executable test body** (Maestro yaml or the project's equivalent)._
 - _The screen annotation filename keeps the landed `<ScreenId>.design.md` over the user's `.screen.md` (it signals "annotation about the code," not a parallel spec); the rename is tracked as low-impact debt SD-002._
-- _Building blocks already landed (closed sub-issues): `feature-kinds.md` typed-feature metadata + `render` emission (#405), `smithy.helper-screen-design` (#407), `smithy.helper-flow-definition` (#406). This feature wires those blocks into the command pipeline and generalizes them; it does not re-author the schemas._
+- _Building blocks already landed (closed sub-issues): `feature-kinds.md` typed-feature metadata + `render` emission (#405), `smithy.helper-screen-design` (#407), `smithy.helper-flow-definition` (#406). This feature wires those blocks into the command pipeline and generalizes them — including driver-neutral field renames such as `composable`→`component-path` and `maestro`→`test-body` — but does not redefine the screen/flow artifact families wholesale._
 
 ## Resolved Architectural Model
 
@@ -136,7 +137,7 @@ As a developer, I want every ledger node — `SC`, `FL`, and `US` — to flow th
 2. **Given** an `SC` (screen-build) node's tasks, **When** `forge` runs them, **Then** it generates the component from the `.design.md` + the committed design skill, renders every brief state with design-system tokens only (no hardcoded colors), behind the feature `flag`, on mock data.
 3. **Given** an `SC`/`FL` node whose screen has a bundle attached, **When** `forge` runs, **Then** it translates the bundle into the project framework applying the conflict rule (bundle wins layout/visual; skill wins dialect), with the skill preloaded as implementer context.
 4. **Given** an `SC`/`FL` node in `brief` mode with **no** bundle attached, **When** `forge` runs, **Then** it builds from the committed design skill without blocking (the gate is non-blocking).
-5. **Given** an `FL` (flow-wire) node, **When** `forge` runs its tasks, **Then** definition-of-done includes connecting real data for that path, flipping/honoring the `flag`, and emitting/updating the executable flow test + `.flow.md` for that flow, run as a validation gate.
+5. **Given** an `FL` (flow-wire) node, **When** `forge` runs its tasks, **Then** definition-of-done includes connecting real data for that path, flipping/honoring the `flag`, and emitting/updating the **executable test body** for that flow (the `.flow.md` was authored at `mark` and is not modified by `forge`), run as a validation gate.
 6. **Given** a `US` node in a UI feature's ledger, **When** it is processed, **Then** it flows through `cut` → `.tasks.md` → `forge` exactly as a backend story does today.
 7. **Given** any `kind: ui` node, **When** the reviewer profile is selected, **Then** it checks structural conformance only (tokens-only, component reuse, conventions, every brief state present, touch-target/contrast roles) and never judges visual fidelity, staying in plan/no-write mode.
 
@@ -255,7 +256,7 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 - **FR-016**: The design gate MUST be **non-blocking**: `mark` MUST always proceed, and `forge` MUST build a node from the committed design skill when no bundle is attached, regardless of mode.
 - **FR-017**: When a `bundle` is attached at build time (entered via `import` at render or post-`mark` in `brief` mode), `forge` MUST honor it under the conflict rule (bundle wins layout/visual; skill wins implementation dialect), with the skill preloaded as implementer context.
 - **FR-018**: In `brief` mode the `.design.md`/`.flow.md` intent MUST be usable verbatim as a prototyping brief, and the node MUST be marked as intending a prototype so an unrealized one is surfaced (not silently dropped). `brief` mode MAY be developer-declared **or** mark-initiated: when no bundle is provided and `mark` judges a screen sufficiently complex, `mark` MUST author the brief itself and recommend gating for a bundle, leaving the developer to supply one (and re-run) or accept it and pass through — a non-blocking recommendation, never a hard stop.
-- **FR-019**: A flow-wire node's definition-of-done MUST include connecting real data for that path, honoring/flipping the `flag`, and emitting/updating the executable flow test + `.flow.md`, run as a gate.
+- **FR-019**: A flow-wire node's definition-of-done MUST include connecting real data for that path, honoring/flipping the `flag`, and emitting/updating the **executable test body** (not the `.flow.md`, which `mark` owns — keeping `forge` consistent with FR-007/SC-003), run as a gate.
 - **FR-020**: The `kind: ui` reviewer profile MUST check structural conformance only and MUST NOT judge visual fidelity, remaining in plan/no-write mode.
 - **FR-021**: A `.design.md`/`.flow.md` MUST be a self-sufficient brief usable by a non-forge build method.
 - **FR-022**: `smithy.render` MUST emit complete, internally consistent `feature-kinds` metadata for every UI feature, splitting flag-gated work into a build + wire pair sharing one `flag`, and MUST express the build/wire seam in its `## Dependency Order` (wire depends on build and any backend; build does not depend on the backend).
@@ -284,7 +285,7 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 
 ## Assumptions
 
-- The closed sub-issues' artifacts (`feature-kinds.md`, the two helper skills, render typing) are authoritative inputs; this feature consumes and generalizes them rather than redefining their schemas.
+- The closed sub-issues' artifacts (`feature-kinds.md`, the two helper skills, render typing) are authoritative inputs; this feature consumes and generalizes them (e.g. driver-neutral field renames) rather than redefining the artifact families from scratch.
 - "Tool-agnostic" means the AI adapts to the project's existing stack at generation time; smithy ships no per-framework generators.
 - Smithy never performs visual iteration inline; the `bundle` is the only object crossing the terminal↔visual boundary.
 - `cut` slices every node kind (SC/FL/US) into a `tasks.md`; the per-kind slice shape differs (a screen-build or flow-wire node may be a single slice, a backend story several). Whether SC/FL nodes ever need multi-slicing is open (SD-006).
