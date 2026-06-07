@@ -176,9 +176,7 @@ the contract the parent command consumes.
       "kind": "decision",
       "title": "Decision title",
       "path": "docs/decisions/example.decision.md",
-      "domain": "system",
-      "basis": "domain=system; topics overlap on planning-commands",
-      "rank": 1
+      "basis": "domain=system; topics overlap on planning-commands"
     }
   ],
   "conflicts": [
