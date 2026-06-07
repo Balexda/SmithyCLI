@@ -53,6 +53,24 @@ Read rules (for recall):
   new exception (FR-002).
 - The single em-dash placeholder row represents an empty ledger (no exceptions).
 
+Write rule (for the drift-tracking step, US3): when a `Temporary:` row is added,
+`tracking_issue` is populated with the number of a scaffolded drift-tracking issue
+(FR-011); `Accepted:` rows keep `tracking_issue` = `—`.
+
+### 2a) Drift-Tracking Issue (external — GitHub)
+
+Purpose: the GitHub issue created to close a `Temporary:` exception. Not a persisted
+entity in this repo; its identity is the `#NNN` recorded in the ledger row.
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `number` | GitHub (create-issue) | Written back into the `Temporary:` row's `Tracking Issue` cell. |
+| `title` | the divergence | Derived from the exception's `what diverges`. |
+| `body` | invariant + decision | Invariant id/title, the divergence, and the establishing decision(s). |
+
+Created via the `smithy.gh-issue` skill (the same tooling `smithy.orders` uses).
+Engraved records do **not** become `smithy.orders` artifact types.
+
 ### 3) Recall Result (transient, prompt-layer — not persisted)
 
 Purpose: the structured return of the `smithy-recall` sub-agent.

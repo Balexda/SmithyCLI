@@ -14,6 +14,7 @@
 - _Recall is a planning-time **sub-agent** (`smithy-recall`) dispatched only by planning commands — it is **not** user-invocable and exposes no ad-hoc command surface._
 - _Recall reads engraved record files directly (Grep/Glob/Read, modeled on `smithy-scout`); with status integration out of scope, it always reads record frontmatter as the source of truth (no dependency on a status index)._ `[Critical Assumption]`
 - _The Agents.md/Claude.md reference capability is a new **projection step on `smithy.engrave`** that maintains a managed, regenerable block containing a **pointer** to the engraved-knowledge locations plus a short applicability note — not a copy of the records. The reading agent decides how much to load._ `[Critical Assumption]`
+- _The #418 "orders" half is reinterpreted: engraved records are durable knowledge, not a fan-out work hierarchy, so they do **not** become `smithy.orders` artifact types. The only engraved↔issue seam is a **drift-tracking issue** scaffolded at the engrave exception step when a `Temporary:` exception is added, filling the schema's existing `Tracking Issue` ledger column. (User-confirmed.)_
 - _The engraved-knowledge frontmatter schema (kinds, fields, suffixes, ledger column order) is **frozen** and owned by `src/templates/agent-skills/commands/smithy.engrave.prompt`. This spec references it as the source of truth and does not redefine it._
 
 ## Artifact Hierarchy
@@ -61,19 +62,20 @@ As a developer who just engraved or superseded a record, I want `smithy.engrave`
 
 ---
 
-### User Story 3: Orders Scaffolds Tickets for Engraved Records (Priority: P2)
+### User Story 3: Engrave Scaffolds a Drift-Tracking Issue for Temporary Exceptions (Priority: P2)
 
-As a developer using `smithy.orders`, I want to scaffold GitHub issues for decisions and invariants from their files so that engraved work can be tracked with the same issue-creation flow as planning artifacts.
+As a developer adding a `Temporary:` exception to an invariant, I want `smithy.engrave` to open a GitHub issue for closing that drift and record its number in the ledger so that every known divergence from a durable rule is tracked as real, actionable work with a clear done-condition.
 
-**Why this priority**: Additive, low-risk, independent of the other stories; maps to the orders half of #418. Useful polish, not core capability.
+**Why this priority**: This is the one genuine "engraved → work" seam — a `Temporary:` exception is, by definition, drift the team intends to fix. It reinterprets the orders half of #418: rather than treating a decision/invariant as a new `smithy.orders` artifact type (engraved records have no sub-elements, no `## Dependency Order` table, and are durable commitments rather than work to be done — the same reason status integration was dropped), the capability lives at the engrave exception step and fills the schema's existing `Tracking Issue` ledger column.
 
-**Independent Test**: Run `smithy.orders` against a `*.decision.md` and a `*.invariant.md` and confirm structured issue bodies are produced, and the orders-template parity test passes.
+**Independent Test**: Add a `Temporary:` exception to an invariant via `smithy.engrave <invariant> exception`; confirm a GitHub issue is created describing the drift and citing the invariant, and the new ledger row's `Tracking Issue` cell holds the returned `#NNN`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a `*.decision.md` or `*.invariant.md` file, **When** `smithy.orders` auto-detects its type by suffix, **Then** it scaffolds a ticket body from the corresponding engraved orders template.
-2. **Given** new `decision`/`invariant` entries added to `ORDERS_DEFAULT_TEMPLATES`/`ORDERS_TEMPLATE_TYPES`, **When** the `smithy.orders.prompt` heredoc parity test runs, **Then** both surfaces match and the parity assertion in `src/templates.test.ts` passes (extended to cover the new types).
-3. **Given** a principle file (no suffix), **When** orders runs, **Then** behavior follows the resolution of SD-003 (principle template included, or principles excluded from orders auto-detection with a documented note).
+1. **Given** `smithy.engrave <invariant-path> exception` adds a `Temporary:` row, **When** the row is written, **Then** a GitHub issue is scaffolded (via the `smithy.gh-issue` skill) titled from the divergence and bodied with the invariant id/title, the divergence, and the establishing decision(s), and its `#NNN` is written into that row's `Tracking Issue` column.
+2. **Given** an `Accepted:` exception is added (a permanent carve-out, not drift), **When** the row is written, **Then** no issue is created and the row's `Tracking Issue` cell stays `—`.
+3. **Given** issue creation fails (auth/network), **When** the exception is added, **Then** the ledger row is still written (with `Tracking Issue` left `—`) and the failure is surfaced — the engrave operation does not roll back.
+4. **Given** a `Temporary:` exception is later resolved (drift closed, or converted to `Accepted:`), **When** the ledger is updated, **Then** the linked issue is handled per the resolution of SD-003.
 
 ---
 
@@ -109,7 +111,7 @@ Recommended implementation sequence:
 |----|-------|-----------|----------|
 | US1 | Planning Commands Recall Relevant Engraved Knowledge | — | — |
 | US2 | Engrave Projects an Engraved-Knowledge Pointer into Agent-Context Files | — | — |
-| US3 | Orders Scaffolds Tickets for Engraved Records | — | — |
+| US3 | Engrave Scaffolds a Drift-Tracking Issue for Temporary Exceptions | — | — |
 | US4 | Audit Validates Engraved Record Quality | — | — |
 
 All four user stories are independent — four parallel entry points with no cross-story prerequisites. They share only the frozen engraved-record frontmatter schema as a read-only input.
@@ -134,13 +136,15 @@ All four user stories are independent — four parallel entry points with no cro
 - **FR-009**: Projection MUST be idempotent (a no-change re-run produces a byte-identical file), MUST replace only content between the markers, MUST never modify content outside the markers, and MUST add a fresh block at a defined anchor when no markers exist.
 - **FR-010**: Projection MUST manage only agent-context files that already exist (never create missing ones) and MUST abort projection for a file whose markers are malformed/duplicated, with a warning, without failing the underlying engrave operation.
 
-**Orders (US3, #418)**
+**Drift-tracking issue (US3, reinterprets #418 orders half)**
 
-- **FR-011**: `smithy.orders` MUST support `decision` and `invariant` (and optionally `principle`, per SD-003) by adding entries to `ORDERS_DEFAULT_TEMPLATES`/`ORDERS_TEMPLATE_TYPES` and the `smithy.orders.prompt` heredoc in lockstep, with the `src/templates.test.ts` parity assertion extended to cover them.
+- **FR-011**: When `smithy.engrave` adds a `Temporary:` exception to an invariant's Known-Exceptions ledger, it MUST scaffold a GitHub issue for closing the drift (via the `smithy.gh-issue` skill's create-issue script — the same tooling `smithy.orders` uses) and write the returned issue number into that ledger row's `Tracking Issue` column. `Accepted:` exceptions MUST NOT create an issue (their `Tracking Issue` stays `—`).
+- **FR-012**: The drift-issue body MUST identify the invariant (id, title), state the divergence, and cite the establishing decision(s). The body template lives with the engrave exception phase; engraved records MUST NOT add entries to `ORDERS_TEMPLATE_TYPES` / `ORDERS_DEFAULT_TEMPLATES` (they are not a fan-out work hierarchy).
+- **FR-013**: If issue creation fails, engrave MUST still write the ledger row (with `Tracking Issue` left `—`), surface the failure, and not roll back the exception edit.
 
-**Audit (US4, #418)**
+**Audit (US4, #418 audit half)**
 
-- **FR-012**: The system MUST provide an `audit-checklist-engraved` snippet wired into `smithy.audit`'s type-selection mechanism, checking: decision states its desired invariant; invariant cites its decisions and keeps a ledger with the load-bearing column order; no citation to a superseded decision; record is genuinely pivot-level.
+- **FR-014**: The system MUST provide an `audit-checklist-engraved` snippet wired into `smithy.audit`'s type-selection mechanism, checking: decision states its desired invariant; invariant cites its decisions and keeps a ledger with the load-bearing column order; no citation to a superseded decision; record is genuinely pivot-level.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -148,6 +152,7 @@ All four user stories are independent — four parallel entry points with no cro
 - **Known Exception**: a row in an invariant's ledger (`where`, `what diverges`, disposition `Accepted`/`Temporary`, tracking issue, severity) that recall uses to decide whether a conflict is already covered.
 - **Recall Result**: the transient, prompt-layer ranked relevance + conflict/superseded findings returned by `smithy-recall` (not persisted).
 - **Projection Pointer Block**: the managed, marker-delimited region written into agent-context files — a pointer to the engraved-knowledge locations, not a record copy.
+- **Drift-Tracking Issue**: a GitHub issue created to close a `Temporary:` exception; its number is recorded in the ledger row's `Tracking Issue` column.
 
 ## Assumptions
 
@@ -156,6 +161,7 @@ All four user stories are independent — four parallel entry points with no cro
 - The projection block is a pointer + applicability note, not a record index, so the reading agent controls how much it loads. `[Critical Assumption]`
 - The `consult-engraved-knowledge` snippet is self-sufficient with a Claude sub-agent fast-path and an inline degraded path for Gemini/Codex. `[Critical Assumption]`
 - Recall is a sub-agent dispatched only by planning commands; it is not user-invocable.
+- `smithy.orders` gains no engraved artifact types; the only engraved↔issue interaction is the drift-tracking issue created at the engrave exception step for a `Temporary:` exception, which fills the schema's existing `Tracking Issue` ledger column.
 - The engraved frontmatter schema is frozen and owned by `smithy.engrave.prompt`; this spec references it rather than redefining it.
 
 ## Specification Debt
@@ -164,12 +170,13 @@ All four user stories are independent — four parallel entry points with no cro
 |----|-------------|-----------------|--------|------------|--------|------------|
 | SD-001 | Which agent-context files projection manages by default (CLAUDE.md only, also AGENTS.md, also `.github/copilot-instructions.md`) and whether the target set is configurable. | Integration | Medium | Medium | open | — |
 | SD-002 | Whether the optional `design`-domain locations (`docs/design/{decisions,invariants,constitution}`) are in scope for recall and the projection pointer now, or deferred. | Functional Scope | Low | Medium | open | — |
-| SD-003 | Whether `principle` gets an orders template, given principles have no suffix for `smithy.orders` auto-detection (#418 says "optionally"). | Domain & Data Model | Low | Medium | open | — |
+| SD-003 | When a `Temporary:` exception is later resolved (removed or converted to `Accepted:`), whether engrave should auto-close the linked drift-tracking issue, leave it open, or comment-and-leave. | Integration | Low | Medium | open | — |
 
 ## Out of Scope
 
 - **Status-subsystem integration (#416 scanner/parser/classifier, #417 graph edges/surface/stale-ref)** — making engraved records a first-class type in `smithy status` and the build rollup. Deferred and reconsidered separately; engraved knowledge "is durable commitment, not work to be done," so it is surfaced via recall and the projection pointer rather than the status rollup.
-- Re-specifying or modifying the engraved-knowledge frontmatter schema or the `smithy.engrave` authoring phases (shipped in #413/#414).
+- Adding engraved artifact types (`decision`/`invariant`/`principle`) to `smithy.orders` / `ORDERS_TEMPLATE_TYPES`. Engraved records are not a fan-out work hierarchy; the only engraved↔issue interaction is the drift-tracking issue at the engrave exception step (US3).
+- Re-specifying or modifying the engraved-knowledge frontmatter schema or the existing `smithy.engrave` authoring phases (shipped in #413/#414). US3 *adds* a step to the exception phase but does not change the ledger schema.
 - A user-facing standalone `smithy.recall` (or `smithy.engraved`) command and any ad-hoc catalog-lookup surface — recall is a sub-agent only.
 - The UI design pipeline (screens/flows, Claude Design, forge-builds-UI) — tracked under EPIC #404.
 
@@ -180,4 +187,4 @@ All four user stories are independent — four parallel entry points with no cro
 - **SC-001**: Each of the five wired planning commands (`strike`, `ignite`, `render`, `mark`, `cut`) consults engraved knowledge in its scan phase under all three agents (Claude via sub-agent; Gemini/Codex via the degraded inline path).
 - **SC-002**: Recall returns relevant records and correctly flags ≥1 invariant conflict and ≥1 superseded citation in a seeded test scenario, with zero conflict flags for divergences already covered by an `Accepted:` ledger row.
 - **SC-003**: Engraving a record ensures the pointer block in every existing target agent-context file; a no-change re-run leaves those files byte-identical; hand-written prose is never altered.
-- **SC-004**: `smithy.orders` scaffolds tickets for decision and invariant files and the templates parity test passes; `smithy.audit` applies the engraved checklist to an engraved record.
+- **SC-004**: Adding a `Temporary:` exception via `smithy.engrave` creates a drift-tracking GitHub issue and writes its `#NNN` into the ledger row; an `Accepted:` exception creates none; `smithy.audit` applies the engraved checklist to an engraved record.

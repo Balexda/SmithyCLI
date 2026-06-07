@@ -7,7 +7,8 @@ input — the engraved-record frontmatter schema (owned by `smithy.engrave.promp
 
 - the `smithy-recall` sub-agent and the `consult-engraved-knowledge` snippet (recall),
 - the `smithy.engrave` projection-pointer step,
-- the orders templates and the `audit-checklist-engraved` snippet.
+- the `smithy.engrave` drift-tracking-issue step (for `Temporary:` exceptions),
+- the `audit-checklist-engraved` snippet.
 
 There is no status-subsystem contract here — graph edges, stale-ref detection, and
 status surfacing (#416/#417) are out of scope. Engraved record lifecycle is read by
@@ -109,18 +110,22 @@ variants appended when present). The block is a **pointer**, not a record copy.
 | Existing-only | Manage agent-context files that already exist; never create missing ones. |
 | Malformed markers | Abort projection for that file with a warning; the engrave op still succeeds. |
 
-### Orders Templates
+### Engrave Exception → Drift-Tracking Issue
 
-**Purpose**: scaffold GitHub issue bodies for engraved records.
-**Providers**: `src/orders-templates.ts` (`ORDERS_DEFAULT_TEMPLATES`,
-`ORDERS_TEMPLATE_TYPES`) + the `smithy.orders.prompt` heredoc.
+**Purpose**: when a `Temporary:` exception is added to an invariant, scaffold a GitHub
+issue for closing the drift and record its number in the ledger. This reinterprets
+the #418 orders half — engraved records do **not** become `smithy.orders` artifact
+types (no `ORDERS_TEMPLATE_TYPES` entries, no parity-test change).
+**Consumers**: developers tracking drift; the invariant's ledger.
+**Providers**: a step added to `smithy.engrave`'s exception phase, creating the issue
+via the `smithy.gh-issue` skill's `create-issue` script.
 
-| Contract element | Requirement |
-|------------------|-------------|
-| New types | `decision`, `invariant` (optionally `principle` — SD-003). |
-| Lockstep | Template strings added to both the TS map and the prompt heredoc. |
-| Parity | `src/templates.test.ts` parity assertion extended to the new types. |
-| Auto-detect | `smithy.orders` detects `.decision.md`/`.invariant.md` by suffix; principles lack a suffix (SD-003). |
+| Trigger | Behavior |
+|---------|----------|
+| `Temporary:` exception added | Create a drift-tracking issue (title from the divergence; body = invariant id/title + divergence + establishing decision(s)); write the returned `#NNN` into the row's `Tracking Issue` column. |
+| `Accepted:` exception added | No issue; `Tracking Issue` stays `—`. |
+| Issue creation fails | Write the ledger row with `Tracking Issue` `—`, surface the failure, do not roll back. |
+| `Temporary:` exception resolved | Linked-issue handling per SD-003 (auto-close / leave / comment). |
 
 ### Audit Checklist
 
@@ -140,6 +145,8 @@ variants appended when present). The block is a **pointer**, not a record copy.
 
 - **Engrave/supersede → projection refresh**: completing an engrave or supersede
   operation triggers the projection-pointer step (US2) against all existing target files.
+- **Temporary exception added → drift-tracking issue**: adding a `Temporary:` ledger
+  row triggers the drift-tracking-issue step (US3) and writes the `#NNN` back.
 - **Planning scan → recall dispatch**: entering a planning command's scan phase
   triggers `consult-engraved-knowledge` (US1).
 
