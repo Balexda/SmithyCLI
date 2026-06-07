@@ -53,7 +53,7 @@
 
 - [ ] **Author the UI dependency ledger**
 
-  Extend the UI path in `src/templates/agent-skills/commands/smithy.mark.prompt` to write a `## Dependency Order` table shaped as the UI Spec Ledger in the data model. The table must support `SC<N>`, `FL<N>`, and `US<N>` rows, same-table dependencies, a `Design` column for screen rows, and artifact pointers for every row, satisfying AS 1.1 and AS 1.3.
+  Extend the UI path in `src/templates/agent-skills/commands/smithy.mark.prompt` to write a `## Dependency Order` table shaped as the UI Spec Ledger in the data model. The table must support `SC<N>`, `FL<N>`, and `US<N>` rows, same-table dependencies, a `Design` column for screen rows, and an `Artifact` column for every row, satisfying AS 1.1 and AS 1.3.
 
   _Acceptance criteria:_
   - UI specs include `ID`, `Kind`, `Title`, `Depends On`, `Design`, and `Artifact` columns
@@ -61,7 +61,7 @@
   - Flow rows use `FL<N>` IDs and `Kind` `flow`
   - Backend story rows use `US<N>` IDs and `Kind` `story`
   - Each row has `Depends On` set to `—` or same-table IDs
-  - Each row has an `Artifact` pointer or `—`
+  - Every row's `Artifact` cell is `—` in mark's output — it holds the `cut`-produced `tasks.md` only after `cut` runs (data model Entity 2); mark never pre-fills a path
 
 - [ ] **Keep ledger rows pointer-only**
 
@@ -99,21 +99,23 @@
 
 - [ ] **Emit screen design artifacts**
 
-  Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/screens/<ScreenId>.design.md` artifact for each screen node. The artifacts should follow `smithy.helper-screen-design` ownership and rationale-only rules while using the spec's framework-neutral path expectations, satisfying AS 1.2.
+  Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/screens/<ScreenId>.design.md` artifact for each screen node. The artifacts should follow `smithy.helper-screen-design` ownership and rationale-only rules, satisfying AS 1.2.
 
   _Acceptance criteria:_
   - Each `SC<N>` row has a matching `design/screens/<ScreenId>.design.md`
   - Screen artifacts contain rationale-only design intent
-  - Screen artifacts identify the owning component path in a framework-neutral way
+  - Screen artifacts name a `component-path` for the owning UI component (per `smithy.helper-screen-design`); the framework-neutral stack-detection generalization is FR-010/C6, owned by User Story 2, and is out of scope here
   - Missing `ScreenId` or `design_system` remains an abort condition per contracts C1
 
 - [ ] **Emit flow intent artifacts**
 
-  Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/flows/<FlowId>.flow.md` artifact for each flow node. The artifacts should follow `smithy.helper-flow-definition` intent-only rules, leave executable behavior to the test body, and avoid enumerating steps, satisfying AS 1.2.
+  Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/flows/<FlowId>.flow.md` artifact for each flow node **and the paired stub test body** at the `.flow.md`'s `test-body` path, so the 1:1 flow↔test-body pairing exists immediately after `mark` (contracts C1 lists `.flow.md (+ stub test body)` as a mark output). The `.flow.md` follows `smithy.helper-flow-definition` intent-only rules and avoids enumerating steps; the stub is an empty/placeholder test that `forge` later fills with executable behavior (data model Entity 4), so mark must not author executable assertions. Satisfies AS 1.2.
 
   _Acceptance criteria:_
   - Each `FL<N>` row has a matching `design/flows/<FlowId>.flow.md`
-  - Flow artifacts name their screen references and paired executable test-body path
+  - Each `FL<N>` row also has a matching stub test body written at the `.flow.md`'s `test-body` path, so no flow is left an orphan for `flow-lint` (contracts C1; data model Entity 4/5)
+  - The stub test body is a placeholder only — mark writes no executable assertions; `forge` emits the real behavior during flow-wire
+  - Flow artifacts name their screen references and the paired `test-body` path
   - Flow artifact bodies remain intent-only
   - Flow artifacts do not contain step lists or layout-position guidance
 
@@ -122,7 +124,7 @@
   Update `src/templates/agent-skills/commands/smithy.mark.prompt` and any directly conflicting source-template docs so the durable `.design.md` and `.flow.md` files are authored at `mark` and only consumed downstream. Keep `.claude/` snapshots untouched, per repository guidance.
 
   _Acceptance criteria:_
-  - Mark output list includes the UI spec, screen artifacts, and flow artifacts
+  - Mark output list includes the UI spec, screen artifacts, flow artifacts, and the paired stub test bodies
   - Downstream prompt text does not direct `forge` to author `.design.md` or `.flow.md` from scratch
   - Source-template edits do not regenerate `.claude/` or `.smithy/` snapshots
   - The resulting UI artifact set is self-sufficient enough for a non-forge build method to consume
