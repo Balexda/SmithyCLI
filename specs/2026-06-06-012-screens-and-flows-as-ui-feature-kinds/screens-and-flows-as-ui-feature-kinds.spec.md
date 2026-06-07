@@ -226,7 +226,7 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| US1 | mark authors a UI spec with a typed ordering ledger + durable artifacts | — | — |
+| US1 | mark authors a UI spec with a typed ordering ledger + durable artifacts | — | specs/2026-06-06-012-screens-and-flows-as-ui-feature-kinds/01-mark-authors-a-ui-spec-with-a-typed-ordering-ledger-durable-artifacts.tasks.md |
 | US2 | Tool-agnostic screen/flow generation from the project's own stack | — | — |
 | US3 | render → mark → cut → forge is identical for UI and backend nodes | US1 | — |
 | US4 | A non-blocking visual-design gate with import / brief / none modes | US1 | — |
