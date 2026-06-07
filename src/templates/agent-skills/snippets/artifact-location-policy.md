@@ -1,24 +1,27 @@
 ## Planning Artifacts Location
 
-This Smithy install was set up with an explicit policy for **where planning
-artifacts live**. Every path you see in the rest of this prompt that refers
-to a planning artifact — `.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`,
-`.strike.md`, `.prd.md`, `.data-model.md`, `.contracts.md` — is already
-prefixed with `{{artifactsRoot}}` so it points at the right root for this
-repo. Do not strip, override, or rewrite that prefix.
+This Smithy install was set up with an explicit policy for **where authored
+Smithy artifacts live**. Every path you see in the rest of this prompt that
+refers to an authored Smithy artifact — `.rfc.md`, `.features.md`, `.spec.md`,
+`.tasks.md`, `.strike.md`, `.prd.md`, `.persona.md`, `.data-model.md`,
+`.contracts.md` — is already prefixed with `{{artifactsRoot}}` so it points
+at the right root for this repo. Do not strip, override, or rewrite that
+prefix.
 
 - When `{{artifactsRoot}}` is empty, artifacts live **in the repo**:
-  `docs/rfcs/...`, `docs/prds/...`, `specs/...`, `specs/strikes/...`.
+  `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
+  `specs/strikes/...`.
 - When `{{artifactsRoot}}` is `~/.smithy/<repo>/`, artifacts live **outside
   the repo, in the user's home directory**: `~/.smithy/<repo>/docs/rfcs/...`,
-  `~/.smithy/<repo>/specs/...`, etc. Treat the resolved path as authoritative
-  — agents (Claude Code, Gemini CLI, Codex) expand `~` at tool-call time, so
-  the path is portable across team members even when this prompt is committed
-  to source control.
+  `~/.smithy/<repo>/docs/personas/...`, `~/.smithy/<repo>/specs/...`, etc.
+  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
+  Codex) expand `~` at tool-call time, so the path is portable across team
+  members even when this prompt is committed to source control.
 
 ### Scope of the policy
 
-This policy applies **only to planning artifacts**. It does **not** apply to:
+This policy applies **only to authored Smithy artifacts** such as planning
+artifacts and durable persona files. It does **not** apply to:
 
 - **Source code, tests, configuration, or any other repo file you edit as
   part of an implementation slice.** Those always live in the target repo

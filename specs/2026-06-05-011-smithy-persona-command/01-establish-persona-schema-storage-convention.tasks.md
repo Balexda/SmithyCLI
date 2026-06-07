@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add the persona convention to the README**
+- [x] **Add the persona convention to the README**
 
   Update `src/templates/agent-skills/README.md` with a single source-of-truth section for `.persona.md` artifacts. Keep it separate from the planning lineage rules while aligning the schema with the source spec, data model, and contract for AS 1.1 and AS 1.2.
 
@@ -29,7 +29,7 @@
   - The section forbids M/F/US/S IDs and inline specification debt tables in persona files.
   - The section settles SD-002: it states whether a `.persona.md` carries a stable machine-readable identity key (e.g. `slug:` / `**Role**:`) or relies solely on the filename slug — so the canonical schema is not frozen with the identity question open. The Data Model requires US1 to resolve this before US4 matching is testable, and the choice must not reintroduce a registry/index.
 
-- [ ] **Align shared artifact-location guidance**
+- [x] **Align shared artifact-location guidance**
 
   Update `src/templates/agent-skills/snippets/artifact-location-policy.md` only as needed so persona files follow the same `{{artifactsRoot}}` policy as other authored artifacts. Preserve the snippet's distinction between planning artifacts and implementation files while satisfying AS 1.1.
 
