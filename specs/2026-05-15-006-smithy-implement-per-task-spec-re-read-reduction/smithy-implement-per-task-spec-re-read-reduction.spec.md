@@ -99,7 +99,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Select the bounded context-delivery mechanism | — | — |
+| US1 | Select the bounded context-delivery mechanism | — | specs/2026-05-15-006-smithy-implement-per-task-spec-re-read-reduction/01-select-the-bounded-context-delivery-mechanism.tasks.md |
 | US2 | Supply task-specific acceptance context without full artifact re-reads | US1 | — |
 | US3 | Preserve implementation quality and task isolation | US2 | — |
 | US4 | Report the token delta in the implementation PR | US2, US3 | — |
