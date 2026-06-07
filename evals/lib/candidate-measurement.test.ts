@@ -232,4 +232,48 @@ describe('buildMeasurementResults', () => {
       ),
     ).toThrow(/input_tokens must be a non-negative integer/);
   });
+
+  it('rejects duplicate fixture baselines instead of silently overwriting', () => {
+    expect(() =>
+      buildMeasurementResults(
+        [
+          {
+            strategy: 'pre_pasted_excerpts',
+            fixture: 'js',
+            tokens: { input: 100, output: 100 },
+            structural_eval_result: 'pass',
+            sampled_review_result: 'pass',
+          },
+        ],
+        [
+          { fixture: 'js', baseline_total_tokens: 1000 },
+          { fixture: 'js', baseline_total_tokens: 2000 },
+        ],
+      ),
+    ).toThrow(/duplicate baseline for js fixture/);
+  });
+
+  it('rejects duplicate (strategy, fixture) candidate results', () => {
+    expect(() =>
+      buildMeasurementResults(
+        [
+          {
+            strategy: 'per_task_brief',
+            fixture: 'js',
+            tokens: { input: 100, output: 100 },
+            structural_eval_result: 'pass',
+            sampled_review_result: 'pass',
+          },
+          {
+            strategy: 'per_task_brief',
+            fixture: 'js',
+            tokens: { input: 200, output: 200 },
+            structural_eval_result: 'pass',
+            sampled_review_result: 'pass',
+          },
+        ],
+        [{ fixture: 'js', baseline_total_tokens: 1000 }],
+      ),
+    ).toThrow(/duplicate measurement result for per_task_brief\/js/);
+  });
 });

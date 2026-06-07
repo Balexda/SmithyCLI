@@ -171,6 +171,13 @@ export function buildMeasurementResults(
   const baselinesByFixture = new Map<ForgeFixture, number>();
   for (const baseline of baselines) {
     assertFixture(baseline.fixture);
+    // Reject duplicate fixture baselines rather than silently overwriting the
+    // earlier entry — conflicting baselines for the same fixture would yield
+    // deltas computed against an arbitrary "last write wins" total with no
+    // signal, defeating the like-for-like comparison this output exists for.
+    if (baselinesByFixture.has(baseline.fixture)) {
+      throw new Error(`duplicate baseline for ${baseline.fixture} fixture`);
+    }
     assertNonNegativeInteger(
       baseline.baseline_total_tokens,
       `${baseline.fixture} baseline_total_tokens`,
@@ -183,9 +190,19 @@ export function buildMeasurementResults(
     baselinesByFixture.set(baseline.fixture, baseline.baseline_total_tokens);
   }
 
+  // A MeasurementResult is uniquely identified by (strategy, fixture) per the
+  // data model. Reject duplicate pairs so downstream selection/aggregation in
+  // Slice 2 cannot silently consume an ambiguous, doubled-up result set.
+  const seenResults = new Set<string>();
+
   return candidateRuns.map((run) => {
     assertStrategy(run.strategy);
     assertFixture(run.fixture);
+    const resultKey = `${run.strategy}/${run.fixture}`;
+    if (seenResults.has(resultKey)) {
+      throw new Error(`duplicate measurement result for ${resultKey}`);
+    }
+    seenResults.add(resultKey);
     assertStructuralResult(run.structural_eval_result);
     assertSampledReviewResult(run.sampled_review_result);
     if (run.tokens === undefined || run.tokens === null) {
