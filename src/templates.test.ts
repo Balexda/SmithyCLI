@@ -2174,6 +2174,14 @@ describe('getComposedTemplates', () => {
     expect(prose).not.toContain('{{>');
   });
 
+  it('prose agent loads the voice helper without duplicated taxonomy markers', () => {
+    const prose = composed.agents.get('smithy.prose.md')!;
+    expect(prose).toBeDefined();
+    expect(prose).toContain('Skill("smithy.helper-voice")');
+    expect(prose).not.toContain('Prose principles — follow these on every sentence');
+    expect(prose).not.toContain('Anti-pattern to avoid');
+  });
+
   it('strike with claude variant renders competing plan dispatch', async () => {
     const claudeComposed = await getComposedTemplates('claude');
     const strike = claudeComposed.commands.get('smithy.strike.md')!;
