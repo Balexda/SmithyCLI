@@ -3171,7 +3171,7 @@ describe('getComposedTemplates artifactsRoot', () => {
       'smithy.orders.md',
     ]) {
       const body = c.commands.get(file)!;
-      expect(body, file).toContain('## Planning Artifacts Location');
+      expect(body, file).toContain('## Authored Smithy Artifacts Location');
     }
   });
 

@@ -164,7 +164,7 @@ describe('CLI init --yes (non-interactive)', () => {
         'utf8',
       );
       expect(strike).toContain(`${expectedPrefix}specs/strikes/`);
-      expect(strike).toContain('## Planning Artifacts Location');
+      expect(strike).toContain('## Authored Smithy Artifacts Location');
       expect(strike).not.toContain('{{artifactsRoot}}');
     });
 

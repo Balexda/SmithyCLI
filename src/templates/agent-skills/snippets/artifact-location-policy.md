@@ -1,4 +1,4 @@
-## Planning Artifacts Location
+## Authored Smithy Artifacts Location
 
 This Smithy install was set up with an explicit policy for **where authored
 Smithy artifacts live**. Every path you see in the rest of this prompt that
