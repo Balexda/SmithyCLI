@@ -1508,6 +1508,17 @@ describe('getComposedTemplates', () => {
     expect(mark).not.toMatch(/STOP after/i);
   });
 
+  it('mark template routes selected feature metadata by kind', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('### Feature Kind Path');
+    expect(mark).toContain('Backend spec-triad path');
+    expect(mark).toContain('UI authoring path');
+    expect(mark).toContain('No `kind` field');
+    expect(mark).toContain("selected feature's fenced `yaml` metadata block");
+    expect(mark).toContain('feature-number validation');
+    expect(mark).toContain('auto-selection semantics');
+  });
+
   it('cut template resolves the one-shot-output partial', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
@@ -2889,6 +2900,23 @@ describe('getComposedTemplates', () => {
     expect(render).toMatch(/build\/wire/i);
     expect(render).not.toContain('{{>feature-kinds}}');
     expect(render).not.toContain('{{>');
+  });
+
+  it('feature-kind docs point UI routing and durable design truth at mark', () => {
+    const readmePath = path.join(
+      process.cwd(),
+      'src',
+      'templates',
+      'agent-skills',
+      'README.md',
+    );
+    const readme = fs.readFileSync(readmePath, 'utf8');
+    expect(readme).toContain("branches on the selected\nfeature's `kind`");
+    expect(readme).toContain('absent-kind legacy features');
+    expect(readme).toContain('owns the durable design truth');
+    expect(readme).toContain('Selects the `smithy.mark` authoring path');
+    expect(readme).toContain('the `.flow.md` design truth is authored by `mark`');
+    expect(readme).not.toContain('Selects the downstream `forge` profile');
   });
 
   it('audit features checklist composes the feature-kind/seam categories', () => {

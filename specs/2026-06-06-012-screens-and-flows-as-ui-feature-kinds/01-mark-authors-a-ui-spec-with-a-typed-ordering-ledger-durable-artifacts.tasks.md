@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Branch mark on feature kind**
+- [x] **Branch mark on feature kind**
 
   Update `src/templates/agent-skills/commands/smithy.mark.prompt` so `.features.md` routing carries the selected feature's `kind` metadata into Phase 1 and explicitly selects the backend or UI authoring path. Preserve the current backend spec-triad behavior for `kind: backend` and absent kind input, satisfying AS 1.4.
 
@@ -27,7 +27,7 @@
   - The selected feature's UI metadata is available to later mark phases
   - Existing feature-number and auto-selection routing semantics remain unchanged
 
-- [ ] **Document UI mark routing**
+- [x] **Document UI mark routing**
 
   Update the relevant template documentation in `src/templates/agent-skills/README.md` or adjacent command/template docs so maintainers can see that `mark` owns UI ledger and durable artifact authoring. Keep the documentation scoped to routing and ownership; AS 1.1-1.3 details remain in the later ledger and artifact slices.
 

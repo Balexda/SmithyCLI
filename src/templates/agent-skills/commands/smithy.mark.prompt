@@ -66,9 +66,29 @@ Before starting, determine the mode:
 When entering Phase 1 from a `.features.md`, carry forward:
 - The selected feature's **Title**, **Description**, **User-Facing Value**, and
   **Scope Boundaries** as the starting context.
+- The selected feature's fenced `yaml` metadata block, including `kind` and any
+  UI fields such as `phase`, `design_system`, `bundle`, `flag`, `screens`, and
+  `flows`. Keep this metadata attached to the planning context so later mark
+  phases can author the correct child artifacts without reparsing the feature map.
 - The **Source RFC** path from the `.features.md` header (if present; if missing,
   look for a co-located `.rfc.md` in the same directory).
 - The **feature map path** and **feature number** for traceability.
+
+### Feature Kind Path
+
+When Phase 1 starts from a `.features.md` feature, classify the selected
+feature before drafting artifacts:
+
+| Selected feature metadata | Mark authoring path |
+|---------------------------|---------------------|
+| `kind: backend` | **Backend spec-triad path** — preserve the existing `.spec.md` + `.data-model.md` + `.contracts.md` behavior. |
+| No `kind` field | **Backend spec-triad path** — legacy feature maps continue through the existing flow unchanged. |
+| `kind: ui` | **UI authoring path** — carry the UI metadata forward for the UI spec ledger and mark-owned durable design artifacts. |
+
+Do not change feature-number validation, already-specced detection, or
+auto-selection semantics when applying this branch. Those decisions still happen
+solely from the parsed `### Feature N` headings and the `.features.md`
+`## Dependency Order` table above.
 
 ---
 
@@ -90,8 +110,9 @@ When entering Phase 1 from a `.features.md`, carry forward:
    - **Feature description**: Treat as the starting context.
    - **Feature map** (from Routing): Use the selected feature's Title,
      Description, User-Facing Value, and Scope Boundaries as the starting
-     context. Also read the Source RFC (resolved during Routing) for additional
-     goals and constraints.
+     context, plus the selected metadata and mark authoring path from Routing.
+     Also read the Source RFC (resolved during Routing) for additional goals
+     and constraints.
 2. Explore the codebase to understand current architecture, relevant modules,
    and existing patterns that inform the specification.
 3. Determine the spec folder name:
