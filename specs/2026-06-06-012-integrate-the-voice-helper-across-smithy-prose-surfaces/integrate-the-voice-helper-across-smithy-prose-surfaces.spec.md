@@ -128,7 +128,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| US1 | Prose-drafting surfaces consult the skill in draft mode (smithy.prose trim + planning commands invoke directly) | — | — |
+| US1 | Prose-drafting surfaces consult the skill in draft mode (smithy.prose trim + planning commands invoke directly) | — | `specs/2026-06-06-012-integrate-the-voice-helper-across-smithy-prose-surfaces/01-prose-drafting-surfaces-consult-the-skill-in-draft-mode.tasks.md` |
 | US2 | Forge advertises the voice skill for deliverable prose | — | — |
 | US3 | Review steps apply voice review-mode as a named category | — | — |
 | US4 | Reliable trigger for arbitrary-text voice cleanup | — | — |
