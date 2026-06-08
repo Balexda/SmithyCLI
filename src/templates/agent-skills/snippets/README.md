@@ -29,6 +29,7 @@ its contents. The snippet file itself is never deployed.
 | `one-shot-output.md` | Standardized terminal output format for one-shot planning runs (Summary → Assumptions → Specification Debt → PR), with PR-failure and bail-out fallbacks | smithy.strike, smithy.ignite, smithy.mark, smithy.render, smithy.cut |
 | `pr-create-tool-choice.md` | One-line "prefer GitHub MCP `create_pull_request`, fall back to `gh pr create`" rule, embedded inline at every PR-creation step | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
 | `branch-policy.md` | Worktree-aware branch selection rule: keep the current branch only inside a linked git worktree on a non-default branch, otherwise auto-name as before; never rename the branch during PR creation | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
+| `consult-engraved-knowledge.md` | Parameter-free engraved-knowledge consultation snippet embedded into planning commands, with a Claude `smithy-recall` fast path and Gemini/Codex direct-read degraded path; not deployed standalone | Planned: smithy.strike, smithy.ignite, smithy.render, smithy.mark, smithy.cut |
 
 ## Conventions
 

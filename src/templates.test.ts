@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(18);
+    expect(snippets.size).toBe(19);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -125,6 +125,7 @@ describe('loadSnippets', () => {
       'feature-kinds.md',
       'artifact-location-policy.md',
       'persona-convention.md',
+      'consult-engraved-knowledge.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -148,6 +149,63 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
+    expect(snippets.get('consult-engraved-knowledge.md')).toContain('Consult Engraved Knowledge');
+  });
+});
+
+describe('consult-engraved-knowledge snippet', () => {
+  // US1 Slice 2: this snippet is the shared planning-command integration
+  // point for engraved recall. The tests lock down both paths so deletion,
+  // rename, or accidental narrowing to Claude-only behavior fails early.
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has('consult-engraved-knowledge.md')).toBe(true);
+    expect(snippets.get('consult-engraved-knowledge.md')!.length).toBeGreaterThan(0);
+  });
+
+  it('documents the Claude smithy-recall fast path and Gemini/Codex degraded path', () => {
+    const content = loadSnippets().get('consult-engraved-knowledge.md')!;
+    expect(content).toContain('smithy-recall');
+    expect(content).toMatch(/Gemini\/Codex Degraded Path/);
+    expect(content).toContain('docs/decisions/');
+    expect(content).toContain('docs/invariants/');
+    expect(content).toContain('docs/constitution/');
+    expect(content).toContain('docs/design/decisions/');
+    expect(content).toContain('docs/design/invariants/');
+    expect(content).toContain('docs/design/constitution/');
+  });
+
+  it('carries ranking, conflict, stale-citation, domain, and empty-state rules', () => {
+    const content = loadSnippets().get('consult-engraved-knowledge.md')!;
+    for (const token of ['domain', 'topics', 'scope', 'applies_to']) {
+      expect(content).toContain(token);
+    }
+    expect(content).toContain('candidate new exception');
+    expect(content).toContain('Accepted:');
+    expect(content).toContain('Temporary:');
+    expect(content).toContain('superseded');
+    expect(content).toContain('deprecated');
+    expect(content).toContain('"no_records"');
+    expect(content).toContain('"no_match"');
+  });
+
+  it('composes via the {{>consult-engraved-knowledge}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>consult-engraved-knowledge}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Consult Engraved Knowledge');
+    expect(result).toContain('smithy-recall');
+    expect(result).toContain('docs/decisions/');
+    expect(result).toContain('candidate new exception');
+    expect(result).toContain('superseded');
+    expect(result).toContain('deprecated');
+    expect(result).not.toContain('{{>consult-engraved-knowledge}}');
   });
 });
 

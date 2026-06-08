@@ -61,7 +61,7 @@
 
 ### Tasks
 
-- [ ] **Create the consultation snippet**
+- [x] **Create the consultation snippet**
 
   Add a parameter-free snippet that instructs Claude to dispatch `smithy-recall` with the current planning context and instructs Gemini/Codex to read the engraved scan roots directly, applying the same relevance, conflict, stale-citation, domain, and empty-state rules inline.
 
@@ -71,7 +71,7 @@
   - Gemini/Codex path reads canonical engraved roots directly
   - Degraded path includes ranking, conflict, stale-citation, domain, and empty-state behavior
 
-- [ ] **Register and document the snippet**
+- [x] **Register and document the snippet**
 
   Register the snippet in the snippets README so it is visible to template authors and clearly lists the planning commands that consume it.
 
@@ -80,7 +80,7 @@
   - Row states the snippet's purpose and planned consumers
   - Documentation notes the snippet is embedded into planning commands, not deployed standalone
 
-- [ ] **Add composition coverage for the snippet**
+- [x] **Add composition coverage for the snippet**
 
   Extend template tests so deletion, renaming, or malformed content of the snippet fails early, and so the composed content proves both the sub-agent fast path and degraded direct-read path remain present.
 
