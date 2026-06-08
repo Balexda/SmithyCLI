@@ -184,6 +184,32 @@ code against the interfaces defined in the `.contracts.md` and `.data-model.md`
 files. If the contracts are insufficient to proceed, stop and ask the user for
 guidance.
 
+### UI Stack Detection
+
+For UI tasks only (`screen-build` / `SC` nodes and `flow-wire` / `FL` nodes),
+perform a target-repo stack detection pass before selecting framework-specific
+outputs or editing executable flow bodies:
+
+- Inspect existing project files and conventions: dependency manifests,
+  lockfiles, build configuration, UI source extensions, component directories,
+  test directories, and existing UI test fixtures.
+- Infer the UI framework from those signals before choosing component file
+  shape or screen placement. Screen work must preserve or create
+  framework-appropriate repo-relative `component-path` targets.
+- Infer the test driver from those signals before creating or updating a flow
+  executable. Flow work must preserve or create driver-appropriate
+  repo-relative `test-body` paths.
+- If framework signals are missing, low-confidence, or conflicting, surface the
+  ambiguity and stop for clarification instead of defaulting to Compose or any
+  other framework.
+- If test-driver signals are missing, low-confidence, or conflicting, surface
+  the ambiguity and stop for clarification instead of defaulting to Maestro or
+  any other driver.
+
+This detection pass is UI-specific. Backend-story tasks use the existing
+backend forge workflow and do not gain UI framework or test-driver detection
+requirements.
+
 ---
 
 ## Review
