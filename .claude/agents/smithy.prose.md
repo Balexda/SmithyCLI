@@ -69,58 +69,22 @@ from the provided context, note the gap in `## Gaps / Missing Context`.
 
 ### Step 3: Draft the Sections
 
-Apply the following structure and style to each assigned section.
-
-**Prose principles — follow these on every sentence:**
-
-- Lead with impact, not description. Prefer *"Teams lose `[X hours]` per sprint
-  to manual reconciliation"* over *"Manual reconciliation is slow."*
-- Name real costs: time, cognitive load, deployment risk, coordination overhead.
-  Avoid vague qualifiers like "sometimes", "often", "can be".
-- **All figures must come from the provided context.** If `idea_description`,
-  `clarify_output`, or the RFC file states a concrete number — hours, incidents,
-  team size, frequency — use it. If the context does not supply a figure, write
-  a gap marker instead: `[X hours]`, `[N incidents per sprint]`, `[## engineers]`.
-  The sentence structure and writing style stay the same; only the number
-  becomes a placeholder the author fills in. **Do not invent plausible-sounding
-  magnitudes to fill the structural need.**
-- Establish urgency: explain why the status quo is increasingly untenable, not
-  just inconvenient. Escalating team size, growing complexity, or upcoming
-  milestones all justify a "why now" framing.
-- State stakeholder value in concrete outcomes, not features. Prefer *"developers
-  can ship a feature without a Slack thread to track down the right config"*
-  over *"this improves the developer experience"*.
-- Use connective tissue: each sentence should follow from the previous one.
-  Avoid bullet-enumeration style inside prose sections — that is the anti-pattern.
-
-**Anti-pattern to avoid:**
-> ❌ "The current system has several issues:
-> - Manual reconciliation is slow
-> - Errors occur frequently
-> - Developers are frustrated"
-
-**Preferred pattern — when context supplies figures:**
-> ✓ "Each deployment forces developers to manually reconcile three separate
-> config sources — a process that consumes a full afternoon per sprint and
-> introduces the class of config-drift errors that caused three P1 incidents
-> last quarter. As the team scales from 8 to 20 engineers, this bottleneck
-> compounds: every new engineer inherits the same manual overhead with no
-> systematic way to detect or correct drift before it reaches production."
-
-**Same pattern — when figures are absent from context (use gap markers):**
-> ✓ "Each deployment forces developers to manually reconcile `[N]` separate
-> config sources — a process that consumes `[X hours]` per sprint and
-> introduces the class of config-drift errors that caused `[N]` P1 incidents
-> last quarter. As the team scales from `[current size]` to `[target size]`
-> engineers, this bottleneck compounds: every new engineer inherits the same
-> manual overhead with no systematic way to detect or correct drift before it
-> reaches production."
+Load `Skill("smithy.helper-voice")` in draft mode for the shared voice
+taxonomy, then **parameterize it per assigned section**: each section under
+**Section-Specific Guidance** below carries an `<!-- audience: ... -->` tag
+naming its Role × Mode pair and length budget (e.g., the Summary is drafted
+as `stakeholder × explanation` to a 2-3 sentence budget). For each assigned
+section, read its tag, apply the helper's rules for that cell, and then layer
+the section-specific structure below on top. Mapping each section to the right
+voice cell — and holding the draft to that budget — is this sub-agent's job;
+the helper supplies the cross-cutting taxonomy, not the per-section choice.
 
 ---
 
 ## Section-Specific Guidance
 
 ### Summary
+<!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 
 - **Length**: 2–3 sentences maximum.
 - **Structure**: (1) What this change does — concrete and specific, not generic.
@@ -131,6 +95,7 @@ Apply the following structure and style to each assigned section.
   benefit]. Without it, [cost that compounds over time]."
 
 ### Motivation / Problem Statement
+<!-- audience: stakeholder; mode: explanation; length: 3-6 paragraphs; diagram: optional; examples: discouraged -->
 
 - **Length**: 3–6 paragraphs. Each paragraph earns its place.
 - **Paragraph 1 — The problem in the wild**: Describe the concrete situation
@@ -150,6 +115,7 @@ Apply the following structure and style to each assigned section.
 - **Close**: One sentence stating the goal — what a solved world looks like.
 
 ### Personas
+<!-- audience: stakeholder; mode: explanation; length: 1 paragraph per persona; diagram: optional; examples: discouraged -->
 
 - **Structure**: One subsection (or paragraph block) per named persona role.
 - **Each persona must include**: (1) Their role and the context in which they
