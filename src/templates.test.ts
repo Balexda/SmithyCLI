@@ -3317,7 +3317,7 @@ describe('getComposedTemplates', () => {
 describe('getComposedTemplates artifactsRoot', () => {
   // The {{artifactsRoot}} helper is the deploy-time variable that decides
   // whether planning-artifact paths in the deployed prompts render as
-  // `docs/rfcs/...` (in-repo, default) or `~/.smithy/<repo>/docs/rfcs/...`
+  // `docs/rfcs/...` (in-repo, default) or `~/.smithy/repos/<repo>/docs/rfcs/...`
   // (external mode). Each templatized command prompt must honor it; these
   // assertions lock that in against future template rewrites.
 
@@ -3327,9 +3327,10 @@ describe('getComposedTemplates artifactsRoot', () => {
     // Path in the Phase 3 write instruction renders without a prefix.
     expect(strike).toContain('Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`');
     expect(strike).not.toContain('{{artifactsRoot}}');
-    // The policy snippet mentions ~/.smithy/<repo>/ as part of its explanation;
-    // that's expected. Make sure no actual artifact path got a tilde prefix.
-    expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+    // The policy snippet mentions ~/.smithy/repos/<repo>/ as part of its
+    // explanation; that's expected. Make sure no actual artifact path got a
+    // tilde prefix.
+    expect(strike).not.toContain('~/.smithy/repos/<repo>/specs/strikes/YYYY');
   });
 
   it('substitutes the supplied prefix into every templatized path', async () => {

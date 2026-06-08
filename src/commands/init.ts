@@ -52,7 +52,7 @@ export interface InitOptions {
   /**
    * Where planning artifacts (RFCs, specs, tasks, strikes, PRDs) are written.
    * 'repo' (default) → in-tree under docs/rfcs/, specs/, ...
-   * 'external' → out-of-tree under ~/.smithy/<repo-name>/, kept off git history.
+   * 'external' → out-of-tree under ~/.smithy/repos/<repoKey>/, kept off git history.
    * Surfaced through `--artifacts-location` and the interactive prompt.
    */
   artifactsLocation?: ArtifactsLocation;
@@ -130,7 +130,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   const deploySessionTitles = opts.sessionTitles ?? true;
 
   // 5e. Planning artifacts location — 'repo' (in-tree, default) or 'external'
-  // (~/.smithy/<repo>/, off git history). Baked into deployed prompts via the
+  // (~/.smithy/repos/<repoKey>/, off git history). Baked into deployed prompts via the
   // `{{artifactsRoot}}` template variable so agents know where to write specs,
   // tasks, RFCs, etc. The same value is persisted in the manifest so `update`
   // can round-trip it and `smithy status` can find external artifacts.

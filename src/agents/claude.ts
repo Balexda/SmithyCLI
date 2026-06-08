@@ -29,7 +29,7 @@ export const SESSION_TITLE_HOOK_COMMAND =
  *
  * `artifactsRoot` is the prefix baked into deployed prompts via the
  * `{{artifactsRoot}}` template variable — empty string for in-repo planning
- * artifacts (default), `~/.smithy/<repo>/` for the external-artifacts mode.
+ * artifacts (default), `~/.smithy/repos/<repo>/` for the external-artifacts mode.
  */
 export async function deploy(
   targetDir: string,

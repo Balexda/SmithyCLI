@@ -23,6 +23,26 @@ smithy init
 - **Gemini CLI:** Installs workspace skills (`.gemini/skills/`) so you can type `/skills reload` and immediately use Smithy workflow commands.
 - **Codex:** Installs project skills into `.agents/skills/` and reference prompts into `tools/codex/prompts/`, with `smithy.forge` and `smithy.fix` ready for Codex-driven implementation and repair workflows.
 
+## Planning Artifact Storage
+
+`smithy init` asks where Smithy planning artifacts (RFCs, specs, tasks, strikes, PRDs) should live. Pick the mode that fits your team — the choice is persisted in the manifest, round-tripped by `smithy update`, and baked into the deployed prompts so your AI assistant always writes to the right place:
+
+- **Repo** (default): artifacts are committed in-tree under `docs/rfcs/`, `docs/prds/`, `specs/`, `specs/strikes/`, etc. Choose this when planning artifacts should live with the code and show up in PRs.
+- **External**: artifacts are written out-of-tree under your home directory, keeping planning files off the team's git history.
+
+You can also set it non-interactively with `--artifacts-location repo|external` on `init`/`update`.
+
+### External layout
+
+External artifacts are stored under a fixed, repo-keyed root:
+
+```
+~/.smithy/repos/<repoKey>/        # then docs/rfcs/, docs/prds/, specs/, specs/strikes/ underneath
+```
+
+- `repos/` is a fixed grouping segment that isolates per-repo stores from Smithy's own files in `~/.smithy/` (`templates/`, `smithy-manifest.json`, `config.yml`). It's collision-proof: a repo literally named `templates` resolves to `~/.smithy/repos/templates/`, never clobbering `~/.smithy/templates/`.
+- `<repoKey>` is **worktree-stable**. It's derived from git's shared git-common-dir (`git rev-parse --git-common-dir`) rather than the working-directory name, so every linked worktree of a repo *and* its main checkout resolve to the same key and share one store. `smithy status` therefore reports identical, repo-keyed paths no matter which worktree you run it from. When git can't identify the repo, Smithy falls back to the `origin` remote name, then the directory name. The key is always sanitized to a single filesystem-safe path segment.
+
 ## Workflow Industrial Pipeline
 
 The Smithy Industrial Pipeline follows a structured path from broad ideas to verified implementations, incorporating "Fast Track" shortcuts and built-in "Review Loops" at every stage.
