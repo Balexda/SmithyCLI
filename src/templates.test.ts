@@ -3146,7 +3146,7 @@ describe('getComposedTemplates', () => {
 
   it('engrave template keeps projection pointer-only and existing-files-only', () => {
     const engrave = composed.commands.get('smithy.engrave.md')!;
-    expect(engrave).toMatch(/pointer/i);
+    expect(engrave).toMatch(/pointer-only block/i);
     expect(engrave).toMatch(/not inline record bodies/i);
     expect(engrave).toMatch(/no per-record/i);
     expect(engrave).toMatch(/skip missing target files/i);
@@ -3164,6 +3164,23 @@ describe('getComposedTemplates', () => {
     expect(engrave).toMatch(/deterministic/i);
     expect(engrave).toMatch(/byte-identical/i);
     expect(engrave).toMatch(/idempotent/i);
+    // The directory roots must be enumerated in a fixed, deterministic order
+    // so projection output is byte-identical across runs. Assert the numbered
+    // discovery list keeps them in the canonical sequence.
+    const order = [
+      '1. `docs/decisions/`',
+      '2. `docs/invariants/`',
+      '3. `docs/constitution/`',
+      '4. `docs/design/decisions/`',
+      '5. `docs/design/invariants/`',
+      '6. `docs/design/constitution/`',
+    ];
+    let prev = -1;
+    for (const entry of order) {
+      const idx = engrave.indexOf(entry);
+      expect(idx).toBeGreaterThan(prev);
+      prev = idx;
+    }
   });
 
   it('engrave template warns on malformed projection markers without guessing', () => {

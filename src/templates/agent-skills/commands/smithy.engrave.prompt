@@ -421,7 +421,7 @@ engrave(invariant): <add|resolve> exception on <INV id> — <one-line summary>
 ## Phase 7: Project the engraved-knowledge pointer
 
 After any successful Phase 3 create, Phase 4 update, Phase 5 supersede, or
-Phase 6 exception edit has patched the engraved record files, and before the
+Phase 6 exception edit have patched the engraved record files, and before the
 terminal summary, refresh the managed pointer block in existing agent-context
 files.
 
