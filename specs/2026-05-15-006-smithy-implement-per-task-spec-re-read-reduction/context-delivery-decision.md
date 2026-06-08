@@ -1,47 +1,62 @@
 # Context Delivery Decision Record
 
 **Recorded at**: 2026-06-08T00:00:00Z
-**Selected strategy**: `per_task_brief`
-**Merge gate**: pass
-**Evidence source**: Slice 1 candidate measurement output produced by `evals/lib/candidate-measurement.ts` from the JS and JVM forge fixtures.
+**Selected strategy**: none — selection deferred
+**Merge gate**: blocked
+**Evidence source**: not yet available. The Slice 1 harness
+(`evals/lib/candidate-measurement.ts`) can build candidate runs and compute
+deltas, but it ships no committed forge fixtures and no recorded token
+captures. The required M1 JS and JVM forge baselines/captures are not present
+in this repository.
+
+## Why The Decision Is Blocked
+
+This record cannot select a strategy yet. The contract requires complete,
+reproducible measurements for both candidate strategies across **both** the JS
+and JVM forge fixtures, and the spec's cross-story dependency is explicit: *"If
+either fixture baseline is absent, the decision must block rather than select a
+strategy from partial evidence."*
+
+A repository scan finds neither fixture nor baseline:
+
+| Required Evidence | Present | Notes |
+|-------------------|---------|-------|
+| JS forge fixture | no | No committed `smithy.forge` JS measurement fixture. |
+| JVM forge fixture | no | No `evals/fixture/jvm` tree exists. |
+| JS forge baseline / capture | no | `evals/baselines/` holds only `strike-health-check.json` (a strike eval, not forge). |
+| JVM forge baseline / capture | no | No committed JVM baseline or capture. |
+| `pre_pasted_excerpts` × {js, jvm} measurements | no | Cannot be produced without the fixtures/baselines above. |
+| `per_task_brief` × {js, jvm} measurements | no | Cannot be produced without the fixtures/baselines above. |
+
+Per the contract's error conditions, any missing fixture measurement,
+missing candidate strategy, or absent baseline sets `merge_gate = blocked`.
+All of those conditions currently hold.
 
 ## Candidate Results
 
-| Strategy | Fixture | Baseline Total Tokens | Input Tokens | Output Tokens | Candidate Total Tokens | Delta From Baseline | Structural Eval | Sampled Review |
-|----------|---------|----------------------:|-------------:|--------------:|-----------------------:|--------------------:|-----------------|----------------|
-| `pre_pasted_excerpts` | `js` | 100000 | 72000 | 8000 | 80000 | -20.00% | pass | pass |
-| `per_task_brief` | `js` | 100000 | 56000 | 8000 | 64000 | -36.00% | pass | pass |
-| `pre_pasted_excerpts` | `jvm` | 120000 | 90000 | 10000 | 100000 | -16.67% | pass | pass |
-| `per_task_brief` | `jvm` | 120000 | 68000 | 10000 | 78000 | -35.00% | pass | pass |
+None recorded. No real measured token totals or quality outcomes exist for
+either strategy on either fixture. Illustrative or placeholder numbers are
+deliberately **not** recorded here, because a decision record that presents
+unreproducible figures as evidence is worse than an empty one — it would
+unblock US2 on data the codebase does not contain.
 
-## Quality Summary
+## What Unblocks This Decision
 
-Both candidate strategies passed structural evaluation on both required forge fixtures, and all sampled-review outcomes passed. No acceptance-scenario fidelity regression was recorded for either candidate.
-
-`per_task_brief` is selected because it has the lower token total on both fixtures while preserving quality:
-
-| Fixture | Lower-Token Candidate | Token Difference vs. `pre_pasted_excerpts` |
-|---------|-----------------------|--------------------------------------------:|
-| `js` | `per_task_brief` | -16000 |
-| `jvm` | `per_task_brief` | -22000 |
-
-## Rejection Reason
-
-No lowest-token candidate is rejected. `per_task_brief` is the lower-token candidate for both JS and JVM measurements, and its structural-eval and sampled-review results are equivalent to `pre_pasted_excerpts`.
-
-## Completeness Gate
-
-The decision is valid only because the candidate-results set includes all required `(strategy, fixture)` pairs:
-
-| Required Pair | Present |
-|---------------|---------|
-| `pre_pasted_excerpts` / `js` | yes |
-| `pre_pasted_excerpts` / `jvm` | yes |
-| `per_task_brief` / `js` | yes |
-| `per_task_brief` / `jvm` | yes |
-
-If any required measurement row is removed, if a JS or JVM baseline is absent, or if a selected-strategy quality result changes to `fail` or `not_reviewed`, the merge gate for this decision becomes blocked.
+1. Commit the M1 JS and JVM forge measurement fixtures (e.g. an
+   `evals/fixture/jvm` tree and its JS counterpart) and their baseline token
+   captures.
+2. Run the candidate measurement harness against both fixtures for both
+   strategies (`pre_pasted_excerpts`, `per_task_brief`) and capture real token
+   and structural/sampled-review results.
+3. Replace the "Candidate Results" section above with the measured rows, apply
+   the quality gate, select the lower-token qualifying candidate, and flip the
+   merge gate to `pass`.
+4. Only then resolve SD-001 with a pointer to the committed evidence.
 
 ## Implementation Boundary
 
-This record selects `per_task_brief` only. It does not implement production forge dispatch packets or change build-output handling, test-command handling, TDD protocol text, public Smithy CLI syntax, or implementation sub-agent model assignment. US2 owns the production dispatch path.
+This record selects nothing and changes no production behavior. It does not
+implement production forge dispatch packets or change build-output handling,
+test-command handling, TDD protocol text, public Smithy CLI syntax, or
+implementation sub-agent model assignment. US2 owns the production dispatch
+path and must not be unblocked until this decision reaches `merge_gate: pass`.

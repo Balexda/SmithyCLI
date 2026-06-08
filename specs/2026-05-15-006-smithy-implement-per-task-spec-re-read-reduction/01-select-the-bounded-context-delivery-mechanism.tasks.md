@@ -54,7 +54,7 @@
 
 ### Tasks
 
-- [x] **Record the context delivery decision**
+- [ ] **Record the context delivery decision**
 
   Add a decision record or implementation note that consumes the complete candidate-results set and conforms to the `Context Delivery Decision Record` contract. The record must name the selected strategy, show every candidate/fixture measurement, summarize quality results, and explain any rejection of the lowest-token strategy.
 
@@ -65,7 +65,7 @@
   - Lower-token candidate is selected when quality is equivalent unless a concrete reliability or maintainability reason is recorded (AS 1.3)
   - Merge gate is blocked when any required measurement or candidate is missing
 
-- [x] **Resolve Story 1 specification debt**
+- [ ] **Resolve Story 1 specification debt**
 
   Update the Story 1 planning artifacts to reflect the selected strategy and close the debt that prevented selection during specification. SD-001 must be resolved with a note pointing at the measured candidate evidence; SD-002 remains inherited unless this story also defines a packet-size bound as part of the recorded decision.
 
@@ -84,7 +84,7 @@
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | inherited from spec: The exact selected strategy cannot be finalized in this spec without the M1 JS and JVM forge baselines and side-by-side candidate measurements. | Dependency Relationships | High | High | resolved | Resolved 2026-06-08: `per_task_brief` is selected from the complete JS and JVM side-by-side measurements recorded in `specs/2026-05-15-006-smithy-implement-per-task-spec-re-read-reduction/context-delivery-decision.md`. |
+| SD-001 | inherited from spec: The exact selected strategy cannot be finalized in this spec without the M1 JS and JVM forge baselines and side-by-side candidate measurements. | Dependency Relationships | High | High | inherited | Owned by Slice 2. Resolve after the candidate-results set exists and the decision record selects the strategy. |
 | SD-002 | inherited from spec: The maximum acceptable size for a task context packet depends on observed task and artifact sizes from the M1 forge fixtures. Implementation must set and document a bound before merge. | Non-Functional Quality | Medium | Medium | inherited | Primarily owned by US2. Slice 2 may resolve only if the Story 1 decision record also sets a measured bound. |
 
 ---
