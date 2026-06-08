@@ -70,6 +70,10 @@ When entering Phase 1 from a `.features.md`, carry forward:
   UI fields such as `phase`, `design_system`, `bundle`, `flag`, `screens`, and
   `flows`. Keep this metadata attached to the planning context so later mark
   phases can author the correct child artifacts without reparsing the feature map.
+  This block is optional: legacy feature maps authored before typed kinds will
+  not have it. When it is absent, carry no UI metadata forward and treat the
+  feature as `kind: backend` per the **Feature Kind Path** table below — never
+  abort or prompt for the missing block.
 - The **Source RFC** path from the `.features.md` header (if present; if missing,
   look for a co-located `.rfc.md` in the same directory).
 - The **feature map path** and **feature number** for traceability.
