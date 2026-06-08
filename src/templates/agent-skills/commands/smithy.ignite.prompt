@@ -402,6 +402,13 @@ sessions on this RFC can deduplicate against them:
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
+Before drafting orchestrator-inline RFC prose in this phase, load
+`Skill("smithy.helper-voice")` in draft mode. Use it as the shared voice
+source for directly authored RFC sections such as Decisions and coherence
+repairs. Keep Summary, Motivation / Problem Statement, and Personas delegated
+to `smithy-prose` where those sub-phases already own the narrative drafting,
+and do not inline the helper's taxonomy here.
+
 {{#ifAgent}}
 ### RFC File Creation
 

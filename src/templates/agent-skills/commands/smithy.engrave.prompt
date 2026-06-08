@@ -193,6 +193,11 @@ If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
 
 ## Phase 3a: Create a decision
 
+Before authoring decision body prose, load `Skill("smithy.helper-voice")` in
+draft mode. Use it for the Context, Decision, Consequences, Establishes, and
+Citations prose while preserving the decision schema exactly as defined above.
+Do not inline the helper's taxonomy in this prompt.
+
 1. Search the repo for existing decisions whose `topics` / `applies_to`
    overlap with the new topic. If any look like they would be superseded
    by what the user is proposing, surface them and ask whether the new
@@ -253,6 +258,11 @@ If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
 
 ## Phase 3b: Create an invariant
 
+Before authoring invariant body prose, load `Skill("smithy.helper-voice")` in
+draft mode. Use it for the Rule, Rationale, and Citations prose while
+preserving the invariant schema and Known-Exceptions ledger shape exactly as
+defined above.
+
 1. Confirm the **establishing decision**: invariants always cite at least
    one decision in `established_by`. If the caller did not pass one,
    either reference an existing decision (closest match by topic) or
@@ -300,6 +310,10 @@ If no prior records exist, start at `D-1` / `INV-1` / `P-1`.
 ---
 
 ## Phase 3c: Create a principle
+
+Before authoring principle body prose, load `Skill("smithy.helper-voice")` in
+draft mode. Use it for the Statement, apex rationale, and citation guidance
+while preserving the principle schema exactly as defined above.
 
 Principles are apex commitments — the project constitution. Authoring a
 new principle is rare. Before scaffolding, confirm with the user:
