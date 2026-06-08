@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add the projection phase to engrave**
+- [x] **Add the projection phase to engrave**
 
   Update `src/templates/agent-skills/commands/smithy.engrave.prompt` so create, update, and supersede flows run a final projection step after the engraved record edit succeeds and before the terminal summary. The step must target only existing agent-context files, use the managed marker pair from AS 2.1, and treat projection warnings as non-fatal to the underlying engrave operation.
 
@@ -27,7 +27,7 @@
   - Missing target files are skipped rather than created
   - Projection failure for one target does not roll back or fail the record edit
 
-- [ ] **Generate a pointer-only managed block**
+- [x] **Generate a pointer-only managed block**
 
   Teach the projection step to discover engraved-knowledge directories present in the repo and render a deterministic pointer block listing those locations plus an applicability note for future agents. The block must list system and design-domain directories when present, and must not inline record bodies or enumerate individual records.
 
@@ -38,7 +38,7 @@
   - The block contains no record body text and no per-record index
   - Location ordering is deterministic
 
-- [ ] **Preserve context files safely**
+- [x] **Preserve context files safely**
 
   Define marker handling in `smithy.engrave.prompt` so files with no markers receive a fresh block at a defined anchor, files with exactly one marker pair replace only content between markers, and malformed or duplicated markers produce a warning with no edit to that file. The behavior must be idempotent: unchanged directory inputs produce byte-identical context files on a second run.
 
@@ -48,7 +48,7 @@
   - Malformed or duplicated markers cause a warning and leave that file unchanged
   - A no-change projection re-run is byte-identical
 
-- [ ] **Assert projection behavior in template tests**
+- [x] **Assert projection behavior in template tests**
 
   Extend `src/templates.test.ts` coverage for the composed `smithy.engrave` command so projection requirements fail early if the prompt loses the marker pair, pointer-only constraint, existing-files-only rule, malformed-marker warning, or idempotence rule. Keep the assertions structural and tied to the composed template rather than to deployed `.claude/` snapshots.
 

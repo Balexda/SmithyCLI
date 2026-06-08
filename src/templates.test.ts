@@ -3138,6 +3138,42 @@ describe('getComposedTemplates', () => {
     expect(engrave).toContain('docs/design/constitution/');
   });
 
+  it('engrave template defines the managed projection marker pair', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('<!-- smithy:engraved:begin -->');
+    expect(engrave).toContain('<!-- smithy:engraved:end -->');
+  });
+
+  it('engrave template keeps projection pointer-only and existing-files-only', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toMatch(/pointer/i);
+    expect(engrave).toMatch(/not inline record bodies/i);
+    expect(engrave).toMatch(/no per-record/i);
+    expect(engrave).toMatch(/skip missing target files/i);
+    expect(engrave).toMatch(/never create/i);
+  });
+
+  it('engrave template makes projection deterministic and idempotent', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('docs/decisions/');
+    expect(engrave).toContain('docs/invariants/');
+    expect(engrave).toContain('docs/constitution/');
+    expect(engrave).toContain('docs/design/decisions/');
+    expect(engrave).toContain('docs/design/invariants/');
+    expect(engrave).toContain('docs/design/constitution/');
+    expect(engrave).toMatch(/deterministic/i);
+    expect(engrave).toMatch(/byte-identical/i);
+    expect(engrave).toMatch(/idempotent/i);
+  });
+
+  it('engrave template warns on malformed projection markers without guessing', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toMatch(/malformed or duplicated markers/i);
+    expect(engrave).toMatch(/warning/i);
+    expect(engrave).toMatch(/do not guess/i);
+    expect(engrave).toMatch(/leave that file unchanged/i);
+  });
+
   it('engrave template states the supersede-by-new-file invariant', () => {
     const engrave = composed.commands.get('smithy.engrave.md')!;
     // Decisions are append-only — supersession creates a new file and
