@@ -112,7 +112,7 @@ Recommended implementation sequence:
 | US1 | Planning Commands Recall Relevant Engraved Knowledge | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/01-planning-commands-recall-relevant-engraved-knowledge.tasks.md |
 | US2 | Engrave Projects an Engraved-Knowledge Pointer into Agent-Context Files | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/02-engrave-projects-an-engraved-knowledge-pointer-into-agent-context-files.tasks.md |
 | US3 | Engrave Scaffolds a Drift-Tracking Issue for Temporary Exceptions | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/03-engrave-scaffolds-a-drift-tracking-issue-for-temporary-exceptions.tasks.md |
-| US4 | Audit Validates Engraved Record Quality | — | — |
+| US4 | Audit Validates Engraved Record Quality | — | specs/2026-06-06-012-engraved-knowledge-recall-and-reference/04-audit-validates-engraved-record-quality.tasks.md |
 
 All four user stories are independent — four parallel entry points with no cross-story prerequisites. They share only the frozen engraved-record frontmatter schema as a read-only input.
 
