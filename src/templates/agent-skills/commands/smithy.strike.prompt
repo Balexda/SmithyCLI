@@ -114,6 +114,12 @@ strike document is written and no PR is created.
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
+Before writing prose-bearing strike sections, load
+`Skill("smithy.helper-voice")` in draft mode. Use it for Explanation sections
+and concise task guidance while preserving Reference and How-to sections as
+structured artifact content. Do not inline the helper's taxonomy in this
+prompt.
+
 Write a single strike document to `{{artifactsRoot}}specs/strikes/YYYY-MM-DD-<slug>.strike.md`
 with this format:
 

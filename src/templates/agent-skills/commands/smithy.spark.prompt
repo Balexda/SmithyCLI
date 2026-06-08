@@ -173,6 +173,14 @@ canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact. The PRD
 H1 follows the pattern `# PRD: <Title>`.
 
+Before drafting orchestrator-inline PRD prose in this phase, load
+`Skill("smithy.helper-voice")` in draft mode. Use it as the shared voice
+source for directly authored PRD sections such as Proposed Solution, Target
+Users, Success Signals, Assumptions, Specification Debt framing, and Open
+Questions. Keep the Problem Statement path delegated to `smithy-prose`; do not
+route every PRD section through that sub-agent, and do not inline the helper's
+taxonomy here.
+
 ### PRD File Creation
 
 1. Create the `{{artifactsRoot}}docs/prds/` directory if it does not already exist. Phase 1

@@ -109,7 +109,7 @@
 
 ### Tasks
 
-- [ ] **Add voice load to spark direct prose**
+- [x] **Add voice load to spark direct prose**
 
   Update `src/templates/agent-skills/commands/smithy.spark.prompt` so directly authored PRD prose invokes `Skill("smithy.helper-voice")` in draft mode, while narrative sections already delegated to `smithy.prose` continue through that sub-agent. The command should not duplicate taxonomy text or route every section through `smithy.prose` for AS 1.3.
 
@@ -118,7 +118,7 @@
   - Existing `smithy.prose` delegation remains the path for sections it already drafts.
   - The PRD template remains parseable and does not inline helper taxonomy.
 
-- [ ] **Add voice load to ignite direct prose**
+- [x] **Add voice load to ignite direct prose**
 
   Update `src/templates/agent-skills/commands/smithy.ignite.prompt` so direct RFC prose authoring invokes `Skill("smithy.helper-voice")` in draft mode, while Summary / Motivation / Personas delegation continues through `smithy.prose`. Preserve the one-shot output contract and RFC template structure for AS 1.3.
 
@@ -127,7 +127,7 @@
   - Summary / Motivation / Personas remain delegated to `smithy.prose` where applicable.
   - The RFC template and one-shot output block still parse.
 
-- [ ] **Add voice load to strike authoring**
+- [x] **Add voice load to strike authoring**
 
   Update `src/templates/agent-skills/commands/smithy.strike.prompt` so strike-document prose drafting invokes `Skill("smithy.helper-voice")` in draft mode for Explanation sections and concise task guidance. Keep the existing one-shot behavior and artifact template shape intact for AS 1.3.
 
@@ -136,7 +136,7 @@
   - Reference and How-to sections remain concise and structured.
   - No helper taxonomy text is pasted into the strike prompt.
 
-- [ ] **Add voice load to engrave authoring**
+- [x] **Add voice load to engrave authoring**
 
   Update `src/templates/agent-skills/commands/smithy.engrave.prompt` so decision, invariant, and principle prose authoring invokes `Skill("smithy.helper-voice")` in draft mode at the record-writing points. Preserve the durable-knowledge schema and append-only lifecycle rules for AS 1.3.
 
@@ -145,7 +145,7 @@
   - Decision, invariant, and principle schemas remain unchanged.
   - No helper taxonomy text is pasted into the engrave prompt.
 
-- [ ] **Add narrative-command regression coverage and validate**
+- [x] **Add narrative-command regression coverage and validate**
 
   Add focused coverage in `src/templates.test.ts` (or its helpers) asserting that the composed `smithy.spark`, `smithy.ignite`, `smithy.strike`, and `smithy.engrave` templates each carry a named `Skill("smithy.helper-voice")` reference and parse cleanly. Keep assertions structural — check for the named helper reference, not exact taxonomy wording. Then run the parse tests and the relevant eval scenarios after editing spark, ignite, strike, and engrave; keep the `.claude/` snapshot unchanged per FR-016.
 

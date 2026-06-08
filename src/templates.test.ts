@@ -936,6 +936,40 @@ describe('getComposedTemplates', () => {
     expect(body).toMatch(/Provider-neutral/i);
   });
 
+  it('narrative commands load smithy.helper-voice for direct prose authoring', () => {
+    const commandNames = [
+      'smithy.spark.md',
+      'smithy.ignite.md',
+      'smithy.strike.md',
+      'smithy.engrave.md',
+    ];
+
+    for (const commandName of commandNames) {
+      const command = composed.commands.get(commandName);
+      expect(command, `${commandName} should be composed`).toBeDefined();
+      expect(command!, `${commandName} should name the helper skill`).toContain(
+        'Skill("smithy.helper-voice")',
+      );
+      expect(command!, `${commandName} should load the helper in draft mode`).toMatch(
+        /draft mode/i,
+      );
+    }
+
+    const spark = composed.commands.get('smithy.spark.md')!;
+    expect(spark).toContain('Keep the Problem Statement path delegated to `smithy-prose`');
+
+    const ignite = composed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toContain('Keep Summary, Motivation / Problem Statement, and Personas delegated');
+
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('Reference and How-to sections as');
+
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('preserving the decision schema');
+    expect(engrave).toContain('preserving the invariant schema');
+    expect(engrave).toContain('preserving the principle schema');
+  });
+
   // Issue #407 (EPIC #404): smithy.helper-screen-design is a body-only,
   // lazy-loaded operational skill that owns the authoring contract for
   // `design/screens/<ScreenId>.design.md`. The skill body is the single
