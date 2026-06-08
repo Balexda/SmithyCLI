@@ -965,13 +965,13 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toMatch(/authoring or auditing/i);
     expect(skill.prompt).toContain('kind: ui');
     // The four schema keys are the load-bearing claim of the description.
-    expect(skill.prompt).toMatch(/id\s*\/\s*composable\s*\/\s*design_system\s*\/\s*bundle/);
+    expect(skill.prompt).toMatch(/id\s*\/\s*component-path\s*\/\s*design_system\s*\/\s*bundle/);
   });
 
   it('smithy.helper-screen-design body documents the four front-matter fields', () => {
     const skill = composed.skills.get('smithy.helper-screen-design')!;
     expect(skill.prompt).toContain('## YAML front-matter schema');
-    for (const field of ['`id`', '`composable`', '`design_system`', '`bundle`']) {
+    for (const field of ['`id`', '`component-path`', '`design_system`', '`bundle`']) {
       expect(skill.prompt).toContain(field);
     }
     // Explicit YAML labeling — the front-matter is YAML between `---` fences,
@@ -996,7 +996,7 @@ describe('getComposedTemplates', () => {
   it('smithy.helper-screen-design enforces the no-re-description rule', () => {
     const skill = composed.skills.get('smithy.helper-screen-design')!;
     // The whole point of the annotation is that it is NOT a parallel screen
-    // spec — the composable owns layout/behavior, this file owns intent.
+    // spec — the component owns layout/behavior, this file owns intent.
     // Guard against a future edit that softens the rule.
     expect(skill.prompt).toMatch(/thin/i);
     expect(skill.prompt).toMatch(/intent/i);
@@ -1011,8 +1011,9 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('## Skeleton template');
     expect(skill.prompt).toContain('## Worked example — `Library.design.md`');
     // Library example must be filled out, not a placeholder — at least the
-    // composable path and the rationale sections from the issue.
+    // component path and the rationale sections from the issue.
     expect(skill.prompt).toContain('id: Library');
+    expect(skill.prompt).toContain('component-path:');
     expect(skill.prompt).toContain('LibraryScreen.kt');
     expect(skill.prompt).toContain('story-spider-design');
   });
@@ -1024,7 +1025,7 @@ describe('getComposedTemplates', () => {
     // line-by-line list of findings. Guard the items that matter most.
     expect(skill.prompt).toContain('## Review checklist');
     expect(skill.prompt).toMatch(/Missing required front-matter key/i);
-    expect(skill.prompt).toMatch(/composable[\s\S]*does not resolve/i);
+    expect(skill.prompt).toMatch(/component-path[\s\S]*does not resolve/i);
     // The forbidden body sections must be named explicitly in the checklist —
     // a vague "no layout content" wouldn't give the audit a hit-list.
     for (const heading of [
@@ -1069,10 +1070,9 @@ describe('getComposedTemplates', () => {
   // Issue #406 (EPIC #404): smithy.helper-flow-definition is a body-only,
   // lazy-loaded operational skill that owns the authoring contract for the
   // durable Flow entity pair — `design/flows/<FlowId>.flow.md` (intent
-  // annotation) + `maestro/flows/<FlowId>.yaml` (executable behavioral
-  // body), keyed 1:1 by flat FlowId. The skill body is the single source
+  // annotation) + one executable test body, keyed 1:1 by flat FlowId. The skill body is the single source
   // of truth for the YAML front-matter schema, the rationale-only body
-  // rule, the Maestro selector contract, the testID naming convention,
+  // rule, the driver-neutral selector contract, the testID naming convention,
   // and the worked AddTitle example, so downstream commands
   // (`smithy.forge` once #408 wires UI emission, `smithy.audit` /
   // `flow-lint` once #409 lands, and `flow-scaffold` once #410 lands)
@@ -1097,19 +1097,19 @@ describe('getComposedTemplates', () => {
     // and the three front-matter keys so calling agents recognize when to
     // lazy-load it.
     expect(skill.prompt).toContain('design/flows/<FlowId>.flow.md');
-    expect(skill.prompt).toContain('maestro/flows/<FlowId>.yaml');
+    expect(skill.prompt).toContain('<test-body>');
     expect(skill.prompt).toMatch(/authoring or auditing/i);
     expect(skill.prompt).toContain('kind: ui');
     expect(skill.prompt).toMatch(/phase:\s*wire/);
     // The three flow.md schema keys are the load-bearing key list of the
     // description.
-    expect(skill.prompt).toMatch(/id\s*\/\s*screens\s*\/\s*maestro/);
+    expect(skill.prompt).toMatch(/id\s*\/\s*screens\s*\/\s*test-body/);
   });
 
   it('smithy.helper-flow-definition body documents the three front-matter fields', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
     expect(skill.prompt).toContain('## YAML front-matter schema');
-    for (const field of ['`id`', '`screens`', '`maestro`']) {
+    for (const field of ['`id`', '`screens`', '`test-body`']) {
       expect(skill.prompt).toContain(field);
     }
     // Explicit YAML labeling — the front-matter is YAML between `---`
@@ -1135,7 +1135,7 @@ describe('getComposedTemplates', () => {
   it('smithy.helper-flow-definition enforces the no-step-descriptions rule', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
     // The whole point of the pair is that the `.flow.md` body is NOT a
-    // parallel narration of the yaml — the yaml owns the steps, the
+    // parallel narration of the test body — the test body owns the steps, the
     // `.flow.md` owns intent. Guard against a future edit that softens
     // the rule.
     expect(skill.prompt).toMatch(/thin/i);
@@ -1148,11 +1148,11 @@ describe('getComposedTemplates', () => {
     );
   });
 
-  it('smithy.helper-flow-definition pins the Maestro selector contract (testIDs, not visible text)', () => {
+  it('smithy.helper-flow-definition pins the driver-neutral selector contract (testIDs, not visible text)', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
     // Issue #406's load-bearing rule: selectors keyed to testIDs /
     // accessibility IDs / semantic tags — never visible text or layout
-    // position. The yaml side becomes useless if this rule softens.
+    // position. The executable test body becomes useless if this rule softens.
     expect(skill.prompt).toMatch(/testID/);
     expect(skill.prompt).toMatch(/accessibility/i);
     expect(skill.prompt).toMatch(/never visible text/i);
@@ -1161,7 +1161,7 @@ describe('getComposedTemplates', () => {
     // the happy path is a smoke test, not a durable flow.
     expect(skill.prompt).toMatch(/traversal/i);
     expect(skill.prompt).toMatch(/guard/i);
-    expect(skill.prompt).toMatch(/cannot reach confirm[^\n]*valid URL/i);
+    expect(skill.prompt).toMatch(/confirm[\s\S]*valid URL/i);
   });
 
   it('smithy.helper-flow-definition documents the testID naming convention', () => {
@@ -1181,13 +1181,13 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('## Worked example');
     // AddTitle example must be filled out (not a placeholder), with both
     // halves of the pair: front-matter for `.flow.md` and a testID-keyed
-    // yaml exercising the URL guard.
+    // executable test body exercising the URL guard.
     expect(skill.prompt).toContain('design/flows/AddTitle.flow.md');
     expect(skill.prompt).toContain('maestro/flows/AddTitle.yaml');
     expect(skill.prompt).toMatch(/id:\s*AddTitle/);
     expect(skill.prompt).toMatch(/screens:\s*\[Library,\s*AddTitle\]/);
-    expect(skill.prompt).toMatch(/maestro:\s*maestro\/flows\/AddTitle\.yaml/);
-    // The yaml side must include the URL-guard assertion the issue calls
+    expect(skill.prompt).toMatch(/test-body:\s*maestro\/flows\/AddTitle\.yaml/);
+    // The executable test body must include the URL-guard assertion the issue calls
     // out: confirm is not visible until URL is valid.
     expect(skill.prompt).toContain('add-title-url-field');
     expect(skill.prompt).toContain('add-title-confirm-button-enabled');
@@ -1196,9 +1196,9 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-flow-definition documents the audio-service coverage caveat', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
-    // Issue #406 coverage caveat: Maestro covers navigable bookends.
+    // Coverage caveat: UI-driver flow tests cover navigable bookends.
     // Audio-service behaviors (auto-advance under lock, foreground TTS)
-    // need instrumentation-level tests. A green Maestro run must NOT
+    // need instrumentation-level tests. A green UI-driver run must NOT
     // imply TTS coverage.
     expect(skill.prompt).toMatch(/navigable bookends/i);
     expect(skill.prompt).toMatch(/auto-advance/i);
@@ -1214,7 +1214,7 @@ describe('getComposedTemplates', () => {
     // line-by-line list of findings. Guard the items that matter most.
     expect(skill.prompt).toContain('## Review checklist');
     expect(skill.prompt).toMatch(/Missing required front-matter key/i);
-    expect(skill.prompt).toMatch(/maestro[\s\S]*does not resolve/i);
+    expect(skill.prompt).toMatch(/test-body[\s\S]*does not resolve/i);
     // The forbidden body sections must be named explicitly in the
     // checklist — a vague "no walkthrough content" wouldn't give the
     // audit a hit-list.
@@ -1227,7 +1227,7 @@ describe('getComposedTemplates', () => {
       expect(skill.prompt).toContain(heading);
     }
     // Selector-quality checks: visible text and layout-index selectors
-    // are the failure modes the yaml side guards against.
+    // are the failure modes the executable test body guards against.
     expect(skill.prompt).toMatch(/text:[^\n]*selector|visible-text matcher/i);
     expect(skill.prompt).toMatch(/layout[- ]index/i);
   });
