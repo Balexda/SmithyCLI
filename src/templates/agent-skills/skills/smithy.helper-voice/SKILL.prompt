@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-voice
-description: "Voice and audience guidance for any prose: RFC/spec/PRD narrative, migration plans, ADRs, runbooks, READMEs, design docs, change notes, inline documentation. Use when drafting or reviewing prose for readers spanning stakeholders, reviewers, implementers, or AI agents. Provides a Role × Diátaxis-mode taxonomy, conciseness budgets, diagram-first framing, depth-control rules, and AI-vs-human audience separation."
+description: "Section-level voice and audience guidance, invoked by smithy.helper-documentation and the authoring commands/agents (render / mark / cut / engrave / ignite / spark / strike / prose) — not a direct user entry point; users reach for smithy.helper-documentation, which calls this skill. Applies when drafting or reviewing prose for any artifact: RFC/spec/PRD narrative, migration plans, ADRs, runbooks, READMEs, design docs, change notes, inline documentation, for readers spanning stakeholders, reviewers, implementers, or AI agents. Provides a Role × Diátaxis-mode taxonomy, an expanded review-mode anti-pattern checklist, conciseness budgets, diagram-first framing, depth-control rules, and AI-vs-human audience separation."
 ---
 # smithy.helper-voice
 
@@ -49,10 +49,15 @@ yourself blending two, split the section.
 
 ---
 
-## 2. The four anti-patterns
+## 2. Review-mode anti-pattern checklist
 
-The taxonomy is built to remedy these. Flag each explicitly in review
-mode.
+Run every item below in review mode and flag each hit explicitly. The
+first four are the original structural anti-patterns the taxonomy was
+built on; the next five are prose-comprehension defects — the ones that
+drive most "I can't follow this doc" complaints and that the structural
+four miss. The last two are self-checks on the *review pass itself*.
+
+**Structural anti-patterns**
 
 1. **Missing diagrams.** A block, sequence, or ER diagram would carry
    the same information in less space, but the section is wall-of-text.
@@ -63,6 +68,58 @@ mode.
 4. **Commingled audiences.** One section serves humans (review,
    approval) and AI sub-agents (input to `smithy-slice`,
    `smithy-implement`) with no signal of which paragraph is which.
+
+**Prose-comprehension anti-patterns**
+
+5. **Unglossed terms-of-art.** A term-of-art is used without definition
+   on its first occurrence in a section ("failover plan", "scale to 0",
+   "all participants inventoried"). Flag hardest when a term one
+   audience-cell owns appears inside another cell's section — an Ops term
+   in a Reviewer×Explanation, a runbook step inside an Explanation.
+6. **Schema without a worked instance.** A schema, contract, manifest,
+   or YAML/JSON shape is described in prose or as a key/type table with
+   no filled-in example a reader can pattern-match against. (Distinct
+   from the §5 `examples:` directive, which is about whether a *code
+   snippet* suits the section's mode; this is about an *abstract
+   description* lacking a concrete companion — add the worked instance,
+   don't delete the description.)
+7. **Internals leakage.** Implementation rationale surfaces in
+   reader-facing prose (Stakeholder/Reviewer Explanation, Builder
+   How-to): sentences shaped like "the two lists are split because the
+   role-specific fields differ" or "we did this to preserve Z". The
+   reader needs *what to do* and *what it means*, not *why the
+   internals are arranged this way* — push that to a child Reference
+   section or cut it.
+8. **Conviction drift.** A sentence hedges or conditions something the
+   surrounding context treats as required ("reads like this transition
+   is optional when it isn't"). Match the prose's certainty to the
+   thing's actual status — if the step is mandatory, say so plainly.
+9. **Bare cross-reference.** A cross-reference ("see Flow 3 for the
+   rollback") sends the reader away without previewing, in one phrase,
+   what they will find there. Add the preview: "see Flow 3, which drains
+   connections before cutover."
+
+**Self-checks on the review pass**
+
+10. **Diagram that doesn't earn its space.** A diagram must compress
+    structure the prose cannot — not duplicate what the prose just said.
+    Working ASCII art is not a defect; do not convert it to Mermaid for
+    its own sake. Before adding or replacing a diagram, confirm it
+    carries structure (flow, relationships, ≥3 named entities) the
+    surrounding text can't.
+11. **Structural-vs-prose ratio.** At the end of a review pass, look at
+    the change set. If it is mostly audience tags, ASCII→Mermaid swaps,
+    and section moves while the prose body is essentially unchanged, the
+    artifact has been *shuffled, not improved* — surface this honestly
+    rather than presenting motion as progress.
+
+> **Escalation — artifact-level commingling.** Anti-pattern 4 is a
+> *section*-level fix: retag, split a section, add a routing signal. When
+> the commingling is at the **artifact** level — the whole document
+> serves three reader-cells and no amount of section retagging fixes it
+> (the right answer is several artifacts plus a navigation doc) — that is
+> `smithy.helper-documentation`'s job, not this skill's. Stop, flag it,
+> and defer to that skill for the shape decision before doing prose work.
 
 ---
 
@@ -176,11 +233,13 @@ Each section's voice is described by a small set of keys: `audience`,
 used by the generating command (`smithy.ignite`, `smithy.render`,
 `smithy.mark`, `smithy.cut`) — not inline in every generated artifact.
 One source of truth, no per-file drift; the artifact itself stays
-clean prose. `smithy.audit` will read the same template files to know
-what voice spec to enforce per section (planned in slice 4 of EPIC
-#419). Until the template surface is wired through and that slice
-lands, the audit command will carry a hard-coded copy of the specs so
-the enforcement surface matches the eventual template-driven one.
+clean prose. `smithy.audit` enforces these specs per section via its
+voice-tag lint (`snippets/audit-checklist-voice.md`): it parses the
+`<!-- audience: ... -->` tags and flags unknown keys/values, length-
+budget violations, and missing/forbidden diagrams and examples. The
+lint currently carries the per-section specs directly; as the template
+surface is wired through it will read them from the same template
+files, keeping the enforcement surface and the templates in lockstep.
 
 **For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,
 inline documentation), there is no template to inherit from. Use the
@@ -327,7 +386,7 @@ update the tag.
 
 ---
 
-## Coexistence with `smithy.prose`
+## Coexistence with `smithy.prose` and `smithy.helper-documentation`
 
 `smithy.prose` (sub-agent) keeps its section-specific drafting protocol
 for Summary / Motivation / Personas. This skill is the canonical home
@@ -335,3 +394,15 @@ for the shared principles (lead-with-impact, no invented figures, no
 bullet-enumeration in prose) and the cross-cutting taxonomy. When both
 apply, `smithy.prose` is the *how* for a specific RFC section, and this
 skill is the *what voice* across every section.
+
+`smithy.helper-documentation` is the layer **above** this skill. It owns
+artifact-shape concerns — is this the right shape of artifact for the
+audiences it serves, should it be N artifacts instead of one, what does
+the navigation doc between them look like — and it calls this skill for
+prose-level cleanup once the shape is settled. This skill owns the
+*section* and *prose* level (one Role × Mode per section; voice matches
+the cell; jargon glossed, examples worked, diagrams that earn their
+space, cross-refs previewed) and defers artifact-level commingling
+upward (see §2's escalation note). Users invoke
+`smithy.helper-documentation`; this skill is reached through it or
+through the authoring commands.

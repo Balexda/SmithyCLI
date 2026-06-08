@@ -1,0 +1,139 @@
+---
+name: smithy.helper-documentation
+description: "Artifact-shape and fit-for-purpose review for any document — Smithy-authored or not. Use when shaping or reviewing a README, migration plan, runbook, design doc, ADR, or any document that feels long, hard to follow, or like it serves several readers at once, and you need to decide whether it should be one artifact or several. Runs an audience inventory and fit-for-purpose check, recommends a split / restructure / leave-as-is, designs the navigation artifact when splitting, then hands each resulting artifact to the voice helper for prose-level cleanup."
+---
+# smithy.helper-documentation
+
+The artifact-shape layer for documentation. This skill answers one question
+the section-level voice taxonomy cannot: **is this the right *shape* of
+artifact for the audiences it serves, or should it be several?** Provider-
+neutral: no Claude-, Gemini-, or Codex-specific syntax.
+
+Reach for it whenever a document feels long, sprawling, or like it is making
+three different readers wade through each other's material — a 500-line
+migration playbook, a README that is half pitch and half API reference, a
+runbook with a strategy memo bolted on top. It works on any document, whether
+or not Smithy authored it.
+
+`smithy.helper-voice` is the layer *below* this one. It fixes prose **within**
+an artifact — does each section serve one Role × Mode cleanly, is the voice
+right for the cell, is jargon glossed. It cannot see that an artifact is trying
+to be three artifacts at once, and it should not try to. This skill makes that
+diagnosis first, reshapes if needed, and only then invokes the voice helper on
+the result. Run this skill **before** reaching for voice cleanup on any
+multi-audience document — a voice pass on a mis-shaped artifact produces a
+change set that looks productive (audience tables, ASCII→Mermaid swaps, section
+moves) but leaves the underlying problem untouched.
+
+---
+
+## The procedure
+
+Run these five steps in order. Steps 1–4 are the fit-for-purpose review; step 5
+delegates the prose work.
+
+### 1. Audience inventory
+
+Read the artifact (or a brief describing it). Enumerate the **reader-cells** it
+tries to serve, using the voice helper's two axes — *Role* (Stakeholder,
+Reviewer, Builder, optionally `+ai-input`) × *Diátaxis mode* (Explanation,
+Reference, How-to, Tutorial). One cell is a Role × Mode pair, e.g.
+*Reviewer × Explanation* (an internal team reading a rollout strategy) or
+*Builder × How-to* (a customer team executing one service's migration).
+
+List every cell you can find evidence for. A document that genuinely serves
+one cell is the common, healthy case — say so and move fast.
+
+### 2. Fit-for-purpose check
+
+For each reader-cell from step 1, estimate two fractions:
+
+- **Needs** — what fraction of the artifact does this reader actually need?
+- **Skips** — what fraction do they read past to find their part?
+
+Then apply the heuristic:
+
+> **If no single reader-cell needs more than ~60% of the artifact, the artifact
+> is mis-shaped.** It is multiplexing audiences, and every reader pays the tax
+> of scrolling past the others' material.
+
+The 60% line is a prompt, not a law — a 55/45 split between two tightly related
+cells may be fine; a doc where three cells each need ~33% almost never is. Use
+judgement, but make the call explicit.
+
+### 3. Splitting recommendation
+
+Produce exactly one of three verdicts:
+
+| Verdict | When | What you output |
+|---------|------|-----------------|
+| **Well-shaped — voice-only pass** | One dominant cell (needs > ~60%); incidental other-cell content is small and clearly bounded. | A one-line confirmation, then go to step 5. |
+| **Single-artifact restructure** | Audiences are commingled but the content belongs together (e.g. ordering/sectioning is wrong, one cell's material is scattered). | A proposed section order that groups each cell's material contiguously, with an audience-routing table at the top. Then step 5. |
+| **Multi-artifact split** | Several cells each need a large fraction and the material separates cleanly (the migration-docs case). | A proposed set of narrow artifacts — one per reader-cell or migration shape — plus a navigation artifact (step 4). Then step 5 on each. |
+
+State *why* — name the cells and their fractions that drove the verdict. The
+verdict is a recommendation to the calling agent or user, not a unilateral
+rewrite: surface the proposed shape before moving large amounts of content.
+
+### 4. Navigation/index design (when splitting)
+
+A multi-artifact split is only an improvement if a reader can find their
+artifact. When you recommend a split, also propose the **navigation artifact**:
+
+- A short overview/index doc (Stakeholder × Explanation up top, then a routing
+  table).
+- A routing table mapping reader-cell → artifact: *"Running one service's
+  cutover? → `cutover-runbook-<topic>.md`. Reviewing the rollout strategy? →
+  `migration-overview.md`."*
+- The one-line purpose of each split artifact, so the index previews each
+  destination (the voice helper's bare-cross-reference rule applies here too).
+
+Keep the navigation doc thin — it routes, it does not re-explain.
+
+### 5. Hand off to the voice helper
+
+Once the shape is settled (whether you split, restructured, or confirmed
+well-shaped), invoke `Skill("smithy.helper-voice")` on each resulting
+artifact for prose-level cleanup — glossing jargon, working examples, diagrams
+that earn their space, previewed cross-references, one Role × Mode per section.
+Use voice helper's **review / cleanup mode** for existing artifacts and its
+**draft mode** when you are writing a new split or navigation artifact from
+scratch.
+
+---
+
+## Cheap pass-through
+
+This skill must not become a tax on well-shaped input. If step 1 finds a single
+reader-cell — one section, one audience, a focused README or a single runbook —
+do **not** manufacture a fit-for-purpose analysis. Recognize it, record a
+one-line "well-shaped, single cell" verdict, and hand straight to
+`Skill("smithy.helper-voice")`. The latency cost of the inventory on healthy
+input is small; the payoff is that the "I just want one section polished"
+request still routes through here and the mis-shaped-artifact footgun stays
+unreachable.
+
+---
+
+## Responsibility split with `smithy.helper-voice`
+
+| Concern | Owned by |
+|---------|----------|
+| Is this the right *shape* of artifact for the audiences it serves? | helper-documentation |
+| Should this be N artifacts instead of 1? | helper-documentation |
+| What does the navigation doc between them look like? | helper-documentation |
+| Within this artifact, does each section serve one Role × Mode cleanly? | helper-voice |
+| Within this section, does the prose voice match the cell? | helper-voice |
+| Is jargon glossed, are examples worked, do diagrams earn their space, are cross-refs previewed? | helper-voice |
+
+**Worked example — the four migration playbooks.** Four ~500-line docs, one per
+flow, each serving three cells at once: an internal team reviewing the rollout
+(Reviewer × Explanation), a customer team executing one service's migration
+(Builder × How-to), and a cutover driver running one topic's phased cutover
+(Reviewer × How-to). Fit-for-purpose check: no cell needed more than ~40% of
+any doc → mis-shaped at the artifact level. A voice-only pass here (audience
+tables, ASCII→Mermaid, one section move) treated the symptom and produced
++212/−182 lines that did not move the needle. The right shape: narrow per-shape
+how-to guides (one per migration shape), separate cutover runbooks (one per
+topic), and a single navigation/overview doc routing each reader to theirs —
+**then** a voice pass on each of the resulting thin artifacts.
