@@ -53,7 +53,7 @@ yourself blending two, split the section.
 
 Run every item below in review mode and flag each hit explicitly. The
 first four are the original structural anti-patterns the taxonomy was
-built on; the next five are prose-comprehension defects — the ones that
+built on; the next six are prose-comprehension defects — the ones that
 drive most "I can't follow this doc" complaints and that the structural
 four miss. The last two are self-checks on the *review pass itself*.
 
@@ -98,16 +98,31 @@ four miss. The last two are self-checks on the *review pass itself*.
    rollback") sends the reader away without previewing, in one phrase,
    what they will find there. Add the preview: "see Flow 3, which drains
    connections before cutover."
+10. **Authoring-process / author-directed commentary.** Prose that
+    addresses the *moment the document was written* rather than the
+    reader of the finished artifact. Two flavors: (a) **temporal /
+    process scaffolding** tied to the work's own trajectory — "we'll do
+    this until milestone X lands", "for now we…", "we no longer need to
+    Z"; and (b) **asides aimed at the human author**, as if the document
+    were a chat reply — "you may want to decide…", "let me know if…",
+    "note: we should revisit this". The eventual reader was not in that
+    moment and was not party to that conversation, so these lines read
+    as stray comments that leaked into the artifact. Fix: cut them, or
+    convert to durable reader-facing statements — state current behavior
+    *as* the behavior (not as a way-station toward something else), and
+    move genuine open questions to a tracked location (an issue, a
+    "Open Questions" section, a TODO owned by someone) rather than
+    leaving them inline.
 
 **Self-checks on the review pass**
 
-10. **Diagram that doesn't earn its space.** A diagram must compress
+11. **Diagram that doesn't earn its space.** A diagram must compress
     structure the prose cannot — not duplicate what the prose just said.
     Working ASCII art is not a defect; do not convert it to Mermaid for
     its own sake. Before adding or replacing a diagram, confirm it
     carries structure (flow, relationships, ≥3 named entities) the
     surrounding text can't.
-11. **Structural-vs-prose ratio.** At the end of a review pass, look at
+12. **Structural-vs-prose ratio.** At the end of a review pass, look at
     the change set. If it is mostly audience tags, ASCII→Mermaid swaps,
     and section moves while the prose body is essentially unchanged, the
     artifact has been *shuffled, not improved* — surface this honestly

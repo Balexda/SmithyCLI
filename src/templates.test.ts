@@ -949,6 +949,7 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('Internals leakage');
     expect(skill.prompt).toContain('Conviction drift');
     expect(skill.prompt).toContain('Bare cross-reference');
+    expect(skill.prompt).toContain('Authoring-process / author-directed commentary');
     expect(skill.prompt).toContain("Diagram that doesn't earn its space");
     expect(skill.prompt).toContain('Structural-vs-prose ratio');
     // Artifact-level commingling escalates to helper-documentation rather
