@@ -1161,7 +1161,7 @@ describe('getComposedTemplates', () => {
     // the happy path is a smoke test, not a durable flow.
     expect(skill.prompt).toMatch(/traversal/i);
     expect(skill.prompt).toMatch(/guard/i);
-    expect(skill.prompt).toMatch(/confirm[\s\S]*valid URL/i);
+    expect(skill.prompt).toMatch(/cannot reach\s+confirm without a valid URL/i);
   });
 
   it('smithy.helper-flow-definition documents the testID naming convention', () => {
