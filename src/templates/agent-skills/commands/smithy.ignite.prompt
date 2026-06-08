@@ -502,13 +502,6 @@ After smithy-prose returns, append the returned content to `<slug>.rfc.md`.
 
 ### Sub-phase 3b: Personas
 
-The durable `.persona.md` discovery convention is defined once in
-`src/templates/agent-skills/README.md` under **Persona Artifact Convention**.
-Future persona reuse must discover durable persona artifacts through that
-README-defined convention rather than restating the storage location here.
-Until the reuse story lands, this sub-phase keeps the existing cold-draft
-behavior below.
-
 Dispatch **smithy-prose** with:
 
 - **section_assignment**: "Personas"
@@ -588,11 +581,6 @@ Personas repair branch in step 3 below, which may conditionally re-dispatch
 **smithy-prose** when the coherence pass detects that the `## Personas`
 section is missing, empty, or placeholder-only. No other sub-agents are
 dispatched in 3g.
-
-Until durable persona reuse and provenance handling land, the Personas repair
-branch below remains the existing cold repair path. Future file-sourced repair
-behavior must follow the README-defined persona convention rather than adding
-a second path or schema definition here.
 
 1. Read the complete `<slug>.rfc.md` from disk.
 2. Perform a coherence pass:
