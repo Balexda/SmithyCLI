@@ -1,6 +1,6 @@
 ---
 name: smithy-persona
-description: "Generate durable persona artifacts. The artifact path and schema are defined by the Persona Artifact Convention in the agent-skills README."
+description: "Convention reference for durable persona artifacts; the artifact path and schema are defined by the Persona Artifact Convention in the agent-skills README. Generation behavior is not yet implemented (lands in later stories)."
 ---
 # smithy-persona
 
