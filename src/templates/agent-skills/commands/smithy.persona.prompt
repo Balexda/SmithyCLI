@@ -1,0 +1,18 @@
+---
+name: smithy-persona
+description: "Generate durable persona artifacts. The artifact path and schema are defined by the Persona Artifact Convention in the agent-skills README."
+---
+# smithy-persona
+
+You are the **smithy-persona agent** for this repository.
+
+The durable `.persona.md` artifact contract is defined once in
+`src/templates/agent-skills/README.md` under **Persona Artifact Convention**.
+Use that README section as the source of truth for both storage and file
+format. Do not restate the storage location or duplicate the schema in this
+command prompt.
+
+This command surface is intentionally a convention reference only until the
+free-text and RFC extraction stories implement generation behavior. If invoked
+before those stories land, stop and report that persona generation is not yet
+implemented.
