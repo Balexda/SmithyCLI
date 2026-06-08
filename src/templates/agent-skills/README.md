@@ -178,17 +178,25 @@ Keys:
 
 Authoring rule: when adding a new `##` section to a planning-artifact
 template, drop the tag immediately under the heading inside the
-template's markdown code fence. `smithy.audit` and future lint commands
-will read these tags to enforce voice rules (planned in slice 4 of EPIC
-#419). Until that slice lands and every template surface is wired
-through, the audit command will carry a hard-coded copy of the
-per-section specs that matches the eventual template-driven one. See
+template's markdown code fence. `smithy.audit` reads these tags to
+enforce voice rules via its voice-tag lint
+(`snippets/audit-checklist-voice.md`): it flags unknown keys/values,
+length-budget violations, and missing/forbidden diagrams and examples.
+The lint currently carries the per-section specs directly; as every
+template surface is wired through it will read them from the same
+template files, keeping the enforcement surface and the templates in
+lockstep. See
 `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
-for the per-cell rules, three worked before/after examples, and the
-"application beyond Smithy" appendix (migration plans, ADRs, runbooks,
-READMEs, inline documentation) — those non-Smithy targets have no
-template to inherit from, so the taxonomy is used as authoring
-discipline rather than a metadata convention.
+for the per-cell rules, the expanded review-mode anti-pattern checklist,
+three worked before/after examples, and the "application beyond Smithy"
+appendix (migration plans, ADRs, runbooks, READMEs, inline
+documentation) — those non-Smithy targets have no template to inherit
+from, so the taxonomy is used as authoring discipline rather than a
+metadata convention. Artifact-*shape* decisions (whether a document
+should be one artifact or several, and what the navigation doc between
+them looks like) live one layer up, in the user-invocable
+`smithy.helper-documentation` skill, which calls `smithy.helper-voice`
+for the prose-level pass.
 
 ## Feature Kinds and the Build/Wire Seam
 
