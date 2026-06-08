@@ -51,7 +51,7 @@
 
 ### Tasks
 
-- [ ] **Author the UI dependency ledger**
+- [x] **Author the UI dependency ledger**
 
   Extend the UI path in `src/templates/agent-skills/commands/smithy.mark.prompt` to write a `## Dependency Order` table shaped as the UI Spec Ledger in the data model. The table must support `SC<N>`, `FL<N>`, and `US<N>` rows, same-table dependencies, a `Design` column for screen rows, and an `Artifact` column for every row, satisfying AS 1.1 and AS 1.3.
 
@@ -63,7 +63,7 @@
   - Each row has `Depends On` set to `—` or same-table IDs
   - Every row's `Artifact` cell is `—` in mark's output — it holds the `cut`-produced `tasks.md` only after `cut` runs (data model Entity 2); mark never pre-fills a path
 
-- [ ] **Keep ledger rows pointer-only**
+- [x] **Keep ledger rows pointer-only**
 
   Constrain the UI ledger instructions in `src/templates/agent-skills/commands/smithy.mark.prompt` so row titles point to durable screen and flow files but never carry layout, state, or step prose. Reference the UI Spec Ledger and Screen/Flow node entities from the data model rather than duplicating artifact body schemas, satisfying AS 1.2 and FR-004.
 
@@ -73,7 +73,7 @@
   - Flow rows are first-class table rows, not values inside a `flows: [...]` list
   - The prompt directs artifact intent into the durable files, not the spec row
 
-- [ ] **Allow minimal single-node UI ledgers**
+- [x] **Allow minimal single-node UI ledgers**
 
   Add UI ledger guidance for features with no internal ordering so `mark` may emit a minimal single-node graph when that honestly represents the work. Keep the same table shape and node typing even when only one row exists, satisfying AS 1.5.
 
