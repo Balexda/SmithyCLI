@@ -1,13 +1,13 @@
 ---
 name: smithy.helper-screen-design
-description: "Schema and authoring rules for `design/screens/<ScreenId>.design.md` — the thin durable intent annotation that colocates with a UI screen's Jetpack Compose body. Use when authoring or auditing a screen design-context annotation, when emitting a screen as part of a UI feature (kind: ui), or when validating that an existing annotation stays thin. Provides the YAML front-matter field schema (id / composable / design_system / bundle), the rationale-only body rule, a skeleton template, and a worked Library example."
+description: "Schema and authoring rules for `design/screens/<ScreenId>.design.md` — the thin durable intent annotation that colocates with a UI screen's component body. Use when authoring or auditing a screen design-context annotation, when emitting a screen as part of a UI feature (kind: ui), or when validating that an existing annotation stays thin. Provides the YAML front-matter field schema (id / component-path / design_system / bundle), the rationale-only body rule, a skeleton template, and a worked Library example."
 ---
 # smithy.helper-screen-design
 
 Authoring contract for the thin durable annotation that carries a UI screen's
-*intent*. The composable is the screen's body; the `<ScreenId>.design.md` file
-at `design/screens/<ScreenId>.design.md` (in the **app repo**, alongside the
-code) is metadata *about* that body — why the screen exists, what was
+*intent*. The UI component is the screen's body; the `<ScreenId>.design.md`
+file at `design/screens/<ScreenId>.design.md` (in the **app repo**, alongside
+the code) is metadata *about* that body — why the screen exists, what was
 deliberately chosen, what was deferred. Load this skill when:
 
 - Writing a new `<ScreenId>.design.md` for a `kind: ui` feature.
@@ -26,13 +26,14 @@ features have no screen artifact at all.
 ## Why a thin annotation (not a screen spec)
 
 The "third lifetime" question for UI work — *what is durable about a screen?*
-— resolves to: **the composable**. Every spec we could write about layout,
-structure, or steps is either already encoded in the composable or destined
-to drift against it. So the durable artifact is rationale only:
+— resolves to: **the component body**. Every spec we could write about layout,
+structure, or steps is either already encoded in the project framework's
+component or destined to drift against it. So the durable artifact is rationale
+only:
 
-- **The composable owns layout, structure, and behavior** (verified by the
-  bundle when present, the design skill always, and the Maestro flow at
-  `wire`).
+- **The component owns layout, structure, and behavior** (verified by the
+  bundle when present, the design skill always, and the executable flow body
+  at `wire`).
 - **The `.design.md` owns intent** — the product reason, the choices, the
   non-decisions — colocated with the code so neither moves without the
   other.
@@ -51,7 +52,7 @@ fences. Four keys, three required:
 | Key | Required | Notes |
 |-----|----------|-------|
 | `id` | Yes | Flat, stable `ScreenId`. Matches the `screens:` list of the originating UI feature in `.features.md`; never reused across screens. |
-| `composable` | Yes | Repo-relative path to the owning Compose file (e.g. `app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt`). Paths survive package renames; the path is the contract, not a fully-qualified Kotlin name. |
+| `component-path` | Yes | Repo-relative path to the owning UI component file in the project's framework (for example a Compose file such as `app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt`, or a React component such as `src/screens/LibraryScreen.tsx`). Paths survive package/module renames; the path is the contract, not a framework-specific symbol name. |
 | `design_system` | Yes | Reference to the committed design skill (e.g. `story-spider-design`). Source of truth even when a `bundle` is present — bundle wins on layout & visual intent, skill wins on implementation dialect. |
 | `bundle` | No | Repo-relative path to the originating Claude Design export (e.g. `design/bundles/library.zip`). A visual/structural reference, not a drop-in. Omit the key entirely when no bundle exists — do not set it to `null` or an empty string. |
 
@@ -72,11 +73,11 @@ order:
 | `## Deliberate choices` | Decisions a future contributor (or `forge`) would otherwise re-litigate (list vs. grid, FAB vs. app-bar action, empty-state weight). State the choice **and the why**. | Step-by-step descriptions, pixel-level layout, copy text. |
 | `## Deferred` | Things this screen explicitly does *not* do, with enough context that they don't get reinvented. | Backlog grooming for other screens. |
 
-There is **no `## Layout`, `## States`, or `## Flow` section.** The
-composable and the Maestro flow (at `wire`) own those. If you find yourself
-typing "the top of the screen contains…" — stop. That belongs in the
-composable or the bundle, not here. No layout description, no step-by-step
-walkthrough, no copy strings, no state-machine diagrams.
+There is **no `## Layout`, `## States`, or `## Flow` section.** The component
+and the executable flow body (at `wire`) own those. If you find yourself typing
+"the top of the screen contains…" — stop. That belongs in the component or the
+bundle, not here. No layout description, no step-by-step walkthrough, no copy
+strings, no state-machine diagrams.
 
 ---
 
@@ -85,7 +86,7 @@ walkthrough, no copy strings, no state-machine diagrams.
 ````markdown
 ---
 id: <ScreenId>
-composable: <repo-relative path to the owning Compose file>
+component-path: <repo-relative path to the owning UI component file>
 design_system: <committed design skill, e.g. story-spider-design>
 bundle: <repo-relative path to the Claude Design export, or omit the key>
 ---
@@ -114,7 +115,7 @@ looks like — why it is here at all.>
 ````markdown
 ---
 id: Library
-composable: app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt
+component-path: app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt
 design_system: story-spider-design
 bundle: design/bundles/library.zip
 ---
@@ -157,7 +158,9 @@ from the launcher.
 
 Note what is *not* in the example: no list-row anatomy, no FAB position, no
 copy strings, no state-machine diagram. All of those belong in the
-composable (or, for navigation, the Maestro flow at `wire`).
+component (or, for navigation, the executable flow body at `wire`). The
+example uses a Compose component path because that is Story Spider's stack;
+it is illustrative, not required by the schema.
 
 ---
 
@@ -166,9 +169,9 @@ composable (or, for navigation, the Maestro flow at `wire`).
 - **`id` is flat**, matching the rest of the repo-resident UI graph
   (`ScreenId`, `FlowId`). The repo is the namespace; no scoping prefix,
   no path-encoded hierarchy.
-- **`composable` is a path, not a fully-qualified Kotlin name.** Paths
-  survive package renames; fully-qualified names do not, and the file
-  already encodes the package.
+- **`component-path` is a path, not a framework-specific symbol name.** Paths
+  survive package/module renames; fully-qualified Kotlin names, exported React
+  symbols, Swift type names, and equivalent framework identifiers do not.
 - **`design_system` is the *committed skill*, not the bundle.** A bundle
   is optional and per-screen; the skill is the foundation and applies
   even when no bundle exists, so it owns the source-of-truth slot.
@@ -183,8 +186,9 @@ composable (or, for navigation, the Maestro flow at `wire`).
 When auditing an existing `<ScreenId>.design.md`, flag any of the
 following:
 
-- [ ] Missing required front-matter key (`id`, `composable`, `design_system`).
-- [ ] `composable:` path does not resolve to an existing file in the repo.
+- [ ] Missing required front-matter key (`id`, `component-path`,
+      `design_system`).
+- [ ] `component-path:` path does not resolve to an existing file in the repo.
 - [ ] `id` does not match the feature's `screens:` list, or is reused
       across screens.
 - [ ] `design_system:` empty even when a `bundle:` is set (bundle without

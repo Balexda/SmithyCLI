@@ -206,7 +206,7 @@ schema; the same field set is captured once in the `feature-kinds` snippet
 |-----|------|----------|-------|
 | `kind` | both | Yes | `backend` or `ui`. Selects the downstream `forge` profile. |
 | `phase` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
-| `design_system` | ui | Yes | Reference to the committed design skill (e.g. `story-spider-design`); source of truth even when a bundle is present. |
+| `design_system` | ui | Yes | Reference to the committed design skill (for example `story-spider-design`); source of truth even when a bundle is present. |
 | `bundle` | ui | No | Repo-relative path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
@@ -219,8 +219,8 @@ spec (prose delta).
 
 | `phase` | Means | Done when |
 |---------|-------|-----------|
-| `build` | Implement the screen against a mock, behind `flag`. No real data. | Screen renders every brief state using only design-system tokens/components, gated by the flag. |
-| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired **and** the Maestro flow + `flow.md` emitted/updated for every flow in `flows`. |
+| `build` | Implement the screen component against a mock, behind `flag`. No real data. | Screen renders every brief state using only design-system tokens/components, gated by the flag. |
+| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired **and** the executable test body + `flow.md` emitted/updated for every flow in `flows` using the project's UI driver. |
 
 ### The seam = two features sharing one flag
 
@@ -283,7 +283,8 @@ flows: [AddTitle]
 ```
 
 **Description**: Connect AddTitle to `LibraryStore` and flip `add_title_v1`. Confirm
-persists a real `Title`; done includes emitting `maestro/flows/AddTitle.yaml` and
+persists a real `Title`; done includes emitting the executable test body
+(`maestro/flows/AddTitle.yaml` in this Maestro example) and
 `design/flows/AddTitle.flow.md`.
 ````
 
@@ -303,11 +304,12 @@ on `—` (build-ahead-of-backend).
 
 Each `ScreenId` listed under a UI feature's `screens:` field resolves — in the
 **app repo, not in Smithy** — to a thin durable annotation at
-`design/screens/<ScreenId>.design.md`. The composable is the screen's body; this
-file carries the screen's *intent* (why it exists, deliberate choices, deferred
-bits) colocated with the code so it travels and versions with the composable.
+`design/screens/<ScreenId>.design.md`. The screen's component file is the body;
+this file carries the screen's *intent* (why it exists, deliberate choices,
+deferred bits) colocated with the code so it travels and versions with the
+component.
 
-The full authoring contract — YAML front-matter schema (`id`, `composable`,
+The full authoring contract — YAML front-matter schema (`id`, `component-path`,
 `design_system`, `bundle`), the rationale-only body rule, the skeleton template,
 a worked `Library.design.md` example, naming decisions, and a review checklist
 — lives in the body-on-demand skill **`smithy.helper-screen-design`**
@@ -321,17 +323,17 @@ cannot drift.
 Each `FlowId` listed under a UI feature's `flows:` field resolves — in the
 **app repo, not in Smithy** — to a durable **1:1 pair** of files:
 `design/flows/<FlowId>.flow.md` (thin intent annotation) and
-`maestro/flows/<FlowId>.yaml` (executable behavioral body). The yaml owns
-the steps and guard assertions a UI driver replays; the `.flow.md` owns
-*why* — the product truth the flow preserves, why the guards exist,
-deliberate entry / exit, and a coverage caveat for anything below what a UI
-driver can observe.
+an executable test body in the project's UI driver (for example
+`maestro/flows/<FlowId>.yaml`). The test body owns the steps and guard
+assertions a UI driver replays; the `.flow.md` owns *why* — the product truth
+the flow preserves, why the guards exist, deliberate entry / exit, and a
+coverage caveat for anything below what a UI driver can observe.
 
 The full authoring contract — YAML front-matter schema (`id`, `screens`,
-`maestro`), the rationale-only body rule, the Maestro selector contract
-(testID-keyed only, asserts traversal AND guards), the testID naming
-convention, skeleton templates for both halves, a worked `AddTitle` example,
-naming decisions, the audio-service coverage caveat, and a review checklist
+`test-body`), the rationale-only body rule, the driver-neutral selector
+contract (testID-keyed only, asserts traversal AND guards), the testID naming
+convention, skeleton templates for both halves, worked examples including
+Maestro, naming decisions, the audio-service coverage caveat, and a review checklist
 — lives in the body-on-demand skill **`smithy.helper-flow-definition`**
 (`skills/smithy.helper-flow-definition/SKILL.prompt`). Agents lazy-load it
 via `Skill("smithy.helper-flow-definition")` when authoring or auditing a

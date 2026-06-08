@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Rename screen component contract**
+- [x] **Rename screen component contract**
 
   Update `src/templates/agent-skills/skills/smithy.helper-screen-design/SKILL.prompt` so screen annotations require `component-path` instead of the Compose-specific field. Keep Compose as a worked example only, and preserve the rationale-only body rules for AS 2.3.
 
@@ -28,7 +28,7 @@
   - Review checklist validates `component-path`
   - Rationale-only screen body rules remain intact
 
-- [ ] **Rename flow test-body contract**
+- [x] **Rename flow test-body contract**
 
   Update `src/templates/agent-skills/skills/smithy.helper-flow-definition/SKILL.prompt` so flow annotations require `test-body` instead of the Maestro-specific field. Keep Maestro as one executable-body example while preserving the intent-only `.flow.md` rule for AS 2.3.
 
@@ -39,7 +39,7 @@
   - Review checklist validates `test-body`
   - `.flow.md` bodies remain intent-only with no step enumeration
 
-- [ ] **Align feature-kind documentation**
+- [x] **Align feature-kind documentation**
 
   Update `src/templates/agent-skills/snippets/feature-kinds.md` and `src/templates/agent-skills/README.md` so UI feature metadata points to neutral screen and flow artifacts. The docs should make backend versus UI output visible without implying a fixed framework or driver, satisfying AS 2.3.
 
