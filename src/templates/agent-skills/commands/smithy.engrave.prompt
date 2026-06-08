@@ -99,9 +99,11 @@ Column rules:
 - **What diverges** — what reality does, vs. what the rule says. One sentence.
 - **Disposition + Why** — `Accepted: <reason>` for a permanent carve-out
   the team has decided to live with, or `Temporary: <reason>` for a known
-  gap with an open tracking issue. The Capitalized `Accepted:` /
+  gap that should be tracked toward closure. The Capitalized `Accepted:` /
   `Temporary:` token is the canonical on-disk form.
-- **Tracking Issue** — `#NNN` for `Temporary` rows; `—` for `Accepted` rows.
+- **Tracking Issue** — `#NNN` for a `Temporary` row whose drift-tracking
+  issue exists, or `—` if that issue could not be created yet (see Phase 6
+  failure fallback); always `—` for `Accepted` rows.
 - **Severity** — `low` \| `medium` \| `high`. `high` rows MAY block
   planning artifacts that would compound the drift.
 
@@ -620,9 +622,11 @@ Superseded <old id> <old title>
 ```
 
 For Phase 6 (exception edits), print the recomputed status and the
-operation summary. If drift-tracking issue creation failed, include one
-additional line that names the failure and says the ledger row was kept with
-`Tracking Issue: —`:
+operation summary. When a `Temporary:` row was added, include a
+`drift issue:` line — show `#NNN` if the drift-tracking issue was created, or
+`not created — <failure summary>` if creation failed (the ledger row is kept
+with `Tracking Issue: —`). Omit the line for `Accepted:` rows, resolutions,
+removals, and conversions, which never create an issue:
 
 ```
 Updated <INV id> ledger: <added|resolved> row "<Where>"
