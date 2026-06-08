@@ -69,15 +69,22 @@ from the provided context, note the gap in `## Gaps / Missing Context`.
 
 ### Step 3: Draft the Sections
 
-Before drafting, load `Skill("smithy.helper-voice")` in draft mode for the
-shared voice taxonomy. Apply that guidance together with the section-specific
-structure below for each assigned section.
+Load `Skill("smithy.helper-voice")` in draft mode for the shared voice
+taxonomy, then **parameterize it per assigned section**: each section under
+**Section-Specific Guidance** below carries an `<!-- audience: ... -->` tag
+naming its Role × Mode pair and length budget (e.g., the Summary is drafted
+as `stakeholder × explanation` to a 2-3 sentence budget). For each assigned
+section, read its tag, apply the helper's rules for that cell, and then layer
+the section-specific structure below on top. Mapping each section to the right
+voice cell — and holding the draft to that budget — is this sub-agent's job;
+the helper supplies the cross-cutting taxonomy, not the per-section choice.
 
 ---
 
 ## Section-Specific Guidance
 
 ### Summary
+<!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 
 - **Length**: 2–3 sentences maximum.
 - **Structure**: (1) What this change does — concrete and specific, not generic.
@@ -88,6 +95,7 @@ structure below for each assigned section.
   benefit]. Without it, [cost that compounds over time]."
 
 ### Motivation / Problem Statement
+<!-- audience: stakeholder; mode: explanation; length: 3-6 paragraphs; diagram: optional; examples: discouraged -->
 
 - **Length**: 3–6 paragraphs. Each paragraph earns its place.
 - **Paragraph 1 — The problem in the wild**: Describe the concrete situation
@@ -107,6 +115,7 @@ structure below for each assigned section.
 - **Close**: One sentence stating the goal — what a solved world looks like.
 
 ### Personas
+<!-- audience: stakeholder; mode: explanation; length: 1 paragraph per persona; diagram: optional; examples: discouraged -->
 
 - **Structure**: One subsection (or paragraph block) per named persona role.
 - **Each persona must include**: (1) Their role and the context in which they

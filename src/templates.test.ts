@@ -2180,6 +2180,9 @@ describe('getComposedTemplates', () => {
     expect(prose).toContain('Skill("smithy.helper-voice")');
     expect(prose).not.toContain('Prose principles — follow these on every sentence');
     expect(prose).not.toContain('Anti-pattern to avoid');
+    // Section-specific guidance carries audience tags in the shared grammar so
+    // the sub-agent parameterizes the helper per section (PR #454 review).
+    expect(prose).toContain('<!-- audience: stakeholder; mode: explanation; length: 2-3 sentences;');
   });
 
   it('strike with claude variant renders competing plan dispatch', async () => {
