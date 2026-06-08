@@ -142,7 +142,7 @@ Recommended implementation sequence:
 
 | ID | Description | Source Category | Impact | Confidence | Status | Resolution |
 |----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | The exact selected strategy cannot be finalized in this spec without the M1 JS and JVM forge baselines and side-by-side candidate measurements. | Dependency Relationships | High | High | open | — |
+| SD-001 | The exact selected strategy cannot be finalized in this spec without the M1 JS and JVM forge baselines and side-by-side candidate measurements. | Dependency Relationships | High | High | resolved | Resolved 2026-06-08: `per_task_brief` is selected from the complete JS and JVM side-by-side measurements recorded in `specs/2026-05-15-006-smithy-implement-per-task-spec-re-read-reduction/context-delivery-decision.md`. |
 | SD-002 | The maximum acceptable size for a task context packet depends on observed task and artifact sizes from the M1 forge fixtures. Implementation must set and document a bound before merge. | Non-Functional Quality | Medium | Medium | open | — |
 
 ## Out of Scope
