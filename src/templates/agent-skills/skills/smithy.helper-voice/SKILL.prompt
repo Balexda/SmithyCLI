@@ -7,9 +7,8 @@ description: "Section-level voice and audience guidance, invoked by smithy.helpe
 Voice and audience taxonomy for any prose a Smithy agent produces —
 planning artifacts (RFCs, feature maps, specs, tasks), forge deliverables
 (READMEs, ADRs, migration plans, runbooks, inline documentation), and the
-narrative paragraphs that thread them together. Provider-neutral: no
-Claude-, Gemini-, or Codex-specific syntax. Load this skill in either of
-two modes:
+narrative paragraphs that thread them together. Load this skill in
+either of two modes:
 
 - **Draft mode** — given a section, audience, and length budget, write
   prose to convention from scratch.

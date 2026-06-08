@@ -931,10 +931,6 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
     expect(body).not.toMatch(/\.gemini\/skills/);
     expect(body).not.toMatch(/\.agents\/skills/);
-    // The body must explicitly assert its provider-neutrality so a
-    // future edit that quietly adds provider-specific syntax has to
-    // also remove the assertion.
-    expect(body).toMatch(/Provider-neutral/i);
   });
 
   it('smithy.helper-voice §2 checklist names the prose-comprehension and self-check anti-patterns', () => {
@@ -962,7 +958,9 @@ describe('getComposedTemplates', () => {
   // helper is reframed agent-only), runs a fit-for-purpose review, and
   // delegates prose cleanup down to the voice helper. These assertions
   // back-stop the deployment contract (body-only, frontmatter retained,
-  // provider-neutral) and the five-step procedure.
+  // provider-neutral) and the review procedure (framing, audience
+  // inventory, fit-for-purpose, artifact-quality review, recommendation,
+  // navigation design, directed hand-off).
   it('smithy.helper-documentation is body-only (no scripts) with frontmatter retained', () => {
     const skill = composed.skills.get('smithy.helper-documentation');
     expect(skill).toBeDefined();
@@ -971,17 +969,27 @@ describe('getComposedTemplates', () => {
     expect(skill!.scripts.size).toBe(0);
   });
 
-  it('smithy.helper-documentation body names the five-step procedure and delegates to the voice helper', () => {
+  it('smithy.helper-documentation body covers the procedure, artifact-quality review, and directed hand-off', () => {
     const skill = composed.skills.get('smithy.helper-documentation')!;
-    // The fit-for-purpose procedure (steps 1–4) plus the hand-off (step 5).
+    // Step 1 frames how much structural freedom the document allows.
+    expect(skill.prompt).toMatch(/governance and genre/i);
+    expect(skill.prompt).toMatch(/template-governed/i);
+    // The fit-for-purpose / split steps.
     expect(skill.prompt).toMatch(/Audience inventory/i);
     expect(skill.prompt).toMatch(/Fit-for-purpose check/i);
-    expect(skill.prompt).toMatch(/Splitting recommendation/i);
+    expect(skill.prompt).toMatch(/Recommendation/);
     expect(skill.prompt).toMatch(/Navigation\/index design/i);
-    // The mis-shaped heuristic is the load-bearing rule of the skill.
+    // The mis-shaped heuristic is the load-bearing rule of the split decision.
     expect(skill.prompt).toMatch(/60%/);
-    // Step 5 pulls in the voice helper as a sub-skill for prose cleanup.
+    // The broadened artifact-quality review: presence, ordering, value.
+    expect(skill.prompt).toMatch(/Artifact-quality review/i);
+    expect(skill.prompt).toMatch(/completeness/i);
+    expect(skill.prompt).toMatch(/Ordering \/ reading path/i);
+    expect(skill.prompt).toMatch(/zero-value section/i);
+    // The hand-off pulls in the voice helper and seeds it with findings so
+    // its cleanup has direction rather than starting blind.
     expect(skill.prompt).toContain('Skill("smithy.helper-voice")');
+    expect(skill.prompt).toMatch(/findings/i);
     // Cheap pass-through on well-shaped input keeps it from taxing healthy docs.
     expect(skill.prompt).toMatch(/pass-through/i);
   });
@@ -994,7 +1002,6 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
     expect(body).not.toMatch(/\.gemini\/skills/);
     expect(body).not.toMatch(/\.agents\/skills/);
-    expect(body).toMatch(/Provider-\s*neutral/i);
   });
 
   it('narrative commands load smithy.helper-voice for direct prose authoring', () => {
