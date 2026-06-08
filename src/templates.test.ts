@@ -11,7 +11,7 @@ import {
   getComposedTemplates,
   type ComposedTemplates,
 } from './templates.js';
-import { ORDERS_DEFAULT_TEMPLATES } from './orders-templates.js';
+import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 
 describe('stripFrontmatter', () => {
   it('removes YAML frontmatter from content', () => {
@@ -3137,6 +3137,47 @@ describe('getComposedTemplates', () => {
     expect(engrave).toMatch(/status: aligned/);
     expect(engrave).toMatch(/\bdrifting\b/);
     expect(engrave).toMatch(/recompute/i);
+  });
+
+  it('engrave template creates drift issues only for new Temporary exceptions', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('Skill("smithy.gh-issue")');
+    expect(engrave).toContain('create-issue.sh');
+    expect(engrave).toMatch(/only when adding a new `Temporary:` ledger row/i);
+    expect(engrave).toMatch(/write the issue body to a temporary file/i);
+    expect(engrave).toMatch(/JSON `number`/);
+    expect(engrave).toMatch(/write `#NNN` into that new row's `Tracking Issue` cell/i);
+    expect(engrave).toMatch(/Accepted:` rows[\s\S]*do not create/i);
+  });
+
+  it('engrave template renders drift issue bodies from invariant context', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toMatch(/title from the `What diverges` text/i);
+    expect(engrave).toMatch(/Invariant: `<INV id>` — `<invariant title>`/);
+    expect(engrave).toMatch(/Divergence: `<What diverges>`/);
+    expect(engrave).toMatch(/Establishing decisions: `<established_by ids>`/);
+    expect(engrave).toMatch(/Accepted:` row.*`Tracking Issue`.*`—`/is);
+  });
+
+  it('engrave template preserves exception edits when drift issue creation fails', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toMatch(/auth, network, script, or JSON parsing failure/i);
+    expect(engrave).toMatch(/leave the newly\s+added `Temporary:` ledger row in place/i);
+    expect(engrave).toMatch(/`Tracking Issue` cell as `—`/);
+    expect(engrave).toMatch(/terminal summary/i);
+    expect(engrave).toMatch(/do not roll back/i);
+    expect(engrave).toMatch(/do not close, comment on, label, or otherwise mutate/i);
+  });
+
+  it('engraved records stay out of orders template registries', () => {
+    expect(ORDERS_TEMPLATE_TYPES).toEqual(['rfc', 'features', 'spec', 'tasks']);
+    expect(Object.keys(ORDERS_DEFAULT_TEMPLATES).sort()).toEqual(
+      [...ORDERS_TEMPLATE_TYPES].sort(),
+    );
+    const orderTypes: readonly string[] = ORDERS_TEMPLATE_TYPES;
+    expect(orderTypes).not.toContain('decision');
+    expect(orderTypes).not.toContain('invariant');
+    expect(orderTypes).not.toContain('principle');
   });
 
   it('engrave template states the "engraved records are not Dependency Order rows" rule', () => {

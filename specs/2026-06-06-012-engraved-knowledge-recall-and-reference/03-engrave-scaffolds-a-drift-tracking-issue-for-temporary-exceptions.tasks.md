@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add drift issue creation to engrave**
+- [x] **Add drift issue creation to engrave**
 
   Update `src/templates/agent-skills/commands/smithy.engrave.prompt` so Phase 6 creates a drift-tracking issue only when adding a `Temporary:` row to an invariant's Known-Exceptions ledger. The prompt must load `smithy.gh-issue`, write an issue body to a temporary file, invoke that skill's `create-issue.sh` path for the current agent, capture its JSON `number`, and write `#NNN` into the new row's `Tracking Issue` column for AS 3.1.
 
@@ -28,7 +28,7 @@
   - The invariant frontmatter status is still recomputed from remaining `Temporary:` rows
   - Template coverage proves the temporary-only create path is retained
 
-- [ ] **Render the drift issue body**
+- [x] **Render the drift issue body**
 
   Add the prompt instructions and body template needed for the drift-tracking issue in `smithy.engrave.prompt`. The body must identify the invariant id and title, state the divergence, cite the establishing decision or decisions from `established_by`, and keep engraved records out of `smithy.orders` template type handling for AS 3.1 and AS 3.2.
 
@@ -39,7 +39,7 @@
   - No engraved record type is added to orders template registries or defaults
   - Template coverage proves accepted exceptions and orders registries stay out of the drift path
 
-- [ ] **Preserve exceptions when issue creation fails**
+- [x] **Preserve exceptions when issue creation fails**
 
   Define Phase 6 failure handling so an auth, network, or script failure leaves the newly added `Temporary:` ledger row in place with `Tracking Issue` set to `—`, surfaces the failure in the terminal summary, and does not roll back the invariant edit. Also state that resolving or converting a `Temporary:` exception leaves any linked issue open and performs no comment or close action for AS 3.3 and AS 3.4.
 
