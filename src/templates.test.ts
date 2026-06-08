@@ -127,6 +127,7 @@ describe('loadSnippets', () => {
       'persona-convention.md',
       'consult-engraved-knowledge-claude.md',
       'consult-engraved-knowledge-degraded.md',
+      'engraved-recall-rules.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -152,22 +153,27 @@ describe('loadSnippets', () => {
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
     expect(snippets.get('consult-engraved-knowledge-claude.md')).toContain('Consult Engraved Knowledge');
     expect(snippets.get('consult-engraved-knowledge-degraded.md')).toContain('Consult Engraved Knowledge');
+    expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
   });
 });
 
 describe('consult-engraved-knowledge snippets', () => {
   // US1 Slice 2: engraved recall is the shared planning-command integration
-  // point, split into two agent-agnostic snippets. The snippets themselves
-  // carry NO agent-conditional logic (no {{#ifAgent}}, no "if you are X"
-  // prose) — the consuming command picks the right one with {{#ifAgent}}
-  // (wired in Slice 3). These tests lock the split so reintroducing
-  // conditionals inside a snippet, or collapsing the two paths, fails early.
+  // point, split into two agent-agnostic snippets. The snippets carry NO
+  // agent-conditional logic (no {{#ifAgent}}, no "if you are X" prose) — the
+  // consuming command picks the right one with {{#ifAgent}} (wired in Slice 3).
+  // The recall *rules* live once in the shared `engraved-recall-rules` snippet,
+  // included by both the smithy-recall agent and the degraded path, so the
+  // degraded snippet embeds rather than duplicates them. These tests lock the
+  // split and the de-duplication so reintroducing conditionals inside a
+  // snippet, re-duplicating the rules, or collapsing the two paths fails early.
   const CLAUDE = 'consult-engraved-knowledge-claude.md';
   const DEGRADED = 'consult-engraved-knowledge-degraded.md';
+  const RULES = 'engraved-recall-rules.md';
 
   // Compose a snippet through a plain Dotprompt partial include — no ifAgent
   // helper is registered, proving the snippet is conditional-free and resolves
-  // to fully-rendered text on its own.
+  // (recursively, through any nested {{>...}}) to fully-rendered text.
   const composeSnippet = async (name: string): Promise<string> => {
     const snippets = loadSnippets();
     const partials: Record<string, string> = {};
@@ -181,21 +187,21 @@ describe('consult-engraved-knowledge snippets', () => {
 
   it('both snippet files are loadable as partials via loadSnippets', () => {
     const snippets = loadSnippets();
-    for (const name of [CLAUDE, DEGRADED]) {
+    for (const name of [CLAUDE, DEGRADED, RULES]) {
       expect(snippets.has(name)).toBe(true);
       expect(snippets.get(name)!.length).toBeGreaterThan(0);
     }
   });
 
-  it('neither snippet encodes agent-conditional logic or prose branching', () => {
+  it('neither consult snippet encodes agent-conditional logic or prose branching', () => {
     const snippets = loadSnippets();
     for (const name of [CLAUDE, DEGRADED]) {
       const content = snippets.get(name)!;
       // The agent split lives in the consuming command, never in the snippet.
+      // Plain {{>partial}} includes are allowed; agent conditionals are not.
       expect(content).not.toContain('{{#ifAgent');
       expect(content).not.toContain('{{else}}');
       expect(content).not.toContain('{{/ifAgent}}');
-      expect(content).not.toContain('{{');
       expect(content).not.toMatch(/If you are Claude/i);
       expect(content).not.toMatch(/If you are Gemini or Codex/i);
     }
@@ -212,21 +218,25 @@ describe('consult-engraved-knowledge snippets', () => {
     expect(content).not.toContain('candidate new exception');
   });
 
-  it('degraded snippet reads canonical roots and omits the smithy-recall dispatch', () => {
+  it('degraded snippet embeds the shared rules rather than duplicating them', () => {
     const content = loadSnippets().get(DEGRADED)!;
     expect(content).toContain('## Consult Engraved Knowledge');
     // No recall sub-agent on this path, so it must not be told to dispatch one.
     expect(content).not.toContain('smithy-recall');
+    // The rules are pulled in via the shared partial, not restated inline.
+    expect(content).toContain('{{>engraved-recall-rules}}');
+    expect(content).not.toContain('docs/decisions/');
+    expect(content).not.toContain('candidate new exception');
+  });
+
+  it('shared engraved-recall-rules snippet is the single source of the recall rules', () => {
+    const content = loadSnippets().get(RULES)!;
     expect(content).toContain('docs/decisions/');
     expect(content).toContain('docs/invariants/');
     expect(content).toContain('docs/constitution/');
     expect(content).toContain('docs/design/decisions/');
     expect(content).toContain('docs/design/invariants/');
     expect(content).toContain('docs/design/constitution/');
-  });
-
-  it('degraded snippet carries ranking, conflict, stale-citation, domain, and empty-state rules', () => {
-    const content = loadSnippets().get(DEGRADED)!;
     for (const token of ['domain', 'topics', 'scope', 'applies_to']) {
       expect(content).toContain(token);
     }
@@ -237,18 +247,30 @@ describe('consult-engraved-knowledge snippets', () => {
     expect(content).toContain('deprecated');
     expect(content).toContain('"no_records"');
     expect(content).toContain('"no_match"');
+    // The shared rules are agent-agnostic — no conditionals, no sub-agent name.
+    expect(content).not.toContain('{{');
+    expect(content).not.toContain('smithy-recall');
   });
 
-  it('each snippet composes via its {{>partial}} include with no leftover syntax', async () => {
+  it('degraded snippet composes (through its nested include) into the full rules', async () => {
+    const degraded = await composeSnippet(DEGRADED);
+    expect(degraded).toContain('## Consult Engraved Knowledge');
+    // The nested {{>engraved-recall-rules}} resolves to the actual rule text.
+    expect(degraded).toContain('docs/decisions/');
+    expect(degraded).toContain('docs/design/constitution/');
+    expect(degraded).toContain('candidate new exception');
+    expect(degraded).toContain('superseded');
+    expect(degraded).toContain('deprecated');
+    expect(degraded).toContain('"no_records"');
+    expect(degraded).toContain('"no_match"');
+    expect(degraded).not.toContain('{{');
+  });
+
+  it('claude snippet composes via its {{>partial}} include with no leftover syntax', async () => {
     const claude = await composeSnippet(CLAUDE);
     expect(claude).toContain('## Consult Engraved Knowledge');
     expect(claude).toContain('smithy-recall');
     expect(claude).not.toContain('{{');
-
-    const degraded = await composeSnippet(DEGRADED);
-    expect(degraded).toContain('## Consult Engraved Knowledge');
-    expect(degraded).toContain('docs/decisions/');
-    expect(degraded).not.toContain('{{');
   });
 });
 
