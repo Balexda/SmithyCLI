@@ -109,8 +109,12 @@ function sanitizeRepoKey(name: string): string {
  *   1. `git rev-parse --git-common-dir` → the shared `.git` dir (relative
  *      `.git` from the main worktree root, absolute path from a linked
  *      worktree). It points at the same place for every worktree.
- *   2. `repoRoot = dirname(realpath(resolve(targetDir, commonDir)))` — the
- *      main worktree's root.
+ *   2. The repo root is the common dir's parent when the common dir is the
+ *      usual `.git` directory; for a submodule the common dir is instead
+ *      `<superproject>/.git/modules/<submodule>`, whose own name is the
+ *      stable per-submodule identity (taking the parent would collapse every
+ *      submodule onto `modules`). `git init --separate-git-dir` layouts are
+ *      handled the same way.
  *   3. `repoKey = basename(repoRoot)`.
  *
  * Fallbacks, in order, when git is unavailable or yields nothing:
@@ -123,10 +127,15 @@ export function repoKey(targetDir: string): string {
   const commonDir = gitCapture(targetDir, ['rev-parse', '--git-common-dir']);
   if (commonDir) {
     try {
-      const repoRoot = path.dirname(
-        fs.realpathSync(path.resolve(targetDir, commonDir)),
-      );
-      const key = path.basename(repoRoot);
+      const realCommon = fs.realpathSync(path.resolve(targetDir, commonDir));
+      // A common dir named `.git` belongs to a normal checkout or a linked
+      // worktree, so the repo is its parent. Anything else is already a named
+      // git dir — `.git/modules/<submodule>` for submodules, or a detached
+      // dir under `--separate-git-dir` — whose basename is the repo identity.
+      const key =
+        path.basename(realCommon) === '.git'
+          ? path.basename(path.dirname(realCommon))
+          : path.basename(realCommon);
       if (key.length > 0) return sanitizeRepoKey(key);
     } catch {
       // realpath failed (e.g. the common dir vanished mid-run) — fall through.

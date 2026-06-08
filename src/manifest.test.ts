@@ -93,6 +93,40 @@ describe('repoKey', () => {
     expect(fromWorktree).not.toBe('wt');
   });
 
+  it('keys a submodule by its own name, not `modules`', () => {
+    passGitThrough();
+
+    const parent = makeTmpDir('smithy-manifest-sub-');
+    const subDir = path.join(parent, 'subsource');
+    const superDir = path.join(parent, 'super');
+    fs.mkdirSync(subDir);
+    fs.mkdirSync(superDir);
+
+    // A standalone repo to embed as a submodule.
+    for (const dir of [subDir, superDir]) {
+      git(['init', '-q'], dir);
+      git(['config', 'user.email', 'test@example.com'], dir);
+      git(['config', 'user.name', 'Test'], dir);
+      git(['config', 'commit.gpgsign', 'false'], dir);
+      fs.writeFileSync(path.join(dir, 'file.txt'), 'hello\n');
+      git(['add', '.'], dir);
+      git(['commit', '-q', '-m', 'init'], dir);
+    }
+    // Embed `subsource` as submodule `mysub`. Local-path submodules need the
+    // file protocol explicitly enabled on git >= 2.38.
+    git(
+      ['-c', 'protocol.file.allow=always', 'submodule', 'add', subDir, 'mysub'],
+      superDir,
+    );
+
+    // Inside the submodule, `--git-common-dir` points at
+    // `<super>/.git/modules/mysub` — the parent is `modules`, which would
+    // collide across every submodule. The key must be the submodule name.
+    const key = repoKey(path.join(superDir, 'mysub'));
+    expect(key).toBe('mysub');
+    expect(key).not.toBe('modules');
+  });
+
   it('falls back to basename(targetDir) for a non-git directory', () => {
     // No git repo here, so `git rev-parse` exits non-zero → fall through.
     vi.mocked(execFileSync).mockImplementation((() => {

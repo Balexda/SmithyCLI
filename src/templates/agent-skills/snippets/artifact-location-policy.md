@@ -11,9 +11,9 @@ prefix.
 - When `{{artifactsRoot}}` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `{{artifactsRoot}}` is `~/.smithy/repos/<repo>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repo>/docs/rfcs/...`,
-  `~/.smithy/repos/<repo>/docs/personas/...`, `~/.smithy/repos/<repo>/specs/...`, etc.
+- When `{{artifactsRoot}}` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
+  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
+  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
   Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
   Codex) expand `~` at tool-call time, so the path is portable across team
   members even when this prompt is committed to source control.
