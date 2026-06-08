@@ -6,10 +6,8 @@ candidate invariant exceptions feed clarification or specification debt, and
 superseded/deprecated citation hazards are surfaced before write-out. Clean or
 empty results do not block the command.
 
-### Claude Fast Path
-
-If you are Claude, dispatch the `smithy-recall` sub-agent with the current
-planning context:
+{{#ifAgent 'claude'}}
+Dispatch the `smithy-recall` sub-agent with the current planning context:
 
 - Artifact type, user request, goals, known scope, and any in-progress draft or
   cited engraved records.
@@ -20,11 +18,9 @@ planning context:
 
 Use the returned `relevant`, `conflicts`, `superseded_citations`, `empty`, and
 `empty_reason` fields as the engraved-knowledge recall result.
-
-### Gemini/Codex Degraded Path
-
-If you are Gemini or Codex, do not dispatch a sub-agent. Read the engraved scan
-roots directly and apply the same recall rules inline.
+{{else}}
+There is no recall sub-agent available, so read the engraved scan roots directly
+and apply the recall rules inline.
 
 Canonical scan roots:
 
@@ -77,3 +73,4 @@ Empty-state behavior:
   `empty_reason: "no_match"`.
 - When `empty` is true, keep `relevant`, `conflicts`, and
   `superseded_citations` empty.
+{{/ifAgent}}

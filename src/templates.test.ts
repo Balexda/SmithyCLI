@@ -155,8 +155,37 @@ describe('loadSnippets', () => {
 
 describe('consult-engraved-knowledge snippet', () => {
   // US1 Slice 2: this snippet is the shared planning-command integration
-  // point for engraved recall. The tests lock down both paths so deletion,
-  // rename, or accidental narrowing to Claude-only behavior fails early.
+  // point for engraved recall. Agent-specific behavior is segmented with
+  // the template system's own {{#ifAgent}} conditional rather than baked-in
+  // "if you are Claude" prose, so each agent deploys only its own path. The
+  // tests lock down both branches and prove the segmentation renders per
+  // variant, so deletion, rename, or collapsing the two paths fails early.
+
+  // Render the snippet through the same Dotprompt + {{#ifAgent}} machinery
+  // that getComposedTemplates uses, for an arbitrary variant. The snippet
+  // has no command consumer yet (that is Slice 3), so it is exercised
+  // directly via a host template that includes the partial.
+  const renderSnippetForVariant = async (variant: string): Promise<string> => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const supportsSubAgents = variant === 'claude' || variant === 'gemini';
+    renderer.defineHelper('ifAgent', function (this: unknown, ...args: unknown[]) {
+      const options = args[args.length - 1] as {
+        fn: (ctx: unknown) => string;
+        inverse: (ctx: unknown) => string;
+      };
+      if (args.length > 1) {
+        return variant === (args[0] as string) ? options.fn(this) : options.inverse(this);
+      }
+      return supportsSubAgents ? options.fn(this) : options.inverse(this);
+    });
+    const host = '# Host Template\n\n{{>consult-engraved-knowledge}}\n';
+    return resolveSnippets(host, renderer);
+  };
 
   it('snippet file is loadable as a partial via loadSnippets', () => {
     const snippets = loadSnippets();
@@ -164,10 +193,16 @@ describe('consult-engraved-knowledge snippet', () => {
     expect(snippets.get('consult-engraved-knowledge.md')!.length).toBeGreaterThan(0);
   });
 
-  it('documents the Claude smithy-recall fast path and Gemini/Codex degraded path', () => {
+  it('segments the two paths with {{#ifAgent}} rather than prose conditionals', () => {
     const content = loadSnippets().get('consult-engraved-knowledge.md')!;
+    // The agent split is encoded as a deploy-time conditional, not prose.
+    expect(content).toContain("{{#ifAgent 'claude'}}");
+    expect(content).toContain('{{else}}');
+    expect(content).toContain('{{/ifAgent}}');
+    expect(content).not.toMatch(/If you are Claude/i);
+    expect(content).not.toMatch(/If you are Gemini or Codex/i);
+    // Both branches still carry their substance in the raw source.
     expect(content).toContain('smithy-recall');
-    expect(content).toMatch(/Gemini\/Codex Degraded Path/);
     expect(content).toContain('docs/decisions/');
     expect(content).toContain('docs/invariants/');
     expect(content).toContain('docs/constitution/');
@@ -176,7 +211,7 @@ describe('consult-engraved-knowledge snippet', () => {
     expect(content).toContain('docs/design/constitution/');
   });
 
-  it('carries ranking, conflict, stale-citation, domain, and empty-state rules', () => {
+  it('degraded branch carries ranking, conflict, stale-citation, domain, and empty-state rules', () => {
     const content = loadSnippets().get('consult-engraved-knowledge.md')!;
     for (const token of ['domain', 'topics', 'scope', 'applies_to']) {
       expect(content).toContain(token);
@@ -190,22 +225,28 @@ describe('consult-engraved-knowledge snippet', () => {
     expect(content).toContain('"no_match"');
   });
 
-  it('composes via the {{>consult-engraved-knowledge}} partial', async () => {
-    const snippets = loadSnippets();
-    const partials: Record<string, string> = {};
-    for (const [filename, content] of snippets) {
-      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
-    }
-    const renderer = new Dotprompt({ partials });
-    const host = '# Host Template\n\n{{>consult-engraved-knowledge}}\n';
-    const result = await resolveSnippets(host, renderer);
+  it('claude variant renders only the smithy-recall fast path', async () => {
+    const result = await renderSnippetForVariant('claude');
     expect(result).toContain('## Consult Engraved Knowledge');
     expect(result).toContain('smithy-recall');
+    // The direct-read degraded guidance must not leak into the Claude build.
+    expect(result).not.toContain('docs/decisions/');
+    expect(result).not.toContain('candidate new exception');
+    // No unresolved template syntax survives composition.
+    expect(result).not.toContain('{{');
+  });
+
+  it('codex variant renders only the direct-read degraded path', async () => {
+    const result = await renderSnippetForVariant('codex');
+    expect(result).toContain('## Consult Engraved Knowledge');
+    // Codex has no recall sub-agent, so it must not be told to dispatch one.
+    expect(result).not.toContain('smithy-recall');
     expect(result).toContain('docs/decisions/');
+    expect(result).toContain('docs/design/decisions/');
     expect(result).toContain('candidate new exception');
     expect(result).toContain('superseded');
     expect(result).toContain('deprecated');
-    expect(result).not.toContain('{{>consult-engraved-knowledge}}');
+    expect(result).not.toContain('{{');
   });
 });
 
