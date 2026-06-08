@@ -249,7 +249,7 @@ Do not inline the helper's taxonomy in this prompt.
 4. If the user wanted to also establish an invariant, run Phase 3b for
    that invariant, passing this decision's `id` as `established_by`, then
    patch this decision's `establishes:` to include the new invariant id.
-5. Commit and report. Commit message:
+5. Run Phase 7, then commit and report. Commit message:
    ```
    engrave(decision): D-<N> <title>
    ```
@@ -302,7 +302,7 @@ defined above.
    Fresh invariants always start `status: aligned` — the ledger is empty.
 3. If a fresh establishing decision was scaffolded in step 1, patch its
    `establishes:` to include this invariant's id.
-4. Commit and report. Commit message:
+4. Run Phase 7, then commit and report. Commit message:
    ```
    engrave(invariant): INV-<N> <title>
    ```
@@ -348,7 +348,7 @@ from a decision>
 say, what NOT to say, what the principle does and does not commit to>
 ```
 
-Commit and report. Commit message:
+Run Phase 7, then commit and report. Commit message:
 
 ```
 engrave(principle): P-<N> <title>
@@ -363,16 +363,16 @@ and section headings to the user. Ask: "What do you want to update?"
 Common update operations:
 
 - **Frontmatter only** (add a `topics` tag, extend `applies_to`, etc.):
-  patch the field, keep the body intact, commit.
-- **Body section**: locate the heading, replace its content, commit.
-  Do not reorder or rename headings — the section ordering above is
-  load-bearing for the audit (#418) and parser (#416).
+  patch the field, keep the body intact, run Phase 7, then commit.
+- **Body section**: locate the heading, replace its content, run Phase 7,
+  then commit. Do not reorder or rename headings — the section ordering
+  above is load-bearing for the audit (#418) and parser (#416).
 - **Decision lifecycle change** (`proposed → accepted`): patch
   `status:` and leave the body intact. Decisions are append-only — never
   rewrite the Context / Decision / Consequences sections once
   `status: accepted`. If the user wants to retire a decision without a
   replacement, set `status: deprecated`. If they want to replace the rule,
-  route to Phase 5 (supersession) instead.
+  route to Phase 5 (supersession) instead. Run Phase 7 before the commit.
 
 Commit message: `engrave(<kind>): update <id> — <one-line summary>`.
 
@@ -397,7 +397,7 @@ authored; a *new* decision is created that cites it.
    invariant should now cite the new decision in `established_by:` (and
    optionally drop the old decision's id, or keep both). Patch the
    affected invariant frontmatter.
-5. Commit both files together:
+5. Run Phase 7, then commit all changed files together:
    ```
    engrave(decision): D-<N> supersedes D-<old N> — <one-line summary>
    ```
@@ -422,13 +422,111 @@ Ask the user which sub-operation:
 After patching the ledger, **recompute** `status` and patch the
 frontmatter (`aligned` if zero `Temporary:` rows remain; `drifting`
 otherwise). If the ledger ends up empty after a resolution, restore the
-canonical em-dash placeholder row.
+canonical em-dash placeholder row. Run Phase 7 before the commit.
 
 Commit message:
 
 ```
 engrave(invariant): <add|resolve> exception on <INV id> — <one-line summary>
 ```
+
+---
+
+## Phase 7: Project the engraved-knowledge pointer
+
+After any successful Phase 3 create, Phase 4 update, Phase 5 supersede, or
+Phase 6 exception edit have patched the engraved record files, and before the
+terminal summary, refresh the managed pointer block in existing agent-context
+files.
+
+Projection is a final, best-effort phase. Warnings from this phase are
+non-fatal: they do not roll back the record edit, do not fail the engrave or
+supersede operation, and do not block the record commit. Include any successful
+context-file projection edits in the same commit as the engraved record change.
+If one target warns or fails, keep processing the other targets and report the
+warning in the terminal summary.
+
+### Projection targets
+
+Candidate agent-context target files:
+
+- `CLAUDE.md`
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+
+Manage existing files only. Skip missing target files rather than creating
+them; never create a new agent-context file just to add the projection block.
+
+### Managed marker pair
+
+The managed block is delimited exactly by this marker pair:
+
+```markdown
+<!-- smithy:engraved:begin -->
+...
+<!-- smithy:engraved:end -->
+```
+
+Only smithy may edit content between those markers. Never change hand-written
+content outside the markers.
+
+### Pointer content
+
+Generate a pointer-only block. It lists engraved-knowledge directories present
+in the repo plus an applicability note for future agents. It must not inline
+record bodies and must contain no per-record index, per-record titles, or
+enumeration of individual record files. Do not inline record bodies.
+
+Discover these directory roots and include only the ones that exist, in this
+deterministic order:
+
+1. `docs/decisions/`
+2. `docs/invariants/`
+3. `docs/constitution/`
+4. `docs/design/decisions/`
+5. `docs/design/invariants/`
+6. `docs/design/constitution/`
+
+Render the block exactly from the discovered directory list so unchanged inputs
+produce byte-identical, idempotent output on a second projection run. Use this
+shape:
+
+```markdown
+<!-- smithy:engraved:begin -->
+## Engraved Knowledge
+
+This repository maintains engraved durable knowledge: decisions, invariants,
+and principles. Before planning or making changes, read the applicable records
+under these locations and judge whether they apply to the work at hand.
+
+- docs/decisions/
+- docs/invariants/
+- docs/constitution/
+<!-- smithy:engraved:end -->
+```
+
+The list above is illustrative; render only the present directories, preserving
+the deterministic order.
+
+### Marker handling
+
+For each existing target file:
+
+- **No markers**: append one fresh managed block at the end of the file. Preserve
+  all existing prose before the appended block. If the file lacks a trailing
+  newline, add one newline before the block.
+- **Exactly one complete marker pair**: replace only the content from the begin
+  marker through the end marker with the newly rendered block. Leave all bytes
+  before the begin marker and after the end marker unchanged.
+- **Malformed or duplicated markers**: emit a warning and leave that file unchanged.
+  Do not guess where the block belongs.
+- **No present engraved-knowledge directories**: render the markers and the
+  applicability note with a short line saying no engraved-knowledge directories
+  are present yet; keep the output deterministic.
+
+Before committing, re-run the projection mentally against the same directory
+inputs: if it would change a context file a second time, fix the rendering or
+marker handling until a no-change projection re-run is byte-identical.
 
 ---
 
