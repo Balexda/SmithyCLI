@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add candidate strategy measurement mode**
+- [x] **Add candidate strategy measurement mode**
 
   Extend the forge eval or measurement support code so a maintainer can run the same multi-task forge slice under the parent pre-pasted excerpts candidate and the generated per-task brief candidate. The mode must be isolated from normal forge behavior and preserve the existing build-output, test-command, TDD-protocol, and model-assignment boundaries.
 
@@ -28,7 +28,7 @@
   - Build-output and test-command handling remain untouched (FR-013)
   - Implementation sub-agent model assignment remains unchanged (FR-014)
 
-- [ ] **Capture per-candidate token and quality results**
+- [x] **Capture per-candidate token and quality results**
 
   Thread the existing eval token-total and structural-quality surfaces through the candidate measurement output. Each candidate/fixture result must map to the `MeasurementResult` entity from the data model so the decision step can compare like-for-like records without re-reading raw captures.
 
