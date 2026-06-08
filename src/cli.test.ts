@@ -143,12 +143,13 @@ describe('CLI init --yes (non-interactive)', () => {
         'Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`',
       );
       expect(strike).not.toContain('{{artifactsRoot}}');
-      // The policy snippet mentions ~/.smithy/<repo>/ as part of its explanation
-      // — that's expected. Make sure no actual artifact path got a tilde prefix.
-      expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+      // The policy snippet mentions ~/.smithy/repos/<repo>/ as part of its
+      // explanation — that's expected. Make sure no actual artifact path got a
+      // tilde prefix.
+      expect(strike).not.toContain('~/.smithy/repos/<repo>/specs/strikes/YYYY');
     });
 
-    it('--artifacts-location external persists in the manifest and bakes ~/.smithy/<repo>/ into deployed prompts', () => {
+    it('--artifacts-location external persists in the manifest and bakes ~/.smithy/repos/<repo>/ into deployed prompts', () => {
       execFileSync(
         'node',
         [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
@@ -158,7 +159,7 @@ describe('CLI init --yes (non-interactive)', () => {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       expect(manifest.artifactsLocation).toBe('external');
 
-      const expectedPrefix = `~/.smithy/${path.basename(tmpDir)}/`;
+      const expectedPrefix = `~/.smithy/repos/${path.basename(tmpDir)}/`;
       const strike = fs.readFileSync(
         path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
         'utf8',
@@ -182,7 +183,7 @@ describe('CLI init --yes (non-interactive)', () => {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       expect(manifest.artifactsLocation).toBe('external');
 
-      const expectedPrefix = `~/.smithy/${path.basename(tmpDir)}/`;
+      const expectedPrefix = `~/.smithy/repos/${path.basename(tmpDir)}/`;
       const strike = fs.readFileSync(
         path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
         'utf8',
@@ -213,7 +214,7 @@ describe('CLI init --yes (non-interactive)', () => {
       expect(strike).toContain(
         'Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`',
       );
-      expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+      expect(strike).not.toContain('~/.smithy/repos/<repo>/specs/strikes/YYYY');
     });
   });
 

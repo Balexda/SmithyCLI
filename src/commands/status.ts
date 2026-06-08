@@ -59,7 +59,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { readManifest, resolveArtifactsRoot } from '../manifest.js';
+import { readManifest, resolveArtifactsRoot, templateArtifactsPrefix } from '../manifest.js';
 import {
   buildDependencyGraph,
   buildTree,
@@ -321,7 +321,7 @@ export function statusAction(opts: StatusOptions = {}): void {
 
   // If the user didn't pass `--root` explicitly and the working directory has
   // a smithy manifest declaring `artifactsLocation: 'external'`, redirect the
-  // scan to `~/.smithy/<repo>/` so artifacts written off-tree are still found.
+  // scan to `~/.smithy/repos/<repoKey>/` so artifacts written off-tree are still found.
   // Explicit `--root` always wins so power users can scan an arbitrary path.
   const externalScanRoot =
     opts.root === undefined ? resolveExternalArtifactsRoot(resolvedRoot) : null;
@@ -329,12 +329,15 @@ export function statusAction(opts: StatusOptions = {}): void {
   const records = scan(scanRoot);
   // The scanner returns paths relative to `scanRoot`. When we redirected, those
   // paths read like `specs/foo/01.tasks.md` but the actual files live at
-  // `~/.smithy/<repo>/specs/foo/01.tasks.md`. Re-prepend the tilde prefix so the
-  // rendered tree, JSON records, and `Next: smithy.forge <path> <N>` hints all
-  // point at the real on-disk location. Skipped in the in-repo case (the cheap
-  // common path) where `externalScanRoot` is `null`.
+  // `~/.smithy/repos/<repoKey>/specs/foo/01.tasks.md`. Re-prepend the tilde
+  // prefix so the rendered tree, JSON records, and `Next: smithy.forge <path>
+  // <N>` hints all point at the real on-disk location. We reuse
+  // `templateArtifactsPrefix` (rather than rebuilding the prefix inline) so the
+  // displayed paths are guaranteed to match where the artifacts are actually
+  // stored — both go through the same worktree-stable `repoKey`. Skipped in the
+  // in-repo case (the cheap common path) where `externalScanRoot` is `null`.
   if (externalScanRoot !== null) {
-    const externalPrefix = `~/.smithy/${path.basename(resolvedRoot)}/`;
+    const externalPrefix = templateArtifactsPrefix(resolvedRoot, 'external');
     applyExternalPrefix(records, externalPrefix);
   }
   // US6: apply the `--status` / `--type` filters to the classified
@@ -703,7 +706,7 @@ function findNextAction(node: TreeNode): NextAction | null {
 }
 
 /**
- * When the scan was redirected to `~/.smithy/<repo>/`, every `ArtifactRecord`
+ * When the scan was redirected to `~/.smithy/repos/<repoKey>/`, every `ArtifactRecord`
  * the scanner returns carries paths relative to that external root (the
  * scanner has no concept of "this isn't the working repo"). Walk the records
  * and prepend `externalPrefix` to every path-shaped field so the rendered
@@ -734,7 +737,7 @@ function applyExternalPrefix(records: ArtifactRecord[], externalPrefix: string):
 
 /**
  * If `<resolvedRoot>` has a smithy manifest declaring `artifactsLocation:
- * 'external'`, return the absolute path to `~/.smithy/<repo>/` so the
+ * 'external'`, return the absolute path to `~/.smithy/repos/<repoKey>/` so the
  * scanner finds artifacts that were written off-tree. Returns `null` for
  * the in-repo case (the caller falls back to `resolvedRoot`). Either
  * manifest location ('repo' deploy at `.smithy/...`, 'user' deploy at
