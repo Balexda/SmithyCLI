@@ -412,12 +412,64 @@ its alignment status from the ledger.
 Ask the user which sub-operation:
 
 - **Add exception** — append a row. Capture `Where`, `What diverges`,
-  disposition (`Accepted: <reason>` or `Temporary: <reason>`),
-  `Tracking Issue` (`#NNN` for `Temporary` rows; `—` for `Accepted`
-  rows), `Severity` (`low` / `medium` / `high`).
+  disposition (`Accepted: <reason>` or `Temporary: <reason>`), and
+  `Severity` (`low` / `medium` / `high`). For `Accepted:` rows, set
+  `Tracking Issue` to `—` and do not create or query GitHub. For a newly
+  added `Temporary:` row, start with `Tracking Issue` as `—`, then run the
+  drift-tracking issue step below and replace that cell with `#NNN` only if
+  issue creation succeeds.
 - **Resolve exception** — identify the row (by `Where` or row index)
   and either remove it (the divergence is gone) or change a `Temporary:`
   row to `Accepted:` (the team has decided to live with it indefinitely).
+  Do not close, comment on, label, or otherwise mutate any linked issue.
+
+### Temporary exception drift-tracking issue
+
+Run this step only when adding a new `Temporary:` ledger row. Do not run it
+for `Accepted:` rows, existing rows, resolution, removal, or conversion of a
+`Temporary:` row to `Accepted:`.
+
+1. Load `Skill("smithy.gh-issue")`.
+2. Build the issue title from the `What diverges` text. Keep it concise and
+   action-oriented, for example: `Close invariant drift: <What diverges>`.
+3. Write the issue body to a temporary file using this template:
+
+   ```markdown
+   ## Drift
+
+   Invariant: `<INV id>` — `<invariant title>`
+
+   Divergence: `<What diverges>`
+
+   Where: `<Where>`
+
+   Disposition: `Temporary: <reason>`
+
+   Severity: `<low|medium|high>`
+
+   Establishing decisions: `<established_by ids>`
+
+   ## Done When
+
+   The divergence is removed or the invariant ledger is explicitly updated
+   to show the team accepts the carve-out.
+   ```
+
+4. Invoke the `smithy.gh-issue` `create-issue.sh` script for the current
+   agent with the title and temporary body file:
+
+   ```bash
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "<title>" <temporary-body-file>
+   ```
+
+5. Parse the script output as JSON, capture the JSON `number`, format it as
+   `#NNN`, and write `#NNN` into that new row's `Tracking Issue` cell.
+   Clean up the temporary body file after the create attempt.
+
+If any auth, network, script, or JSON parsing failure occurs, leave the newly
+added `Temporary:` ledger row in place with its `Tracking Issue` cell as `—`.
+Do not roll back the invariant edit. Capture the failure text and surface it in
+the terminal summary after the engrave operation completes.
 
 After patching the ledger, **recompute** `status` and patch the
 frontmatter (`aligned` if zero `Temporary:` rows remain; `drifting`
@@ -568,9 +620,12 @@ Superseded <old id> <old title>
 ```
 
 For Phase 6 (exception edits), print the recomputed status and the
-operation summary:
+operation summary. If drift-tracking issue creation failed, include one
+additional line that names the failure and says the ledger row was kept with
+`Tracking Issue: —`:
 
 ```
 Updated <INV id> ledger: <added|resolved> row "<Where>"
   status: <aligned|drifting>
+  drift issue: <#NNN|not created — failure summary>
 ```
