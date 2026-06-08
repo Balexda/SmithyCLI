@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Create the recall agent prompt**
+- [x] **Create the recall agent prompt**
 
   Add the `smithy-recall` agent template with read-only tools and instructions to scan canonical engraved-record locations, infer or honor the planning domain, and rank records by `domain`, `topics`, `scope`, and `applies_to` overlap. The prompt must return a structured result containing relevant records, conflict flags, superseded/deprecated citation hazards, and empty-state fields.
 
@@ -27,7 +27,7 @@
   - Relevance ranking uses the engraved frontmatter fields from the data model
   - Result shape includes `relevant`, `conflicts`, `superseded_citations`, `empty`, and `empty_reason`
 
-- [ ] **Handle invariant conflicts and accepted exceptions**
+- [x] **Handle invariant conflicts and accepted exceptions**
 
   Teach recall to compare proposed work against invariant rules as a soft candidate-exception signal and to suppress that signal when the invariant's Known-Exceptions ledger already has an `Accepted:` row covering the divergence.
 
@@ -37,7 +37,7 @@
   - `Temporary:` rows do not suppress new conflict guidance
   - Empty placeholder ledger rows are treated as no existing exceptions
 
-- [ ] **Handle retired decision citations and empty states**
+- [x] **Handle retired decision citations and empty states**
 
   Teach recall to flag citations to decisions whose frontmatter lifecycle is `superseded` or `deprecated`, without recomputing supersession. Also define empty results for missing engraved records and for records that exist but do not match the planning context.
 

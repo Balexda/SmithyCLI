@@ -18,6 +18,7 @@ Deployed to:
 | `smithy-implement` | TDD implementation: failing test → code → commit | forge (per task) | opus |
 | `smithy-implementation-review` | Read-only code review; returns findings for forge to apply | forge (after implementation) | opus |
 | `smithy-plan-review` | Read-only self-consistency review of planning artifacts; returns structured findings for the parent command to apply | strike, ignite, mark, render, cut (after artifact generation, before PR) | opus |
+| `smithy-recall` | Read-only engraved-knowledge recall; ranks relevant records and flags candidate invariant exceptions and retired-decision citation hazards | strike, ignite, render, mark, cut (scan phase) | sonnet |
 | `smithy-scout` | Pre-planning consistency scan (non-interactive) | render, mark, cut | sonnet |
 | `smithy-maid` | Post-implementation doc staleness scan (non-interactive) | forge (after review) | sonnet |
 | `smithy-prose` | Narrative/persuasive prose drafting for planning artifact sections | ignite (sub-phases 3a, 3b), spark (sub-phase 3a) | opus |

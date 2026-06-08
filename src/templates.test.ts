@@ -357,7 +357,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(11);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(13);
+    expect(byCategory.agents).toHaveLength(14);
     expect(byCategory.skills).toHaveLength(7);
   });
 
@@ -394,7 +394,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(prompts).toContain('smithy.titles.md');
   });
 
-  it('agents includes clarify, refine, implement, implementation-review, plan, plan-review, reconcile, reconcile-slices, slice, prose, and survey', () => {
+  it('agents includes clarify, refine, implement, implementation-review, plan, plan-review, recall, reconcile, reconcile-slices, slice, prose, and survey', () => {
     const { agents } = getTemplateFilesByCategory();
     expect(agents).toContain('smithy.clarify.md');
     expect(agents).toContain('smithy.refine.md');
@@ -402,6 +402,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(agents).toContain('smithy.implementation-review.md');
     expect(agents).toContain('smithy.plan.md');
     expect(agents).toContain('smithy.plan-review.md');
+    expect(agents).toContain('smithy.recall.md');
     expect(agents).toContain('smithy.reconcile.md');
     expect(agents).toContain('smithy.reconcile-slices.md');
     expect(agents).toContain('smithy.slice.md');
@@ -1392,6 +1393,36 @@ describe('getComposedTemplates', () => {
     expect(refine).toContain('refinements');
     expect(refine).toContain('debt_items');
     expect(refine).toContain('summary');
+  });
+
+  it('recall agent is read-only, non-interactive, and returns the engraved recall contract', () => {
+    const recall = composed.agents.get('smithy.recall.md')!;
+    expect(recall).toBeDefined();
+    expect(recall).toContain('name: smithy-recall');
+    expect(recall).toMatch(/tools:\s*\n\s+-\s+Read\s*\n\s+-\s+Grep\s*\n\s+-\s+Glob/);
+    expect(recall).not.toMatch(/^\s*-\s+Edit\b/m);
+    expect(recall).not.toMatch(/^\s*-\s+Write\b/m);
+    expect(recall).not.toMatch(/^\s*-\s+Bash\b/m);
+    expect(recall).toContain('It is not user-invocable');
+    expect(recall).toContain('Non-interactive');
+    expect(recall).toContain('domain`, `topics`, `scope`, and `applies_to`');
+    expect(recall).toContain('"relevant"');
+    expect(recall).toContain('"conflicts"');
+    expect(recall).toContain('"superseded_citations"');
+    expect(recall).toContain('"empty"');
+    expect(recall).toContain('"empty_reason"');
+  });
+
+  it('recall agent handles invariant exceptions, retired citations, and empty states', () => {
+    const recall = composed.agents.get('smithy.recall.md')!;
+    expect(recall).toContain('candidate new exception');
+    expect(recall).toContain('Accepted:');
+    expect(recall).toContain('Temporary:');
+    expect(recall).toContain('empty placeholder ledger row');
+    expect(recall).toContain('status` is `superseded` or `deprecated`');
+    expect(recall).toContain('Do not independently derive supersession');
+    expect(recall).toContain('"no_records"');
+    expect(recall).toContain('"no_match"');
   });
 
   // Story 3 Slice 3: mark and cut must render the shared one-shot output
