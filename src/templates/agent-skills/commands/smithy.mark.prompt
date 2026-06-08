@@ -89,14 +89,19 @@ When entering Phase 1 from a `.features.md`, carry forward:
      here would silently lose constraints.
    - **Feature description**: Treat as the starting context.
    - **Feature map** (from Routing): Use the selected feature's Title,
-     Description, User-Facing Value, and Scope Boundaries as the starting
-     context. Also read the Source RFC (resolved during Routing) for additional
+     Description, User-Facing Value, Scope Boundaries, and Feature Kind
+     (the `kind` metadata, e.g. `kind: ui`) as the starting context — carry
+     the kind forward so the UI stack-detection gate below has reliable input.
+     Also read the Source RFC (resolved during Routing) for additional
      goals and constraints.
 2. Explore the codebase to understand current architecture, relevant modules,
    and existing patterns that inform the specification.
-   - **UI stack detection (only for `kind: ui`)**: before naming any screen
-     component path or flow executable body, inspect the target repository's
+   - **UI stack detection (only for `kind: ui`)**: before recording any screen
+     `component-path` or flow `test-body` path, inspect the target repository's
      existing files and conventions to infer its UI framework and test driver.
+     `mark` only chooses the repo-relative path to record in the durable flow
+     artifact; the executable test body itself is produced later during
+     `flow-wire`/`forge`, not here.
      Use concrete signals such as dependency manifests, lockfiles, build
      configuration, source extensions, component directories, test directories,
      and existing UI test fixtures.
