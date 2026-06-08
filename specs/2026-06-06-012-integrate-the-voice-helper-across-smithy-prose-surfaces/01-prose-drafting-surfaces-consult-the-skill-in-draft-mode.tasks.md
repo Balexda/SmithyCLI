@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Replace duplicated prose rules with skill load**
+- [x] **Replace duplicated prose rules with skill load**
 
   Update `src/templates/agent-skills/agents/smithy.prose.prompt` so Step 3 explicitly loads `Skill("smithy.helper-voice")` in draft mode before drafting assigned sections. Remove the inlined shared-principles and anti-pattern taxonomy, but keep the context-gathering flow and prose-agent responsibilities intact for AS 1.1 and AS 1.4.
 
@@ -26,7 +26,7 @@
   - The removed text includes the duplicated shared-principles list and anti-pattern block.
   - No replacement text re-inlines the skill's taxonomy or examples.
 
-- [ ] **Preserve section-specific prose protocol**
+- [x] **Preserve section-specific prose protocol**
 
   Verify and, if needed, adjust `src/templates/agent-skills/agents/smithy.prose.prompt` so the gap-marker rule, no-invented-figures rule, and Summary / Motivation / Personas structure remain available after the trim. The prose-specific rules the helper skill does not carry must remain in the prompt for AS 1.2.
 
@@ -35,7 +35,7 @@
   - The prompt still forbids invented figures when context lacks numbers.
   - Summary, Motivation / Problem Statement, and Personas guidance remains present.
 
-- [ ] **Add prose-trim regression coverage and validate**
+- [x] **Add prose-trim regression coverage and validate**
 
   Add focused coverage in `src/templates.test.ts` (or its existing helpers) asserting that the composed `smithy.prose` template carries a named `Skill("smithy.helper-voice")` reference and no longer contains the removed shared-principles heading or anti-pattern block. Keep assertions structural: check for stable markers — the helper reference and the removed `Prose principles — follow these on every sentence` heading / anti-pattern block — and do **not** assert on long taxonomy paragraphs or sentences whose wording may change. Then run the parse test and the spark/ignite eval scenarios, recording any eval limitation in the PR notes rather than widening this slice beyond FR-001 and FR-016.
 
