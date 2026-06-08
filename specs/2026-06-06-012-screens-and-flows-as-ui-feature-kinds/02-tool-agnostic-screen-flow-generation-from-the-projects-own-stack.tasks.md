@@ -63,7 +63,7 @@
 
 ### Tasks
 
-- [x] **Add UI stack detection guidance**
+- [ ] **Add UI stack detection guidance**
 
   Update `src/templates/agent-skills/commands/smithy.mark.prompt` and `src/templates/agent-skills/commands/smithy.forge.prompt` so UI work includes a target-repo stack detection pass before screen or flow generation. The prompts should use existing project files and conventions to infer the framework and test driver for AS 2.1.
 
@@ -73,7 +73,7 @@
   - Flow work receives driver-appropriate executable test-body paths
   - Backend paths do not gain UI stack-detection requirements
 
-- [x] **Surface uncertain stack detection**
+- [ ] **Surface uncertain stack detection**
 
   Update the same command prompts so low-confidence or conflicting stack signals are treated as an ambiguity to surface, not a reason to default to Compose or Maestro. This satisfies AS 2.4 and keeps generated artifacts from pretending a stack was detected.
 
