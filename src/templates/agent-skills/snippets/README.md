@@ -36,3 +36,23 @@ its contents. The snippet file itself is never deployed.
   not Dotprompt files with frontmatter.
 - Snippet filenames become the partial name: `foo-bar.md` → `{{>foo-bar}}`.
 - Snippets can reference other snippets (nested partials are supported).
+- **Keep snippets agent-agnostic.** A snippet must not branch on the target
+  agent — no `{{#ifAgent}}` conditionals and no "if you are Claude / if you are
+  Gemini or Codex" prose inside the snippet body. When a behavior genuinely
+  differs per agent, author one agent-agnostic snippet per branch (e.g.
+  `do-thing-claude.md` and `do-thing-degraded.md`) and let the **consuming
+  command** pick between them with `{{#ifAgent 'claude'}}{{>do-thing-claude}}{{else}}{{>do-thing-degraded}}{{/ifAgent}}`.
+  The conditional lives in the command, never in the snippet.
+- **Share sub-agent behavior through a single snippet — never duplicate it.**
+  When a sub-agent and an inline/degraded path need the same rules, extract
+  those rules into one snippet that is the single source of truth, and have
+  both the sub-agent prompt and the inline path `{{>include}}` it. Do not copy
+  a sub-agent's body into a separate file. Established examples: `tdd-protocol.md`
+  (shared by the `smithy.implement` agent and `smithy.forge`) and
+  `review-protocol.md` (shared across `smithy.plan-review` /
+  `smithy.implementation-review` and forge).
+- **Snippets are content, not commentary.** A snippet is inlined verbatim into
+  a deployed agent skill, so it must read as a direct instruction. Do not
+  narrate future/out-of-scope work ("lands in a later story", "there is no
+  recall agent yet, so…") or reference source-tree-only paths (`src/templates/…`,
+  this README) — neither exists in a target repo where the skill is deployed.
