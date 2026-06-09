@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(20);
+    expect(snippets.size).toBe(21);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -125,7 +125,7 @@ describe('loadSnippets', () => {
       'feature-kinds.md',
       'artifact-location-policy.md',
       'persona-convention.md',
-      'consult-engraved-knowledge-claude.md',
+      'consult-engraved-knowledge-subagent.md',
       'consult-engraved-knowledge-degraded.md',
       'engraved-recall-rules.md',
     ];
@@ -151,7 +151,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
-    expect(snippets.get('consult-engraved-knowledge-claude.md')).toContain('Consult Engraved Knowledge');
+    expect(snippets.get('consult-engraved-knowledge-subagent.md')).toContain('Consult Engraved Knowledge');
     expect(snippets.get('consult-engraved-knowledge-degraded.md')).toContain('Consult Engraved Knowledge');
     expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
   });
@@ -159,15 +159,18 @@ describe('loadSnippets', () => {
 
 describe('consult-engraved-knowledge snippets', () => {
   // US1 Slice 2: engraved recall is the shared planning-command integration
-  // point, split into two agent-agnostic snippets. The snippets carry NO
+  // point, split along the sub-agent-capability axis: a `-subagent` snippet for
+  // agents that can dispatch smithy-recall (Claude, Codex) and a `-degraded`
+  // snippet for those that cannot (Gemini). The snippets carry NO
   // agent-conditional logic (no {{#ifAgent}}, no "if you are X" prose) — the
-  // consuming command picks the right one with {{#ifAgent}} (wired in Slice 3).
+  // consuming command picks the right one with the zero-arg {{#ifAgent}}
+  // capability gate (the same gate forge/strike use; wired in Slice 3).
   // The recall *rules* live once in the shared `engraved-recall-rules` snippet,
   // included by both the smithy-recall agent and the degraded path, so the
   // degraded snippet embeds rather than duplicates them. These tests lock the
   // split and the de-duplication so reintroducing conditionals inside a
   // snippet, re-duplicating the rules, or collapsing the two paths fails early.
-  const CLAUDE = 'consult-engraved-knowledge-claude.md';
+  const SUBAGENT = 'consult-engraved-knowledge-subagent.md';
   const DEGRADED = 'consult-engraved-knowledge-degraded.md';
   const RULES = 'engraved-recall-rules.md';
 
@@ -187,7 +190,7 @@ describe('consult-engraved-knowledge snippets', () => {
 
   it('both snippet files are loadable as partials via loadSnippets', () => {
     const snippets = loadSnippets();
-    for (const name of [CLAUDE, DEGRADED, RULES]) {
+    for (const name of [SUBAGENT, DEGRADED, RULES]) {
       expect(snippets.has(name)).toBe(true);
       expect(snippets.get(name)!.length).toBeGreaterThan(0);
     }
@@ -195,7 +198,7 @@ describe('consult-engraved-knowledge snippets', () => {
 
   it('neither consult snippet encodes agent-conditional logic or prose branching', () => {
     const snippets = loadSnippets();
-    for (const name of [CLAUDE, DEGRADED]) {
+    for (const name of [SUBAGENT, DEGRADED]) {
       const content = snippets.get(name)!;
       // The agent split lives in the consuming command, never in the snippet.
       // Plain {{>partial}} includes are allowed; agent conditionals are not.
@@ -207,13 +210,13 @@ describe('consult-engraved-knowledge snippets', () => {
     }
   });
 
-  it('claude snippet dispatches smithy-recall and omits direct-read guidance', () => {
-    const content = loadSnippets().get(CLAUDE)!;
+  it('subagent snippet dispatches smithy-recall and omits direct-read guidance', () => {
+    const content = loadSnippets().get(SUBAGENT)!;
     expect(content).toContain('## Consult Engraved Knowledge');
     expect(content).toContain('smithy-recall');
     expect(content).toContain('relevant');
     expect(content).toContain('superseded_citations');
-    // The Claude snippet never spells out the degraded direct-read roots.
+    // The sub-agent snippet never spells out the degraded direct-read roots.
     expect(content).not.toContain('docs/decisions/');
     expect(content).not.toContain('candidate new exception');
   });
@@ -266,11 +269,11 @@ describe('consult-engraved-knowledge snippets', () => {
     expect(degraded).not.toContain('{{');
   });
 
-  it('claude snippet composes via its {{>partial}} include with no leftover syntax', async () => {
-    const claude = await composeSnippet(CLAUDE);
-    expect(claude).toContain('## Consult Engraved Knowledge');
-    expect(claude).toContain('smithy-recall');
-    expect(claude).not.toContain('{{');
+  it('subagent snippet composes via its {{>partial}} include with no leftover syntax', async () => {
+    const subagent = await composeSnippet(SUBAGENT);
+    expect(subagent).toContain('## Consult Engraved Knowledge');
+    expect(subagent).toContain('smithy-recall');
+    expect(subagent).not.toContain('{{');
   });
 });
 
