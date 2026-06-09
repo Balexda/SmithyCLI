@@ -362,7 +362,15 @@ export interface DependencyNode {
   record_path: string;
   /** The underlying parsed dependency-order row. */
   row: DependencyRow;
-  /** Rolled-up status from the owning {@link ArtifactRecord}. */
+  /**
+   * The row's effective status, resolved by {@link buildDependencyGraph}
+   * — NOT necessarily the owning record's rolled-up status. Resolution
+   * order: the row's real or virtual downstream artifact's status when
+   * one exists (a story's status is its tasks file's roll-up); otherwise,
+   * for a slice row, its own per-slice status from `record.slices`;
+   * otherwise the owning record's status. Consumers must not assume
+   * `node.status === owningRecord.status`.
+   */
   status: ArtifactRecord['status'];
   /**
    * True when this row has already been broken down into a *real*

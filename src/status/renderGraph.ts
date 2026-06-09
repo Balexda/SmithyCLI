@@ -171,9 +171,12 @@ export interface RenderGraphOptions {
   records?: ArtifactRecord[];
   /**
    * Optional layer filter from the `--layer` / `--ready` / `--max-layer`
-   * flags. Applied after fully-hidden layers are dropped, keyed on the
-   * builder's topological depth, so the view can be trimmed when the
-   * pending set grows large. Omitted → every layer renders.
+   * flags, keyed on the builder's topological layer index, so the view
+   * can be trimmed when the pending set grows large. The filter is
+   * applied up front to `graph.layers` (before each surviving layer is
+   * formatted, where fully-hidden layers are then dropped per-layer);
+   * because it keys on the stable `layer` index, the result is the same
+   * either way. Omitted → every layer renders.
    */
   layerSelection?: LayerSelection;
 }
