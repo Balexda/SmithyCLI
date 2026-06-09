@@ -298,6 +298,95 @@ Handle the scout report as follows:
 
 ## Phase 1.8: Approach Planning
 
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+### Competing Plan Lenses
+
+Dispatch 4 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
+
+Use the following lens directives (one per sub-agent):
+
+#### Scope Minimalism
+
+> **Directive:** Challenge scope creep. Propose tighter boundaries, question
+> optional requirements, and look for elements that can be deferred without
+> blocking the core artifact. Favor fewer entities, narrower stories, and
+> smaller milestones. In the Tradeoffs section, surface at least one narrower
+> alternative even if you ultimately recommend against it. This directive biases
+> your attention, not your coverage — still flag completeness gaps or coherence
+> issues if you find them.
+
+#### Completeness
+
+> **Directive:** Look for gaps in coverage: missing user stories, unstated
+> assumptions, edge cases in contracts, entities without clear ownership, and
+> milestones that skip necessary groundwork. Verify that every requirement
+> traces to a concrete artifact element. In the Tradeoffs section, surface at
+> least one more thorough alternative even if you ultimately recommend against
+> it. This directive biases your attention, not your coverage — still flag
+> scope bloat or coherence issues if you find them.
+
+#### Coherence
+
+> **Directive:** Look for inconsistencies between elements: stories that don't
+> trace to contracts, data model entities that overlap or have ambiguous
+> ownership, feature boundaries that create awkward cross-cutting dependencies,
+> and milestones whose ordering doesn't match their actual dependencies.
+> Propose cleaner groupings and sharper boundaries. In the Tradeoffs section,
+> surface at least one better-structured alternative even if you ultimately
+> recommend against it. This directive biases your attention, not your
+> coverage — still flag scope bloat or completeness gaps if you find them.
+
+#### Parallelism
+
+> **Directive:** Look for splits that let independent workstreams begin
+> concurrently. Prefer **vertical slices** that span data, logic, and interface
+> over **horizontal phases** that batch all of one layer before any of the
+> next. For each milestone, feature, or user story, ask whether its children
+> could realistically start in parallel without a missing prerequisite — and
+> whether a sequential ordering is truly required by data flow, or merely
+> conventional. In the Tradeoffs section, surface at least one alternative
+> with greater concurrent-execution potential even if you ultimately recommend
+> against it. This directive biases your attention, not your coverage — still
+> flag scope bloat, completeness gaps, or coherence issues if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
+
+After all 4 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 4 plan outputs, each labeled with its lens name (e.g.,
+  "**[Scope Minimalism]** …", "**[Completeness]** …",
+  "**[Coherence]** …", "**[Parallelism]** …")
+- The same context file paths
+- The planning context and feature description
+
+Use the reconciled plan as the basis for presenting the approach to the user.
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: spec artifact
+- **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
+- **Codebase file paths**: the relevant codebase files explored during Phase 1
+- **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Present the reconciled plan to the user as:
+
+1. **Summary** — What you understand the feature to be and the proposed specification structure.
+2. **Approach** — The reconciled approach for user stories, data model scope, and contract boundaries. Note any
+   items annotated with `[via <lens>]`.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
+   approaches, present them with both options and the reconciler's
+   recommendation. Let the user decide.
+
 
 ---
 
@@ -465,6 +554,52 @@ Guidelines for the spec:
   of same-table IDs (e.g., `US1, US3`); no prose justifications. The `Artifact`
   column starts as `—` and is populated by `smithy.cut` when it creates the
   tasks file. Do NOT use checkboxes in the `## Dependency Order` section.
+
+### UI Authoring Path Spec Ledger
+
+When the selected feature's authoring path is `kind: ui`, keep the same
+`.spec.md` structure above but replace the backend-only `## Dependency Order`
+table with a typed UI Spec Ledger. This is the ordering graph for the UI
+feature; it is not a layout or flow-body document.
+
+Use this exact column set for the UI ledger:
+
+```markdown
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| SC1 | screen | <Screen title> → `design/screens/<ScreenId>.design.md` | — | <none/import/brief> | — |
+| FL1 | flow | <Flow title> → `design/flows/<FlowId>.flow.md` | SC1 | — | — |
+| US1 | story | <Backend story title> | — | — | — |
+```
+
+UI ledger rules:
+- `ID` values are typed and unique in the table: `SC<N>` for screen-build rows,
+  `FL<N>` for flow-wire rows, and `US<N>` for backend story rows. Use no leading
+  zeros.
+- `Kind` is exactly `screen`, `flow`, or `story`, matching the row's ID prefix.
+- `Depends On` is exactly `—` or a comma-separated list of same-table IDs. This
+  is the only place intra-feature ordering and parallelism are expressed.
+- `Design` is required for `screen` rows and is one of `none`, `import`, or
+  `brief`; use `—` for `flow` and `story` rows.
+- `Artifact` is `—` for every row in mark's output. It holds the
+  `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
+  pre-fills a tasks path in this column.
+- Screen and flow row titles must name their durable files with pointer text
+  — `→ design/screens/<ScreenId>.design.md` for screen rows and
+  `→ design/flows/<FlowId>.flow.md` for flow rows — so the title is the stable
+  reference edge downstream tooling and later artifact creation resolve to the
+  durable file. Titles and cells must not carry layout,
+  state, interaction-step, visual-positioning, or implementation prose.
+- Flow rows are first-class `FL<N>` rows, not entries in a `flows: [...]` list
+  and not nested under a screen row.
+- Direct all screen and flow intent into the durable artifacts described by the
+  UI Spec Ledger and Screen/Flow node entities in the data model. Do not
+  duplicate the screen or flow artifact body schemas in the spec ledger.
+- If the feature has no internal ordering, emit the smallest honest typed graph.
+  A single pass-through screen with no flows or backend work may be one `SC<N>`
+  row, but it must still use the full UI ledger column set.
+- Do not add UI-only columns (`Kind` or `Design`) to backend spec-triad output
+  for `kind: backend` or absent-kind feature inputs.
 
 ---
 
@@ -916,7 +1051,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Dependency Order** | Does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`)? Does it list every user story with a `US<N>` ID (no leading zeros)? Does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
+  | **Dependency Order** | For `kind: backend` (or absent-kind) specs: does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`) listing every user story with a `US<N>` ID (no leading zeros)? For `kind: ui` specs: does it instead contain the typed UI Spec Ledger — a 6-column table (`ID \| Kind \| Title \| Depends On \| Design \| Artifact`) with `SC<N>`/`FL<N>`/`US<N>` rows whose `Kind` matches the ID prefix (`screen`/`flow`/`story`), `Design` (`none`/`import`/`brief`) set on screen rows and `—` elsewhere, and screen/flow titles naming their durable `.design.md`/`.flow.md` files? Do not flag a valid UI ledger as missing the backend shape, and do not rewrite it back to the 4-column US-only table. In both shapes: does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file (always `—` in mark's own output)? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.

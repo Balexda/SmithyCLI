@@ -173,11 +173,85 @@ checkout. Confirm the resolved branch name to the user and move on.
 
 Read the relevant files in the codebase to understand the current architecture and where this feature fits. Note the file paths you discover — you will need them for planning.
 
-Then capture for the strike document:
+### Competing Plans
+
+Use competing **smithy-plan** sub-agents to generate the approach from multiple
+perspectives.
+
+### Competing Plan Lenses
+
+Dispatch 3 competing **smithy-plan** sub-agents in parallel. Each receives the
+same planning context, feature description, codebase file paths, and scout
+report — the only difference is the **additional planning directives** field.
+
+Use the following lens directives (one per sub-agent):
+
+#### Simplification
+
+> **Directive:** Actively seek unnecessary complexity, over-engineering, and
+> YAGNI violations. Propose simpler alternatives — fewer files, fewer
+> indirections, inline solutions over extracted utilities. Challenge
+> abstractions that don't earn their keep. In the Tradeoffs section, surface at
+> least one simpler alternative even if you ultimately recommend against it.
+> This directive biases your attention, not your coverage — still flag critical
+> robustness issues or separation concerns if you find them.
+
+#### Separation of Concerns
+
+> **Directive:** Actively seek mixed responsibilities, coupling between
+> unrelated concepts, and SRP violations. Propose cleaner module boundaries —
+> clear interfaces, single-purpose files, explicit dependency injection. In the
+> Tradeoffs section, surface at least one alternative with better separation
+> even if you ultimately recommend against it. This directive biases your
+> attention, not your coverage — still flag simplification opportunities or
+> robustness issues if you find them.
+
+#### Robustness
+
+> **Directive:** Actively seek error handling gaps, edge cases, failure modes,
+> and missing validation at system boundaries. Flag assumptions about external
+> state and unhandled error conditions. Prefer defensive design. In the
+> Tradeoffs section, surface at least one more defensive alternative even if
+> you ultimately recommend against it. This directive biases your attention,
+> not your coverage — still flag unnecessary complexity or separation concerns
+> if you find them.
+
+---
+
+Pass the quoted directive text above as the **Additional planning directives**
+field for the corresponding smithy-plan run.
+
+After all 3 return, dispatch the **smithy-reconcile** sub-agent. Pass it:
+
+- All 3 plan outputs, each labeled with its lens name (e.g.,
+  "**[Simplification]** …", "**[Separation of Concerns]** …",
+  "**[Robustness]** …")
+- The same context file paths
+- The planning context and feature description
+
+Use the reconciled plan as the basis for presenting the approach to the user.
+Pass each smithy-plan sub-agent:
+
+- **Planning context**: strike document
+- **Feature/problem description**: the user's feature description from the input
+- **Codebase file paths**: the relevant files you discovered during exploration
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+
+Capture the reconciled plan as:
 
 1. **Summary** — What you understand the feature to be.
-2. **Approach** — What files you'd change, what you'd add, and why.
-3. **Risks** — Anything that could go wrong or get complicated.
+2. **Approach** — The reconciled approach (file changes, rationale). Note any
+   items annotated with `[via <lens>]` — these are unique perspectives from
+   individual focus lenses.
+3. **Risks** — The reconciled risk assessment.
+4. **Conflicts** — If the reconciled plan contains unresolved conflicts
+   between approaches, adopt the reconciler's recommendation as the
+   chosen path. Do not stop to ask the user. Record the rejected
+   alternative and the tradeoff in the strike document's `## Decisions`
+   section, and if the conflict cannot be confidently resolved, route it
+   into the `## Specification Debt` table instead. Strike is one-shot —
+   there is no interactive decision point.
+
 
 After capturing the plan, use the **smithy-clarify** sub-agent. Pass it:
    - **Criteria**: Scope, Edge Cases, Preferences, Architecture Fit, Testing Strategy

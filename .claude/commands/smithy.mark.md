@@ -551,6 +551,52 @@ Guidelines for the spec:
   column starts as `—` and is populated by `smithy.cut` when it creates the
   tasks file. Do NOT use checkboxes in the `## Dependency Order` section.
 
+### UI Authoring Path Spec Ledger
+
+When the selected feature's authoring path is `kind: ui`, keep the same
+`.spec.md` structure above but replace the backend-only `## Dependency Order`
+table with a typed UI Spec Ledger. This is the ordering graph for the UI
+feature; it is not a layout or flow-body document.
+
+Use this exact column set for the UI ledger:
+
+```markdown
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| SC1 | screen | <Screen title> → `design/screens/<ScreenId>.design.md` | — | <none/import/brief> | — |
+| FL1 | flow | <Flow title> → `design/flows/<FlowId>.flow.md` | SC1 | — | — |
+| US1 | story | <Backend story title> | — | — | — |
+```
+
+UI ledger rules:
+- `ID` values are typed and unique in the table: `SC<N>` for screen-build rows,
+  `FL<N>` for flow-wire rows, and `US<N>` for backend story rows. Use no leading
+  zeros.
+- `Kind` is exactly `screen`, `flow`, or `story`, matching the row's ID prefix.
+- `Depends On` is exactly `—` or a comma-separated list of same-table IDs. This
+  is the only place intra-feature ordering and parallelism are expressed.
+- `Design` is required for `screen` rows and is one of `none`, `import`, or
+  `brief`; use `—` for `flow` and `story` rows.
+- `Artifact` is `—` for every row in mark's output. It holds the
+  `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
+  pre-fills a tasks path in this column.
+- Screen and flow row titles must name their durable files with pointer text
+  — `→ design/screens/<ScreenId>.design.md` for screen rows and
+  `→ design/flows/<FlowId>.flow.md` for flow rows — so the title is the stable
+  reference edge downstream tooling and later artifact creation resolve to the
+  durable file. Titles and cells must not carry layout,
+  state, interaction-step, visual-positioning, or implementation prose.
+- Flow rows are first-class `FL<N>` rows, not entries in a `flows: [...]` list
+  and not nested under a screen row.
+- Direct all screen and flow intent into the durable artifacts described by the
+  UI Spec Ledger and Screen/Flow node entities in the data model. Do not
+  duplicate the screen or flow artifact body schemas in the spec ledger.
+- If the feature has no internal ordering, emit the smallest honest typed graph.
+  A single pass-through screen with no flows or backend work may be one `SC<N>`
+  row, but it must still use the full UI ledger column set.
+- Do not add UI-only columns (`Kind` or `Design`) to backend spec-triad output
+  for `kind: backend` or absent-kind feature inputs.
+
 ---
 
 ## Phase 4: Model
@@ -1001,7 +1047,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Dependency Order** | Does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`)? Does it list every user story with a `US<N>` ID (no leading zeros)? Does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
+  | **Dependency Order** | For `kind: backend` (or absent-kind) specs: does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`) listing every user story with a `US<N>` ID (no leading zeros)? For `kind: ui` specs: does it instead contain the typed UI Spec Ledger — a 6-column table (`ID \| Kind \| Title \| Depends On \| Design \| Artifact`) with `SC<N>`/`FL<N>`/`US<N>` rows whose `Kind` matches the ID prefix (`screen`/`flow`/`story`), `Design` (`none`/`import`/`brief`) set on screen rows and `—` elsewhere, and screen/flow titles naming their durable `.design.md`/`.flow.md` files? Do not flag a valid UI ledger as missing the backend shape, and do not rewrite it back to the 4-column US-only table. In both shapes: does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file (always `—` in mark's own output)? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.
