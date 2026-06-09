@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(17);
+    expect(snippets.size).toBe(18);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -124,6 +124,7 @@ describe('loadSnippets', () => {
       'branch-policy.md',
       'feature-kinds.md',
       'artifact-location-policy.md',
+      'persona-convention.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -146,6 +147,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
+    expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
   });
 });
 

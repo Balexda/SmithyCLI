@@ -52,32 +52,16 @@ and the PR that forge then consumes.
 
 ## Persona Artifact Convention
 
-Persona files are durable, cross-RFC reference artifacts. Store them flat at
-`{{artifactsRoot}}docs/personas/<slug>.persona.md`, where `<slug>` is a
-kebab-case slug derived from the persona name or role. Do not add a date or
-sequence prefix. The filename slug is the stable identity for discovery and
-matching; `.persona.md` files do not carry a separate machine-readable identity
-key such as `slug:` or `**Role**:`, and there is no persona registry or index.
-
-The canonical file shape is:
-
-```markdown
-# Persona: <Name/Role>
-
-**Created**: YYYY-MM-DD
-
-<Narrative prose describing the persona's role and context.>
-
-<Narrative prose describing the friction they experience today.>
-
-<Narrative prose describing how their work changes when relevant capabilities ship.>
-```
-
-Each persona file contains exactly one persona. The body is narrative prose,
-not a bullet inventory, and stays reusable across RFCs rather than tied to one
-solution. Persona files sit outside the `## Dependency Order` lineage: they
-must not include M/F/US/S identifiers, a `## Dependency Order` section, or an
-inline `## Specification Debt` table.
+The durable `.persona.md` convention — storage path, filename-slug identity, and
+the canonical narrative file shape — is defined once in the
+[`persona-convention.md`](snippets/persona-convention.md) snippet so it deploys
+as a referenceable component. Command surfaces that produce or consume persona
+files compose it via the `{{>persona-convention}}` partial rather than restating
+the path or schema. See that snippet for the full schema. In short: persona
+files are durable, cross-RFC, single-persona narrative artifacts stored flat at
+`{{artifactsRoot}}docs/personas/<slug>.persona.md`, identified solely by their
+filename slug (no registry or identity key), and they sit outside the
+`## Dependency Order` lineage.
 
 ## Artifact Hierarchy and Dependency Order Format
 
