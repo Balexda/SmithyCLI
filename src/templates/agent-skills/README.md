@@ -31,8 +31,10 @@ See the README in each subdirectory for details on its contents and conventions.
 - **Deploy transform**: Frontmatter is stripped when deploying Claude
   commands/prompts (kept for Gemini and Codex skills). Files are renamed from
   `.prompt` to `.md`. Sub-agents deploy with frontmatter intact to
-  `.claude/agents/<name>.md` (Claude) and are translated into Codex custom-agent
-  TOML at `.codex/agents/<name>.toml`.
+  `.claude/agents/` (Claude) and are translated into Codex custom-agent TOML at
+  `.codex/agents/` — note the two filename schemes: Claude keeps the source
+  `.prompt` filename (`smithy.plan.prompt` → `smithy.plan.md`) while Codex uses
+  the frontmatter `name` (`smithy-plan` → `smithy-plan.toml`).
 
 ## Workflow Pipeline
 

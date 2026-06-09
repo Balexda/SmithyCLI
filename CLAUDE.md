@@ -8,9 +8,11 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 | Agent | Prompts | Commands (slash) | Agents (sub-agents) | Permissions |
 |-------|---------|-------------------|---------------------|-------------|
-| Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/<name>.md` | `.claude/settings.json` |
+| Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/smithy.<agent>.md` | `.claude/settings.json` |
 | Gemini | `.gemini/skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | (not deployed) | `.gemini/settings.json` |
-| Codex | `tools/codex/prompts/` and `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` | `.codex/agents/<name>.toml` | `.codex/rules/default.rules` |
+| Codex | `tools/codex/prompts/` and `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` | `.codex/agents/smithy-<agent>.toml` | `.codex/rules/default.rules` |
+
+Note the two sub-agent filename schemes: the Claude file derives from the source `.prompt` **filename** (`smithy.plan.prompt` → `.claude/agents/smithy.plan.md`), while the Codex file derives from the frontmatter **`name`** (`name: smithy-plan` → `.codex/agents/smithy-plan.toml`).
 
 `smithy uninit` removes all deployed artifacts (but preserves config/permissions).
 

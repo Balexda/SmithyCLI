@@ -18,7 +18,7 @@ permissions into a target repo so developers can run structured workflows
 source of truth for everything deployable is
 `src/templates/agent-skills/`. `smithy init` renders those templates per agent
 (Claude → `.claude/`, Gemini → `.gemini/skills/`, Codex →
-`.agents/skills/` and `tools/codex/prompts/`).
+`.agents/skills/`, `tools/codex/prompts/`, and `.codex/agents/` for sub-agents).
 
 ## Source vs. deployed — the rule behind most review churn
 
@@ -28,7 +28,8 @@ mistake:
 | Kind | Lives at | Exists in a target repo? |
 |------|----------|--------------------------|
 | **Documentation** (this file, `CLAUDE.md`, `src/templates/agent-skills/README.md`, every `snippets/README.md`) | the Smithy source tree | **No.** Source-only. |
-| **Deployable agent-skills** (`commands/*.prompt`, `agents/*.prompt`, `skills/**/SKILL.prompt`, `snippets/*.md`) | `src/templates/agent-skills/` | **Yes** — rendered and dropped into the target repo. |
+| **Deployable agent-skills** (`commands/*.prompt`, `agents/*.prompt`, `skills/**/SKILL.prompt`) | `src/templates/agent-skills/` | **Yes** — rendered and dropped into the target repo. |
+| **Snippets** (`snippets/*.md`) | `src/templates/agent-skills/snippets/` | **Inlined** into deployable templates at build time — their *content* reaches the target repo, but never as standalone files. |
 
 Consequences when authoring a **deployable** template (anything in
 `commands/`, `agents/`, `skills/`, `snippets/`):
