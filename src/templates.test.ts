@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(17);
+    expect(snippets.size).toBe(18);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -124,6 +124,7 @@ describe('loadSnippets', () => {
       'branch-policy.md',
       'feature-kinds.md',
       'artifact-location-policy.md',
+      'persona-convention.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -146,6 +147,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
+    expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
   });
 });
 
@@ -355,7 +357,7 @@ describe('feature-kinds snippet', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(11);
+    expect(byCategory.commands).toHaveLength(12);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(14);
     expect(byCategory.skills).toHaveLength(8);
@@ -386,6 +388,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.orders.md');
     expect(commands).toContain('smithy.spark.md');
     expect(commands).toContain('smithy.engrave.md');
+    expect(commands).toContain('smithy.persona.md');
     expect(commands).not.toContain('smithy.status.md');
   });
 

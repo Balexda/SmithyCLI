@@ -52,7 +52,7 @@
 
 ### Tasks
 
-- [ ] **Add producer-side convention references**
+- [x] **Add producer-side convention references**
 
   Create or update `src/templates/agent-skills/commands/smithy.persona.prompt` only far enough to establish the command surface's dependency on the README-defined `.persona.md` convention. Do not implement free-text generation, RFC extraction, collision handling, or parsing behavior beyond what US1 requires.
 
@@ -62,7 +62,7 @@
   - The producer command surface does not duplicate the full file-format schema.
   - US2 and US3 behavior remains unimplemented unless already present.
 
-- [ ] **Add consumer-side convention references**
+- [x] **Add consumer-side convention references**
 
   Update `src/templates/agent-skills/commands/smithy.ignite.prompt` so the persona consumer surface refers to the README-defined convention when discussing durable persona discovery. Keep ignite's existing cold-draft behavior intact until US4 and US5 implement reuse and non-clobber semantics.
 
