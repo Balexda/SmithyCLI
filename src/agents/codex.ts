@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter, parseFrontmatterName } from '../templates.js';
+import { toCodexAgentToml } from '../agent-models.js';
 import { permissions } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
@@ -84,6 +85,24 @@ export async function deploy(
     }
   }
 
+  // Deploy sub-agents -> .codex/agents/<name>.toml as Codex custom agents.
+  // Codex gained first-class subagent support (parallel threads, isolated
+  // context, per-agent reasoning effort), so the same sub-agent definitions
+  // Claude gets are translated into Codex's TOML idiom and discovered from
+  // the project-scoped .codex/agents/ directory.
+  const codexAgentsDir = path.join(targetDir, '.codex', 'agents');
+  if (templates.agents.size > 0) {
+    if (!fs.existsSync(codexAgentsDir)) fs.mkdirSync(codexAgentsDir, { recursive: true });
+    console.log(picocolors.green(`Initializing Codex sub-agents in ${codexAgentsDir}...`));
+  }
+  for (const [, content] of templates.agents) {
+    const { name, toml } = toCodexAgentToml(content);
+    if (!name) continue;
+    const dest = path.join(codexAgentsDir, `${name}.toml`);
+    fs.writeFileSync(dest, toml);
+    deployedFiles.push(path.relative(targetDir, dest));
+  }
+
   if (initPermissions) {
     writePermissions(targetDir);
   }
@@ -110,6 +129,15 @@ export function removeLegacy(targetDir: string): number {
         if (fs.statSync(entryPath).isDirectory() && fs.existsSync(path.join(entryPath, 'SKILL.md'))) {
           if (removeIfExists(entryPath)) removedCount++;
         }
+      }
+    }
+  }
+
+  const agentsDir = path.join(targetDir, '.codex', 'agents');
+  if (fs.existsSync(agentsDir)) {
+    for (const entry of fs.readdirSync(agentsDir)) {
+      if ((entry.startsWith('smithy-') || entry.startsWith('smithy.')) && entry.endsWith('.toml')) {
+        if (removeIfExists(path.join(agentsDir, entry))) removedCount++;
       }
     }
   }

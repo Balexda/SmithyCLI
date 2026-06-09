@@ -779,13 +779,14 @@ describe('getComposedTemplates', () => {
     expect(orders).not.toContain('./.gemini/skills/smithy.gh-issue');
   });
 
-  it('smithy.forge renders direct implementation and review instructions for Codex', () => {
+  it('smithy.forge renders sub-agent orchestration for Codex', () => {
     const forge = codexComposed.commands.get('smithy.forge.md')!;
-    expect(forge).toContain('Use test-driven development for each task');
-    expect(forge).toContain('Review your implementation by examining the diff');
-    expect(forge).not.toContain('Dispatch a sub-agent for each task');
-    expect(forge).not.toContain('smithy-implementation-review sub-agent');
-    expect(forge).not.toContain('smithy-maid sub-agent');
+    // Codex gained first-class subagent support, so it now renders the same
+    // sub-agent dispatch branch as Claude rather than the inline degraded path.
+    expect(forge).toContain('Dispatch a sub-agent for each task');
+    expect(forge).toContain('smithy-implement');
+    expect(forge).toContain('smithy-implementation-review');
+    expect(forge).not.toContain('Use test-driven development for each task');
   });
 
   // US4 Slice 1 Task 1: the RFC parser in Phase 3 must enumerate

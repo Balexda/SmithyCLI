@@ -2,7 +2,7 @@
 name: smithy-implement
 description: "TDD implementation sub-agent. Takes a single task, writes failing test, implements to pass, commits. Invoked by smithy-forge per task."
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: opus
+tier: deep
 ---
 # smithy-implement
 

@@ -236,7 +236,12 @@ export async function getComposedTemplates(
 ): Promise<ComposedTemplates> {
   const snippets = loadSnippets();
   const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
-  const supportsSubAgents = variant === 'claude' || variant === 'gemini';
+  // Which variants render the rich {{#ifAgent}} sub-agent branch (vs. the
+  // {{else}} fallback). Claude and Codex both ship deployable sub-agent
+  // definitions (.claude/agents/*.md and .codex/agents/*.toml respectively)
+  // and support parallel isolated-context dispatch. Gemini gets no sub-agent
+  // definitions deployed, so it stays on the inline fallback path.
+  const supportsSubAgents = variant === 'claude' || variant === 'codex';
 
   // Register {{#ifAgent}} block helper. Dotprompt uses knownHelpersOnly so
   // standard {{#if variable}} doesn't work — custom block helpers are required.

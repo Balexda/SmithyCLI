@@ -8,9 +8,9 @@ Smithy is a CLI tool that bootstraps AI-assisted development workflows across mu
 
 | Agent | Prompts | Commands (slash) | Agents (sub-agents) | Permissions |
 |-------|---------|-------------------|---------------------|-------------|
-| Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/` | `.claude/settings.json` |
+| Claude | `.claude/prompts/` | `.claude/commands/` | `.claude/agents/<name>.md` | `.claude/settings.json` |
 | Gemini | `.gemini/skills/<name>/SKILL.md` | `.gemini/skills/<name>/SKILL.md` | (not deployed) | `.gemini/settings.json` |
-| Codex | `tools/codex/prompts/` and `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` | (not deployed) | `.codex/rules/default.rules` |
+| Codex | `tools/codex/prompts/` and `.agents/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` | `.codex/agents/<name>.toml` | `.codex/rules/default.rules` |
 
 `smithy uninit` removes all deployed artifacts (but preserves config/permissions).
 
@@ -100,7 +100,7 @@ group together alphabetically and stand visually apart from slash commands
 Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
-- **`agents/`** — sub-agent definitions (deployed to `.claude/agents/` only, with frontmatter intact).
+- **`agents/`** — sub-agent definitions. Deployed to `.claude/agents/<name>.md` (frontmatter intact) for Claude and translated into Codex custom-agent TOML at `.codex/agents/<name>.toml`. Each agent declares a provider-neutral model `tier` (`light`/`standard`/`deep`) + optional `effort`, translated per-provider by `src/agent-models.ts` (Claude → `model:`, Codex → `model_reasoning_effort`). Not deployed for Gemini, which stays on the inline fallback path.
 - **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/`. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` where present).
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 

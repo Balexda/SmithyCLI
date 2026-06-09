@@ -121,14 +121,48 @@ describe('deploy', () => {
     expect(skillMd).not.toContain('./.gemini/skills/smithy.pr-review');
   });
 
-  it('renders forge for direct Codex execution instead of sub-agent orchestration', async () => {
+  it('renders forge with sub-agent orchestration for Codex', async () => {
     await deploy(tmpDir, false);
 
     const forgeSkill = path.join(tmpDir, '.agents', 'skills', 'smithy-forge', 'SKILL.md');
     const content = fs.readFileSync(forgeSkill, 'utf8');
-    expect(content).toContain('Use test-driven development for each task');
-    expect(content).not.toContain('Dispatch a sub-agent for each task');
-    expect(content).not.toContain('smithy-implement sub-agent');
+    // Codex now supports subagents, so forge renders the dispatch branch.
+    expect(content).toContain('Dispatch a sub-agent for each task');
+    expect(content).toContain('smithy-implement');
+    expect(content).not.toContain('Use test-driven development for each task');
+  });
+
+  it('deploys sub-agents as Codex custom-agent TOML definitions', async () => {
+    const deployed = await deploy(tmpDir, false);
+
+    const planToml = path.join(tmpDir, '.codex', 'agents', 'smithy-plan.toml');
+    expect(fs.existsSync(planToml)).toBe(true);
+    const plan = fs.readFileSync(planToml, 'utf8');
+    expect(plan).toContain('name = "smithy-plan"');
+    expect(plan).toContain('developer_instructions = """');
+    expect(plan).toContain('model_reasoning_effort = "high"'); // deep tier
+    expect(plan).toContain('sandbox_mode = "read-only"');
+    // The TOML carries no leftover Smithy frontmatter vocabulary.
+    expect(plan).not.toContain('tier:');
+
+    // The write-capable implement agent gets workspace-write.
+    const implement = fs.readFileSync(
+      path.join(tmpDir, '.codex', 'agents', 'smithy-implement.toml'),
+      'utf8',
+    );
+    expect(implement).toContain('sandbox_mode = "workspace-write"');
+
+    // Deployed agent TOMLs are tracked for manifest-driven cleanup.
+    expect(deployed).toContain(path.join('.codex', 'agents', 'smithy-plan.toml'));
+  });
+
+  it('removeLegacy cleans up deployed Codex agent TOMLs', async () => {
+    await deploy(tmpDir, false);
+    const planToml = path.join(tmpDir, '.codex', 'agents', 'smithy-plan.toml');
+    expect(fs.existsSync(planToml)).toBe(true);
+
+    removeLegacy(tmpDir);
+    expect(fs.existsSync(planToml)).toBe(false);
   });
 
   it('is idempotent — deploying twice does not duplicate content', async () => {

@@ -23,13 +23,16 @@ See the README in each subdirectory for details on its contents and conventions.
 
 - **Extension**: `.prompt` (Dotprompt native format)
 - **Frontmatter**: YAML between `---` fences. Contains `name`, `description`,
-  and for agents: `tools` and `model`.
+  and for agents: `tools` and a provider-neutral `tier` (see *Sub-Agent Model
+  Tiers* below).
 - **Body**: Markdown with Handlebars expressions. Dotprompt resolves partials
   (`{{>snippet-name}}`) and conditionals (`{{#ifAgent}}...{{/ifAgent}}`) at
   deploy time.
 - **Deploy transform**: Frontmatter is stripped when deploying Claude
   commands/prompts (kept for Gemini and Codex skills). Files are renamed from
-  `.prompt` to `.md`.
+  `.prompt` to `.md`. Sub-agents deploy with frontmatter intact to
+  `.claude/agents/<name>.md` (Claude) and are translated into Codex custom-agent
+  TOML at `.codex/agents/<name>.toml`.
 
 ## Workflow Pipeline
 
@@ -359,6 +362,30 @@ Maestro, naming decisions, the audio-service coverage caveat, and a review check
 via `Skill("smithy.helper-flow-definition")` when authoring or auditing a
 flow definition (typically at a UI feature's `wire` phase); this README
 intentionally does not duplicate the schema so the two cannot drift.
+
+## Sub-Agent Model Tiers
+
+Sub-agents declare how much model horsepower they need with a provider-neutral
+`tier` (plus an optional reasoning `effort`) in frontmatter — **never** a raw
+provider model name. Each deployer translates the tier into its own idiom, so
+the same source serves every agent:
+
+| `tier` | Claude `model:` | Codex `model_reasoning_effort` |
+|--------|-----------------|--------------------------------|
+| `light` | `haiku` | `low` |
+| `standard` | `sonnet` | `medium` |
+| `deep` | `opus` | `high` |
+
+- On **Claude**, the tier selects the agent's `model:`.
+- On **Codex**, the tier selects `model_reasoning_effort` while the model itself
+  is inherited from the parent session (Codex model ids are session/plan
+  dependent).
+- An optional `effort: low|medium|high` overrides the tier's default Codex
+  effort. It has no Claude frontmatter knob and is dropped from the Claude build.
+- Omitting `tier` defaults to `standard`. A legacy bare `model: opus|sonnet|haiku`
+  is still tolerated and mapped back onto the equivalent tier.
+
+The translation table is the single source of truth in `src/agent-models.ts`.
 
 ## Sub-Agent Roles
 
