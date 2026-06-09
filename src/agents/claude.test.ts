@@ -111,6 +111,20 @@ describe('deploy', () => {
     }
   });
 
+  it('translates the model tier into a native Claude model: in agent frontmatter', async () => {
+    await deploy(tmpDir, 'none');
+
+    const plan = fs.readFileSync(
+      path.join(tmpDir, '.claude', 'agents', 'smithy.plan.md'),
+      'utf8',
+    );
+    // smithy-plan is a deep-tier agent → Claude opus. The provider-neutral
+    // tier:/effort: vocabulary must not leak into the deployed agent.
+    expect(plan).toContain('model: opus');
+    expect(plan).not.toContain('tier:');
+    expect(plan).not.toContain('effort:');
+  });
+
   it('does not deploy non-agent templates to agents/', async () => {
     await deploy(tmpDir, 'none');
 

@@ -468,8 +468,7 @@ table.
 
 **Dependency-order hierarchy note**: The PRD template deliberately contains
 **no** `## Dependency Order` section. The canonical 4-column Dependency
-Order table format — documented as the single source of truth in
-`src/templates/agent-skills/README.md` — applies only to artifacts that
+Order table format applies only to artifacts that
 decompose in the strict parent/child lineage
 `RFC → Feature Map → Spec → Tasks` (milestones → features → stories →
 slices). PRDs sit **upstream** of that lineage as an optional entry point

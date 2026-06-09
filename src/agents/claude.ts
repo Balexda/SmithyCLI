@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
+import { toClaudeAgentContent } from '../agent-models.js';
 import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import { computeDrift, type DriftReport, type PermissionTriple } from '../drift.js';
@@ -71,7 +72,9 @@ export async function deploy(
   }
   for (const [file, content] of templates.agents) {
     const dest = path.join(agentsDir, file);
-    fs.writeFileSync(dest, content);
+    // Translate Smithy's provider-neutral tier:/effort: into Claude's native
+    // model: frontmatter before writing.
+    fs.writeFileSync(dest, toClaudeAgentContent(content));
     deployedFiles.push(path.relative(baseDir, dest));
   }
 
