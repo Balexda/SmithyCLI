@@ -53,42 +53,7 @@
 
 ---
 
-## Slice 2: Detect the Target UI Stack Before Generation
-
-**Goal**: The UI authoring and build prompts inspect the target project's existing UI framework and test driver before naming component paths or executable flow bodies.
-
-**Justification**: Stack detection is independently useful once the artifact fields are neutral. It lets Smithy produce framework-appropriate paths and driver-appropriate flow bodies while keeping the no-guessing failure mode explicit.
-
-**Addresses**: FR-008, FR-009, FR-010; AS 2.1, AS 2.4
-
-### Tasks
-
-- [ ] **Add UI stack detection guidance**
-
-  Update `src/templates/agent-skills/commands/smithy.mark.prompt` and `src/templates/agent-skills/commands/smithy.forge.prompt` so UI work includes a target-repo stack detection pass before screen or flow generation. The prompts should use existing project files and conventions to infer the framework and test driver for AS 2.1.
-
-  _Acceptance criteria:_
-  - UI generation inspects the target repo before selecting framework-specific outputs
-  - Screen annotations receive framework-appropriate component paths
-  - Flow work receives driver-appropriate executable test-body paths
-  - Backend paths do not gain UI stack-detection requirements
-
-- [ ] **Surface uncertain stack detection**
-
-  Update the same command prompts so low-confidence or conflicting stack signals are treated as an ambiguity to surface, not a reason to default to Compose or Maestro. This satisfies AS 2.4 and keeps generated artifacts from pretending a stack was detected.
-
-  _Acceptance criteria:_
-  - Missing framework signals surface an ambiguity
-  - Missing test-driver signals surface an ambiguity
-  - Conflicting framework or driver signals surface an ambiguity
-  - Prompts do not silently fall back to Compose or Maestro
-  - The ambiguity path remains specific to UI work
-
-**PR Outcome**: UI planning and implementation prompts choose component and flow outputs from the target repository's actual stack, and they stop when the stack cannot be determined confidently enough to generate usable artifacts.
-
----
-
-## Slice 3: Make Flow Execution Driver-Neutral
+## Slice 2: Make Flow Execution Driver-Neutral
 
 **Goal**: Flow executable bodies are generated in the project's own test driver with stable selectors and guard assertions, while helper and forge text avoid Maestro-only semantics.
 
@@ -151,8 +116,7 @@ Recommended implementation sequence:
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
 | S1 | Generalize screen and flow artifact contracts | — | — |
-| S2 | Detect the target UI stack before generation | S1 | — |
-| S3 | Make flow execution driver-neutral | S2 | — |
+| S2 | Make flow execution driver-neutral | S1 | — |
 
 ### Cross-Story Dependencies
 

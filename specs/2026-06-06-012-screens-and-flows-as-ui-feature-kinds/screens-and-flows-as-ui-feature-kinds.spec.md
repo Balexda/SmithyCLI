@@ -116,10 +116,9 @@ As a developer on any UI project (Compose, React, Electron, SwiftUI, …), I wan
 
 **Acceptance Scenarios**:
 
-1. **Given** a target repo with no Compose, **When** the UI path runs, **Then** the AI detects the project's UI framework and names a framework-appropriate component file in the screen annotation's path field.
+1. **Given** a target repo with no Compose, **When** the UI path runs, **Then** the screen annotation's `component-path` names a framework-appropriate component file for the project's actual stack.
 2. **Given** a repo whose tests use Playwright (or Cypress/Detox/XCUITest), **When** a flow is emitted, **Then** the executable body is authored in that driver, keyed to stable test IDs, asserting traversal **and** guards — never visible text or layout position.
 3. **Given** the generalized templates, **When** a maintainer reads `feature-kinds.md` and the helper skills, **Then** Compose/Maestro/`story-spider-design` are framed as worked examples and the normative contract is driver-neutral.
-4. **Given** the AI cannot confidently detect the stack, **When** it would otherwise guess, **Then** it surfaces the ambiguity rather than silently defaulting to Compose/Maestro.
 
 ---
 
@@ -245,8 +244,8 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 - **FR-005**: Flows MUST be modeled as first-class `FL<N>` nodes with individual dependencies, not as a `flows: [...]` list on the feature.
 - **FR-006**: On `kind: ui`, `mark` MUST author one `design/screens/<ScreenId>.design.md` per screen node (per `smithy.helper-screen-design`) and one `design/flows/<FlowId>.flow.md` per flow node (per `smithy.helper-flow-definition`), with rationale-only / intent-only bodies.
 - **FR-007**: The durable screen/flow artifacts MUST be authored at `mark`; `forge` MUST NOT author them. (Corrects #408.)
-- **FR-008**: Screen/flow generation MUST be framework- and driver-agnostic: the AI MUST detect the target project's UI framework and test driver and emit artifacts in that stack; Compose/Maestro/`story-spider-design` MUST appear only as illustrative examples.
-- **FR-009**: When the project stack cannot be confidently detected, the system MUST surface the ambiguity rather than default silently.
+- **FR-008**: Screen/flow generation MUST be framework- and driver-agnostic: artifacts are emitted in the target project's existing UI framework and test driver (the AI adapts to the project's stack inherently, the same way it does for backend code — no explicit detection sweep); Compose/Maestro/`story-spider-design` MUST appear only as illustrative examples.
+- **FR-009**: ~~When the project stack cannot be confidently detected, the system MUST surface the ambiguity rather than default silently.~~ *(Withdrawn 2026-06-08 — superseded by the inherent-adaptation decision; there is no explicit detection step whose confidence could be surfaced. See SD-009.)*
 - **FR-010**: The screen annotation's component-path field MUST be a repo-relative path to the owning UI component file (framework-neutral), not a framework-specific symbol name.
 - **FR-011**: Flow executable bodies MUST be keyed to stable test IDs / accessibility IDs / semantic tags — never visible text or layout position — and MUST assert traversal **and** guards.
 - **FR-012**: `.flow.md` bodies MUST remain intent-only and MUST NOT enumerate steps.
@@ -298,12 +297,13 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 |----|-------------|-----------------|--------|------------|--------|------------|
 | SD-001 | Pipeline model for UI work. | Functional Scope | High | High | resolved | Resolved 2026-06-06 — adopt the typed ordering ledger (SC/FL/US first-class nodes in the spec's `## Dependency Order`); spec rows are pointers+ordering, not layout prose. See `## Resolved Architectural Model`. |
 | SD-002 | Screen annotation filename: keep landed `<ScreenId>.design.md` or adopt the user's `.screen.md`. | Terminology | Low | High | resolved | Resolved 2026-06-07 — owner decision: use `<ScreenId>.design.md`. |
-| SD-003 | Which test drivers are officially supported and how `forge` detects the driver; generalizing the flow skill's Maestro-specific yaml grammar and the bundle (claude.ai/design, Figma) export shape to driver/tool-neutral contracts. | Integration | Medium | High | resolved | Resolved 2026-06-07 — owner decision: smithy does not own or select the test driver. The repo configures its own testing and smithy leverages whatever exists (`FR-008` stack detection); there is no official driver matrix, and the artifact contract is driver-neutral by construction (`FR-008`/`FR-011`, contracts C6). |
+| SD-003 | Which test drivers are officially supported and how `forge` detects the driver; generalizing the flow skill's Maestro-specific yaml grammar and the bundle (claude.ai/design, Figma) export shape to driver/tool-neutral contracts. | Integration | Medium | High | resolved | Resolved 2026-06-07 — owner decision: smithy does not own or select the test driver. The repo configures its own testing and smithy leverages whatever exists (`FR-008` stack adaptation); there is no official driver matrix, and the artifact contract is driver-neutral by construction (`FR-008`/`FR-011`, contracts C6). |
 | SD-004 | Multi-screen / multi-flow intra-feature ordering. | Domain & Data Model | Medium | High | resolved | Resolved 2026-06-06 — the typed ledger orders SC/FL/US nodes in one file; superseded by SD-001's resolution. |
 | SD-005 | Fidelity of `import`-mode structure derivation: how reliably `render` can extract screens/flows/behavior from a prototype/bundle, and how much human confirmation the derived structure needs. | Integration | Medium | Low | open | — |
 | SD-006 | Whether `SC`/`FL` nodes are always atomic or can be sub-sliced (and whether `flow-scaffold` #410 is in scope, which the epic recommends holding). | Constraints | Low | Medium | open | — |
 | SD-007 | Build-phase coverage honesty: a build screen can be "done" with a missing brief state and no executable gate until its flows wire. | Edge Cases | Medium | Low | open | — |
 | SD-008 | Visual-intent honesty under the non-blocking gate: how a `brief`-mode node that never received a bundle surfaces its unrealized prototype rather than silently shipping skill-only. | Interaction & UX | Medium | Medium | open | — |
+| SD-009 | Whether smithy command prompts should encode an explicit UI stack/test-driver **detection** pass before generating screen/flow artifacts. | Functional Scope | Medium | High | resolved | Resolved 2026-06-08 — owner decision: **no explicit detection prose**. The agent adapts to the project's existing stack inherently when it writes code (as backend `forge` does without a language-detection sweep); the neutral `component-path`/`test-body` contracts (Slice 1) already carry the behavior. Stack conventions live in `CLAUDE.md`/`AGENTS.md`, not the prompts. Withdraws Slice 2, FR-009, and AS 2.4; rewords FR-008/AS 2.1 to keep the framework-agnostic outcome without the detection mechanism. |
 
 ## Out of Scope
 
