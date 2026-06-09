@@ -221,11 +221,36 @@ export function buildDependencyGraph(
       // matches the only signal the data model gives us at that level.
       const downstreamSlot = `${record.path}#${row.id}`;
       const downstream = downstreamByParentSlot.get(downstreamSlot);
-      const rolledUpStatus = downstream?.status ?? record.status;
+      // A row is "decomposed" only when a REAL (non-virtual) downstream
+      // artifact exists for it. A virtual downstream means the child file
+      // is not yet on disk, so the row still awaits its cut/mark and must
+      // stay a visible leaf — not be suppressed as already-broken-down.
+      const decomposed = downstream !== undefined && downstream.virtual !== true;
+      // Status resolution:
+      //   - downstream exists (real or virtual) → the downstream
+      //     artifact's rolled-up status (a story's status is its tasks
+      //     file's roll-up, etc.). Unchanged from the original behavior.
+      //   - slice row (no downstream child record) → its OWN per-slice
+      //     status from `record.slices`. Slices live inline and have no
+      //     child file, so without this they would inherit the whole
+      //     tasks file's roll-up: a done slice would read `in-progress`
+      //     and leak into the pending view, while the genuinely pending
+      //     slice stays indistinguishable. The data model already parsed
+      //     the per-slice status — we just consult it here.
+      //   - otherwise → the owning record's status (non-tasks leaf, or a
+      //     tasks file with no parsed `slices`).
+      let rolledUpStatus: DependencyNode['status'];
+      if (downstream !== undefined) {
+        rolledUpStatus = downstream.status;
+      } else {
+        const slice = record.slices?.find((s) => s.id === row.id);
+        rolledUpStatus = slice?.status ?? record.status;
+      }
       nodes[id] = {
         record_path: record.path,
         row,
         status: rolledUpStatus,
+        decomposed,
       };
       discoveryOrder.set(id, cursor);
       cursor += 1;
@@ -294,10 +319,30 @@ export function buildDependencyGraph(
     if (typeof parentRowId !== 'string' || parentRowId.length === 0) continue;
     const parentNodeId = nodeId(parentPath, parentRowId);
     if (!(parentNodeId in nodes)) continue;
-    // Skip cross-artifact edges from done parents — see the
-    // "done predecessors don't block" preamble above. A child whose
-    // only blocker is a done parent row is genuinely ready right now.
-    if (nodes[parentNodeId]?.status === 'done') continue;
+    // Skip cross-artifact edges from done OR decomposed parents.
+    //
+    // Done: see the "done predecessors don't block" preamble above — a
+    // child whose only blocker is a done parent row is ready right now.
+    //
+    // Decomposed: a decomposed parent's cross-artifact edge is pure
+    // lineage ("this child realizes this parent"), not a real
+    // work-ordering dependency (cross-artifact deps are implicit in the
+    // parent/child lineage and never authored as `depends_on`). Keeping
+    // it would push the child's roots one topological layer deeper per
+    // nesting level, even though forging/cutting the child IS the
+    // parent's remaining work. Contracting it lets a pending child whose
+    // only blocker is its decomposed parent surface at Layer 0, matching
+    // the "Layer 0 = awaiting dispatch" framing. Real same-file ordering
+    // (intra-table `depends_on`, wired above) is untouched — only the
+    // structural cross-artifact link is contracted. Note a real child
+    // record always makes its parent `decomposed`, so this effectively
+    // contracts every real lineage edge in the pending layering; the
+    // `--all` view still surfaces those rows (they are merely no longer
+    // pushed deeper).
+    const parentNode = nodes[parentNodeId];
+    if (parentNode?.status === 'done' || parentNode?.decomposed === true) {
+      continue;
+    }
 
     for (const row of record.dependency_order.rows) {
       // Only "root" rows (no intra-table predecessors) are pinned to the
@@ -399,29 +444,67 @@ export function buildDependencyGraph(
 }
 
 /**
+ * Which topological layers to keep when projecting/rendering the graph.
+ * Maps the CLI `--layer <n>` / `--ready` (sugar for `--layer 0`) /
+ * `--max-layer <n>` flags so the (often long) layered view can be
+ * trimmed:
+ *   - `{ kind: 'only', layer }`  → keep just that one layer.
+ *   - `{ kind: 'max', layer }`   → keep layers `0..layer` (inclusive).
+ * `undefined` keeps every layer.
+ */
+export type LayerSelection =
+  | { kind: 'only'; layer: number }
+  | { kind: 'max'; layer: number };
+
+/**
+ * Filter a list of layers by a {@link LayerSelection}, keyed on each
+ * layer's `layer` index (the builder-assigned topological depth, which
+ * survives any earlier omission of fully-hidden layers). Pure; returns
+ * the input array unchanged when `selection` is `undefined`.
+ */
+export function selectLayers<T extends { layer: number }>(
+  layers: T[],
+  selection: LayerSelection | undefined,
+): T[] {
+  if (selection === undefined) return layers;
+  if (selection.kind === 'only') {
+    return layers.filter((l) => l.layer === selection.layer);
+  }
+  return layers.filter((l) => l.layer <= selection.layer);
+}
+
+/**
  * Project a {@link DependencyGraph} into the wire-format
  * {@link SerializedGraph} that `smithy status --format json` emits.
  *
  * `opts.all` mirrors the CLI `--all` flag. The two modes match the text
  * `--graph` renderer's behavior exactly:
  *
- * - Default (`all === false`): drop every `done` node from layer
- *   `node_ids` and report the count via `complete_count`. Layers whose
- *   members are all `done` are omitted entirely (mirrors
- *   `formatLayerBlock`'s empty-string return at `renderGraph.ts:460`).
- *   The top-level `nodes` map is shrunk to every FQ ID in `graph.nodes`
- *   whose status is not `done` — not just IDs that survive in some
- *   emitted layer. This is what preserves the "an ID missing from
- *   `graph.nodes` is already done" invariant the smithy.status skill
- *   relies on, even for repos with cycles: Kahn's algorithm excludes
- *   cycle participants (and nodes downstream of cycles) from `layers`,
- *   but those IDs still appear in `graph.cycles`, and their metadata
- *   must remain reachable in `nodes`.
+ * - Default (`all === false`): drop every `done` node AND every
+ *   `decomposed` node from layer `node_ids`, reporting the two omitted
+ *   counts separately via `complete_count` (done) and `suppressed_count`
+ *   (decomposed — already broken down, surfaced via their children).
+ *   Layers whose members are all hidden are omitted entirely (mirrors
+ *   `formatLayerBlock`'s empty-string return). The top-level `nodes` map
+ *   is shrunk to every FQ ID in `graph.nodes` whose status is not `done`
+ *   — including decomposed nodes, which are not `done` and must stay
+ *   resolvable. This preserves the "an ID missing from `graph.nodes` is
+ *   already done" invariant the smithy.status skill relies on, even for
+ *   repos with cycles: Kahn's algorithm excludes cycle participants
+ *   (and nodes downstream of cycles) from `layers`, but those IDs still
+ *   appear in `graph.cycles`, and their metadata must remain reachable.
  *
  * - `--all` (`all === true`): every node stays on the wire. `node_ids`
  *   keeps its builder-emitted order; the two index arrays partition it
  *   by `done` vs. non-`done` so a consumer can read either set in O(k)
- *   without re-deriving status from `nodes`.
+ *   without re-deriving status from `nodes`. Decomposed nodes are shown
+ *   inline (not suppressed) — `--all` is the full structural view.
+ *
+ * `opts.layerSelection` (the `--layer` / `--ready` / `--max-layer` flags)
+ * trims which layers are emitted, applied after hidden-layer omission so
+ * it keys on the builder's topological depth. `nodes`, `cycles`, and
+ * `dangling_refs` are never trimmed by it, so a consumer can still
+ * resolve any ID a kept layer references.
  *
  * `cycles` and `dangling_refs` are passed through verbatim in both modes
  * — they are rare and informational, and a `done` node inside a cycle
@@ -432,7 +515,7 @@ export function buildDependencyGraph(
  */
 export function serializeGraphForJson(
   graph: DependencyGraph,
-  opts: { all: boolean },
+  opts: { all: boolean; layerSelection?: LayerSelection },
 ): SerializedGraph {
   if (opts.all) {
     const layers: SerializedGraphLayer[] = graph.layers.map((layer) => {
@@ -459,7 +542,7 @@ export function serializeGraphForJson(
     return {
       mode: 'all',
       nodes: { ...graph.nodes },
-      layers,
+      layers: selectLayers(layers, opts.layerSelection),
       cycles: graph.cycles.map((c) => c.slice()),
       dangling_refs: graph.dangling_refs.map((d) => ({ ...d })),
     };
@@ -470,19 +553,24 @@ export function serializeGraphForJson(
   for (const layer of graph.layers) {
     const pending: string[] = [];
     let complete_count = 0;
+    let suppressed_count = 0;
     for (const id of layer.node_ids) {
       const node = graph.nodes[id];
-      // Mirror `renderGraph.ts:435` exactly: a missing node is treated
-      // as visible (defensive — should not occur in practice, but we
-      // never want to silently drop an unresolved id).
-      if (node === undefined || node.status !== 'done') {
-        pending.push(id);
-      } else {
+      // Hide done and decomposed nodes; tally them separately. A node
+      // that is both (a decomposed parent whose child rolled up to done)
+      // counts as done. A missing node is treated as visible (defensive
+      // — should not occur, but we never silently drop an unresolved id).
+      if (node !== undefined && node.status === 'done') {
         complete_count += 1;
+      } else if (node !== undefined && node.decomposed) {
+        suppressed_count += 1;
+      } else {
+        pending.push(id);
       }
     }
     if (pending.length === 0 && layer.node_ids.length > 0) {
-      // Fully-done layer: omit entirely, matching the text renderer.
+      // Layer with no visible (dispatchable) members: omit entirely,
+      // matching the text renderer.
       continue;
     }
     layers.push({
@@ -490,6 +578,7 @@ export function serializeGraphForJson(
       layer: layer.layer,
       node_ids: pending,
       complete_count,
+      suppressed_count,
     });
   }
   // Populate `nodes` from every non-`done` entry in `graph.nodes`, not
@@ -505,7 +594,7 @@ export function serializeGraphForJson(
   return {
     mode: 'pending-only',
     nodes,
-    layers,
+    layers: selectLayers(layers, opts.layerSelection),
     cycles: graph.cycles.map((c) => c.slice()),
     dangling_refs: graph.dangling_refs.map((d) => ({ ...d })),
   };

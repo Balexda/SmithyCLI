@@ -30,7 +30,7 @@ import type {
   SerializedGraph,
   StatusTree,
 } from '../status/index.js';
-import { serializeGraphForJson } from '../status/index.js';
+import { selectLayers, serializeGraphForJson } from '../status/index.js';
 import { createTheme, type Theme } from '../status/theme.js';
 
 const theme: Theme = createTheme({ color: false, encoding: 'utf8' });
@@ -419,10 +419,17 @@ describe('StatusJsonPayload.graph type wiring', () => {
             artifact_path: null,
           },
           status: 'not-started',
+          decomposed: false,
         },
       },
       layers: [
-        { mode: 'pending-only', layer: 0, node_ids: [fqId], complete_count: 0 },
+        {
+          mode: 'pending-only',
+          layer: 0,
+          node_ids: [fqId],
+          complete_count: 0,
+          suppressed_count: 0,
+        },
       ],
       cycles: [],
       dangling_refs: [],
@@ -457,6 +464,7 @@ describe('StatusJsonPayload.graph type wiring', () => {
             artifact_path: null,
           },
           status: 'done',
+          decomposed: false,
         },
       },
       layers: [
@@ -625,6 +633,12 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
    * promoting blocked rows forward.
    */
   function writeNoDoneFourStoryFixture(): void {
+    // Spec only — no tasks files on disk. The four stories therefore
+    // stay UNDECOMPOSED leaves (their referenced tasks files are
+    // not-yet-created), so AS 10.1's story-level topology (US1+US4 in
+    // Layer 0, US2 in Layer 1, US3 in Layer 2) renders directly rather
+    // than collapsing to suppressed parents + their slices. The
+    // depends_on column drives the layering.
     write(
       'specs/sample/sample.spec.md',
       `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
@@ -632,22 +646,6 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
         `| US2 | Second story | US1 | specs/sample/02-second.tasks.md |\n` +
         `| US3 | Third story | US2 | specs/sample/03-third.tasks.md |\n` +
         `| US4 | Fourth story | — | specs/sample/04-fourth.tasks.md |\n`,
-    );
-    write(
-      'specs/sample/01-first.tasks.md',
-      `# US1 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
-    );
-    write(
-      'specs/sample/02-second.tasks.md',
-      `# US2 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
-    );
-    write(
-      'specs/sample/03-third.tasks.md',
-      `# US3 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
-    );
-    write(
-      'specs/sample/04-fourth.tasks.md',
-      `# US4 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n- [ ] Two\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Only | — | — |\n`,
     );
   }
 
@@ -1033,13 +1031,20 @@ describe('serializeGraphForJson', () => {
   const SPEC = 'specs/x/x.spec.md';
   const id = (row: string): string => `${SPEC}#${row}`;
 
-  function makeGraph(rows: Array<{ id: string; status: ArtifactRecord['status'] }>): DependencyGraph {
+  function makeGraph(
+    rows: Array<{
+      id: string;
+      status: ArtifactRecord['status'];
+      decomposed?: boolean;
+    }>,
+  ): DependencyGraph {
     const nodes: DependencyGraph['nodes'] = {};
     for (const r of rows) {
       nodes[id(r.id)] = {
         record_path: SPEC,
         row: { id: r.id, title: r.id, depends_on: [], artifact_path: null },
         status: r.status,
+        decomposed: r.decomposed ?? false,
       };
     }
     return {
@@ -1065,7 +1070,108 @@ describe('serializeGraphForJson', () => {
     if (layer.mode === 'pending-only') {
       expect(layer.node_ids).toEqual([id('US2'), id('US4')]);
       expect(layer.complete_count).toBe(2);
+      expect(layer.suppressed_count).toBe(0);
     }
+  });
+
+  it('default mode hides decomposed nodes and tallies them in suppressed_count (distinct from complete_count)', () => {
+    const graph = makeGraph([
+      { id: 'US1', status: 'done' },
+      { id: 'US2', status: 'in-progress', decomposed: true },
+      { id: 'US3', status: 'not-started' },
+    ]);
+    const serialized = serializeGraphForJson(graph, { all: false });
+    const layer = serialized.layers[0]!;
+    expect(layer.mode).toBe('pending-only');
+    if (layer.mode === 'pending-only') {
+      // US1 is done → complete_count; US2 is decomposed → suppressed_count;
+      // only the undecomposed pending US3 remains dispatchable.
+      expect(layer.node_ids).toEqual([id('US3')]);
+      expect(layer.complete_count).toBe(1);
+      expect(layer.suppressed_count).toBe(1);
+    }
+    // A decomposed (non-done) node stays resolvable in the nodes map.
+    expect(serialized.nodes[id('US2')]).toBeDefined();
+  });
+
+  it('default mode omits a layer whose only members are done or decomposed', () => {
+    const graph: DependencyGraph = {
+      nodes: {
+        [id('US1')]: {
+          record_path: SPEC,
+          row: { id: 'US1', title: 'US1', depends_on: [], artifact_path: null },
+          status: 'in-progress',
+          decomposed: true,
+        },
+        [id('US2')]: {
+          record_path: SPEC,
+          row: { id: 'US2', title: 'US2', depends_on: [], artifact_path: null },
+          status: 'not-started',
+          decomposed: false,
+        },
+      },
+      layers: [
+        { layer: 0, node_ids: [id('US1')] },
+        { layer: 1, node_ids: [id('US2')] },
+      ],
+      cycles: [],
+      dangling_refs: [],
+    };
+    const serialized = serializeGraphForJson(graph, { all: false });
+    // Layer 0 (only a decomposed node) is omitted; Layer 1 survives,
+    // keeping its original index.
+    expect(serialized.layers).toHaveLength(1);
+    expect(serialized.layers[0]?.layer).toBe(1);
+  });
+
+  it('layerSelection trims the emitted layers (only / max) without touching nodes', () => {
+    const graph = makeGraph([{ id: 'US1', status: 'not-started' }]);
+    // Add two more layers by hand so there is something to trim.
+    graph.layers = [
+      { layer: 0, node_ids: [id('US1')] },
+      { layer: 1, node_ids: [id('US2')] },
+      { layer: 2, node_ids: [id('US3')] },
+    ];
+    graph.nodes[id('US2')] = {
+      record_path: SPEC,
+      row: { id: 'US2', title: 'US2', depends_on: [], artifact_path: null },
+      status: 'not-started',
+      decomposed: false,
+    };
+    graph.nodes[id('US3')] = {
+      record_path: SPEC,
+      row: { id: 'US3', title: 'US3', depends_on: [], artifact_path: null },
+      status: 'not-started',
+      decomposed: false,
+    };
+    const only = serializeGraphForJson(graph, {
+      all: false,
+      layerSelection: { kind: 'only', layer: 0 },
+    });
+    expect(only.layers.map((l) => l.layer)).toEqual([0]);
+    const max = serializeGraphForJson(graph, {
+      all: false,
+      layerSelection: { kind: 'max', layer: 1 },
+    });
+    expect(max.layers.map((l) => l.layer)).toEqual([0, 1]);
+    // nodes are never trimmed by the layer filter.
+    expect(Object.keys(max.nodes).sort()).toEqual(
+      [id('US1'), id('US2'), id('US3')].sort(),
+    );
+  });
+
+  it('selectLayers is a pure filter keyed on the layer index', () => {
+    const layers = [{ layer: 0 }, { layer: 1 }, { layer: 2 }];
+    expect(selectLayers(layers, undefined)).toBe(layers);
+    expect(selectLayers(layers, { kind: 'only', layer: 1 })).toEqual([
+      { layer: 1 },
+    ]);
+    expect(selectLayers(layers, { kind: 'max', layer: 1 })).toEqual([
+      { layer: 0 },
+      { layer: 1 },
+    ]);
+    // Out-of-range selection yields an empty list (no throw).
+    expect(selectLayers(layers, { kind: 'only', layer: 9 })).toEqual([]);
   });
 
   it('default mode keeps every non-done node in graph.nodes (not just IDs in layers)', () => {
@@ -1089,11 +1195,13 @@ describe('serializeGraphForJson', () => {
           record_path: SPEC,
           row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
           status: 'in-progress',
+          decomposed: false,
         },
         [id('US2')]: {
           record_path: SPEC,
           row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
           status: 'not-started',
+          decomposed: false,
         },
       },
       layers: [],
@@ -1117,11 +1225,13 @@ describe('serializeGraphForJson', () => {
           record_path: SPEC,
           row: { id: 'US1', title: 'US1', depends_on: ['US2'], artifact_path: null },
           status: 'done',
+          decomposed: false,
         },
         [id('US2')]: {
           record_path: SPEC,
           row: { id: 'US2', title: 'US2', depends_on: ['US1'], artifact_path: null },
           status: 'in-progress',
+          decomposed: false,
         },
       },
       layers: [],
@@ -1140,11 +1250,13 @@ describe('serializeGraphForJson', () => {
           record_path: SPEC,
           row: { id: 'US1', title: 'US1', depends_on: [], artifact_path: null },
           status: 'done',
+          decomposed: false,
         },
         [id('US2')]: {
           record_path: SPEC,
           row: { id: 'US2', title: 'US2', depends_on: [], artifact_path: null },
           status: 'in-progress',
+          decomposed: false,
         },
       },
       layers: [
@@ -1216,6 +1328,142 @@ describe('serializeGraphForJson', () => {
         { source_id: id('US1'), missing_id: id('US9') },
       ]);
     }
+  });
+});
+
+describe('statusAction — pending-graph view + layer-filter flags', () => {
+  const TABLE_HEADER =
+    '| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|';
+
+  let root: string;
+  let logSpy: MockInstance<(...args: unknown[]) => void>;
+  let stderrSpy: MockInstance<(typeof process.stderr)['write']>;
+  let savedExitCode: typeof process.exitCode;
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'smithy-status-flags-'));
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    savedExitCode = process.exitCode;
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    stderrSpy.mockRestore();
+    process.exitCode = savedExitCode;
+    if (root) rmSync(root, { recursive: true, force: true });
+  });
+
+  function write(relPath: string, contents: string): void {
+    const abs = join(root, relPath);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, contents);
+  }
+
+  function stdout(): string {
+    return logSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+  }
+
+  function stderr(): string {
+    return stderrSpy.mock.calls.map((args) => String(args[0])).join('');
+  }
+
+  // A spec whose US1 is a REAL (decomposed) tasks file with one done +
+  // one pending slice, and US2/US3 are undecomposed leaves (no tasks
+  // file). The dispatch view should hide US1, surface its pending slice,
+  // and surface US2/US3.
+  function writeDecomposedFixture(): void {
+    write(
+      'specs/sample/sample.spec.md',
+      `# Sample Spec\n\n## Dependency Order\n\n${TABLE_HEADER}\n` +
+        `| US1 | First story | — | specs/sample/01-first.tasks.md |\n` +
+        `| US2 | Second story | — | — |\n` +
+        `| US3 | Third story | US2 | — |\n`,
+    );
+    write(
+      'specs/sample/01-first.tasks.md',
+      `# US1 Tasks\n\n## Slice 1: Done slice\n\n- [x] a\n- [x] b\n\n` +
+        `## Slice 2: Pending slice\n\n- [ ] a\n- [ ] b\n\n` +
+        `## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Done slice | — | — |\n| S2 | Pending slice | S1 | — |\n`,
+    );
+  }
+
+  it('--graph hides a decomposed story and surfaces its pending slice + leaf stories', () => {
+    writeDecomposedFixture();
+    statusAction({ root, graph: true });
+    const out = stdout();
+    // The decomposed US1 story is suppressed; the done slice S1 is
+    // hidden; the pending slice "Pending slice" surfaces.
+    expect(out).toContain('Pending slice');
+    expect(out).not.toContain('First story');
+    expect(out).not.toContain('Done slice');
+    // Leaf stories surface.
+    expect(out).toContain('Second story');
+    expect(out).toContain('Third story');
+    // The decomposed-hidden count is reported on a layer heading.
+    expect(out).toMatch(/decomposed hidden/);
+  });
+
+  it('--format json --pending hides done + decomposed and reports the two counts on Layer 0', () => {
+    writeDecomposedFixture();
+    statusAction({ root, format: 'json', pending: true });
+    const payload = JSON.parse(stdout()) as StatusJsonPayload;
+    const layer0 = payload.graph.layers.find((l) => l.layer === 0);
+    expect(layer0?.mode).toBe('pending-only');
+    if (layer0?.mode === 'pending-only') {
+      // US1 (decomposed) is not a dispatch node; the pending slice S2 is.
+      const ids = layer0.node_ids;
+      expect(ids).toContain('specs/sample/01-first.tasks.md#S2');
+      expect(ids).not.toContain('specs/sample/sample.spec.md#US1');
+      expect(layer0.suppressed_count).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('--ready restricts the JSON graph to Layer 0 only', () => {
+    writeDecomposedFixture();
+    statusAction({ root, format: 'json', ready: true });
+    const payload = JSON.parse(stdout()) as StatusJsonPayload;
+    expect(payload.graph.layers.every((l) => l.layer === 0)).toBe(true);
+    expect(payload.graph.layers.length).toBeGreaterThan(0);
+  });
+
+  it('--max-layer keeps layers 0..n in the text graph', () => {
+    writeDecomposedFixture();
+    statusAction({ root, graph: true, maxLayer: '0' });
+    const out = stdout();
+    expect(out).toContain('Layer 0');
+    expect(out).not.toContain('Layer 1');
+  });
+
+  it('rejects --pending combined with --all (exit 2)', () => {
+    writeDecomposedFixture();
+    statusAction({ root, format: 'json', pending: true, all: true });
+    expect(process.exitCode).toBe(2);
+    expect(stderr()).toContain('--pending cannot be combined with --all');
+  });
+
+  it('rejects mutually-exclusive layer flags (exit 2)', () => {
+    writeDecomposedFixture();
+    statusAction({ root, graph: true, ready: true, maxLayer: '2' });
+    expect(process.exitCode).toBe(2);
+    expect(stderr()).toContain('mutually exclusive');
+  });
+
+  it('rejects a non-integer --layer value (exit 2)', () => {
+    writeDecomposedFixture();
+    statusAction({ root, graph: true, layer: '1.5' });
+    expect(process.exitCode).toBe(2);
+    expect(stderr()).toContain("invalid --layer value '1.5'");
+  });
+
+  it('rejects layer flags in plain text mode without --graph (exit 2)', () => {
+    writeDecomposedFixture();
+    statusAction({ root, ready: true });
+    expect(process.exitCode).toBe(2);
+    expect(stderr()).toContain('require --graph or --format json');
   });
 });
 

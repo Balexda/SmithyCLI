@@ -290,20 +290,21 @@ describe('buildDependencyGraph — cross-artifact stitching (AS 10.2)', () => {
     },
   });
 
-  it('places parent spec roots in Layer 0 and pins child tasks roots into a later layer', () => {
+  it('contracts the cross-artifact edge from a decomposed parent so the child root surfaces at Layer 0', () => {
     const graph = buildDependencyGraph([spec, tasks]);
-    // US1 (spec root) is the only node with no incoming edges — it
-    // alone sits in Layer 0. US2 depends on US1, S1 depends on US1
-    // (cross-artifact), so both land in Layer 1. S2 depends on S1, so
-    // it lands in Layer 2.
+    // US1 has a REAL tasks child, so it is `decomposed`: its
+    // cross-artifact edge to the child's root (S1) is contracted out
+    // (forging S1 IS US1's remaining work, so S1 should not sit a layer
+    // deeper than US1). US1 and S1 therefore share Layer 0. US2 depends
+    // on US1 intra-table (US1 not done → edge kept) → Layer 1; S2
+    // depends on S1 intra-table → Layer 1.
     expect(graph.layers).toEqual([
-      { layer: 0, node_ids: [`${SPEC_PATH}#US1`] },
-      {
-        layer: 1,
-        node_ids: [`${SPEC_PATH}#US2`, `${TASKS_PATH}#S1`],
-      },
-      { layer: 2, node_ids: [`${TASKS_PATH}#S2`] },
+      { layer: 0, node_ids: [`${SPEC_PATH}#US1`, `${TASKS_PATH}#S1`] },
+      { layer: 1, node_ids: [`${SPEC_PATH}#US2`, `${TASKS_PATH}#S2`] },
     ]);
+    // The parent is flagged decomposed; the slice rows are leaves.
+    expect(graph.nodes[`${SPEC_PATH}#US1`]?.decomposed).toBe(true);
+    expect(graph.nodes[`${TASKS_PATH}#S1`]?.decomposed).toBe(false);
   });
 
   it('cross-artifact edges only pin a child record\'s roots, not its non-root rows', () => {
@@ -445,10 +446,10 @@ describe('buildDependencyGraph — node-status semantics (data-model §6)', () =
     expect(graph.nodes[`${SPEC_PATH}#US2`]?.status).toBe('in-progress');
   });
 
-  it('falls back to the owning record status when no downstream record exists (slice rows)', () => {
-    // Slice rows have no downstream child record. The fallback uses
-    // the owning tasks record's rolled-up status — there is no other
-    // signal to surface.
+  it('falls back to the owning record status for slice rows when the record carries no per-slice breakdown', () => {
+    // Slice rows have no downstream child record. With no `slices`
+    // array to consult, the fallback uses the owning tasks record's
+    // rolled-up status — there is no other signal to surface.
     const tasks = makeRecord({
       type: 'tasks',
       path: 'specs/sample/01-first.tasks.md',
@@ -466,6 +467,61 @@ describe('buildDependencyGraph — node-status semantics (data-model §6)', () =
     expect(graph.nodes['specs/sample/01-first.tasks.md#S2']?.status).toBe(
       'in-progress',
     );
+  });
+
+  it('reads each slice row\'s OWN status from record.slices, not the tasks-file roll-up', () => {
+    // The fix for the headline bug: a tasks file rolled up to
+    // `in-progress`, but its slices carry distinct statuses. The slice
+    // nodes must reflect their own per-slice status (so done slices can
+    // be hidden and the genuinely pending slice surfaces), not the
+    // file's aggregate.
+    const TASKS = 'specs/sample/01-first.tasks.md';
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: TASKS,
+      status: 'in-progress',
+      slices: [
+        { id: 'S1', title: 'Done first', status: 'done' },
+        { id: 'S2', title: 'Pending second', status: 'not-started' },
+        { id: 'S3', title: 'Done third', status: 'done' },
+      ],
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [row('S1'), row('S2', ['S1']), row('S3', ['S1'])],
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    expect(graph.nodes[`${TASKS}#S1`]?.status).toBe('done');
+    expect(graph.nodes[`${TASKS}#S2`]?.status).toBe('not-started');
+    expect(graph.nodes[`${TASKS}#S3`]?.status).toBe('done');
+  });
+
+  it('a done slice stops blocking its successor, floating the pending slice to Layer 0', () => {
+    // S2 depends on S1; once S1 is correctly `done` (per-slice status),
+    // the "done predecessors don't block" rule skips the S1→S2 edge, so
+    // the pending S2 surfaces at Layer 0 rather than being buried behind
+    // a slice that is actually finished.
+    const TASKS = 'specs/sample/01-first.tasks.md';
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: TASKS,
+      status: 'in-progress',
+      slices: [
+        { id: 'S1', title: 'Done', status: 'done' },
+        { id: 'S2', title: 'Pending', status: 'not-started' },
+      ],
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [row('S1'), row('S2', ['S1'])],
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    const s2Layer = graph.layers.findIndex((l) =>
+      l.node_ids.includes(`${TASKS}#S2`),
+    );
+    expect(s2Layer).toBe(0);
   });
 
   it('reads downstream from parent_path + parent_row_id even when the row\'s own artifact_path is null', () => {
@@ -712,10 +768,16 @@ describe('buildDependencyGraph — cycle detection (AS 10.3)', () => {
     // their root rows pin each other across the cross-artifact stitch.
     const SPEC_A = 'specs/a/a.spec.md';
     const SPEC_B = 'specs/b/b.spec.md';
+    // Both specs are VIRTUAL (not on disk), so neither row is
+    // `decomposed` — a virtual downstream means the child does not yet
+    // exist. The cross-artifact edges therefore survive (only done or
+    // *real*-decomposed parents have their cross edges contracted), and
+    // the mutual-parent stitch still forms a detectable cycle.
     const specA = makeRecord({
       type: 'spec',
       path: SPEC_A,
       status: 'in-progress',
+      virtual: true,
       parent_path: SPEC_B,
       parent_row_id: 'US1',
       dependency_order: {
@@ -728,6 +790,7 @@ describe('buildDependencyGraph — cycle detection (AS 10.3)', () => {
       type: 'spec',
       path: SPEC_B,
       status: 'in-progress',
+      virtual: true,
       parent_path: SPEC_A,
       parent_row_id: 'US1',
       dependency_order: {
@@ -749,5 +812,41 @@ describe('buildDependencyGraph — cycle detection (AS 10.3)', () => {
       expect(layer.node_ids).not.toContain(`${SPEC_A}#US1`);
       expect(layer.node_ids).not.toContain(`${SPEC_B}#US1`);
     }
+  });
+
+  it('dissolves a cross-artifact cycle between two REAL (decomposed) mutual parents', () => {
+    // The mirror of the test above: when both specs are real files,
+    // each row is `decomposed` (its sibling is a real downstream), so
+    // both cross-artifact edges are contracted. With no surviving edges
+    // the "cycle" disappears — both rows become independent roots at
+    // Layer 0. This is the documented extension of the "done-only
+    // cycles become undetectable" caveat to decomposed parents; a
+    // pathological mutual-parent pair of real, broken-down artifacts is
+    // moot for dispatch purposes (both are suppressed anyway).
+    const SPEC_A = 'specs/a/a.spec.md';
+    const SPEC_B = 'specs/b/b.spec.md';
+    const specA = makeRecord({
+      type: 'spec',
+      path: SPEC_A,
+      status: 'in-progress',
+      parent_path: SPEC_B,
+      parent_row_id: 'US1',
+      dependency_order: { id_prefix: 'US', format: 'table', rows: [row('US1')] },
+    });
+    const specB = makeRecord({
+      type: 'spec',
+      path: SPEC_B,
+      status: 'in-progress',
+      parent_path: SPEC_A,
+      parent_row_id: 'US1',
+      dependency_order: { id_prefix: 'US', format: 'table', rows: [row('US1')] },
+    });
+    const graph = buildDependencyGraph([specA, specB]);
+    expect(graph.cycles).toEqual([]);
+    expect(graph.nodes[`${SPEC_A}#US1`]?.decomposed).toBe(true);
+    expect(graph.nodes[`${SPEC_B}#US1`]?.decomposed).toBe(true);
+    expect(graph.layers).toEqual([
+      { layer: 0, node_ids: [`${SPEC_A}#US1`, `${SPEC_B}#US1`] },
+    ]);
   });
 });

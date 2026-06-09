@@ -53,10 +53,12 @@ describe('status type surface — DependencyGraph / DependencyNode', () => {
       record_path: 'specs/sample/sample.spec.md',
       row,
       status: 'not-started',
+      decomposed: false,
     };
     expect(node.record_path).toBe('specs/sample/sample.spec.md');
     expect(node.row.id).toBe('US1');
     expect(node.status).toBe('not-started');
+    expect(node.decomposed).toBe(false);
   });
 
   it('DependencyGraph carries nodes (FQ-keyed), layers (with node_ids), cycles, and dangling_refs', () => {
@@ -73,6 +75,7 @@ describe('status type surface — DependencyGraph / DependencyNode', () => {
           record_path: 'specs/sample/sample.spec.md',
           row,
           status: 'not-started',
+          decomposed: false,
         },
       },
       layers: [{ layer: 0, node_ids: [fqId] }],
