@@ -1587,6 +1587,38 @@ describe('getComposedTemplates', () => {
     expect(mark).toContain('auto-selection semantics');
   });
 
+  it('mark template defines the typed UI spec ledger', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('### UI Authoring Path Spec Ledger');
+    expect(mark).toContain('| ID | Kind | Title | Depends On | Design | Artifact |');
+    expect(mark).toContain('| SC1 | screen |');
+    expect(mark).toContain('| FL1 | flow |');
+    expect(mark).toContain('| US1 | story |');
+    expect(mark).toContain('`SC<N>` for screen-build rows');
+    expect(mark).toContain('`FL<N>` for flow-wire rows');
+    expect(mark).toContain('`US<N>` for backend story rows');
+    expect(mark).toContain('`Depends On` is exactly `—` or a comma-separated list of same-table IDs');
+    expect(mark).toContain('`Design` is required for `screen` rows');
+    expect(mark).toContain('`Artifact` is `—` for every row in mark');
+    expect(mark).toContain('mark never');
+    expect(mark).toContain('pre-fills a tasks path');
+  });
+
+  it('mark template keeps UI ledger rows pointer-only and allows minimal graphs', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('→ design/screens/<ScreenId>.design.md');
+    expect(mark).toContain('→ design/flows/<FlowId>.flow.md');
+    expect(mark).toContain('must not carry layout');
+    expect(mark).toContain('state, interaction-step, visual-positioning');
+    expect(mark).toContain('Flow rows are first-class `FL<N>` rows');
+    expect(mark).toContain('not entries in a `flows: [...]` list');
+    expect(mark).toContain('UI Spec Ledger and Screen/Flow node entities in the data model');
+    expect(mark).toContain('A single pass-through screen');
+    expect(mark).toMatch(/one `SC<N>`\s+row/);
+    expect(mark).toContain('full UI ledger column set');
+    expect(mark).toContain('Do not add UI-only columns');
+  });
+
   it('cut template resolves the one-shot-output partial', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
