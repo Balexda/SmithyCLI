@@ -174,7 +174,7 @@ Recommended implementation sequence:
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
 | US1 | Establish the `.persona.md` schema and storage convention | — | specs/2026-06-05-011-smithy-persona-command/01-establish-persona-schema-storage-convention.tasks.md |
-| US2 | Generate a persona from a free-text description | US1 | — |
+| US2 | Generate a persona from a free-text description | US1 | specs/2026-06-05-011-smithy-persona-command/02-generate-persona-from-free-text-description.tasks.md |
 | US4 | Ignite reuses existing persona files before generating new ones | US1 | — |
 | US3 | Generate persona files from an RFC's `## Personas` section | US1, US2 | — |
 | US5 | Harmonize preserves file-sourced persona content | US4 | — |
