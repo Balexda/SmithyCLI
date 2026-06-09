@@ -1,6 +1,6 @@
 ---
 name: smithy-spark
-description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces a docs/prds/<YYYY>-<NNN>-<slug>.prd.md (or ~/.smithy/<repo>/docs/prds/... in external-artifacts mode) as an optional upstream input to smithy.ignite."
+description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surveys off-the-shelf alternatives, and produces a docs/prds/<YYYY>-<NNN>-<slug>.prd.md (or ~/.smithy/repos/<repo>/docs/prds/... in external-artifacts mode) as an optional upstream input to smithy.ignite."
 ---
 # smithy-spark
 

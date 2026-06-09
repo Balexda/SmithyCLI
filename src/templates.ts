@@ -225,8 +225,8 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
  * `artifactsRoot` is the prefix substituted into deployed prompts via the
  * `{{artifactsRoot}}` template variable. Templates write paths like
  * `{{artifactsRoot}}docs/rfcs/...`; with an empty prefix (in-repo mode) the
- * path renders as `docs/rfcs/...`, and with `~/.smithy/<repo>/` (external
- * mode) it renders as `~/.smithy/<repo>/docs/rfcs/...`. Implemented as a
+ * path renders as `docs/rfcs/...`, and with `~/.smithy/repos/<repo>/` (external
+ * mode) it renders as `~/.smithy/repos/<repo>/docs/rfcs/...`. Implemented as a
  * zero-arg Handlebars helper so Dotprompt's `knownHelpersOnly` mode accepts
  * the reference (same plumbing pattern as `{{#ifAgent}}`).
  */

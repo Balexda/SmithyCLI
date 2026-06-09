@@ -540,6 +540,7 @@ export const claudeToolPermissions: string[] = [
   "Skill(smithy.forge *)",
   "Skill(smithy.gh-issue *)",
   "Skill(smithy.helper-docker *)",
+  "Skill(smithy.helper-documentation *)",
   "Skill(smithy.helper-flow-definition *)",
   "Skill(smithy.helper-screen-design *)",
   "Skill(smithy.helper-voice *)",

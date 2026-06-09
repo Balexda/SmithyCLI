@@ -358,16 +358,17 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(11);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(14);
-    expect(byCategory.skills).toHaveLength(7);
+    expect(byCategory.skills).toHaveLength(8);
   });
 
-  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, smithy.helper-voice, smithy.helper-screen-design, and smithy.helper-flow-definition', () => {
+  it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, smithy.helper-voice, smithy.helper-documentation, smithy.helper-screen-design, and smithy.helper-flow-definition', () => {
     const { skills } = getTemplateFilesByCategory();
     expect(skills).toContain('smithy.pr-review');
     expect(skills).toContain('smithy.status');
     expect(skills).toContain('smithy.gh-issue');
     expect(skills).toContain('smithy.helper-docker');
     expect(skills).toContain('smithy.helper-voice');
+    expect(skills).toContain('smithy.helper-documentation');
     expect(skills).toContain('smithy.helper-screen-design');
     expect(skills).toContain('smithy.helper-flow-definition');
   });
@@ -874,7 +875,7 @@ describe('getComposedTemplates', () => {
     // outline. Anchor on the numbered heading prefix so a regression that
     // renumbers or drops one section is caught.
     expect(skill.prompt).toContain('## 1. The two axes');
-    expect(skill.prompt).toContain('## 2. The four anti-patterns');
+    expect(skill.prompt).toContain('## 2. Review-mode anti-pattern checklist');
     expect(skill.prompt).toContain('## 3. Voice rules per Role × Mode combination');
     expect(skill.prompt).toContain('## 4. Diagram guidance');
     expect(skill.prompt).toContain('## 5. Embedded examples — when code helps vs. hurts');
@@ -930,10 +931,77 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
     expect(body).not.toMatch(/\.gemini\/skills/);
     expect(body).not.toMatch(/\.agents\/skills/);
-    // The body must explicitly assert its provider-neutrality so a
-    // future edit that quietly adds provider-specific syntax has to
-    // also remove the assertion.
-    expect(body).toMatch(/Provider-neutral/i);
+  });
+
+  it('smithy.helper-voice §2 checklist names the prose-comprehension and self-check anti-patterns', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // The expanded review-mode checklist (this rework) must cover the
+    // prose-comprehension defects the original four structural
+    // anti-patterns missed, plus the two review-pass self-checks. Anchor
+    // on the bolded check names so a regression that quietly drops one
+    // fails the suite.
+    expect(skill.prompt).toContain('Unglossed terms-of-art');
+    expect(skill.prompt).toContain('Schema without a worked instance');
+    expect(skill.prompt).toContain('Internals leakage');
+    expect(skill.prompt).toContain('Conviction drift');
+    expect(skill.prompt).toContain('Bare cross-reference');
+    expect(skill.prompt).toContain('Authoring-process / author-directed commentary');
+    expect(skill.prompt).toContain("Diagram that doesn't earn its space");
+    expect(skill.prompt).toContain('Structural-vs-prose ratio');
+    // Artifact-level commingling escalates to helper-documentation rather
+    // than being retagged in place.
+    expect(skill.prompt).toContain('smithy.helper-documentation');
+  });
+
+  // This rework: smithy.helper-documentation is the artifact-shape layer
+  // above smithy.helper-voice. It is the user-facing entry point (voice
+  // helper is reframed agent-only), runs a fit-for-purpose review, and
+  // delegates prose cleanup down to the voice helper. These assertions
+  // back-stop the deployment contract (body-only, frontmatter retained,
+  // provider-neutral) and the review procedure (framing, audience
+  // inventory, fit-for-purpose, artifact-quality review, recommendation,
+  // navigation design, directed hand-off).
+  it('smithy.helper-documentation is body-only (no scripts) with frontmatter retained', () => {
+    const skill = composed.skills.get('smithy.helper-documentation');
+    expect(skill).toBeDefined();
+    expect(skill!.prompt).toMatch(/^---\s*\n/);
+    expect(skill!.prompt).toContain('name: smithy.helper-documentation');
+    expect(skill!.scripts.size).toBe(0);
+  });
+
+  it('smithy.helper-documentation body covers the procedure, artifact-quality review, and directed hand-off', () => {
+    const skill = composed.skills.get('smithy.helper-documentation')!;
+    // Step 1 frames how much structural freedom the document allows.
+    expect(skill.prompt).toMatch(/governance and genre/i);
+    expect(skill.prompt).toMatch(/template-governed/i);
+    // The fit-for-purpose / split steps.
+    expect(skill.prompt).toMatch(/Audience inventory/i);
+    expect(skill.prompt).toMatch(/Fit-for-purpose check/i);
+    expect(skill.prompt).toMatch(/Recommendation/);
+    expect(skill.prompt).toMatch(/Navigation\/index design/i);
+    // The mis-shaped heuristic is the load-bearing rule of the split decision.
+    expect(skill.prompt).toMatch(/60%/);
+    // The broadened artifact-quality review: presence, ordering, value.
+    expect(skill.prompt).toMatch(/Artifact-quality review/i);
+    expect(skill.prompt).toMatch(/completeness/i);
+    expect(skill.prompt).toMatch(/Ordering \/ reading path/i);
+    expect(skill.prompt).toMatch(/zero-value section/i);
+    // The hand-off pulls in the voice helper and seeds it with findings so
+    // its cleanup has direction rather than starting blind.
+    expect(skill.prompt).toContain('Skill("smithy.helper-voice")');
+    expect(skill.prompt).toMatch(/findings/i);
+    // Cheap pass-through on well-shaped input keeps it from taxing healthy docs.
+    expect(skill.prompt).toMatch(/pass-through/i);
+  });
+
+  it('smithy.helper-documentation is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
+    const skill = composed.skills.get('smithy.helper-documentation')!;
+    const body = skill.prompt.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+    expect(body).not.toMatch(/\$ARGUMENTS\b/);
+    expect(body).not.toMatch(/allowed-tools\s*:/);
+    expect(body).not.toMatch(/CLAUDE_SKILL_DIR/);
+    expect(body).not.toMatch(/\.gemini\/skills/);
+    expect(body).not.toMatch(/\.agents\/skills/);
   });
 
   it('narrative commands load smithy.helper-voice for direct prose authoring', () => {
@@ -3317,7 +3385,7 @@ describe('getComposedTemplates', () => {
 describe('getComposedTemplates artifactsRoot', () => {
   // The {{artifactsRoot}} helper is the deploy-time variable that decides
   // whether planning-artifact paths in the deployed prompts render as
-  // `docs/rfcs/...` (in-repo, default) or `~/.smithy/<repo>/docs/rfcs/...`
+  // `docs/rfcs/...` (in-repo, default) or `~/.smithy/repos/<repo>/docs/rfcs/...`
   // (external mode). Each templatized command prompt must honor it; these
   // assertions lock that in against future template rewrites.
 
@@ -3327,9 +3395,10 @@ describe('getComposedTemplates artifactsRoot', () => {
     // Path in the Phase 3 write instruction renders without a prefix.
     expect(strike).toContain('Write a single strike document to `specs/strikes/YYYY-MM-DD-<slug>.strike.md`');
     expect(strike).not.toContain('{{artifactsRoot}}');
-    // The policy snippet mentions ~/.smithy/<repo>/ as part of its explanation;
-    // that's expected. Make sure no actual artifact path got a tilde prefix.
-    expect(strike).not.toContain('~/.smithy/<repo>/specs/strikes/YYYY');
+    // The policy snippet mentions ~/.smithy/repos/<repo>/ as part of its
+    // explanation; that's expected. Make sure no actual artifact path got a
+    // tilde prefix.
+    expect(strike).not.toContain('~/.smithy/repos/<repo>/specs/strikes/YYYY');
   });
 
   it('substitutes the supplied prefix into every templatized path', async () => {

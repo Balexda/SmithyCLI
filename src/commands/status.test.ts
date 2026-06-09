@@ -31,6 +31,7 @@ import type {
   StatusTree,
 } from '../status/index.js';
 import { selectLayers, serializeGraphForJson } from '../status/index.js';
+import { resolveArtifactsRoot, templateArtifactsPrefix } from '../manifest.js';
 import { createTheme, type Theme } from '../status/theme.js';
 
 const theme: Theme = createTheme({ color: false, encoding: 'utf8' });
@@ -1470,7 +1471,7 @@ describe('statusAction — pending-graph view + layer-filter flags', () => {
 describe('statusAction artifacts-location integration', () => {
   // The scanner is taught to read `.smithy/smithy-manifest.json` (or
   // `~/.smithy/smithy-manifest.json`) and redirect its scan root to
-  // `~/.smithy/<repo>/` when `artifactsLocation === 'external'`. These
+  // `~/.smithy/repos/<repoKey>/` when `artifactsLocation === 'external'`. These
   // tests exercise that wiring end-to-end via real on-disk files.
   //
   // The redirect only fires when `opts.root` is `undefined` (the scanner
@@ -1545,16 +1546,16 @@ describe('statusAction artifacts-location integration', () => {
     expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
   });
 
-  it('omitting --root with artifactsLocation=external redirects to ~/.smithy/<repo>/ and re-prepends the prefix on records', () => {
+  it('omitting --root with artifactsLocation=external redirects to ~/.smithy/repos/<repoKey>/ and re-prepends the prefix on records', () => {
     writeManifest(workdir, 'external');
-    const externalRoot = join(fakeHome, '.smithy', `${require('path').basename(workdir)}`);
+    const externalRoot = resolveArtifactsRoot(workdir, 'external');
     writeTasksFixture(externalRoot);
 
     // No `root` field — exercises the manifest-driven redirect branch.
     statusAction({ format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
 
-    const expectedPrefix = `~/.smithy/${require('path').basename(workdir)}/`;
+    const expectedPrefix = templateArtifactsPrefix(workdir, 'external');
     expect(payload.records.length).toBeGreaterThan(0);
     expect(payload.records[0]!.path).toBe(
       `${expectedPrefix}specs/sample/01-first.tasks.md`,
@@ -1576,7 +1577,7 @@ describe('statusAction artifacts-location integration', () => {
   });
 
   it('omitting --root with artifactsLocation=external but no external dir yet falls back to cwd (friendly empty hint)', () => {
-    // User flipped the flag but hasn't written anything to ~/.smithy/<repo>/ yet.
+    // User flipped the flag but hasn't written anything to ~/.smithy/repos/<repoKey>/ yet.
     writeManifest(workdir, 'external');
     statusAction({ format: 'json' });
     const payload = JSON.parse(captured()) as StatusJsonPayload;
@@ -1589,7 +1590,7 @@ describe('statusAction artifacts-location integration', () => {
     // Pre-create both locations with different fixtures so the test can tell
     // which root the scanner actually visited.
     writeTasksFixture(workdir);
-    const externalRoot = join(fakeHome, '.smithy', require('path').basename(workdir));
+    const externalRoot = resolveArtifactsRoot(workdir, 'external');
     mkdirSync(join(externalRoot, 'specs', 'other'), { recursive: true });
     writeFileSync(
       join(externalRoot, 'specs', 'other', '99-other.tasks.md'),

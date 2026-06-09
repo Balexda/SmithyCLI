@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import type { ArtifactsLocation, DeployLocation } from './interactive.js';
 import { removeIfExists } from './utils.js';
@@ -9,6 +10,16 @@ const require = createRequire(import.meta.url);
 export const { version: smithyVersion } = require('../package.json') as { version: string };
 
 const MANIFEST_FILENAME = 'smithy-manifest.json';
+
+/**
+ * Fixed grouping segment under `~/.smithy/` that isolates per-repo external
+ * artifact stores from Smithy's own reserved entries (`templates/`,
+ * `smithy-manifest.json`, `config.yml`, ...). Keeping it as a dedicated
+ * namespace makes the layout collision-proof: a repo literally named
+ * `templates` resolves to `~/.smithy/repos/templates/`, never clobbering
+ * `~/.smithy/templates/`.
+ */
+const REPOS_DIR = 'repos';
 
 export interface SmithyManifest {
   version: 1;
@@ -54,11 +65,101 @@ export function resolveManifestPath(targetDir: string, location: DeployLocation)
 }
 
 /**
+ * Run `git -C <targetDir> <args...>` and return its trimmed stdout, or
+ * `null` if git is unavailable, the directory isn't a repo, or the command
+ * produces no output. Stderr is discarded so non-repo dirs fail quietly.
+ */
+function gitCapture(targetDir: string, args: string[]): string | null {
+  try {
+    const out = execFileSync('git', ['-C', targetDir, ...args], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    const trimmed = out.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Make a repo identity filesystem-safe: collapse path separators and any
+ * other awkward characters to `-`, trim leading/trailing separators, and
+ * fall back to `'repo'` if nothing usable remains. Guarantees the result
+ * is a single path segment (no `/` or `\`).
+ */
+function sanitizeRepoKey(name: string): string {
+  const cleaned = name
+    .replace(/[/\\]/g, '-')
+    .replace(/[^A-Za-z0-9._-]/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '');
+  return cleaned.length > 0 ? cleaned : 'repo';
+}
+
+/**
+ * Derive a **worktree-stable** identity key for the repository containing
+ * `targetDir`, used to namespace external artifact stores under
+ * `~/.smithy/repos/<repoKey>/`.
+ *
+ * Every worktree of a repo — and its main checkout — must resolve to the
+ * same key so they share one store and `smithy status` agrees from anywhere.
+ * We achieve that by consulting git's *shared* git-common-dir rather than the
+ * working directory name:
+ *
+ *   1. `git rev-parse --git-common-dir` → the shared `.git` dir (relative
+ *      `.git` from the main worktree root, absolute path from a linked
+ *      worktree). It points at the same place for every worktree.
+ *   2. The repo root is the common dir's parent when the common dir is the
+ *      usual `.git` directory; for a submodule the common dir is instead
+ *      `<superproject>/.git/modules/<submodule>`, whose own name is the
+ *      stable per-submodule identity (taking the parent would collapse every
+ *      submodule onto `modules`). `git init --separate-git-dir` layouts are
+ *      handled the same way.
+ *   3. `repoKey = basename(repoRoot)`.
+ *
+ * Fallbacks, in order, when git is unavailable or yields nothing:
+ *   4. basename of the `origin` remote URL (with a trailing `.git` stripped).
+ *   5. basename of `targetDir` (non-git directories).
+ *
+ * The result is always sanitized to a single filesystem-safe segment.
+ */
+export function repoKey(targetDir: string): string {
+  const commonDir = gitCapture(targetDir, ['rev-parse', '--git-common-dir']);
+  if (commonDir) {
+    try {
+      const realCommon = fs.realpathSync(path.resolve(targetDir, commonDir));
+      // A common dir named `.git` belongs to a normal checkout or a linked
+      // worktree, so the repo is its parent. Anything else is already a named
+      // git dir — `.git/modules/<submodule>` for submodules, or a detached
+      // dir under `--separate-git-dir` — whose basename is the repo identity.
+      const key =
+        path.basename(realCommon) === '.git'
+          ? path.basename(path.dirname(realCommon))
+          : path.basename(realCommon);
+      if (key.length > 0) return sanitizeRepoKey(key);
+    } catch {
+      // realpath failed (e.g. the common dir vanished mid-run) — fall through.
+    }
+  }
+
+  const remote = gitCapture(targetDir, ['config', '--get', 'remote.origin.url']);
+  if (remote) {
+    const base = path.basename(remote.replace(/\/+$/, '').replace(/\.git$/, ''));
+    if (base.length > 0) return sanitizeRepoKey(base);
+  }
+
+  return sanitizeRepoKey(path.basename(targetDir));
+}
+
+/**
  * Resolve the absolute directory under which planning artifacts (RFCs,
  * specs, tasks, strikes, PRDs) are written:
  *   - 'repo'     → `<targetDir>` (paths land at `docs/rfcs/...`, `specs/...`)
- *   - 'external' → `~/.smithy/<basename(targetDir)>/` (paths land at
- *     `~/.smithy/<repo>/docs/rfcs/...`, `~/.smithy/<repo>/specs/...`)
+ *   - 'external' → `~/.smithy/repos/<repoKey(targetDir)>/` (paths land at
+ *     `~/.smithy/repos/<repo>/docs/rfcs/...`, `~/.smithy/repos/<repo>/specs/...`)
+ *
+ * The `<repoKey>` segment is worktree-stable (see {@link repoKey}), so every
+ * worktree of a repo shares one external store.
  *
  * Used by the status scanner and any other code that needs the *real*
  * filesystem location. For the template variable baked into deployed
@@ -71,7 +172,7 @@ export function resolveArtifactsRoot(
   location: ArtifactsLocation = 'repo',
 ): string {
   if (location === 'external') {
-    return path.join(os.homedir(), '.smithy', path.basename(targetDir));
+    return path.join(os.homedir(), '.smithy', REPOS_DIR, repoKey(targetDir));
   }
   return targetDir;
 }
@@ -80,8 +181,8 @@ export function resolveArtifactsRoot(
  * The prefix that gets substituted into deployed prompts via the
  * `{{artifactsRoot}}` template variable. Returns `""` for in-repo mode
  * so paths render unchanged (`docs/rfcs/...`), or the tilde form
- * `~/.smithy/<basename>/` for external mode so paths render as
- * `~/.smithy/<repo>/docs/rfcs/...`.
+ * `~/.smithy/repos/<repoKey>/` for external mode so paths render as
+ * `~/.smithy/repos/<repo>/docs/rfcs/...`.
  *
  * Tilde-form (not home-expanded) so committed deployed prompts stay
  * portable across team members. Agents (Claude Code, Gemini CLI, Codex)
@@ -92,7 +193,7 @@ export function templateArtifactsPrefix(
   location: ArtifactsLocation = 'repo',
 ): string {
   if (location === 'external') {
-    return `~/.smithy/${path.basename(targetDir)}/`;
+    return `~/.smithy/${REPOS_DIR}/${repoKey(targetDir)}/`;
   }
   return '';
 }

@@ -11,7 +11,7 @@ export type DeployablePermissionLevel = Exclude<PermissionLevel, 'none'>;
  * Where smithy planning artifacts (RFCs, specs, tasks, strikes, PRDs)
  * are written:
  *   - 'repo'     → in-tree under `docs/rfcs/`, `specs/`, etc. (default).
- *   - 'external' → out-of-tree under `~/.smithy/<repo-name>/` so the
+ *   - 'external' → out-of-tree under `~/.smithy/repos/<repoKey>/` so the
  *     planning files stay off the team's git history. The flag is
  *     persisted in the manifest and baked into the deployed prompts via
  *     the `{{artifactsRoot}}` template variable.
@@ -172,7 +172,7 @@ export async function promptArtifactsLocation(): Promise<ArtifactsLocation> {
         description: 'Committed in-tree under docs/rfcs/, specs/, ... (default)',
       },
       {
-        name: 'External (~/.smithy/<repo>/)',
+        name: 'External (~/.smithy/repos/<repo>/)',
         value: 'external',
         description: 'Stored in your user home, kept out of the repo\'s git history',
       },
