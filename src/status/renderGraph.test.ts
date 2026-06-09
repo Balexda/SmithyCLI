@@ -228,10 +228,19 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
         rows: [row('US1', [], { title: 'Zeroth' })],
       },
     });
+    // layer1/layer2 are VIRTUAL so the parent rows above them are not
+    // `decomposed` (a virtual downstream = child not yet on disk). This
+    // keeps the chain's nodes visible so the test isolates the
+    // *done-layer collapsing* behavior under test from the orthogonal
+    // decomposed-parent suppression. The downstream-derived status
+    // rule still applies through virtual records, so a#US1 inherits
+    // b's in-progress and b#US2 inherits c's done — exactly the
+    // mixed-status chain this suite needs.
     const layer1 = makeRecord({
       type: 'spec',
       path: 'specs/b/b.spec.md',
       status: 'in-progress',
+      virtual: true,
       parent_path: 'specs/a/a.spec.md',
       parent_row_id: 'US1',
       dependency_order: {
@@ -244,6 +253,7 @@ describe('renderGraph — done-layer collapsing (AS 10.4)', () => {
       type: 'spec',
       path: 'specs/c/c.spec.md',
       status: 'done',
+      virtual: true,
       parent_path: 'specs/b/b.spec.md',
       parent_row_id: 'US2',
       dependency_order: {
@@ -698,10 +708,16 @@ describe('renderGraph — per-row action hints from records', () => {
   }
 
   function makeRealUS2Tasks(): ArtifactRecord {
+    // Virtual so US2 is not `decomposed` (its tasks file is treated as
+    // not-yet-on-disk): the row stays a visible leaf whose per-row hint
+    // is derived from this downstream record's `next_action`. That keeps
+    // this suite focused on the downstream-hint derivation rather than
+    // the decomposed-parent suppression covered elsewhere.
     return makeRecord({
       type: 'tasks',
       path: 'specs/sample/02-second.tasks.md',
       status: 'in-progress',
+      virtual: true,
       parent_path: SPEC_PATH,
       parent_row_id: 'US2',
       next_action: {
@@ -827,6 +843,12 @@ describe('renderGraph — within-layer next-action dedup', () => {
       path: SPEC_PATH,
       title: 'Spawn Dispatch spec',
       status,
+      // Virtual so the owning F2 features row is not `decomposed`
+      // (a real spec child would suppress F2 outright, short-circuiting
+      // the within-layer dedup this suite exercises). With a virtual
+      // downstream F2 stays visible, and dedup is what drops it when it
+      // duplicates the deeper US6 action.
+      virtual: true,
       // Parent linkage: this spec is owned by F2 in the features map.
       parent_path: FEATURES_PATH,
       parent_row_id: 'F2',
@@ -977,6 +999,10 @@ describe('renderGraph — within-layer next-action dedup', () => {
       path: 'specs/f2/f2.spec.md',
       title: 'F2 spec',
       status: 'in-progress',
+      // Virtual so F2 is not `decomposed` and stays visible — the point
+      // of this test is the cross-layer dedup-skip between the visible
+      // F2 (Layer 0) and F3 (Layer 1), not parent suppression.
+      virtual: true,
       parent_path: FEATURES_PATH,
       parent_row_id: 'F2',
       // Empty rows so the features rule for F2 returns null (every
@@ -1047,5 +1073,92 @@ describe('renderGraph — default theme', () => {
     // No ANSI escape sequences when color is disabled.
     // eslint-disable-next-line no-control-regex
     expect(output).not.toMatch(/\[/);
+  });
+});
+
+describe('renderGraph — decomposed-parent suppression + layer selection', () => {
+  // A spec whose US1 is a real (decomposed) tasks file with a done slice
+  // S1 and a pending slice S2, plus an undecomposed leaf story US2.
+  function buildDecomposed(): ArtifactRecord[] {
+    const spec = makeRecord({
+      type: 'spec',
+      path: 'specs/sample/sample.spec.md',
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', [], { title: 'Decomposed story' }),
+          row('US2', [], { title: 'Leaf story' }),
+        ],
+      },
+    });
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/sample/01-first.tasks.md',
+      status: 'in-progress',
+      parent_path: 'specs/sample/sample.spec.md',
+      parent_row_id: 'US1',
+      slices: [
+        { id: 'S1', title: 'Done slice', status: 'done' },
+        { id: 'S2', title: 'Pending slice', status: 'not-started' },
+      ],
+      dependency_order: {
+        id_prefix: 'S',
+        format: 'table',
+        rows: [
+          row('S1', [], { title: 'Done slice' }),
+          row('S2', ['S1'], { title: 'Pending slice' }),
+        ],
+      },
+    });
+    return [spec, tasks];
+  }
+
+  it('hides the decomposed parent + done slice and surfaces the pending slice, with a decomposed-hidden suffix', () => {
+    const graph = buildDependencyGraph(buildDecomposed());
+    const output = renderGraph(graph, { theme: utf8Theme });
+    expect(output).toContain('Pending slice');
+    expect(output).toContain('Leaf story');
+    // Decomposed parent + done slice suppressed.
+    expect(output).not.toContain('Decomposed story');
+    expect(output).not.toContain('Done slice');
+    // Heading reports the suppressed decomposed node.
+    expect(output).toMatch(/decomposed hidden/);
+  });
+
+  it('--all re-introduces the decomposed parent and the done slice inline', () => {
+    const graph = buildDependencyGraph(buildDecomposed());
+    const output = renderGraph(graph, { theme: utf8Theme, all: true });
+    expect(output).toContain('Decomposed story');
+    expect(output).toContain('Done slice');
+    expect(output).not.toMatch(/decomposed hidden/);
+  });
+
+  it('layerSelection { only: 0 } renders only Layer 0', () => {
+    // Build a two-layer graph from undecomposed leaves so both layers
+    // carry visible work.
+    const spec = makeRecord({
+      type: 'spec',
+      path: 'specs/x/x.spec.md',
+      status: 'not-started',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('US1', [], { title: 'Ready story' }),
+          row('US2', ['US1'], { title: 'Queued story' }),
+        ],
+      },
+    });
+    const graph = buildDependencyGraph([spec]);
+    const only0 = renderGraph(graph, {
+      theme: utf8Theme,
+      layerSelection: { kind: 'only', layer: 0 },
+    });
+    expect(only0).toContain('Layer 0');
+    expect(only0).toContain('Ready story');
+    expect(only0).not.toContain('Layer 1');
+    expect(only0).not.toContain('Queued story');
   });
 });

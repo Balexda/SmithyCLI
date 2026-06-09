@@ -362,8 +362,31 @@ export interface DependencyNode {
   record_path: string;
   /** The underlying parsed dependency-order row. */
   row: DependencyRow;
-  /** Rolled-up status from the owning {@link ArtifactRecord}. */
+  /**
+   * The row's effective status, resolved by {@link buildDependencyGraph}
+   * — NOT necessarily the owning record's rolled-up status. Resolution
+   * order: the row's real or virtual downstream artifact's status when
+   * one exists (a story's status is its tasks file's roll-up); otherwise,
+   * for a slice row, its own per-slice status from `record.slices`;
+   * otherwise the owning record's status. Consumers must not assume
+   * `node.status === owningRecord.status`.
+   */
   status: ArtifactRecord['status'];
+  /**
+   * True when this row has already been broken down into a *real*
+   * (non-virtual) downstream artifact on disk — i.e. a child record
+   * exists whose `parent_path` / `parent_row_id` point back at this row
+   * and that child is not `virtual`. Decomposed rows are structure, not
+   * dispatch targets: the work lives in their children (a decomposed
+   * user story's slices, a decomposed milestone's features, …), so the
+   * pending/dispatch view suppresses them and the layering contracts the
+   * structural cross-artifact edge out from under them (see
+   * `buildDependencyGraph`). A row whose only downstream is `virtual`
+   * (the child file is not yet created) is NOT decomposed — it still
+   * awaits its cut/mark and stays a visible leaf. Slice rows are never
+   * decomposed (slices have no child file).
+   */
+  decomposed: boolean;
 }
 
 /**
@@ -460,10 +483,22 @@ export type SerializedGraphLayer =
   | {
       mode: 'pending-only';
       layer: number;
-      /** Pending FQ node IDs (in-progress | not-started | unknown). */
+      /**
+       * Pending, dispatchable FQ node IDs (in-progress | not-started |
+       * unknown) that are NOT decomposed. These are the rows actually
+       * awaiting dispatch at this layer.
+       */
       node_ids: string[];
       /** Count of `done` nodes omitted from this layer. */
       complete_count: number;
+      /**
+       * Count of decomposed nodes omitted from this layer — rows already
+       * broken down into a real downstream artifact, whose work is
+       * represented by their (visible) children elsewhere in the graph.
+       * Reported separately from {@link complete_count} so a consumer can
+       * tell "finished" from "in flight, see its children".
+       */
+      suppressed_count: number;
     }
   | {
       mode: 'all';

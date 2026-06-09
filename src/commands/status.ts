@@ -71,7 +71,11 @@ import {
   scan,
   serializeGraphForJson,
 } from '../status/index.js';
-import type { FilterRecordsOptions, NextAction } from '../status/index.js';
+import type {
+  FilterRecordsOptions,
+  LayerSelection,
+  NextAction,
+} from '../status/index.js';
 import { buildTheme, type Theme } from '../status/theme.js';
 import type {
   ArtifactRecord,
@@ -150,6 +154,27 @@ export interface StatusOptions {
    * filtering.
    */
   graph?: boolean;
+  /**
+   * Graph layer filter: show only this single topological layer. Raw
+   * string from Commander (`--layer <n>`); {@link statusAction} parses
+   * and validates it to a non-negative integer. Mutually exclusive with
+   * {@link ready} and {@link maxLayer}. Applies to the JSON `graph`
+   * field always and to text output only under `--graph`.
+   */
+  layer?: string;
+  /**
+   * Graph layer filter shorthand for `--layer 0` — only the
+   * ready-to-dispatch layer. Mutually exclusive with {@link layer} and
+   * {@link maxLayer}.
+   */
+  ready?: boolean;
+  /**
+   * Graph layer filter: show layers `0..n` (a depth cutoff). Raw string
+   * from Commander (`--max-layer <n>`); parsed/validated to a
+   * non-negative integer. Mutually exclusive with {@link layer} and
+   * {@link ready}.
+   */
+  maxLayer?: string;
   /**
    * Suppress ANSI colors. Set by Commander's `--no-color` flag (produces
    * `color: false`). Honored alongside the ambient `NO_COLOR` env var.
@@ -270,7 +295,75 @@ export function statusAction(opts: StatusOptions = {}): void {
       process.exitCode = 2;
       return;
     }
+    // `--pending` and `--all` are contradictory intents — "show only the
+    // work left to dispatch" vs "show everything, including done and
+    // decomposed". The graph honors the pending view by default, so
+    // rather than silently letting `--all` win (the old behavior, where
+    // `--pending` was a no-op against the graph), reject the combination
+    // loudly.
+    if (opts.all === true) {
+      process.stderr.write(
+        `smithy status: --pending cannot be combined with --all (they request opposite views: pending-only vs everything).\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
     parsedStatuses = ['in-progress', 'not-started'];
+  }
+
+  // Graph layer filter: --layer <n> | --ready | --max-layer <n>. At most
+  // one may be given (--ready is sugar for --layer 0). Values must be
+  // non-negative integers. Mirrors the exit-2 contract used by the other
+  // status flags.
+  const layerFlagsUsed =
+    (opts.layer !== undefined ? 1 : 0) +
+    (opts.ready === true ? 1 : 0) +
+    (opts.maxLayer !== undefined ? 1 : 0);
+  if (layerFlagsUsed > 1) {
+    process.stderr.write(
+      `smithy status: --layer, --ready, and --max-layer are mutually exclusive (--ready is shorthand for --layer 0).\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+  let layerSelection: LayerSelection | undefined;
+  if (opts.ready === true) {
+    layerSelection = { kind: 'only', layer: 0 };
+  } else if (opts.layer !== undefined) {
+    const n = parseLayerArg(opts.layer);
+    if (n === null) {
+      process.stderr.write(
+        `smithy status: invalid --layer value '${opts.layer}'. Expected a non-negative integer.\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    layerSelection = { kind: 'only', layer: n };
+  } else if (opts.maxLayer !== undefined) {
+    const n = parseLayerArg(opts.maxLayer);
+    if (n === null) {
+      process.stderr.write(
+        `smithy status: invalid --max-layer value '${opts.maxLayer}'. Expected a non-negative integer.\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    layerSelection = { kind: 'max', layer: n };
+  }
+  // The layer filter only has a surface to act on in the graph views:
+  // the JSON `graph` field (always emitted) or text `--graph`. In plain
+  // text mode there is no layered view to trim, so a layer flag there is
+  // a user error rather than a silent no-op.
+  if (
+    layerSelection !== undefined &&
+    opts.format !== 'json' &&
+    opts.graph !== true
+  ) {
+    process.stderr.write(
+      `smithy status: --layer/--ready/--max-layer require --graph or --format json.\n`,
+    );
+    process.exitCode = 2;
+    return;
   }
 
   if (opts.type !== undefined && !VALID_TYPES.includes(opts.type)) {
@@ -391,7 +484,10 @@ export function statusAction(opts: StatusOptions = {}): void {
     const payload: StatusJsonPayload = {
       summary,
       records: filteredRecords,
-      graph: serializeGraphForJson(getGraph(), { all: opts.all === true }),
+      graph: serializeGraphForJson(getGraph(), {
+        all: opts.all === true,
+        ...(layerSelection !== undefined ? { layerSelection } : {}),
+      }),
     };
     console.log(JSON.stringify(payload, null, 2));
     return;
@@ -443,6 +539,7 @@ export function statusAction(opts: StatusOptions = {}): void {
       // record set pre-filter so the hints reflect the full scan, in
       // line with the graph itself.
       records,
+      ...(layerSelection !== undefined ? { layerSelection } : {}),
     });
     if (renderedGraph.length > 0) {
       console.log(renderedGraph);
@@ -756,6 +853,19 @@ function resolveExternalArtifactsRoot(resolvedRoot: string): string | null {
   const externalRoot = resolveArtifactsRoot(resolvedRoot, 'external');
   if (!fs.existsSync(externalRoot)) return null;
   return externalRoot;
+}
+
+/**
+ * Parse a `--layer` / `--max-layer` argument into a non-negative
+ * integer, or `null` when the raw string is not a clean non-negative
+ * integer (empty, non-numeric, negative, or fractional). Strict so a
+ * fat-fingered value fails loudly with exit 2 rather than silently
+ * coercing (`Number('3px')` → NaN, `parseInt('3.9')` → 3, etc.).
+ */
+function parseLayerArg(raw: string): number | null {
+  if (!/^\d+$/.test(raw.trim())) return null;
+  const n = Number(raw.trim());
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
 function emptyCounts(): ScanSummary['counts'] {

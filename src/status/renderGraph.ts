@@ -118,6 +118,7 @@
 
 import path from 'node:path';
 
+import { selectLayers, type LayerSelection } from './graph.js';
 import { formatNextAction } from './suggester.js';
 import { createTheme, type Theme } from './theme.js';
 import type {
@@ -168,6 +169,16 @@ export interface RenderGraphOptions {
    * hint and the line falls back to the dim FQ id.
    */
   records?: ArtifactRecord[];
+  /**
+   * Optional layer filter from the `--layer` / `--ready` / `--max-layer`
+   * flags, keyed on the builder's topological layer index, so the view
+   * can be trimmed when the pending set grows large. The filter is
+   * applied up front to `graph.layers` (before each surviving layer is
+   * formatted, where fully-hidden layers are then dropped per-layer);
+   * because it keys on the stable `layer` index, the result is the same
+   * either way. Omitted → every layer renders.
+   */
+  layerSelection?: LayerSelection;
 }
 
 /**
@@ -331,7 +342,13 @@ export function renderGraph(
   if (graph.cycles.length > 0) {
     blocks.push(formatCycleFallback(graph, theme, lookup));
   } else {
-    const layered = formatLayeredView(graph, theme, all, lookup);
+    const layered = formatLayeredView(
+      graph,
+      theme,
+      all,
+      lookup,
+      options.layerSelection,
+    );
     if (layered.length > 0) blocks.push(layered);
   }
 
@@ -353,10 +370,14 @@ function formatLayeredView(
   theme: Theme,
   all: boolean,
   lookup: RecordLookup | null,
+  layerSelection?: LayerSelection,
 ): string {
   if (graph.layers.length === 0) return '';
   const blocks: string[] = [];
-  for (const layer of graph.layers) {
+  // Trim to the requested layers (--layer / --ready / --max-layer) up
+  // front; each kept layer keeps its builder-assigned `layer` index so
+  // headings still read "Layer N".
+  for (const layer of selectLayers(graph.layers, layerSelection)) {
     const block = formatLayerBlock(layer, graph, theme, all, lookup);
     // `formatLayerBlock` returns the empty string for fully-done
     // layers in default mode (those are omitted from the rendered
@@ -425,17 +446,23 @@ function formatLayerBlock(
 ): string {
   const total = layer.node_ids.length;
 
-  // Partition members into actionable (everything that isn't `done`)
-  // and hidden-done. In `--all` mode the partition collapses — every
-  // member is "actionable" for display purposes, so no hiding occurs.
+  // Partition members into actionable (dispatchable) and hidden. Hidden =
+  // `done` (finished) OR `decomposed` (already broken down — its work
+  // lives in its children elsewhere in the graph). In `--all` mode the
+  // partition collapses — every member surfaces, so no hiding occurs.
   const visibleIds: string[] = [];
   let doneHidden = 0;
+  let decomposedHidden = 0;
   for (const id of layer.node_ids) {
     const node = graph.nodes[id];
-    if (all || node === undefined || node.status !== 'done') {
+    if (all || node === undefined) {
       visibleIds.push(id);
-    } else {
+    } else if (node.status === 'done') {
       doneHidden += 1;
+    } else if (node.decomposed) {
+      decomposedHidden += 1;
+    } else {
+      visibleIds.push(id);
     }
   }
 
@@ -463,6 +490,7 @@ function formatLayerBlock(
 
   const heading = formatLayerHeading(layer.layer, total, {
     doneHidden,
+    decomposedHidden,
     dupHidden,
   });
   const lines: string[] = [heading];
@@ -595,29 +623,36 @@ function dedupVisibleByAction(
  * simpler `Layer N (M items)` form. Singular `1 item` vs plural
  * `M items` is selected based on the count. `doneHidden > 0` appends
  * a `, N done hidden` suffix inside the parens so reviewers see that
- * work was suppressed by the hide-done filter; `dupHidden > 0`
- * appends a `, N duplicate hidden` suffix when within-layer
- * next-action dedup dropped a parent row that resolved to the same
- * action as a deeper child.
+ * finished work was suppressed; `decomposedHidden > 0` appends a
+ * `, N decomposed hidden` suffix for rows already broken down into
+ * children (surfaced elsewhere in the graph); `dupHidden > 0` appends
+ * a `, N duplicate hidden` suffix when within-layer next-action dedup
+ * dropped a parent row that resolved to the same action as a deeper
+ * child.
  *
- * Note: fully-done layers are omitted from the rendered output
+ * Note: fully-hidden layers are omitted from the rendered output
  * entirely (see `formatLayerBlock`); this function is never called
  * for them.
  */
 function formatLayerHeading(
   layerIndex: number,
   count: number,
-  opts: { doneHidden: number; dupHidden: number },
+  opts: { doneHidden: number; decomposedHidden: number; dupHidden: number },
 ): string {
   const itemsWord = count === 1 ? 'item' : 'items';
   const doneSuffix =
     opts.doneHidden > 0 ? `, ${opts.doneHidden} done hidden` : '';
+  const decomposedSuffix =
+    opts.decomposedHidden > 0
+      ? `, ${opts.decomposedHidden} decomposed hidden`
+      : '';
   const dupSuffix =
     opts.dupHidden > 0 ? `, ${opts.dupHidden} duplicate hidden` : '';
+  const suffix = `${doneSuffix}${decomposedSuffix}${dupSuffix}`;
   if (layerIndex === 0) {
-    return `Layer 0 — ready to work (${count} ${itemsWord}${doneSuffix}${dupSuffix})`;
+    return `Layer 0 — ready to work (${count} ${itemsWord}${suffix})`;
   }
-  return `Layer ${layerIndex} (${count} ${itemsWord}${doneSuffix}${dupSuffix})`;
+  return `Layer ${layerIndex} (${count} ${itemsWord}${suffix})`;
 }
 
 /**

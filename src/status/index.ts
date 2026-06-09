@@ -27,4 +27,9 @@ export { collapseTree, type CollapseTreeOptions } from './collapse.js';
 export { renderTree, type RenderTreeOptions } from './render.js';
 export { renderGraph, type RenderGraphOptions } from './renderGraph.js';
 export { filterRecords, type FilterRecordsOptions } from './filter.js';
-export { buildDependencyGraph, serializeGraphForJson } from './graph.js';
+export {
+  buildDependencyGraph,
+  serializeGraphForJson,
+  selectLayers,
+  type LayerSelection,
+} from './graph.js';
