@@ -100,7 +100,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Capture Per-Case Token Totals | — | — |
+| US1 | Capture Per-Case Token Totals | — | specs/2026-05-18-007-per-case-token-totals-in-evalreport/01-capture-per-case-token-totals.tasks.md |
 | US2 | Render Token Totals in Eval Reports | US1 | — |
 | US3 | Extend Baselines with Token Envelopes | US1 | — |
 | US4 | Refresh the Strike Baseline in the Token-Aware Schema | US2, US3 | — |
