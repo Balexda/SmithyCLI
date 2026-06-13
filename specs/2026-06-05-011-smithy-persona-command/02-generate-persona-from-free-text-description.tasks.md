@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Implement free-text persona creation**
+- [x] **Implement free-text persona creation**
 
   Update `src/templates/agent-skills/commands/smithy.persona.prompt` to route non-RFC description input through a one-shot free-text creation path. The prompt should use `smithy-prose` for drafting and write exactly one file that follows the README-defined persona convention for AS 2.1.
 
@@ -29,7 +29,7 @@
   - A pre-existing target slug is skipped and reported without overwriting.
   - RFC-mode behavior remains out of scope for this slice.
 
-- [ ] **Preserve command deployment coverage**
+- [x] **Preserve command deployment coverage**
 
   Keep the implementation within the deployable command template surface so Claude, Gemini, and Codex receive the same `smithy.persona` behavior through normal `smithy init` rendering. Update template coverage where the existing tests validate command discovery, rendering, or snippet inclusion so AS 2.1 remains protected across agents.
 
