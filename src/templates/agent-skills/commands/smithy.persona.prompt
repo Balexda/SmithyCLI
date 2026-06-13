@@ -19,6 +19,10 @@ Read `$ARGUMENTS` as the command input.
 
 - If the input is non-empty and does **not** end in `.rfc.md`, select
   **free-text mode**.
+- If the input ends in `.rfc.md`, RFC extraction is not implemented yet
+  (reserved for a later user story). Stop and tell the user that RFC-mode
+  persona extraction is not available yet — do not fall through to free-text
+  mode or any undefined path.
 - Do not parse RFC `## Personas` sections in free-text mode. RFC extraction is
   a separate route from this writer.
 
@@ -43,14 +47,18 @@ Given a clear free-text persona description, create exactly one durable
    - `idea_description`: the free-text description from `$ARGUMENTS`
    - `clarify_output`: the free-text description plus the inferred persona
      name or role
-   - `rfc_file_path`: empty
+   - `rfc_file_path`: do not pass (free-text drafting has no accumulating
+     artifact to read)
    - `tone_directives`: "Draft exactly one reusable persona file body for the
      inferred persona. Cover role/context, friction today, and how their work
      changes when relevant capabilities ship. Return narrative prose grounded
      only in the supplied free-text description; do not add a `## Personas`
      heading, bullets, dependency-order content, specification debt, registry
      metadata, or a machine-readable identity field."
-6. Write one file at the target path using the canonical file shape:
+6. Create the `{{artifactsRoot}}docs/personas/` directory if it does not
+   already exist — on a fresh repository that has never authored a persona the
+   first write fails otherwise.
+   Write one file at the target path using the canonical file shape:
    - `# Persona: <Name/Role>`
    - blank line
    - `**Created**: YYYY-MM-DD` using the current date
