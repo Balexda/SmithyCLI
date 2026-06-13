@@ -105,7 +105,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Add the Forge-JVM Eval Scenario | — | — |
+| US1 | Add the Forge-JVM Eval Scenario | — | specs/2026-06-06-012-forge-jvm-eval-scenario-m1-baseline-set-completeness-gate/01-add-the-forge-jvm-eval-scenario.tasks.md |
 | US2 | Commit the Forge-JVM Token Baseline | US1 | — |
 | US3 | Audit M1 Baseline-Set Completeness | US2 | — |
 | US4 | Preserve Milestone Ownership Boundaries | US1, US2, US3 | — |
