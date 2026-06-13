@@ -7,6 +7,8 @@ This is a minimal Express TypeScript API project used as the **reference fixture
 - `src/index.ts` — Express app entry point. Mounts the users router at `/api/users` and starts the server on a configurable `PORT`.
 - `src/types.ts` — TypeScript interfaces (`User`, `CreateUserRequest`) used by route handlers.
 - `src/routes/users.ts` — Express Router with three user CRUD handlers: list, get by id, and create.
+- `issues/` — Local issue fixtures used by offline eval scenarios that must not fetch GitHub issue or pull-request data.
+- `ci-logs/` — Local CI-log fixtures used by offline eval scenarios that must not fetch Actions logs.
 - `package.json` — Node project manifest with Express as a runtime dependency, and TypeScript, `@types/express`, and `@types/node` as dev dependencies.
 - `tsconfig.json` — TypeScript config targeting ES2022 with CommonJS module resolution.
 
@@ -27,6 +29,10 @@ Each plant maps to a row in smithy-scout's Severity Guidelines table (see `src/t
 | `evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md` | Missing `## Dependency Order` section | Deliberately violates the canonical spec invariant that multi-story Smithy specs include a `## Dependency Order` table; owned by `audit-flawed-spec`. This plant must not be "fixed" by restoring the section. | **Critical** (missing required spec section) |
 
 Together with the **Intentional Gap** above, these plants are the fixture's twin purposes: the missing health-check endpoint drives eval scenarios that ask agents to add new behavior, and the planted inconsistencies drive eval scenarios that ask agents to detect existing flaws.
+
+## Local Failure Evidence
+
+Some eval scenarios exercise commands from committed evidence instead of live service APIs. The `issues/` and `ci-logs/` directories contain those local inputs. For example, the smithy.fix `fix-from-issue` scenario uses `issues/fix-from-issue-health-check.md` and `ci-logs/fix-from-issue-health-check.log` to diagnose the missing health-check endpoint without calling GitHub issue, pull-request, or Actions APIs.
 
 ## Planted Parent Artifacts
 
