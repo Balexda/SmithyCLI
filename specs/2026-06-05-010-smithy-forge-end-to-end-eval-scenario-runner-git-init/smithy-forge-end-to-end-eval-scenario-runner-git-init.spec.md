@@ -120,7 +120,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Declare Forge Scenarios That Require Git | — | — |
+| US1 | Declare Forge Scenarios That Require Git | — | specs/2026-06-05-010-smithy-forge-end-to-end-eval-scenario-runner-git-init/01-declare-forge-scenarios-that-require-git.tasks.md |
 | US2 | Initialize the Temp Fixture Copy for Forge | US1 | — |
 | US3 | Run smithy.forge Against the JavaScript Fixture | US2 | — |
 | US4 | Validate Forge Sub-Agent Evidence | US3 | — |
