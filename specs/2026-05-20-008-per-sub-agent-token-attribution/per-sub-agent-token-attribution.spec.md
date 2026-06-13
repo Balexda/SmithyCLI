@@ -100,7 +100,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Verify Dispatch-Level Usage Evidence | — | — |
+| US1 | Verify Dispatch-Level Usage Evidence | — | specs/2026-05-20-008-per-sub-agent-token-attribution/01-verify-dispatch-level-usage-evidence.tasks.md |
 | US2 | Attribute Token Totals to Sub-Agent Dispatches | US1 | — |
 | US3 | Render Nested Sub-Agent Token Rows | US2 | — |
 | US4 | Document Parent-Only Fallback | US1 | — |
