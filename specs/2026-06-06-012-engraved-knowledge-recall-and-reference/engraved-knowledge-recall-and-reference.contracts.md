@@ -5,7 +5,7 @@
 This feature introduces prompt-layer and template contracts that share one frozen
 input — the engraved-record frontmatter schema (owned by `smithy.engrave.prompt`):
 
-- the `smithy-recall` sub-agent and the `consult-engraved-knowledge` snippet (recall),
+- the `smithy-recall` sub-agent and the shared `engraved-recall-rules` snippet (recall),
 - the `smithy.engrave` projection-pointer step,
 - the `smithy.engrave` drift-tracking-issue step (for `Temporary:` exceptions),
 - the `audit-checklist-engraved` snippet.
@@ -21,8 +21,8 @@ recall as read-only ground truth from frontmatter.
 **Purpose**: surface engraved records relevant to a planning context and flag
 conflicts and superseded citations.
 **Consumers**: the scan phase of `strike`, `ignite`, `render`, `mark`, `cut` (via the
-`consult-engraved-knowledge` snippet). **Not user-invocable** — dispatched only by
-those planning commands.
+inline `{{#ifAgent}}` consultation block each command adds). **Not user-invocable** —
+dispatched only by those planning commands.
 **Providers**: a new read-only sub-agent at
 `src/templates/agent-skills/agents/smithy.recall.prompt` (frontmatter `name: smithy-recall`, `tools: [Read, Grep, Glob]`, `model: sonnet`), modeled on `smithy.scout.prompt`. Deployed to `.claude/agents/` only (Claude sub-agents).
 
@@ -53,25 +53,34 @@ those planning commands.
 | Records exist, none match | `empty: true, empty_reason: "no_match"` | Non-blocking. |
 | Divergence already `Accepted:` | omit from `conflicts` | Suppress conflict flags already covered by an accepted ledger row. |
 
-### `consult-engraved-knowledge` Snippet
+### Engraved-Knowledge Consultation (inline `{{#ifAgent}}` + shared rules snippet)
 
-**Purpose**: a parameter-free, self-contained partial included at each planning
-command's scan phase that consults engraved knowledge and folds findings into
-clarification.
-**Consumers**: `strike`, `ignite`, `render`, `mark` (Phase 1.5), `cut` (Phase 2.5).
-**Providers**: `src/templates/agent-skills/snippets/consult-engraved-knowledge.md`
+Engraved consultation follows the established sub-agent-dispatch pattern
+(`smithy.forge` with `tdd-protocol` / `review-protocol`): the **dispatch prose is
+written inline** in each consuming command behind the zero-arg `{{#ifAgent}}`
+capability gate, and the only shared file is the **rules** snippet that both the
+sub-agent and the degraded branch include. There is no per-agent "consult"
+snippet.
+
+**`engraved-recall-rules` snippet**
+**Purpose**: single source of truth for the recall rules (scan roots, ranking,
+conflict handling, superseded/deprecated hazards, empty-state result).
+**Consumers**: the `smithy-recall` sub-agent; the inline degraded branch of
+`strike`, `ignite`, `render`, `mark` (Phase 1.5), `cut` (Phase 2.5).
+**Providers**: `src/templates/agent-skills/snippets/engraved-recall-rules.md`
 (registered in `snippets/README.md`).
+**Signature**: `{{>engraved-recall-rules}}` — agent-agnostic, no conditionals.
 
-#### Signature
+#### Inline consultation block (per command)
 
-`{{>consult-engraved-knowledge}}` — inlined at deploy time into all three agents.
-
-#### Behavior
+```
+{{#ifAgent}}<dispatch smithy-recall with the planning context>{{else}}{{>engraved-recall-rules}}{{/ifAgent}}
+```
 
 | Path | Behavior |
 |------|----------|
-| Claude | Dispatch the `smithy-recall` sub-agent with the planning context. |
-| Gemini / Codex (no sub-agents) | Degraded inline path: `Read`/`Grep` the engraved scan roots directly and apply the same relevance/conflict/superseded reasoning inline. |
+| Sub-agent-capable (Claude, Codex) | `{{#ifAgent}}` if-branch: dispatch the `smithy-recall` sub-agent with the planning context (dispatch prose inline in the command). |
+| Degraded (Gemini, no sub-agents) | `{{else}}` branch: include `{{>engraved-recall-rules}}` and `Read`/`Grep` the engraved scan roots directly, applying the same relevance/conflict/superseded reasoning. |
 | Handling | Conflicts → fold into clarification (candidate exceptions); superseded citations → flag; clean/empty → proceed. |
 
 ### `smithy.engrave` Projection-Pointer Step
@@ -148,7 +157,7 @@ via the `smithy.gh-issue` skill's `create-issue` script.
 - **Temporary exception added → drift-tracking issue**: adding a `Temporary:` ledger
   row triggers the drift-tracking-issue step (US3) and writes the `#NNN` back.
 - **Planning scan → recall dispatch**: entering a planning command's scan phase
-  triggers `consult-engraved-knowledge` (US1).
+  triggers its inline engraved-knowledge consultation block (US1).
 
 ## Integration Boundaries
 
@@ -157,9 +166,10 @@ via the `smithy.gh-issue` skill's `create-issue` script.
 - **Projection ↔ recall**: independent. Projection is an author-time write of a pointer
   into agent-context files; recall is a plan-time read of the records. The engraved
   record files remain the single source of truth.
-- **Cross-agent deployment**: the `smithy-recall` sub-agent reaches Claude only; the
-  `consult-engraved-knowledge` snippet reaches all three agents at deploy time and
-  must carry the degraded inline path for Gemini/Codex.
+- **Cross-agent deployment**: the `smithy-recall` sub-agent reaches the sub-agent-capable
+  agents (Claude, Codex); the inline `{{#ifAgent}}` consultation block reaches all three
+  agents at deploy time — the if-branch dispatches `smithy-recall`, and the `{{else}}`
+  branch carries the degraded `{{>engraved-recall-rules}}` direct-read path for Gemini.
 - **Agent-context files**: projection targets are existing CLAUDE.md / AGENTS.md (and
   possibly `.github/copilot-instructions.md`) — the exact default set is unresolved
   (SD-001).

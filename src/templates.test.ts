@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(18);
+    expect(snippets.size).toBe(19);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -125,6 +125,7 @@ describe('loadSnippets', () => {
       'feature-kinds.md',
       'artifact-location-policy.md',
       'persona-convention.md',
+      'engraved-recall-rules.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -148,6 +149,64 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
+    expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
+  });
+});
+
+describe('engraved-recall-rules snippet', () => {
+  // US1 Slice 2: the recall *rules* live once in the shared
+  // `engraved-recall-rules` snippet — the forge-pattern analogue of
+  // `tdd-protocol` / `review-protocol`. It is the single source of truth,
+  // included by the smithy-recall sub-agent and (in Slice 3) by the inline
+  // degraded `{{else}}` branch of each consuming command's zero-arg
+  // {{#ifAgent}} capability gate. There is no per-agent "consult" snippet:
+  // the sub-agent dispatch prose is written inline in the command, the same
+  // way forge inlines its smithy-implement / smithy-implementation-review
+  // dispatch. These tests lock the shared snippet as the single, agent-agnostic
+  // source so re-duplicating the rules or smuggling a conditional in fails early.
+  const RULES = 'engraved-recall-rules.md';
+
+  it('snippet file is loadable as a partial via loadSnippets', () => {
+    const snippets = loadSnippets();
+    expect(snippets.has(RULES)).toBe(true);
+    expect(snippets.get(RULES)!.length).toBeGreaterThan(0);
+  });
+
+  it('is the single, agent-agnostic source of the recall rules', () => {
+    const content = loadSnippets().get(RULES)!;
+    expect(content).toContain('docs/decisions/');
+    expect(content).toContain('docs/invariants/');
+    expect(content).toContain('docs/constitution/');
+    expect(content).toContain('docs/design/decisions/');
+    expect(content).toContain('docs/design/invariants/');
+    expect(content).toContain('docs/design/constitution/');
+    for (const token of ['domain', 'topics', 'scope', 'applies_to']) {
+      expect(content).toContain(token);
+    }
+    expect(content).toContain('candidate new exception');
+    expect(content).toContain('Accepted:');
+    expect(content).toContain('Temporary:');
+    expect(content).toContain('superseded');
+    expect(content).toContain('deprecated');
+    expect(content).toContain('"no_records"');
+    expect(content).toContain('"no_match"');
+    // The shared rules are agent-agnostic — no conditionals, no sub-agent name.
+    expect(content).not.toContain('{{');
+    expect(content).not.toContain('smithy-recall');
+  });
+
+  it('composes into any template via the {{>engraved-recall-rules}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>engraved-recall-rules}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('docs/decisions/');
+    expect(result).toContain('candidate new exception');
+    expect(result).not.toContain('{{>engraved-recall-rules}}');
   });
 });
 

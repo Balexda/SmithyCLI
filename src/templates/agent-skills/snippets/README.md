@@ -29,6 +29,7 @@ its contents. The snippet file itself is never deployed.
 | `one-shot-output.md` | Standardized terminal output format for one-shot planning runs (Summary → Assumptions → Specification Debt → PR), with PR-failure and bail-out fallbacks | smithy.strike, smithy.ignite, smithy.mark, smithy.render, smithy.cut |
 | `pr-create-tool-choice.md` | One-line "prefer GitHub MCP `create_pull_request`, fall back to `gh pr create`" rule, embedded inline at every PR-creation step | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
 | `branch-policy.md` | Worktree-aware branch selection rule: keep the current branch only inside a linked git worktree on a non-default branch, otherwise auto-name as before; never rename the branch during PR creation | smithy.strike, smithy.mark, smithy.forge, smithy.cut, smithy.ignite, smithy.render |
+| `engraved-recall-rules.md` | Single source of truth for engraved-knowledge recall behavior (canonical scan roots, frontmatter ranking, candidate invariant conflicts, superseded/deprecated citation hazards, empty-state result). The forge-pattern analogue of `tdd-protocol`/`review-protocol`: shared by the `smithy-recall` sub-agent and (in Slice 3) the inline degraded `{{else}}` branch of each consuming command's `{{#ifAgent}}` gate, so the rules are defined once. Sub-agent dispatch prose is written inline in the command, not bottled into a per-agent snippet | smithy-recall agent; planned: smithy.strike, smithy.ignite, smithy.render, smithy.mark, smithy.cut |
 
 ## Conventions
 

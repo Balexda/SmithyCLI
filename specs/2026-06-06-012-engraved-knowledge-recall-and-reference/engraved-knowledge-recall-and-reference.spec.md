@@ -40,7 +40,7 @@ As a developer (or arbitrary agent) running a smithy planning command, I want th
 3. **Given** the planning artifact or proposed work cites a decision whose `status` is `superseded` or `deprecated`, **When** recall runs, **Then** it reports a superseded/deprecated-citation hazard, reading lifecycle from the record frontmatter as ground truth — it does not independently re-derive supersession.
 4. **Given** a feature that spans both `system` and `design` work, **When** recall runs, **Then** it queries both domain partitions; **Given** single-domain work, **Then** it filters to that domain.
 5. **Given** no engraved records exist in the repo, **When** recall runs, **Then** it returns a well-formed empty result (`empty: true` with an `empty_reason`) and the planning command proceeds normally — it does not error.
-6. **Given** the `{{>consult-engraved-knowledge}}` snippet is wired into the scan phase of `strike`, `ignite`, `render`, `mark`, and `cut`, **When** any of those commands runs under Claude, **Then** it dispatches `smithy-recall`; **When** run under Gemini or Codex (which have no sub-agents), **Then** the inlined snippet's degraded path reads the engraved scan roots directly so engraved knowledge is still consulted.
+6. **Given** an inline `{{#ifAgent}}` engraved-knowledge consultation block is wired into the scan phase of `strike`, `ignite`, `render`, `mark`, and `cut`, **When** any of those commands runs under a sub-agent-capable agent (Claude or Codex), **Then** it dispatches `smithy-recall`; **When** run under Gemini (which has no sub-agents), **Then** the `{{else}}` branch reads the engraved scan roots directly via the shared `{{>engraved-recall-rules}}` snippet so engraved knowledge is still consulted.
 
 ---
 
@@ -126,7 +126,7 @@ All four user stories are independent — four parallel entry points with no cro
 - **FR-002**: Recall MUST flag proposed work that conflicts with an invariant `## Rule` as a candidate new exception (soft flag), suppressing the flag when an existing `Accepted:` ledger row already covers the divergence.
 - **FR-003**: Recall MUST flag citations (in the planning context or draft artifact) to `superseded` or `deprecated` records, reading record lifecycle from frontmatter as read-only ground truth; it MUST NOT independently recompute the supersession/establishes graph.
 - **FR-004**: Recall MUST be domain-aware: it queries `system`, `design`, or both partitions according to the planning context's domain, and MUST return a well-formed empty result (`empty: true` with an `empty_reason` distinguishing "no records exist" from "records exist, none matched") when nothing applies.
-- **FR-005**: The system MUST provide a `consult-engraved-knowledge` snippet wired into the scan phase of `strike`, `ignite`, `render`, `mark`, and `cut`. The snippet MUST be self-sufficient: a Claude fast-path that dispatches `smithy-recall`, plus an inline degraded path (read the scan roots directly) for Gemini/Codex, which have no sub-agents. It MUST be registered in `snippets/README.md`.
+- **FR-005**: The system MUST wire an inline `{{#ifAgent}}` engraved-knowledge consultation block into the scan phase of `strike`, `ignite`, `render`, `mark`, and `cut`, following the established sub-agent-dispatch pattern (dispatch prose inline in the command; only the rules shared via a snippet). The if-branch MUST dispatch `smithy-recall` for sub-agent-capable agents (Claude, Codex); the `{{else}}` branch MUST read the scan roots directly via the shared `engraved-recall-rules` snippet for Gemini, which has no sub-agents. The `engraved-recall-rules` snippet MUST be registered in `snippets/README.md`.
 - **FR-006**: Planning commands MUST fold recall's conflict and superseded-citation findings into their clarification/debt handling.
 
 **Projection (US2, new)**
@@ -159,7 +159,7 @@ All four user stories are independent — four parallel entry points with no cro
 - Status-subsystem integration (#416/#417) is out of scope for this spec; engraved knowledge is surfaced via recall and the projection pointer, not `smithy status`. `[Critical Assumption]`
 - Recall reads engraved files directly (Grep/Glob) and treats frontmatter as ground truth, so it has no dependency on a status index. `[Critical Assumption]`
 - The projection block is a pointer + applicability note, not a record index, so the reading agent controls how much it loads. `[Critical Assumption]`
-- The `consult-engraved-knowledge` snippet is self-sufficient with a Claude sub-agent fast-path and an inline degraded path for Gemini/Codex. `[Critical Assumption]`
+- Engraved consultation is an inline `{{#ifAgent}}` block per command (dispatch prose inline; rules shared via `engraved-recall-rules`): a `smithy-recall` dispatch for sub-agent-capable agents (Claude, Codex) and a degraded direct-read `{{else}}` branch for Gemini. `[Critical Assumption]`
 - Recall is a sub-agent dispatched only by planning commands; it is not user-invocable.
 - `smithy.orders` gains no engraved artifact types; the only engraved↔issue interaction is the drift-tracking issue created at the engrave exception step for a `Temporary:` exception, which fills the schema's existing `Tracking Issue` ledger column.
 - The engraved frontmatter schema is frozen and owned by `smithy.engrave.prompt`; this spec references it rather than redefining it.
