@@ -412,6 +412,49 @@ UI ledger rules:
 - Do not add UI-only columns (`Kind` or `Design`) to backend spec-triad output
   for `kind: backend` or absent-kind feature inputs.
 
+### UI Authoring Path Durable Artifacts
+
+When the selected feature's authoring path is `kind: ui`, `smithy.mark` also
+writes the durable screen and flow artifacts the UI ledger points at. These are
+mark-owned design truth; downstream commands consume them and may fill or update
+the paired executable test body, but never author `.design.md` or `.flow.md`
+from scratch.
+
+The artifact schemas and body rules are **not** restated here — they live in the
+two lazy-loaded helper skills so this command stays light for backend and
+non-UI runs. Load the relevant skill before writing each artifact and follow it
+verbatim:
+- `smithy.helper-screen-design` — `.design.md` front-matter schema (including
+  `component-path` and `design_system`) and the rationale-only body rules.
+- `smithy.helper-flow-definition` — `.flow.md` front-matter schema, the
+  intent-only body rules, and the paired executable test-body contract.
+
+Before writing any UI artifact, validate the feature's UI metadata and abort if
+it cannot be satisfied (per contracts C1):
+- Every screen node must resolve to a flat `ScreenId`. If a node has none, abort
+  with a message naming the node.
+- The UI feature must name a non-empty `design_system`. If it is missing, abort
+  before writing the spec or any durable UI artifact.
+
+Then write, matching the ledger pointers:
+- One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per
+  `smithy.helper-screen-design`.
+- One `design/flows/<FlowId>.flow.md` per `FL<N>` row, per
+  `smithy.helper-flow-definition`, **and** the paired stub test body at that
+  flow's `test-body` path, so every flow has a 1:1 `.flow.md` + test-body pair
+  immediately after `mark`. The stub is a placeholder only — comments or a
+  skipped placeholder in the driver's format, with no executable assertions,
+  traversal steps, or real selectors that could pass as the completed flow.
+  `smithy.forge` fills in the executable behavior during the flow-wire build.
+
+The mark output set for `kind: ui` is:
+- the UI `.spec.md` with the typed `## Dependency Order` ledger;
+- one `design/screens/<ScreenId>.design.md` per `SC<N>` row;
+- one `design/flows/<FlowId>.flow.md` per `FL<N>` row;
+- one paired stub test body at each `.flow.md` `test-body` path;
+- the `.features.md` dependency-order write-back when the input was a feature
+  map.
+
 ---
 
 ## Phase 4: Model
@@ -591,7 +634,11 @@ N/A — <one-sentence reason this feature has no code-shaped interface changes (
 
 ## Phase 6: Write & PR
 
-Create the spec folder and write all three files to disk first.
+Create the spec folder and write the spec artifact set to disk first. For the
+backend spec-triad path, this is the existing three files:
+`<slug>.spec.md`, `<slug>.data-model.md`, and `<slug>.contracts.md`. For the UI
+authoring path, this also includes the mark-owned durable screen artifacts,
+flow artifacts, and paired stub test bodies described above.
 
 **Feature map write-back** (when input was a `.features.md`): Update the
 `## Dependency Order` 4-column table in the `.features.md` so its `Artifact`
@@ -693,6 +740,8 @@ artifacts. The files are on disk and the PR is the review surface.
 
 1. Stage and commit all written files on the current branch:
    - the three spec artifacts in the new spec folder
+   - the durable UI artifacts and paired stub test bodies, when this run used
+     the UI authoring path
    - the updated `.features.md` (if this run performed a feature-map
      write-back)
 2. Push the current branch to `origin` as-is — do not rename it or
@@ -903,6 +952,9 @@ through Phase 0).
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.spec.md`
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.data-model.md`
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.contracts.md`
+   - for `kind: ui`, `design/screens/<ScreenId>.design.md`,
+     `design/flows/<FlowId>.flow.md`, and each paired stub test body named by
+     the flow artifact's `test-body`
 3. Summary report containing:
    - Spec folder path and branch name.
    - User story list with priorities.

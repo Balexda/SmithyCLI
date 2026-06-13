@@ -97,7 +97,7 @@
 
 ### Tasks
 
-- [ ] **Emit screen design artifacts**
+- [x] **Emit screen design artifacts**
 
   Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/screens/<ScreenId>.design.md` artifact for each screen node. The artifacts should follow `smithy.helper-screen-design` ownership and rationale-only rules, satisfying AS 1.2.
 
@@ -107,7 +107,7 @@
   - Screen artifacts name a `component-path` for the owning UI component (per `smithy.helper-screen-design`); the framework-neutral stack-detection generalization is FR-010/C6, owned by User Story 2, and is out of scope here
   - Missing `ScreenId` or `design_system` remains an abort condition per contracts C1
 
-- [ ] **Emit flow intent artifacts**
+- [x] **Emit flow intent artifacts**
 
   Extend `src/templates/agent-skills/commands/smithy.mark.prompt` so the UI path writes one `design/flows/<FlowId>.flow.md` artifact for each flow node **and the paired stub test body** at the `.flow.md`'s `test-body` path, so the 1:1 flow↔test-body pairing exists immediately after `mark` (contracts C1 lists `.flow.md (+ stub test body)` as a mark output). The `.flow.md` follows `smithy.helper-flow-definition` intent-only rules and avoids enumerating steps; the stub is an empty/placeholder test that `forge` later fills with executable behavior (data model Entity 4), so mark must not author executable assertions. Satisfies AS 1.2.
 
@@ -119,7 +119,7 @@
   - Flow artifact bodies remain intent-only
   - Flow artifacts do not contain step lists or layout-position guidance
 
-- [ ] **Record mark ownership of durable design truth**
+- [x] **Record mark ownership of durable design truth**
 
   Update `src/templates/agent-skills/commands/smithy.mark.prompt` and any directly conflicting source-template docs so the durable `.design.md` and `.flow.md` files are authored at `mark` and only consumed downstream. Keep `.claude/` snapshots untouched, per repository guidance.
 
