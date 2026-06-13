@@ -35,7 +35,7 @@
   _Acceptance criteria:_
   - YAML with `requires_git: true` loads with the flag visible to callers.
   - YAML that omits `requires_git` continues to load with current non-git behavior.
-  - Non-boolean `requires_git` values are skipped or rejected with validation output naming the field.
+  - Non-boolean `requires_git` values fail scenario validation with output naming the field and are excluded from the loaded scenarios — never silently accepted.
   - Duplicate-name handling, deterministic ordering, structural expectations, timeout, and sub-agent evidence loading are unchanged.
 
 - [ ] **Cover the loader contract with tests**
