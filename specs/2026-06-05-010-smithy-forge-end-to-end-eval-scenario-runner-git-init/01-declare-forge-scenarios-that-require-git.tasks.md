@@ -36,17 +36,8 @@
   - YAML with `requires_git: true` loads with the flag visible to callers.
   - YAML that omits `requires_git` continues to load with current non-git behavior.
   - Non-boolean `requires_git` values fail scenario validation with output naming the field and are excluded from the loaded scenarios — never silently accepted.
+  - `loadScenarioFromFile` applies the same `requires_git` validation contract as `loadScenarios`.
   - Duplicate-name handling, deterministic ordering, structural expectations, timeout, and sub-agent evidence loading are unchanged.
-
-- [ ] **Cover the loader contract with tests**
-
-  Add focused coverage in `evals/lib/scenario-loader.test.ts` for the new scenario metadata while preserving the existing loader regression suite. Include positive, omitted-field, and malformed-field cases that trace to AS 1.1-AS 1.3.
-
-  _Acceptance criteria:_
-  - A scenario YAML containing `requires_git: true` round-trips through `loadScenarios`.
-  - Existing real or temporary YAML cases without `requires_git` still load successfully.
-  - A malformed `requires_git` value is reported through the loader's validation path.
-  - `loadScenarioFromFile` applies the same validation contract as `loadScenarios`.
 
 **PR Outcome**: Eval scenario YAML can declare `requires_git: true`, existing scenarios that omit it remain compatible, and malformed values fail scenario validation before any runner behavior can infer git requirements.
 
