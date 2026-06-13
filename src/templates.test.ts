@@ -522,6 +522,36 @@ describe('getComposedTemplates', () => {
     expect(fix).not.toContain('Post your reply to\n   `comments[0].databaseId`');
   });
 
+  it('smithy.persona renders the free-text persona writer contract', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    expect(persona).toContain('## Input Routing');
+    expect(persona).toContain('If the input is non-empty and does **not** end in `.rfc.md`, select');
+    expect(persona).toContain('**free-text mode**');
+    expect(persona).toContain('Dispatch **smithy-prose** with:');
+    expect(persona).toContain('`section_assignment`: "Personas"');
+    expect(persona).toContain('`idea_description`: the free-text description from `$ARGUMENTS`');
+    expect(persona).toContain('Write one file at the target path using the canonical file shape');
+    expect(persona).toContain('leave the existing file untouched');
+    expect(persona).toContain('the skipped slug/path');
+  });
+
+  it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {
+    const geminiComposed = await getComposedTemplates('gemini');
+    for (const [agent, templates] of [
+      ['claude', claudeComposed],
+      ['codex', codexComposed],
+      ['gemini', geminiComposed],
+    ] as const) {
+      const persona = templates.commands.get('smithy.persona.md')!;
+      expect(persona, agent).toContain('## Authored Smithy Artifacts Location');
+      expect(persona, agent).toContain('## Persona Artifact Convention');
+      expect(persona, agent).toContain('docs/personas/<slug>.persona.md');
+      expect(persona, agent).toContain('Persona files sit outside the `## Dependency Order` lineage');
+      expect(persona, agent).not.toContain('{{>persona-convention}}');
+      expect(persona, agent).not.toContain('{{artifactsRoot}}');
+    }
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {
@@ -3444,7 +3474,7 @@ describe('getComposedTemplates artifactsRoot', () => {
     expect(strike).not.toContain('{{artifactsRoot}}');
   });
 
-  it('propagates to the ignite, mark, cut, render, spark, audit, and orders prompts', async () => {
+  it('propagates to the ignite, mark, cut, render, spark, audit, orders, and persona prompts', async () => {
     const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
     for (const file of [
       'smithy.ignite.md',
@@ -3454,6 +3484,7 @@ describe('getComposedTemplates artifactsRoot', () => {
       'smithy.spark.md',
       'smithy.audit.md',
       'smithy.orders.md',
+      'smithy.persona.md',
     ]) {
       const body = c.commands.get(file)!;
       expect(body, file).not.toContain('{{artifactsRoot}}');
@@ -3472,6 +3503,7 @@ describe('getComposedTemplates artifactsRoot', () => {
       'smithy.spark.md',
       'smithy.audit.md',
       'smithy.orders.md',
+      'smithy.persona.md',
     ]) {
       const body = c.commands.get(file)!;
       expect(body, file).toContain('## Authored Smithy Artifacts Location');

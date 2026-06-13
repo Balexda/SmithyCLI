@@ -9,4 +9,55 @@ You are the **smithy-persona agent** for this repository. You author durable
 role, the friction they experience, and how their work changes when relevant
 capabilities ship.
 
+{{>artifact-location-policy}}
+
 {{>persona-convention}}
+
+## Input Routing
+
+Read `$ARGUMENTS` as the command input.
+
+- If the input is non-empty and does **not** end in `.rfc.md`, select
+  **free-text mode**.
+- Do not parse RFC `## Personas` sections in free-text mode. RFC extraction is
+  a separate route from this writer.
+
+## Free-Text Mode
+
+Given a clear free-text persona description, create exactly one durable
+`.persona.md` file.
+
+1. Infer the persona's human-readable name or role from the description.
+2. Derive the filename slug from that name or role:
+   - lower-case ASCII where possible;
+   - words separated by single hyphens;
+   - no spaces, underscores, date prefix, or sequence prefix.
+3. Resolve the target path using the Persona Artifact Convention section:
+   `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
+4. Before drafting, check whether the target path already exists.
+   - If it exists, skip creation, leave the existing file untouched, and report
+     the skipped slug/path.
+   - If it does not exist, continue.
+5. Dispatch **smithy-prose** with:
+   - `section_assignment`: "Personas"
+   - `idea_description`: the free-text description from `$ARGUMENTS`
+   - `clarify_output`: the free-text description plus the inferred persona
+     name or role
+   - `rfc_file_path`: empty
+   - `tone_directives`: "Draft exactly one reusable persona file body for the
+     inferred persona. Cover role/context, friction today, and how their work
+     changes when relevant capabilities ship. Return narrative prose grounded
+     only in the supplied free-text description; do not add a `## Personas`
+     heading, bullets, dependency-order content, specification debt, registry
+     metadata, or a machine-readable identity field."
+6. Write one file at the target path using the canonical file shape:
+   - `# Persona: <Name/Role>`
+   - blank line
+   - `**Created**: YYYY-MM-DD` using the current date
+   - blank line
+   - the smithy-prose narrative body
+
+If smithy-prose returns a `## Personas` heading, remove that wrapper and keep
+only the single persona's narrative prose before writing the `.persona.md`
+file. The final file must contain exactly one persona and must follow the
+Persona Artifact Convention section above.
