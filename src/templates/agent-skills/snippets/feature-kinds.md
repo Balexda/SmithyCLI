@@ -9,10 +9,10 @@ truth.
 
 - **`backend`** — server/library functionality; the prose body is a behavioral delta.
 - **`ui`** — screen/flow work; `mark` authors the UI spec ledger and durable
-  screen/flow design artifacts, then downstream build steps render a
-  framework-appropriate screen component from a committed design skill and, in
-  the `wire` phase, emit/update the executable flow body for any flow the screen
-  joins.
+  screen/flow design artifacts plus placeholder flow test bodies, then
+  downstream build steps render a framework-appropriate screen component from a
+  committed design skill and, in the `wire` phase, fill/update the executable
+  flow body for any flow the screen joins.
 
 | Key | Kind | Required | Notes |
 |-----|------|----------|-------|
@@ -42,10 +42,10 @@ flows: [AddTitle]
 
 **Phase semantics.** `build` implements the screen component against a mock behind
 `flag` (rendering every brief state with design-system tokens only); `wire`
-connects real data, flips the flag, and emits/updates the executable test body for
-every flow in `flows` using the project's UI driver; the `.flow.md` design truth is
-authored by `mark`. Compose, Maestro, and `story-spider-design` are examples, not
-required stacks.
+connects real data, flips the flag, and fills/updates the mark-created
+executable test-body stub for every flow in `flows` using the project's UI
+driver; the `.flow.md` design truth is authored by `mark`. Compose, Maestro,
+and `story-spider-design` are examples, not required stacks.
 
 **The build/wire seam.** Flag-gated UI is two features sharing one `flag`: a `build`
 feature and a `wire` feature that lists the build feature in its `Depends On` cell.

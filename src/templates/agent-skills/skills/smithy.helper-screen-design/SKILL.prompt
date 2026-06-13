@@ -13,8 +13,8 @@ deliberately chosen, what was deferred. Load this skill when:
 - Writing a new `<ScreenId>.design.md` for a `kind: ui` feature.
 - Auditing an existing annotation for drift, redundancy, or layout
   re-description.
-- Emitting a screen annotation as part of `forge`'s UI build phase
-  (EPIC #404 / issue #408).
+- Emitting a screen annotation from `smithy.mark` for a UI feature's typed
+  ledger.
 - Validating cross-references during `flow-lint` (issue #409).
 
 Do **not** load this skill for backend features or for general voice/audience

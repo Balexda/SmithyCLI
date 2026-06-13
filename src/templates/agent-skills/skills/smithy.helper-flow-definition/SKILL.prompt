@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-flow-definition
-description: "Schema and authoring rules for the durable Flow entity pair — `design/flows/<FlowId>.flow.md` (thin intent annotation) and a paired executable test body — keyed 1:1 by flat FlowId. Use when authoring or auditing a flow definition, when emitting a flow as part of a UI feature's wire phase (kind: ui, phase: wire), or when validating an existing flow stays thin and testID-keyed. Provides the YAML front-matter field schema (id / screens / test-body), the rationale-only body rule, the driver-neutral selector contract, the testID naming convention, a skeleton template, and a worked AddTitle example."
+description: "Schema and authoring rules for the durable Flow entity pair — `design/flows/<FlowId>.flow.md` (thin intent annotation) and a paired executable test body — keyed 1:1 by flat FlowId. Use when authoring or auditing a flow definition, when emitting a mark-owned flow artifact and paired stub test body for a UI feature's wire phase (kind: ui, phase: wire), or when validating an existing flow stays thin and testID-keyed. Provides the YAML front-matter field schema (id / screens / test-body), the rationale-only body rule, the driver-neutral selector contract, the testID naming convention, a skeleton template, and a worked AddTitle example."
 ---
 # smithy.helper-flow-definition
 
@@ -16,12 +16,13 @@ design/flows/<FlowId>.flow.md      # durable INTENT annotation (why)
 Both files live in the **app repo**, alongside the code, not in Smithy. Load
 this skill when:
 
-- Writing or updating a `<FlowId>.flow.md` + executable test-body pair for a
-  `kind: ui` feature at `phase: wire`.
+- Writing a `<FlowId>.flow.md` + placeholder test-body pair from `smithy.mark`
+  for a `kind: ui` feature at `phase: wire`, or updating the executable
+  behavior in that existing test body downstream.
 - Auditing an existing flow for drift, redundancy, fragile selectors, or
   step-leakage from the executable test body into prose.
-- Emitting a flow as part of `forge`'s UI wire phase
-  (EPIC #404 / issue #408).
+- Emitting a mark-owned flow artifact and paired stub test body for a UI wire
+  feature.
 - Validating cross-references during `flow-lint` (issue #409).
 
 Do **not** load this skill for backend features, for screen-only work

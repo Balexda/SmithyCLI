@@ -223,7 +223,7 @@ spec (prose delta).
 | `phase` | Means | Done when |
 |---------|-------|-----------|
 | `build` | Implement the screen component against a mock, behind `flag`. No real data. | Screen renders every brief state using only design-system tokens/components, gated by the flag. |
-| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired and the executable test body emitted/updated for every flow in `flows` using the project's UI driver; the `.flow.md` design truth is authored by `mark`. |
+| `wire` | Connect the screen to real data/actions and flip the flag. | Real data wired and the mark-created stub test body filled/updated for every flow in `flows` using the project's UI driver; the `.flow.md` design truth is authored by `mark`. |
 
 ### The seam = two features sharing one flag
 
@@ -289,8 +289,8 @@ flows: [AddTitle]
 ```
 
 **Description**: Connect AddTitle to `LibraryStore` and flip `add_title_v1`. Confirm
-persists a real `Title`; done includes emitting the executable test body
-(`maestro/flows/AddTitle.yaml` in this Maestro example), while
+persists a real `Title`; done includes filling the mark-created executable test
+body stub (`maestro/flows/AddTitle.yaml` in this Maestro example), while
 `design/flows/AddTitle.flow.md` remains mark-authored design truth.
 ````
 
@@ -332,8 +332,8 @@ Each `FlowId` listed under a UI feature's `flows:` field resolves — in the
 `design/flows/<FlowId>.flow.md` (thin intent annotation) and
 an executable test body in the project's UI driver (for example
 `maestro/flows/<FlowId>.yaml`). `smithy.mark` authors the `.flow.md` design
-truth; downstream build steps consume it and write or update the executable
-body. The test body owns the steps and guard
+truth and creates the paired test-body stub; downstream build steps consume
+that pair and fill or update the executable body. The test body owns the steps and guard
 assertions a UI driver replays; the `.flow.md` owns *why* — the product truth
 the flow preserves, why the guards exist, deliberate entry / exit, and a
 coverage caveat for anything below what a UI driver can observe.

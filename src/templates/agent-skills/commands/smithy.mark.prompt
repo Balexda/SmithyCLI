@@ -412,6 +412,61 @@ UI ledger rules:
 - Do not add UI-only columns (`Kind` or `Design`) to backend spec-triad output
   for `kind: backend` or absent-kind feature inputs.
 
+### UI Authoring Path Durable Artifacts
+
+When the selected feature's authoring path is `kind: ui`, `smithy.mark` also
+writes the durable screen and flow artifacts referenced by the UI ledger. These
+files are mark-owned design truth; downstream commands consume them and may fill
+or update the paired executable test body, but they do not author
+`.design.md` or `.flow.md` from scratch.
+
+Before writing any UI artifact, validate the selected feature's UI metadata:
+- Every screen node must resolve to a flat `ScreenId` from the feature metadata
+  or the confirmed UI structure. If a screen node has no `ScreenId`, abort with
+  a message naming the node.
+- The UI feature must name `design_system`. If it is missing or empty, abort
+  before writing the spec or any durable UI artifacts.
+
+For each `SC<N>` screen row:
+- Load and follow `smithy.helper-screen-design`.
+- Write exactly one `design/screens/<ScreenId>.design.md` file matching the row's
+  pointer.
+- Include the required front matter: `id`, `component-path`, and
+  `design_system`; include `bundle` only when the selected feature supplied one
+  for that screen or feature.
+- Name a repo-relative `component-path` for the owning UI component. Use the
+  project's existing component path conventions when they are evident; do not
+  add framework-specific stack-detection gates here.
+- Keep the body rationale-only: why the screen exists, deliberate choices, and
+  deferred decisions. Do not write layout, state-machine, interaction-step,
+  visual-positioning, or copy-string prose.
+
+For each `FL<N>` flow row:
+- Load and follow `smithy.helper-flow-definition`.
+- Write exactly one `design/flows/<FlowId>.flow.md` file matching the row's
+  pointer.
+- Include the required front matter: `id`, `screens`, and `test-body`. `screens`
+  names the referenced `ScreenId` values; `test-body` is the repo-relative path
+  to the paired executable body in the project's UI-driver convention.
+- Also write the paired stub test body at the `test-body` path immediately, so
+  every flow has a 1:1 `.flow.md` + test-body pair after `mark`.
+- The stub test body is a placeholder only. It may contain comments or a skipped
+  placeholder in the target driver's format, but it must contain no executable
+  assertions, traversal steps, real selectors, or behavior that could pass as
+  the completed flow. `smithy.forge` fills in executable behavior during the
+  flow-wire build.
+- Keep the `.flow.md` body intent-only: durable intent, guards, entry / exit,
+  and coverage caveat. Do not include step lists, tap-by-tap walkthroughs,
+  layout-position guidance, or copy strings.
+
+The mark output set for `kind: ui` is:
+- the UI `.spec.md` with the typed `## Dependency Order` ledger;
+- one `design/screens/<ScreenId>.design.md` per `SC<N>` row;
+- one `design/flows/<FlowId>.flow.md` per `FL<N>` row;
+- one paired stub test body at each `.flow.md` `test-body` path;
+- the `.features.md` dependency-order write-back when the input was a feature
+  map.
+
 ---
 
 ## Phase 4: Model
@@ -591,7 +646,11 @@ N/A — <one-sentence reason this feature has no code-shaped interface changes (
 
 ## Phase 6: Write & PR
 
-Create the spec folder and write all three files to disk first.
+Create the spec folder and write the spec artifact set to disk first. For the
+backend spec-triad path, this is the existing three files:
+`<slug>.spec.md`, `<slug>.data-model.md`, and `<slug>.contracts.md`. For the UI
+authoring path, this also includes the mark-owned durable screen artifacts,
+flow artifacts, and paired stub test bodies described above.
 
 **Feature map write-back** (when input was a `.features.md`): Update the
 `## Dependency Order` 4-column table in the `.features.md` so its `Artifact`
@@ -693,6 +752,8 @@ artifacts. The files are on disk and the PR is the review surface.
 
 1. Stage and commit all written files on the current branch:
    - the three spec artifacts in the new spec folder
+   - the durable UI artifacts and paired stub test bodies, when this run used
+     the UI authoring path
    - the updated `.features.md` (if this run performed a feature-map
      write-back)
 2. Push the current branch to `origin` as-is — do not rename it or
@@ -903,6 +964,9 @@ through Phase 0).
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.spec.md`
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.data-model.md`
    - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.contracts.md`
+   - for `kind: ui`, `design/screens/<ScreenId>.design.md`,
+     `design/flows/<FlowId>.flow.md`, and each paired stub test body named by
+     the flow artifact's `test-body`
 3. Summary report containing:
    - Spec folder path and branch name.
    - User story list with priorities.
