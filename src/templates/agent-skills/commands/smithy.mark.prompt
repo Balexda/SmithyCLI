@@ -415,49 +415,37 @@ UI ledger rules:
 ### UI Authoring Path Durable Artifacts
 
 When the selected feature's authoring path is `kind: ui`, `smithy.mark` also
-writes the durable screen and flow artifacts referenced by the UI ledger. These
-files are mark-owned design truth; downstream commands consume them and may fill
-or update the paired executable test body, but they do not author
-`.design.md` or `.flow.md` from scratch.
+writes the durable screen and flow artifacts the UI ledger points at. These are
+mark-owned design truth; downstream commands consume them and may fill or update
+the paired executable test body, but never author `.design.md` or `.flow.md`
+from scratch.
 
-Before writing any UI artifact, validate the selected feature's UI metadata:
-- Every screen node must resolve to a flat `ScreenId` from the feature metadata
-  or the confirmed UI structure. If a screen node has no `ScreenId`, abort with
-  a message naming the node.
-- The UI feature must name `design_system`. If it is missing or empty, abort
-  before writing the spec or any durable UI artifacts.
+The artifact schemas and body rules are **not** restated here — they live in the
+two lazy-loaded helper skills so this command stays light for backend and
+non-UI runs. Load the relevant skill before writing each artifact and follow it
+verbatim:
+- `smithy.helper-screen-design` — `.design.md` front-matter schema (including
+  `component-path` and `design_system`) and the rationale-only body rules.
+- `smithy.helper-flow-definition` — `.flow.md` front-matter schema, the
+  intent-only body rules, and the paired executable test-body contract.
 
-For each `SC<N>` screen row:
-- Load and follow `smithy.helper-screen-design`.
-- Write exactly one `design/screens/<ScreenId>.design.md` file matching the row's
-  pointer.
-- Include the required front matter: `id`, `component-path`, and
-  `design_system`; include `bundle` only when the selected feature supplied one
-  for that screen or feature.
-- Name a repo-relative `component-path` for the owning UI component. Use the
-  project's existing component path conventions when they are evident; do not
-  add framework-specific stack-detection gates here.
-- Keep the body rationale-only: why the screen exists, deliberate choices, and
-  deferred decisions. Do not write layout, state-machine, interaction-step,
-  visual-positioning, or copy-string prose.
+Before writing any UI artifact, validate the feature's UI metadata and abort if
+it cannot be satisfied (per contracts C1):
+- Every screen node must resolve to a flat `ScreenId`. If a node has none, abort
+  with a message naming the node.
+- The UI feature must name a non-empty `design_system`. If it is missing, abort
+  before writing the spec or any durable UI artifact.
 
-For each `FL<N>` flow row:
-- Load and follow `smithy.helper-flow-definition`.
-- Write exactly one `design/flows/<FlowId>.flow.md` file matching the row's
-  pointer.
-- Include the required front matter: `id`, `screens`, and `test-body`. `screens`
-  names the referenced `ScreenId` values; `test-body` is the repo-relative path
-  to the paired executable body in the project's UI-driver convention.
-- Also write the paired stub test body at the `test-body` path immediately, so
-  every flow has a 1:1 `.flow.md` + test-body pair after `mark`.
-- The stub test body is a placeholder only. It may contain comments or a skipped
-  placeholder in the target driver's format, but it must contain no executable
-  assertions, traversal steps, real selectors, or behavior that could pass as
-  the completed flow. `smithy.forge` fills in executable behavior during the
-  flow-wire build.
-- Keep the `.flow.md` body intent-only: durable intent, guards, entry / exit,
-  and coverage caveat. Do not include step lists, tap-by-tap walkthroughs,
-  layout-position guidance, or copy strings.
+Then write, matching the ledger pointers:
+- One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per
+  `smithy.helper-screen-design`.
+- One `design/flows/<FlowId>.flow.md` per `FL<N>` row, per
+  `smithy.helper-flow-definition`, **and** the paired stub test body at that
+  flow's `test-body` path, so every flow has a 1:1 `.flow.md` + test-body pair
+  immediately after `mark`. The stub is a placeholder only — comments or a
+  skipped placeholder in the driver's format, with no executable assertions,
+  traversal steps, or real selectors that could pass as the completed flow.
+  `smithy.forge` fills in the executable behavior during the flow-wire build.
 
 The mark output set for `kind: ui` is:
 - the UI `.spec.md` with the typed `## Dependency Order` ledger;
