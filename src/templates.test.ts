@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(21);
+    expect(snippets.size).toBe(19);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -125,8 +125,6 @@ describe('loadSnippets', () => {
       'feature-kinds.md',
       'artifact-location-policy.md',
       'persona-convention.md',
-      'consult-engraved-knowledge-subagent.md',
-      'consult-engraved-knowledge-degraded.md',
       'engraved-recall-rules.md',
     ];
     for (const file of expectedFiles) {
@@ -151,88 +149,30 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
-    expect(snippets.get('consult-engraved-knowledge-subagent.md')).toContain('Consult Engraved Knowledge');
-    expect(snippets.get('consult-engraved-knowledge-degraded.md')).toContain('Consult Engraved Knowledge');
     expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
   });
 });
 
-describe('consult-engraved-knowledge snippets', () => {
-  // US1 Slice 2: engraved recall is the shared planning-command integration
-  // point, split along the sub-agent-capability axis: a `-subagent` snippet for
-  // agents that can dispatch smithy-recall (Claude, Codex) and a `-degraded`
-  // snippet for those that cannot (Gemini). The snippets carry NO
-  // agent-conditional logic (no {{#ifAgent}}, no "if you are X" prose) — the
-  // consuming command picks the right one with the zero-arg {{#ifAgent}}
-  // capability gate (the same gate forge/strike use; wired in Slice 3).
-  // The recall *rules* live once in the shared `engraved-recall-rules` snippet,
-  // included by both the smithy-recall agent and the degraded path, so the
-  // degraded snippet embeds rather than duplicates them. These tests lock the
-  // split and the de-duplication so reintroducing conditionals inside a
-  // snippet, re-duplicating the rules, or collapsing the two paths fails early.
-  const SUBAGENT = 'consult-engraved-knowledge-subagent.md';
-  const DEGRADED = 'consult-engraved-knowledge-degraded.md';
+describe('engraved-recall-rules snippet', () => {
+  // US1 Slice 2: the recall *rules* live once in the shared
+  // `engraved-recall-rules` snippet — the forge-pattern analogue of
+  // `tdd-protocol` / `review-protocol`. It is the single source of truth,
+  // included by the smithy-recall sub-agent and (in Slice 3) by the inline
+  // degraded `{{else}}` branch of each consuming command's zero-arg
+  // {{#ifAgent}} capability gate. There is no per-agent "consult" snippet:
+  // the sub-agent dispatch prose is written inline in the command, the same
+  // way forge inlines its smithy-implement / smithy-implementation-review
+  // dispatch. These tests lock the shared snippet as the single, agent-agnostic
+  // source so re-duplicating the rules or smuggling a conditional in fails early.
   const RULES = 'engraved-recall-rules.md';
 
-  // Compose a snippet through a plain Dotprompt partial include — no ifAgent
-  // helper is registered, proving the snippet is conditional-free and resolves
-  // (recursively, through any nested {{>...}}) to fully-rendered text.
-  const composeSnippet = async (name: string): Promise<string> => {
+  it('snippet file is loadable as a partial via loadSnippets', () => {
     const snippets = loadSnippets();
-    const partials: Record<string, string> = {};
-    for (const [filename, content] of snippets) {
-      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
-    }
-    const renderer = new Dotprompt({ partials });
-    const host = `# Host Template\n\n{{>${name.replace(/\.md$/, '')}}}\n`;
-    return resolveSnippets(host, renderer);
-  };
-
-  it('both snippet files are loadable as partials via loadSnippets', () => {
-    const snippets = loadSnippets();
-    for (const name of [SUBAGENT, DEGRADED, RULES]) {
-      expect(snippets.has(name)).toBe(true);
-      expect(snippets.get(name)!.length).toBeGreaterThan(0);
-    }
+    expect(snippets.has(RULES)).toBe(true);
+    expect(snippets.get(RULES)!.length).toBeGreaterThan(0);
   });
 
-  it('neither consult snippet encodes agent-conditional logic or prose branching', () => {
-    const snippets = loadSnippets();
-    for (const name of [SUBAGENT, DEGRADED]) {
-      const content = snippets.get(name)!;
-      // The agent split lives in the consuming command, never in the snippet.
-      // Plain {{>partial}} includes are allowed; agent conditionals are not.
-      expect(content).not.toContain('{{#ifAgent');
-      expect(content).not.toContain('{{else}}');
-      expect(content).not.toContain('{{/ifAgent}}');
-      expect(content).not.toMatch(/If you are Claude/i);
-      expect(content).not.toMatch(/If you are Gemini or Codex/i);
-    }
-  });
-
-  it('subagent snippet dispatches smithy-recall and omits direct-read guidance', () => {
-    const content = loadSnippets().get(SUBAGENT)!;
-    expect(content).toContain('## Consult Engraved Knowledge');
-    expect(content).toContain('smithy-recall');
-    expect(content).toContain('relevant');
-    expect(content).toContain('superseded_citations');
-    // The sub-agent snippet never spells out the degraded direct-read roots.
-    expect(content).not.toContain('docs/decisions/');
-    expect(content).not.toContain('candidate new exception');
-  });
-
-  it('degraded snippet embeds the shared rules rather than duplicating them', () => {
-    const content = loadSnippets().get(DEGRADED)!;
-    expect(content).toContain('## Consult Engraved Knowledge');
-    // No recall sub-agent on this path, so it must not be told to dispatch one.
-    expect(content).not.toContain('smithy-recall');
-    // The rules are pulled in via the shared partial, not restated inline.
-    expect(content).toContain('{{>engraved-recall-rules}}');
-    expect(content).not.toContain('docs/decisions/');
-    expect(content).not.toContain('candidate new exception');
-  });
-
-  it('shared engraved-recall-rules snippet is the single source of the recall rules', () => {
+  it('is the single, agent-agnostic source of the recall rules', () => {
     const content = loadSnippets().get(RULES)!;
     expect(content).toContain('docs/decisions/');
     expect(content).toContain('docs/invariants/');
@@ -255,25 +195,18 @@ describe('consult-engraved-knowledge snippets', () => {
     expect(content).not.toContain('smithy-recall');
   });
 
-  it('degraded snippet composes (through its nested include) into the full rules', async () => {
-    const degraded = await composeSnippet(DEGRADED);
-    expect(degraded).toContain('## Consult Engraved Knowledge');
-    // The nested {{>engraved-recall-rules}} resolves to the actual rule text.
-    expect(degraded).toContain('docs/decisions/');
-    expect(degraded).toContain('docs/design/constitution/');
-    expect(degraded).toContain('candidate new exception');
-    expect(degraded).toContain('superseded');
-    expect(degraded).toContain('deprecated');
-    expect(degraded).toContain('"no_records"');
-    expect(degraded).toContain('"no_match"');
-    expect(degraded).not.toContain('{{');
-  });
-
-  it('subagent snippet composes via its {{>partial}} include with no leftover syntax', async () => {
-    const subagent = await composeSnippet(SUBAGENT);
-    expect(subagent).toContain('## Consult Engraved Knowledge');
-    expect(subagent).toContain('smithy-recall');
-    expect(subagent).not.toContain('{{');
+  it('composes into any template via the {{>engraved-recall-rules}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>engraved-recall-rules}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('docs/decisions/');
+    expect(result).toContain('candidate new exception');
+    expect(result).not.toContain('{{>engraved-recall-rules}}');
   });
 });
 
