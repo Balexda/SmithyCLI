@@ -96,7 +96,22 @@ Recommended implementation sequence:
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
 | S1 | Candidate Strategy Measurement Harness | — | — |
-| S2 | Context Delivery Decision Record | S1 | — |
+| S3 | M1 JS and JVM forge fixtures and baselines (external prerequisite; not owned by this story) | — | — |
+| S2 | Context Delivery Decision Record | S1, S3 | — |
+
+**S3 is an intentional, unsatisfiable prerequisite marker, not an implementable
+slice.** It represents the M1 forge fixtures and baselines (Milestone 1 features
+F4/F5/F6 in `docs/rfcs/2026-001-token-savings/01-measurement-foundation.features.md`:
+the `smithy.forge` end-to-end eval scenario, the JVM multi-language fixture, and the
+M1 baseline-set completeness gate) that Slice 2's decision depends on but that this
+story does not own. It deliberately has **no `## Slice 3:` body**, so `smithy.forge`
+never dispatches it (forge only iterates `## Slice N:` sections), and it never
+completes here — keeping Slice 2 blocked for any dependency-aware consumer that
+reads this tasks file directly, not only the whole-repo graph. The block clears
+when M1 lands the fixtures upstream and S3 is removed (or its prerequisite is
+otherwise satisfied). This is the local, graph-honored encoding of the
+cross-milestone dependency that the prose row below describes; the canonical
+cross-artifact link still flows through the RFC `M2 → M1` lineage.
 
 ### Cross-Story Dependencies
 
