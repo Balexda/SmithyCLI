@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add dispatch usage evidence classification**
+- [x] **Add dispatch usage evidence classification**
 
   Extend the eval stream parsing layer under `evals/lib/` with a dispatch usage evidence classifier that consumes parsed `StreamEvent` values and returns the data-model classification shape. Keep the classifier limited to reliable dispatch-identifier relationships for AS 1.1-1.3; do not add sub-agent token aggregation or report rows from later stories.
 
@@ -29,7 +29,7 @@
   - Existing text extraction and sub-agent evidence behavior remains unchanged.
   - Unit coverage spans AS 1.1, AS 1.2, and AS 1.3.
 
-- [ ] **Record the committed evidence decision**
+- [x] **Record the committed evidence decision**
 
   Add `specs/2026-05-20-008-per-sub-agent-token-attribution/dispatch-usage-evidence.md` for the reviewed eval capture. The note should identify the capture reviewed, the classifier result, and the selected downstream path while keeping US2 attribution and US4 RFC fallback edits out of scope.
 
