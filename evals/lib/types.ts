@@ -10,6 +10,7 @@
  */
 
 export type EvalAgent = 'claude' | 'gemini' | 'codex';
+export type EvalFixture = 'js' | 'jvm';
 
 // ---------------------------------------------------------------------------
 // Stream parsing types (in-memory, transient)
@@ -125,6 +126,8 @@ export interface EvalScenario {
   name: string;
   skill: string;
   prompt: string;
+  fixture?: EvalFixture | undefined;
+  requires_git?: boolean | undefined;
   model?: string | undefined;
   timeout?: number | undefined;
   local_fixtures?: LocalFixtureSet | undefined;

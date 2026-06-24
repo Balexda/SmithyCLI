@@ -84,6 +84,55 @@ describe('loadScenarios', () => {
       ]);
     });
 
+    it('preserves JVM fixture metadata when declared', () => {
+      const dir = mkdir();
+      const content = [
+        'name: forge-tdd-slice-jvm',
+        'skill: /smithy.forge',
+        'prompt: specs/jvm-forge/01-task.tasks.md 1',
+        'fixture: jvm',
+        'requires_git: true',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'forge-tdd-slice-jvm.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]).toEqual(
+        expect.objectContaining({
+          name: 'forge-tdd-slice-jvm',
+          fixture: 'jvm',
+          requires_git: true,
+        }),
+      );
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps scenarios valid when fixture metadata is omitted', () => {
+      const dir = mkdir();
+      const content = [
+        'name: legacy-case',
+        'skill: /smithy.strike',
+        'prompt: do the thing',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'legacy-case.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.fixture).toBeUndefined();
+      expect(scenarios[0]!.requires_git).toBeUndefined();
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
     it('emits nothing on stdout or stderr for a clean load', () => {
       loadScenarios(realCasesDir);
       expect(outSpy).not.toHaveBeenCalled();
@@ -453,6 +502,53 @@ describe('loadScenarios', () => {
       } finally {
         fs.rmSync(linkPath, { force: true });
       }
+    });
+
+    it('skips a file with invalid fixture metadata and names the file', () => {
+      const dir = mkdir();
+      const content = [
+        'name: bad-fixture',
+        'skill: /smithy.forge',
+        'prompt: specs/jvm-forge/01-task.tasks.md 1',
+        'fixture: ruby',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'bad-fixture.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+
+      expect(scenarios).toEqual([]);
+      expect(errSpy).toHaveBeenCalled();
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('bad-fixture.yaml');
+      expect(joined).toContain('fixture');
+      expect(joined).toContain('jvm');
+    });
+
+    it('skips a file with non-boolean requires_git metadata', () => {
+      const dir = mkdir();
+      const content = [
+        'name: bad-git',
+        'skill: /smithy.forge',
+        'prompt: specs/jvm-forge/01-task.tasks.md 1',
+        'requires_git: yes please',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'bad-git.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+
+      expect(scenarios).toEqual([]);
+      expect(errSpy).toHaveBeenCalled();
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('bad-git.yaml');
+      expect(joined).toContain('requires_git');
     });
   });
 

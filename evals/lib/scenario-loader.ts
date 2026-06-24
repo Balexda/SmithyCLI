@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 import type {
+  EvalFixture,
   EvalScenario,
   LocalFixtureSet,
   StructuralExpectations,
@@ -302,6 +303,24 @@ function validateScenario(
     structural_expectations,
   };
 
+  // Optional: fixture (known fixture selector)
+  if (obj['fixture'] !== undefined) {
+    if (!isFixture(obj['fixture'])) {
+      skip("'fixture' must be one of: js, jvm");
+      return null;
+    }
+    scenario.fixture = obj['fixture'];
+  }
+
+  // Optional: requires_git (boolean)
+  if (obj['requires_git'] !== undefined) {
+    if (typeof obj['requires_git'] !== 'boolean') {
+      skip("'requires_git' must be a boolean when provided");
+      return null;
+    }
+    scenario.requires_git = obj['requires_git'];
+  }
+
   // Optional: model (string)
   if (obj['model'] !== undefined) {
     if (typeof obj['model'] !== 'string') {
@@ -470,4 +489,8 @@ function isPathUnderArea(repoPath: string, allowedArea: string): boolean {
 function isContainedIn(childAbs: string, parentAbs: string): boolean {
   const rel = path.relative(parentAbs, childAbs);
   return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+function isFixture(value: unknown): value is EvalFixture {
+  return value === 'js' || value === 'jvm';
 }

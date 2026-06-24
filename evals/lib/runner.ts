@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { EvalAgent, EvalScenario, RunOutput, StreamEvent } from './types.js';
+import type { EvalAgent, EvalFixture, EvalScenario, RunOutput, StreamEvent } from './types.js';
 import {
   parseStreamString,
   extractCanonicalText,
@@ -358,6 +358,9 @@ export async function runScenario(
   fixtureDir: string,
   agent: EvalAgent = 'claude',
 ): Promise<RunOutput> {
+  const selectedFixtureDir = resolveScenarioFixtureDir(scenario, fixtureDir);
+  const requiresGit = scenario.requires_git ?? true;
+
   // Create a unique temp directory and copy the fixture into it.
   const tmpDir = fs.mkdtempSync(
     path.join(os.tmpdir(), 'smithy-eval-'),
@@ -365,16 +368,18 @@ export async function runScenario(
 
   try {
     // FR-002: Copy fixture to temp directory.
-    fs.cpSync(fixtureDir, tmpDir, { recursive: true });
+    fs.cpSync(selectedFixtureDir, tmpDir, { recursive: true });
 
-    // Initialize the temp copy as a git repository with a baseline commit
-    // BEFORE any skill invocation. Scenarios whose producing command runs
-    // `git checkout -b` (mark / cut / render / ignite) fail at branch creation
-    // unless the working tree is a real git repo with a HEAD commit. Doing
-    // this here decouples the runner from whether `evals/fixture/` is itself
-    // under git (SD-001 / SD-007). A repo-local identity is configured so the
-    // developer's global git config is never touched.
-    initGitInTempCopy(tmpDir);
+    if (requiresGit) {
+      // Initialize the temp copy as a git repository with a baseline commit
+      // BEFORE any skill invocation. Scenarios whose producing command runs
+      // `git checkout -b` (mark / cut / render / ignite) fail at branch creation
+      // unless the working tree is a real git repo with a HEAD commit. Doing
+      // this here decouples the runner from whether the fixture source is
+      // itself under git (SD-001 / SD-007). A repo-local identity is configured
+      // so the developer's global git config is never touched.
+      initGitInTempCopy(tmpDir);
+    }
 
     // Deploy Smithy skills into the temp copy.
     execFileSync('node', [CLI_PATH, 'init', '-a', agent, '-y'], {
@@ -382,15 +387,17 @@ export async function runScenario(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    // Commit a second baseline so the worktree is clean when `claude` spawns.
-    // `smithy init` writes `.claude/`, `.smithy/`, and may update `.gitignore`,
-    // which would otherwise leave the temp repo dirty for the whole scenario.
-    // Producing commands that gate behavior on `git status --porcelain` clean
-    // (e.g. refine paths in mark / cut) need this to detect no-op runs.
-    commitAllInTempCopy(tmpDir, 'eval: post-init baseline');
+    if (requiresGit) {
+      // Commit a second baseline so the worktree is clean when `claude` spawns.
+      // `smithy init` writes `.claude/`, `.smithy/`, and may update `.gitignore`,
+      // which would otherwise leave the temp repo dirty for the whole scenario.
+      // Producing commands that gate behavior on `git status --porcelain` clean
+      // (e.g. refine paths in mark / cut) need this to detect no-op runs.
+      commitAllInTempCopy(tmpDir, 'eval: post-init baseline');
+    }
 
     // FR-011: Checksum the source fixture *before* execution.
-    const checksumBefore = hashDirectory(fixtureDir);
+    const checksumBefore = hashDirectory(selectedFixtureDir);
 
     // Build the invocation string. Claude/Gemini scenarios use slash-command
     // form; Codex uses deployed skills, so name the matching skill directly.
@@ -424,7 +431,7 @@ export async function runScenario(
     }
 
     // FR-011: Re-verify the source fixture after execution.
-    const checksumAfter = hashDirectory(fixtureDir);
+    const checksumAfter = hashDirectory(selectedFixtureDir);
     if (checksumAfter !== checksumBefore) {
       throw new Error(
         'Source fixture directory was modified during eval execution. ' +
@@ -443,6 +450,39 @@ export async function runScenario(
   } finally {
     // FR-013: Always clean up the temp directory.
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+function resolveScenarioFixtureDir(
+  scenario: EvalScenario,
+  fixtureDir: string,
+): string {
+  const fixture = scenario.fixture ?? 'js';
+  assertFixture(fixture, scenario.name);
+
+  const selectedDir = fixture === 'js'
+    ? fixtureDir
+    : path.join(fixtureDir, fixture);
+  const stat = fs.statSync(selectedDir, { throwIfNoEntry: false });
+  if (!stat) {
+    throw new Error(
+      `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture directory was not found: ${selectedDir}`,
+    );
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(
+      `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path is not a directory: ${selectedDir}`,
+    );
+  }
+
+  return selectedDir;
+}
+
+function assertFixture(fixture: string, scenarioName: string): asserts fixture is EvalFixture {
+  if (fixture !== 'js' && fixture !== 'jvm') {
+    throw new Error(
+      `Scenario "${scenarioName}" requested unsupported fixture "${fixture}". Supported fixtures: js, jvm`,
+    );
   }
 }
 
