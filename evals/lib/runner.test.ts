@@ -219,6 +219,52 @@ describe('runScenario', () => {
     }
   });
 
+  it('uses scenario fixture metadata to select the JVM fixture directory', async () => {
+    const stdout = ndjsonLines(resultEvent('jvm output'));
+    const { child } = createMockChild(stdout, 0);
+
+    let spawnObservedCwd = '';
+    let sawJvmFixtureFile = false;
+    let sawRootFixtureFile = false;
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        spawnObservedCwd = opts.cwd ?? '';
+        sawJvmFixtureFile = fs.existsSync(path.join(spawnObservedCwd, 'jvm-only.txt'));
+        sawRootFixtureFile = fs.existsSync(path.join(spawnObservedCwd, 'root-only.txt'));
+        return child as never;
+      }) as never,
+    );
+
+    const fixture = createRealFixture();
+    fs.writeFileSync(path.join(fixture.dir, 'root-only.txt'), 'root');
+    fs.mkdirSync(path.join(fixture.dir, 'jvm'));
+    fs.writeFileSync(path.join(fixture.dir, 'jvm', 'jvm-only.txt'), 'jvm');
+
+    try {
+      await runScenario(makeScenario({ fixture: 'jvm' }), fixture.dir);
+
+      expect(spawnObservedCwd).toContain('smithy-eval-');
+      expect(sawJvmFixtureFile).toBe(true);
+      expect(sawRootFixtureFile).toBe(false);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('fails clearly when the requested JVM fixture directory is missing', async () => {
+    const fixture = createRealFixture();
+    try {
+      await expect(
+        runScenario(makeScenario({ name: 'forge-tdd-slice-jvm', fixture: 'jvm' }), fixture.dir),
+      ).rejects.toThrow(
+        /forge-tdd-slice-jvm.*fixture "jvm".*not found/,
+      );
+      expect(spawn).not.toHaveBeenCalled();
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
   it('non-zero exit code is surfaced', async () => {
     const stdout = ndjsonLines(
       assistantTextEvent('partial'),
@@ -392,7 +438,7 @@ describe('runScenario', () => {
     }
   });
 
-  it('initializes git in the temp fixture copy before invoking claude (Slice 1 / SD-001 / SD-007)', async () => {
+  it('initializes git in the temp fixture copy before invoking claude by default', async () => {
     // Route `execFileSync` so git calls hit the real binary (we need a real
     // `.git/` to inspect) while the smithy `node CLI init` invocation is a
     // no-op. preflight/auth calls aren't on this path.
@@ -463,6 +509,66 @@ describe('runScenario', () => {
     } finally {
       fixture.cleanup();
       mkdtempSpy.mockRestore();
+    }
+  });
+
+  it('initializes git when requires_git is true', async () => {
+    vi.mocked(execFileSync).mockImplementation(
+      ((command: string, args: readonly string[] | undefined, options: unknown) => {
+        if (command === 'git') {
+          return realExecFileSync(command, args as string[] | undefined, options as Parameters<typeof realExecFileSync>[2]);
+        }
+        return Buffer.from('');
+      }) as never,
+    );
+
+    let gitDirPresentAtSpawn = false;
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        const cwd = opts.cwd ?? '';
+        gitDirPresentAtSpawn = fs.existsSync(path.join(cwd, '.git'));
+        return child as never;
+      }) as never,
+    );
+
+    const fixture = createRealFixture();
+    try {
+      await runScenario(makeScenario({ requires_git: true }), fixture.dir);
+
+      expect(gitDirPresentAtSpawn).toBe(true);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('does not initialize git when requires_git is explicitly false', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+
+    let spawnObservedCwd = '';
+    let gitDirPresentAtSpawn = false;
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        spawnObservedCwd = opts.cwd ?? '';
+        gitDirPresentAtSpawn = fs.existsSync(path.join(spawnObservedCwd, '.git'));
+        return child as never;
+      }) as never,
+    );
+
+    const fixture = createRealFixture();
+    try {
+      await runScenario(makeScenario({ requires_git: false }), fixture.dir);
+
+      expect(spawnObservedCwd).toContain('smithy-eval-');
+      expect(gitDirPresentAtSpawn).toBe(false);
+      const gitCalls = vi.mocked(execFileSync).mock.calls.filter(
+        ([command]) => command === 'git',
+      );
+      expect(gitCalls).toEqual([]);
+    } finally {
+      fixture.cleanup();
     }
   });
 

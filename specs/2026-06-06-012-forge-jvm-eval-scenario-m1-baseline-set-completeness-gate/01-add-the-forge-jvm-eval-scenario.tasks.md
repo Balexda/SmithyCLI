@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Extend scenario metadata for fixture selection**
+- [x] **Extend scenario metadata for fixture selection**
 
   Update the eval scenario types and loader in `evals/lib/types.ts` and `evals/lib/scenario-loader.ts` so YAML declarations may carry the Forge-JVM scenario fields from the Forge-JVM Scenario entity. Keep existing scenarios valid when they omit optional fields, while rejecting invalid metadata clearly for AS 1.1.
 
@@ -29,7 +29,7 @@
   - Invalid fixture metadata fails with a named scenario-file validation error.
   - Loader coverage includes the JVM fixture metadata path.
 
-- [ ] **Route runner preparation through scenario metadata**
+- [x] **Route runner preparation through scenario metadata**
 
   Update `evals/lib/runner.ts` so scenario preparation consumes fixture and git metadata when building the temp execution context. Preserve the F1.5 git initialization behavior for forge scenarios and make unavailable JVM fixture selection fail clearly for AS 1.2.
 
