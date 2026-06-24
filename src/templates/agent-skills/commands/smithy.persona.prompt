@@ -17,6 +17,11 @@ capabilities ship.
 
 Read `$ARGUMENTS` as the command input.
 
+- If the input is empty, whitespace-only, the literal string `$ARGUMENTS`, or
+  otherwise does not contain a usable persona description or RFC path, ask the
+  user what persona to generate. Use the user's answer as the free-text
+  persona description and continue directly through free-text mode. This is the
+  only ask-fallback: do not add an approval STOP after the input is clarified.
 - If the input is non-empty and does **not** end in `.rfc.md`, select
   **free-text mode**.
 - If the input ends in `.rfc.md`, RFC extraction is not implemented yet
@@ -69,3 +74,28 @@ If smithy-prose returns a `## Personas` heading, remove that wrapper and keep
 only the single persona's narrative prose before writing the `.persona.md`
 file. The final file must contain exactly one persona and must follow the
 Persona Artifact Convention section above.
+
+## One-Shot Summary
+
+After free-text mode completes, present a compact terminal summary. Do not dump
+the full persona file contents into the terminal.
+
+For a successful write, report:
+
+1. **Phase summary** — one line stating that one durable persona file was
+   written from free text with no intermediate approval gates.
+2. **Persona path** — the full written path:
+   `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
+3. **Slug** — the derived slug used for filename identity.
+
+For a slug collision skip, report:
+
+1. **Phase summary** — one line stating that no file was written because the
+   target persona slug already exists.
+2. **Skipped path** — the existing path left untouched:
+   `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
+3. **Next step** — tell the user to choose a different persona name/role or
+   edit the existing file directly.
+
+Keep the summary shape compatible with future RFC mode by reporting written and
+skipped persona paths as explicit result fields, not as a free-form diff.
