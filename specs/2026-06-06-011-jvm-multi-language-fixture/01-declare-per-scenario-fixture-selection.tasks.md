@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Expose optional fixture metadata on scenarios**
+- [x] **Expose optional fixture metadata on scenarios**
 
   Extend the eval scenario model in `evals/lib/types.ts` and loader output in `evals/lib/scenario-loader.ts` so valid scenario YAML may carry an optional fixture selector. Preserve omitted fixture metadata as the existing default behavior for AS 1.1, and keep validation for all existing fields unchanged.
 
@@ -29,7 +29,7 @@
   - Existing scenario ordering, duplicate-name handling, `model`, `timeout`, structural expectations, and sub-agent evidence behavior are unchanged.
   - Focused loader coverage exercises omitted and valid fixture metadata.
 
-- [ ] **Reject malformed fixture selectors in the loader**
+- [x] **Reject malformed fixture selectors in the loader**
 
   Add fixture selector validation to `evals/lib/scenario-loader.ts` using the contract's scenario fixture declaration rules. Invalid fixture metadata must follow the existing loader policy: `loadScenarios` skips only the offending file with one stderr line naming `fixture`, while `loadScenarioFromFile` throws for the same invalid content.
 

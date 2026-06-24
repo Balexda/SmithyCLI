@@ -120,6 +120,7 @@ export interface EvalScenario {
   name: string;
   skill: string;
   prompt: string;
+  fixture?: string | undefined;
   model?: string | undefined;
   timeout?: number | undefined;
   local_fixtures?: LocalFixtureSet | undefined;
