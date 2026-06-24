@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Declare token totals on runner output**
+- [x] **Declare token totals on runner output**
 
   Extend `evals/lib/types.ts` with the token-count value object from the data model and add it to `RunOutput`. Keep the stream event type loose enough to preserve unknown event shapes while permitting optional usage payloads for AS 1.1-1.3.
 
@@ -28,7 +28,7 @@
   - `StreamEvent` remains tolerant of unknown fields and event types.
   - Existing type exports remain import-compatible for current eval modules.
 
-- [ ] **Extract valid usage from stream events**
+- [x] **Extract valid usage from stream events**
 
   Add a pure extraction helper in `evals/lib/parse-stream.ts` that implements the Stream Usage Extraction contract. It must normalize valid usage metadata, ignore invalid fields, and apply the terminal-event precedence rule so AS 1.1 and the edge-case deduplication requirement are satisfied.
 
@@ -39,7 +39,7 @@
   - Empty or usage-free event arrays return zero totals.
   - Unit coverage exercises valid usage, missing usage, malformed usage, and deduplication paths.
 
-- [ ] **Populate runner tokens for every outcome**
+- [x] **Populate runner tokens for every outcome**
 
   Update `evals/lib/runner.ts` so `runScenario` sets `RunOutput.tokens` from parseable events and falls back to zero totals when no usable usage metadata is available. Preserve the existing extracted-text and timeout/error behavior while satisfying AS 1.2 and AS 1.3.
 

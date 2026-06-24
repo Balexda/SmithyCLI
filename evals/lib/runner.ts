@@ -13,7 +13,11 @@ import os from 'node:os';
 import path from 'node:path';
 
 import type { EvalAgent, EvalScenario, RunOutput, StreamEvent } from './types.js';
-import { parseStreamString, extractCanonicalText } from './parse-stream.js';
+import {
+  parseStreamString,
+  extractCanonicalText,
+  extractTokenTotals,
+} from './parse-stream.js';
 
 /** Path to the built Smithy CLI, resolved relative to this module. */
 const CLI_PATH = path.resolve(
@@ -431,6 +435,7 @@ export async function runScenario(
     return {
       extracted_text: extractedText,
       stream_events: events,
+      tokens: extractTokenTotals(events),
       duration_ms: result.duration_ms,
       exit_code: result.exit_code,
       timed_out: result.timed_out,

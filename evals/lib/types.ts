@@ -22,6 +22,11 @@ export type EvalAgent = 'claude' | 'gemini' | 'codex';
  */
 export interface StreamEvent {
   type: string;
+  usage?: {
+    input_tokens?: unknown;
+    output_tokens?: unknown;
+    [key: string]: unknown;
+  } | undefined;
   message?: string | {
     content?: Array<Record<string, unknown>>;
     [key: string]: unknown;
@@ -124,10 +129,17 @@ export interface EvalScenario {
 // Runner output
 // ---------------------------------------------------------------------------
 
+/** Normalized token totals for a single scenario run or aggregate report. */
+export interface TokenTotals {
+  input: number;
+  output: number;
+}
+
 /** Output produced by `runScenario`. */
 export interface RunOutput {
   extracted_text: string;
   stream_events: StreamEvent[];
+  tokens: TokenTotals;
   duration_ms: number;
   exit_code: number;
   timed_out: boolean;
