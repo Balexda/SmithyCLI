@@ -100,6 +100,45 @@ describe('loadScenarios', () => {
       ]);
     });
 
+    it('preserves a boolean requires_git flag when present', () => {
+      const dir = mkdir();
+      const content = [
+        'name: git-backed-case',
+        'skill: /smithy.forge',
+        'prompt: specs/example.tasks.md 1',
+        'requires_git: true',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'git-backed.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.requires_git).toBe(true);
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('leaves requires_git unset when omitted', () => {
+      const dir = mkdir();
+      const content = [
+        'name: plain-case',
+        'skill: /smithy.strike',
+        'prompt: add a health check endpoint',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'plain.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.requires_git).toBeUndefined();
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
     it('emits nothing on stdout or stderr for a clean load', () => {
       loadScenarios(realCasesDir);
       expect(outSpy).not.toHaveBeenCalled();
@@ -528,6 +567,28 @@ describe('loadScenarios', () => {
         expect(String(matchingCalls[0]![0]).match(/fixture/g)).toHaveLength(1);
       }
     });
+
+    it('skips a file with a non-boolean requires_git value and reports the field', () => {
+      const dir = mkdir();
+      const content = [
+        'name: invalid-git-flag',
+        'skill: /smithy.forge',
+        'prompt: specs/example.tasks.md 1',
+        'requires_git: yes please',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'invalid-git-flag.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toEqual([]);
+      expect(errSpy).toHaveBeenCalled();
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('invalid-git-flag.yaml');
+      expect(joined).toContain('requires_git');
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -677,6 +738,44 @@ describe('loadScenarioFromFile', () => {
     );
     expect(scenario.skill).toBe('/smithy.strike');
     expect(scenario.prompt).toBe('add a health check endpoint');
+  });
+
+  it('preserves a boolean requires_git flag when loading by exact path', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'git-backed.yaml');
+    const content = [
+      'name: git-backed-case',
+      'skill: /smithy.forge',
+      'prompt: specs/example.tasks.md 1',
+      'requires_git: true',
+      'structural_expectations:',
+      '  required_headings:',
+      '    - "## Summary"',
+      '',
+    ].join('\n');
+    fs.writeFileSync(file, content);
+
+    const scenario = loadScenarioFromFile(file);
+    expect(scenario.requires_git).toBe(true);
+    expect(errSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-boolean requires_git value when loading by exact path', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'invalid-git-flag.yaml');
+    const content = [
+      'name: invalid-git-flag',
+      'skill: /smithy.forge',
+      'prompt: specs/example.tasks.md 1',
+      'requires_git: 1',
+      'structural_expectations:',
+      '  required_headings:',
+      '    - "## Summary"',
+      '',
+    ].join('\n');
+    fs.writeFileSync(file, content);
+
+    expect(() => loadScenarioFromFile(file)).toThrow(/requires_git/);
   });
 
   it('throws when the file does not exist', () => {
