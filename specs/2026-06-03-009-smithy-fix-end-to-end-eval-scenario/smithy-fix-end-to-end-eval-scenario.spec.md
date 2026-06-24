@@ -101,7 +101,7 @@ Recommended implementation sequence:
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
 | US1 | Provide Offline smithy.fix Fixtures | — | — |
-| US2 | Run smithy.fix Against Local Failure Evidence | US1 | — |
+| US2 | Run smithy.fix Against Local Failure Evidence | US1 | specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/02-run-smithy-fix-against-local-failure-evidence.tasks.md |
 | US3 | Validate smithy.fix Output Structure and Helper Evidence | US2 | — |
 | US4 | Commit the smithy.fix Token-Aware Baseline | US3 | — |
 
