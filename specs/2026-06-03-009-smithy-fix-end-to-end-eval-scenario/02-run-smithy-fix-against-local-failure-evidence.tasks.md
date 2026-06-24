@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Add local fixture metadata to scenarios**
+- [x] **Add local fixture metadata to scenarios**
 
   Extend `evals/lib/types.ts` with optional local fixture metadata matching the data model and contracts. Keep omitted metadata compatible with all existing TypeScript and YAML scenarios, and limit this task to the scenario shape plus local validation types needed by the loader.
 
@@ -28,7 +28,7 @@
   - The new metadata does not change report, baseline, structural, or sub-agent result shapes.
   - Type comments identify local fixtures as scenario metadata consumed before invocation.
 
-- [ ] **Validate local fixture declarations in YAML**
+- [x] **Validate local fixture declarations in YAML**
 
   Update `evals/lib/scenario-loader.ts` so scenario loading preserves valid `local_fixtures` declarations and rejects malformed declarations through the existing skip or thrown-validation paths. Validation should enforce the allowed fixture areas and readable repository-local files described by the LocalFixtureSet model and Scenario Local Fixture Declaration contract.
 
