@@ -611,6 +611,30 @@ describe('getComposedTemplates', () => {
     }
   });
 
+  it('smithy.ignite discovers and slug-matches durable personas before cold drafting', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toContain('## Persona Artifact Convention');
+    expect(ignite).toContain('docs/personas/<slug>.persona.md');
+    expect(ignite).not.toContain('{{>persona-convention}}');
+
+    const subphase3bIdx = ignite.indexOf('Sub-phase 3b: Personas');
+    const subphase3cIdx = ignite.indexOf('Sub-phase 3c: Goals + Out of Scope');
+    expect(subphase3bIdx).toBeGreaterThan(-1);
+    expect(subphase3cIdx).toBeGreaterThan(subphase3bIdx);
+    const subphase3bBlock = ignite.slice(subphase3bIdx, subphase3cIdx);
+
+    const discoveryIdx = subphase3bBlock.indexOf('Before drafting Personas cold');
+    const dispatchIdx = subphase3bBlock.indexOf('dispatch **smithy-prose**');
+    expect(discoveryIdx).toBeGreaterThan(-1);
+    expect(dispatchIdx).toBeGreaterThan(discoveryIdx);
+    expect(subphase3bBlock).toContain('active artifacts root');
+    expect(subphase3bBlock).toContain('derive deterministic kebab-case slugs');
+    expect(subphase3bBlock).toMatch(/exact\s+filename-slug identity/);
+    expect(subphase3bBlock).toContain('`<slug>.persona.md` covers');
+    expect(subphase3bBlock).toMatch(/Avoid fuzzy\s+matching/);
+    expect(subphase3bBlock).toContain('If no `.persona.md` files exist');
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {
