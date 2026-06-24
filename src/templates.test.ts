@@ -485,11 +485,13 @@ describe('getComposedTemplates', () => {
   let composed: ComposedTemplates;
   let claudeComposed: ComposedTemplates;
   let codexComposed: ComposedTemplates;
+  let geminiComposed: ComposedTemplates;
 
   beforeAll(async () => {
     composed = await getComposedTemplates();
     claudeComposed = await getComposedTemplates('claude');
     codexComposed = await getComposedTemplates('codex');
+    geminiComposed = await getComposedTemplates('gemini');
   });
 
   it('returns commands, prompts, agents, and skills maps', () => {
@@ -1618,6 +1620,83 @@ describe('getComposedTemplates', () => {
     expect(recall).toContain('Do not independently derive supersession');
     expect(recall).toContain('"no_records"');
     expect(recall).toContain('"no_match"');
+  });
+
+  it('planning command templates wire inline engraved-knowledge consultation blocks', () => {
+    const commandTemplatesDir = path.join(
+      process.cwd(),
+      'src/templates/agent-skills/commands',
+    );
+    const planningCommands = [
+      'smithy.strike.prompt',
+      'smithy.ignite.prompt',
+      'smithy.render.prompt',
+      'smithy.mark.prompt',
+      'smithy.cut.prompt',
+    ];
+
+    for (const filename of planningCommands) {
+      const template = fs.readFileSync(path.join(commandTemplatesDir, filename), 'utf8');
+      expect(template, filename).toContain('### Engraved-Knowledge Consultation');
+      expect(template, filename).toContain('{{#ifAgent}}');
+      expect(template, filename).toContain('Dispatch the **smithy-recall** sub-agent');
+      expect(template, filename).toContain('{{else}}');
+      expect(template, filename).toContain('{{>engraved-recall-rules}}');
+      expect(template, filename).toContain('{{/ifAgent}}');
+      expect(template, filename).toMatch(/candidate\s+invariant conflicts/);
+      expect(template, filename).toMatch(/superseded\/deprecated\s+citation\s+hazards/);
+      expect(template, filename).toContain('proceed normally');
+    }
+  });
+
+  it('sub-agent-capable planning commands dispatch smithy-recall during scan', () => {
+    const planningCommands = [
+      'smithy.strike.md',
+      'smithy.ignite.md',
+      'smithy.render.md',
+      'smithy.mark.md',
+      'smithy.cut.md',
+    ];
+
+    for (const templates of [claudeComposed, codexComposed]) {
+      for (const commandName of planningCommands) {
+        const command = templates.commands.get(commandName)!;
+        expect(command, commandName).toContain('### Engraved-Knowledge Consultation');
+        expect(command, commandName).toContain('Dispatch the **smithy-recall** sub-agent');
+        expect(command, commandName).toContain('Planning context');
+        expect(command, commandName).toContain('Domain hint');
+        expect(command, commandName).toMatch(/candidate\s+invariant conflicts/);
+        expect(command, commandName).toMatch(/superseded\/deprecated\s+citation\s+hazards/);
+        expect(command, commandName).toMatch(/If\s+recall\s+returns `empty: true`[\s\S]*proceed normally/);
+        expect(command, commandName).not.toContain('{{#ifAgent}}');
+        expect(command, commandName).not.toContain('{{>engraved-recall-rules}}');
+      }
+    }
+  });
+
+  it('degraded planning commands retain direct engraved recall rules', () => {
+    const planningCommands = [
+      'smithy.strike.md',
+      'smithy.ignite.md',
+      'smithy.render.md',
+      'smithy.mark.md',
+      'smithy.cut.md',
+    ];
+
+    for (const templates of [composed, geminiComposed]) {
+      for (const commandName of planningCommands) {
+        const command = templates.commands.get(commandName)!;
+        expect(command, commandName).toContain('### Engraved-Knowledge Consultation');
+        expect(command, commandName).toContain('Read engraved durable knowledge directly');
+        expect(command, commandName).toContain('## Engraved Recall Rules');
+        expect(command, commandName).toContain('docs/decisions/');
+        expect(command, commandName).toContain('candidate new exception');
+        expect(command, commandName).toContain('superseded_citations');
+        expect(command, commandName).toContain('empty_reason');
+        expect(command, commandName).not.toContain('{{#ifAgent}}');
+        expect(command, commandName).not.toContain('{{>engraved-recall-rules}}');
+      }
+    }
   });
 
   // Story 3 Slice 3: mark and cut must render the shared one-shot output

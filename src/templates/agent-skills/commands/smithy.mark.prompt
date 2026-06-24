@@ -166,6 +166,33 @@ Handle the scout report as follows:
   question, but do not force separate discussion of each warning.
 - **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge during this scan before structuring the
+feature specification.
+
+{{#ifAgent}}
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: spec artifact
+- **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
+- **Codebase file paths**: the relevant codebase files explored during Phase 1
+- **Domain hint**: infer `system`, `design`, or `both` from the feature, RFC, metadata, and explored files
+
+Use the returned recall result as advisory planning context. Route candidate
+invariant conflicts into the smithy-clarify context and, if unresolved, into
+the spec's `## Specification Debt` table. Surface superseded/deprecated
+citation hazards before writing the spec, data model, or contracts. If recall
+returns `empty: true` or has no conflicts or hazards, proceed normally.
+{{else}}
+Read engraved durable knowledge directly using these rules, then use the result
+as advisory planning context. Route candidate invariant conflicts into
+clarification or specification debt, surface superseded/deprecated citation
+hazards before writing, and proceed normally for empty or clean results.
+
+{{>engraved-recall-rules}}
+{{/ifAgent}}
+
 ---
 
 ## Phase 1.8: Approach Planning
