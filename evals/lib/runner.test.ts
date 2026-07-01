@@ -251,6 +251,48 @@ describe('runScenario', () => {
     }
   });
 
+  it('resolves an explicit fixture selector from the canonical root, not the --fixture override', async () => {
+    const stdout = ndjsonLines(resultEvent('jvm output'));
+    const { child } = createMockChild(stdout, 0);
+
+    let sawCanonicalJvmFile = false;
+    let sawOverrideJvmFile = false;
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        const cwd = opts.cwd ?? '';
+        sawCanonicalJvmFile = fs.existsSync(path.join(cwd, 'canonical-jvm.txt'));
+        sawOverrideJvmFile = fs.existsSync(path.join(cwd, 'override-jvm.txt'));
+        return child as never;
+      }) as never,
+    );
+
+    // The `--fixture` override points at a different directory than the
+    // canonical fixture root; a `jvm/` exists under both. The explicit selector
+    // must win and resolve under the canonical root (F1.6 contract).
+    const override = createRealFixture();
+    fs.mkdirSync(path.join(override.dir, 'jvm'));
+    fs.writeFileSync(path.join(override.dir, 'jvm', 'override-jvm.txt'), 'override');
+
+    const canonical = createRealFixture();
+    fs.mkdirSync(path.join(canonical.dir, 'jvm'));
+    fs.writeFileSync(path.join(canonical.dir, 'jvm', 'canonical-jvm.txt'), 'canonical');
+
+    try {
+      await runScenario(
+        makeScenario({ fixture: 'jvm' }),
+        override.dir,
+        'claude',
+        canonical.dir,
+      );
+
+      expect(sawCanonicalJvmFile).toBe(true);
+      expect(sawOverrideJvmFile).toBe(false);
+    } finally {
+      override.cleanup();
+      canonical.cleanup();
+    }
+  });
+
   it('fails clearly when the requested JVM fixture directory is missing', async () => {
     const fixture = createRealFixture();
     try {
