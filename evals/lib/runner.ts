@@ -353,8 +353,13 @@ export async function runScenario(
   scenario: EvalScenario,
   fixtureDir: string,
   agent: EvalAgent = 'claude',
+  canonicalFixtureRoot: string = fixtureDir,
 ): Promise<RunOutput> {
-  const selectedFixtureDir = resolveScenarioFixtureDir(scenario, fixtureDir);
+  const selectedFixtureDir = resolveScenarioFixtureDir(
+    scenario,
+    fixtureDir,
+    canonicalFixtureRoot,
+  );
   const requiresGit = scenario.requires_git ?? true;
 
   // Create a unique temp directory and copy the fixture into it.
@@ -451,13 +456,19 @@ export async function runScenario(
 function resolveScenarioFixtureDir(
   scenario: EvalScenario,
   fixtureDir: string,
+  canonicalFixtureRoot: string,
 ): string {
   const fixture = scenario.fixture ?? 'js';
   assertFixture(fixture, scenario.name);
 
+  // The default `js` fixture honors the `--fixture` override (fixtureDir). An
+  // explicit non-default selector overrides that default per the F1.6 fixture
+  // contract and always resolves to its committed location under the canonical
+  // fixture root, so a `--fixture` override aimed at other cases never
+  // redirects (or hides) the JVM fixture.
   const selectedDir = fixture === 'js'
     ? fixtureDir
-    : path.join(fixtureDir, fixture);
+    : path.join(canonicalFixtureRoot, fixture);
   const stat = fs.statSync(selectedDir, { throwIfNoEntry: false });
   if (!stat) {
     throw new Error(
