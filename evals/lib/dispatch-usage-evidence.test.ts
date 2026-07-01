@@ -141,4 +141,37 @@ describe('classifyDispatchUsageEvidence', () => {
       'Usage metadata has a stable dispatch relationship via tool_use_id=toolu_dispatch_1; ignored 2 malformed, partial, or unattributable usage record(s)',
     );
   });
+
+  it('does not throw on a malformed Agent tool-use block with a missing id', () => {
+    const events: StreamEvent[] = [
+      {
+        type: 'assistant',
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              name: 'Agent',
+              // id intentionally omitted to simulate provider-shape drift
+              input: { description: 'Scout repo', prompt: 'scan' },
+            },
+          ],
+        },
+      },
+      {
+        type: 'assistant',
+        parent_tool_use_id: null,
+        message: {
+          content: [{ type: 'text', text: 'parent output' }],
+          usage: { input_tokens: 50, output_tokens: 12 },
+        },
+      },
+    ];
+
+    const evidence = classifyDispatchUsageEvidence(events, {
+      sourceCapture,
+      reviewedAt,
+    });
+
+    expect(evidence.classification).toBe('parent_only');
+  });
 });

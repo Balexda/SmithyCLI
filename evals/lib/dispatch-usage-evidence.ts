@@ -35,7 +35,7 @@ export function classifyDispatchUsageEvidence(
     extractToolUses(events)
       .filter((toolUse) => toolUse.name === 'Agent' || toolUse.name === 'invoke_agent')
       .map((toolUse) => toolUse.id)
-      .filter((id) => id.length > 0),
+      .filter((id) => typeof id === 'string' && id.length > 0),
   );
 
   const observations = events
