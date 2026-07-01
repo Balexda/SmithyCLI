@@ -84,6 +84,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: strike document
 - **Feature/problem description**: the user's feature description from the input
 - **Codebase file paths**: the relevant files you discovered during exploration
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Capture the reconciled plan as:

@@ -211,6 +211,7 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
 - **Codebase file paths**: the relevant codebase files explored during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
