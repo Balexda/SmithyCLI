@@ -419,6 +419,41 @@ describe('loadScenarios', () => {
       expect(joined).toContain('local_fixtures.issue');
       expect(joined).toContain('evals/fixture/issues/');
     });
+
+    it('skips local_fixtures whose real path escapes the area via symlink', () => {
+      // The declared string is inside the allowed area, so only a real-path
+      // resolution can catch the escape. Plant a symlink in the real issues
+      // area that points to a file outside it (the ci-log fixture).
+      const repoRoot = path.resolve(here, '..', '..');
+      const linkName = 'symlink-escape-fixture.md';
+      const linkPath = path.join(repoRoot, 'evals', 'fixture', 'issues', linkName);
+      const target = path.join(repoRoot, validCiLogFixture);
+      fs.symlinkSync(target, linkPath);
+      try {
+        const dir = mkdir();
+        const content = [
+          'name: symlink-escape',
+          'skill: /smithy.fix',
+          'prompt: diagnose',
+          'local_fixtures:',
+          `  issue: evals/fixture/issues/${linkName}`,
+          `  ci_log: ${validCiLogFixture}`,
+          'structural_expectations:',
+          '  required_headings:',
+          '    - "## Summary"',
+          '',
+        ].join('\n');
+        fs.writeFileSync(path.join(dir, 'symlink.yaml'), content);
+
+        expect(loadScenarios(dir)).toEqual([]);
+        const joined = joinErrorCalls(errSpy);
+        expect(joined).toContain('symlink.yaml');
+        expect(joined).toContain('local_fixtures.issue');
+        expect(joined).toContain('symlink escape');
+      } finally {
+        fs.rmSync(linkPath, { force: true });
+      }
+    });
   });
 
   // -----------------------------------------------------------------------
