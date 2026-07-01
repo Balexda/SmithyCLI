@@ -502,6 +502,8 @@ describe('loadScenarios', () => {
         ['absolute.yaml', 'fixture: /tmp/custom-fixture'],
         ['parent.yaml', 'fixture: ../jvm'],
         ['escape.yaml', 'fixture: jvm/../../other'],
+        ['win-drive-rel.yaml', 'fixture: "C:tmp"'],
+        ['win-drive-abs.yaml', 'fixture: "C:\\\\fixtures"'],
       ] as const;
       for (const [filename, fixtureLine] of malformedFixtures) {
         fs.writeFileSync(

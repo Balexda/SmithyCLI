@@ -490,5 +490,11 @@ function isValidFixtureSelector(value: unknown): value is string {
   if (path.isAbsolute(value) || path.win32.isAbsolute(value)) {
     return false;
   }
+  // Reject Windows drive-letter prefixes (e.g. `C:tmp`). These are
+  // drive-relative rather than absolute, so `win32.isAbsolute` returns false,
+  // yet they escape the fixture root on Windows.
+  if (/^[a-zA-Z]:/.test(value)) {
+    return false;
+  }
   return !value.split(/[\\/]+/).some((segment) => segment === '..');
 }
