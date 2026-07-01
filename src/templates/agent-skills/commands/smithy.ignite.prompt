@@ -520,7 +520,12 @@ Before drafting Personas cold, discover reusable durable personas:
    persona. A needed slug with no matching file remains uncovered. Avoid fuzzy
    matching, semantic similarity, interactive selection, or any new registry.
 
-If no `.persona.md` files exist, or if every needed persona remains uncovered,
+This slice adds coverage detection only — it does not yet change how the
+`## Personas` section is drafted. Record which needed personas are covered by a
+matching `<slug>.persona.md` file and which remain uncovered as informational
+notes for the projection and gap-only drafting that a later slice introduces.
+If no `.persona.md` files exist, there is simply nothing to reuse. Then,
+**regardless of the match results** (no files, some covered, or all covered),
 follow the existing cold-draft path and dispatch **smithy-prose** with:
 
 - **section_assignment**: "Personas"
