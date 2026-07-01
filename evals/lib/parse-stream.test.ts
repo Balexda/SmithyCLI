@@ -179,6 +179,36 @@ describe('extractTokenTotals', () => {
     expect(extractTokenTotals(events)).toEqual({ input: 20, output: 12 });
   });
 
+  it('reads nested assistant message.usage in the non-terminal fallback', () => {
+    const events: StreamEvent[] = [
+      { type: 'assistant', message: { usage: { input_tokens: 10, output_tokens: 3 } } },
+      { type: 'assistant', message: { usage: { input_tokens: 4, output_tokens: 8 } } },
+    ];
+
+    expect(extractTokenTotals(events)).toEqual({ input: 14, output: 11 });
+  });
+
+  it('reads nested message.usage on terminal result events', () => {
+    const events: StreamEvent[] = [
+      { type: 'assistant', message: { usage: { input_tokens: 100, output_tokens: 50 } } },
+      { type: 'result', message: { usage: { input_tokens: 42, output_tokens: 12 } } },
+    ];
+
+    expect(extractTokenTotals(events)).toEqual({ input: 42, output: 12 });
+  });
+
+  it('prefers top-level usage over nested message.usage on the same event', () => {
+    const events: StreamEvent[] = [
+      {
+        type: 'assistant',
+        usage: { input_tokens: 5, output_tokens: 2 },
+        message: { usage: { input_tokens: 999, output_tokens: 999 } },
+      },
+    ];
+
+    expect(extractTokenTotals(events)).toEqual({ input: 5, output: 2 });
+  });
+
   it('ignores malformed usage fields while preserving valid fields', () => {
     const events: StreamEvent[] = [
       { type: 'assistant', usage: { input_tokens: null, output_tokens: 5 } },

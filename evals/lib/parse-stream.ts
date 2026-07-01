@@ -257,7 +257,7 @@ export function extractCanonicalText(events: StreamEvent[]): string {
 export function extractTokenTotals(events: StreamEvent[]): TokenTotals {
   const terminalUsages = events
     .filter((event) => event.type === 'result')
-    .map((event) => normalizeUsage(event.usage))
+    .map((event) => normalizeEventUsage(event))
     .filter(hasUsageValue);
 
   if (terminalUsages.length > 0) {
@@ -272,7 +272,7 @@ export function extractTokenTotals(events: StreamEvent[]): TokenTotals {
 
   return events
     .filter((event) => event.type !== 'result')
-    .map((event) => normalizeUsage(event.usage))
+    .map((event) => normalizeEventUsage(event))
     .reduce<TokenTotals>(
       (totals, usage) => ({
         input: totals.input + (usage.input ?? 0),
@@ -306,6 +306,26 @@ function extractContentText(content: unknown): string[] {
 interface NormalizedUsage {
   input?: number | undefined;
   output?: number | undefined;
+}
+
+/**
+ * Resolve usage from either the top-level `event.usage` (terminal `result`
+ * events) or the nested `event.message.usage` (Claude assistant events), so
+ * partial/error/timeout runs that only emit assistant events still report
+ * their parseable usage. Top-level usage wins when both carry a value.
+ */
+function normalizeEventUsage(event: StreamEvent): NormalizedUsage {
+  const topLevel = normalizeUsage(event.usage);
+  if (hasUsageValue(topLevel)) {
+    return topLevel;
+  }
+
+  const { message } = event;
+  if (message && typeof message === 'object' && !Array.isArray(message)) {
+    return normalizeUsage((message as Record<string, unknown>)['usage']);
+  }
+
+  return {};
 }
 
 function normalizeUsage(usage: unknown): NormalizedUsage {
