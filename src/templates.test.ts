@@ -584,15 +584,17 @@ describe('getComposedTemplates', () => {
   it('smithy.persona renders the free-text persona writer contract', () => {
     const persona = claudeComposed.commands.get('smithy.persona.md')!;
     expect(persona).toContain('## Input Routing');
-    expect(persona).toContain('the literal string `$ARGUMENTS`');
+    expect(persona).toContain('If the resolved persona input is empty');
+    expect(persona).toContain('command-argument placeholder');
+    expect(persona).toContain('use it as the effective command input for');
     expect(persona).toContain('what persona to generate');
     expect(persona).toContain('continue directly through free-text mode');
-    expect(persona).toContain('do not add an approval STOP after the input is clarified');
+    expect(persona).toContain('do not add an approval STOP');
     expect(persona).toContain('If the input is non-empty and does **not** end in `.rfc.md`, select');
     expect(persona).toContain('**free-text mode**');
     expect(persona).toContain('Dispatch **smithy-prose** with:');
     expect(persona).toContain('`section_assignment`: "Personas"');
-    expect(persona).toContain('`idea_description`: the free-text description from `$ARGUMENTS`');
+    expect(persona).toContain('`idea_description`: the resolved persona input');
     expect(persona).toContain('Write one file at the target path using the canonical file shape');
     expect(persona).toContain('leave the existing file untouched');
     expect(persona).toContain('the skipped slug/path');
@@ -600,8 +602,7 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('one durable persona file was');
     expect(persona).toContain('written from free text with no intermediate approval gates');
     expect(persona).toContain('target persona slug already exists');
-    expect(persona).toContain('written and');
-    expect(persona).toContain('skipped persona paths as explicit result fields');
+    expect(persona).toContain('written and skipped persona paths as explicit result fields');
   });
 
   it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {

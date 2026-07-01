@@ -15,13 +15,17 @@ capabilities ship.
 
 ## Input Routing
 
-Read `$ARGUMENTS` as the command input.
+Read `$ARGUMENTS` as the command input, and treat that value as the **resolved
+persona input** for the rest of this run.
 
-- If the input is empty, whitespace-only, the literal string `$ARGUMENTS`, or
-  otherwise does not contain a usable persona description or RFC path, ask the
-  user what persona to generate. Use the user's answer as the free-text
-  persona description and continue directly through free-text mode. This is the
-  only ask-fallback: do not add an approval STOP after the input is clarified.
+- If the resolved persona input is empty, whitespace-only, an unsubstituted
+  command-argument placeholder (an agent that never replaced its argument
+  token), or otherwise does not contain a usable persona description or RFC
+  path, ask the user what persona to generate. Replace the resolved persona
+  input with the user's answer and use it as the effective command input for
+  the remainder of the run, then continue directly through free-text mode. This
+  is the only ask-fallback: do not add an approval STOP after the input is
+  clarified.
 - If the input is non-empty and does **not** end in `.rfc.md`, select
   **free-text mode**.
 - If the input ends in `.rfc.md`, RFC extraction is not implemented yet
@@ -49,7 +53,7 @@ Given a clear free-text persona description, create exactly one durable
    - If it does not exist, continue.
 5. Dispatch **smithy-prose** with:
    - `section_assignment`: "Personas"
-   - `idea_description`: the free-text description from `$ARGUMENTS`
+   - `idea_description`: the resolved persona input (the free-text description)
    - `clarify_output`: the free-text description plus the inferred persona
      name or role
    - `rfc_file_path`: do not pass (free-text drafting has no accumulating
@@ -97,5 +101,5 @@ For a slug collision skip, report:
 3. **Next step** — tell the user to choose a different persona name/role or
    edit the existing file directly.
 
-Keep the summary shape compatible with future RFC mode by reporting written and
-skipped persona paths as explicit result fields, not as a free-form diff.
+Report the written and skipped persona paths as explicit result fields rather
+than a free-form diff, so the run's outcome is unambiguous.
