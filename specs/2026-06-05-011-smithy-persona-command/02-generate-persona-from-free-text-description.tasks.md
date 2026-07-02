@@ -53,7 +53,7 @@
 
 ### Tasks
 
-- [ ] **Add unclear-input fallback**
+- [x] **Add unclear-input fallback**
 
   Update `src/templates/agent-skills/commands/smithy.persona.prompt` so empty, literal, or otherwise unclear `$ARGUMENTS` asks the user what persona to generate. Keep the fallback focused on free-text persona creation and do not introduce RFC-mode parsing behavior reserved for US3 and US6.
 
@@ -63,7 +63,7 @@
   - Clear free-text input still runs without an extra prompt.
   - The fallback does not add an intermediate approval STOP after input is clarified.
 
-- [ ] **Render a one-shot command summary**
+- [x] **Render a one-shot command summary**
 
   Add spark-style completion reporting to `src/templates/agent-skills/commands/smithy.persona.prompt` for the free-text path. The summary should communicate the written artifact, any skip due to collision, and the absence of intermediate approval gates for AS 2.3.
 
