@@ -27,6 +27,7 @@ function makeOutput(overrides: Partial<RunOutput> = {}): RunOutput {
   return {
     extracted_text: '## Plan\n\nDetails here.',
     stream_events: [],
+    tokens: { input: 0, output: 0 },
     duration_ms: 1234,
     exit_code: 0,
     timed_out: false,

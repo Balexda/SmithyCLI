@@ -18,6 +18,7 @@ import type {
   ToolResult,
   AgentDispatch,
   EventSummary,
+  TokenTotals,
 } from './types.js';
 
 /**
@@ -246,6 +247,41 @@ export function extractCanonicalText(events: StreamEvent[]): string {
   return extractText(events);
 }
 
+/**
+ * Extract normalized token totals from stream usage metadata.
+ *
+ * Terminal `result` events report cumulative totals when present, so they take
+ * precedence over non-terminal usage to avoid double-counting. If no terminal
+ * result has valid usage, valid non-terminal usage values are summed.
+ */
+export function extractTokenTotals(events: StreamEvent[]): TokenTotals {
+  const terminalUsages = events
+    .filter((event) => event.type === 'result')
+    .map((event) => normalizeEventUsage(event))
+    .filter(hasUsageValue);
+
+  if (terminalUsages.length > 0) {
+    return terminalUsages.reduce<TokenTotals>(
+      (totals, usage) => ({
+        input: Math.max(totals.input, usage.input ?? 0),
+        output: Math.max(totals.output, usage.output ?? 0),
+      }),
+      zeroTokenTotals(),
+    );
+  }
+
+  return events
+    .filter((event) => event.type !== 'result')
+    .map((event) => normalizeEventUsage(event))
+    .reduce<TokenTotals>(
+      (totals, usage) => ({
+        input: totals.input + (usage.input ?? 0),
+        output: totals.output + (usage.output ?? 0),
+      }),
+      zeroTokenTotals(),
+    );
+}
+
 function getObjectField(
   object: Record<string, unknown>,
   field: string,
@@ -265,4 +301,58 @@ function extractContentText(content: unknown): string[] {
       if (typeof block['output_text'] === 'string') return [block['output_text']];
       return [];
     });
+}
+
+interface NormalizedUsage {
+  input?: number | undefined;
+  output?: number | undefined;
+}
+
+/**
+ * Resolve usage from either the top-level `event.usage` (terminal `result`
+ * events) or the nested `event.message.usage` (Claude assistant events), so
+ * partial/error/timeout runs that only emit assistant events still report
+ * their parseable usage. Top-level usage wins when both carry a value.
+ */
+function normalizeEventUsage(event: StreamEvent): NormalizedUsage {
+  const topLevel = normalizeUsage(event.usage);
+  if (hasUsageValue(topLevel)) {
+    return topLevel;
+  }
+
+  const { message } = event;
+  if (message && typeof message === 'object' && !Array.isArray(message)) {
+    return normalizeUsage((message as Record<string, unknown>)['usage']);
+  }
+
+  return {};
+}
+
+function normalizeUsage(usage: unknown): NormalizedUsage {
+  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) {
+    return {};
+  }
+
+  const usageRecord = usage as Record<string, unknown>;
+  return {
+    input: normalizeTokenCount(usageRecord['input_tokens']),
+    output: normalizeTokenCount(usageRecord['output_tokens']),
+  };
+}
+
+function normalizeTokenCount(value: unknown): number | undefined {
+  return typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+    ? value
+    : undefined;
+}
+
+function hasUsageValue(usage: NormalizedUsage): boolean {
+  return usage.input !== undefined || usage.output !== undefined;
+}
+
+function zeroTokenTotals(): TokenTotals {
+  return { input: 0, output: 0 };
 }

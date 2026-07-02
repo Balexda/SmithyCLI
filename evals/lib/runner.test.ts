@@ -63,6 +63,20 @@ function resultEvent(text: string): StreamEvent {
   };
 }
 
+function usageEvent(
+  type: string,
+  inputTokens: number,
+  outputTokens: number,
+): StreamEvent {
+  return {
+    type,
+    usage: {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    },
+  };
+}
+
 /**
  * Create a mock child process object that emits data on stdout and then closes.
  * `stdoutData` is the full string to emit. `exitCode` is the code passed to
@@ -175,6 +189,7 @@ describe('runScenario', () => {
       expect(output.stream_events).toHaveLength(2);
       expect(output.stream_events[0]!.type).toBe('assistant');
       expect(output.stream_events[1]!.type).toBe('result');
+      expect(output.tokens).toEqual({ input: 0, output: 0 });
 
       // Timing and exit info.
       expect(output.duration_ms).toBeGreaterThanOrEqual(0);
@@ -205,7 +220,10 @@ describe('runScenario', () => {
   });
 
   it('non-zero exit code is surfaced', async () => {
-    const stdout = ndjsonLines(assistantTextEvent('partial'));
+    const stdout = ndjsonLines(
+      assistantTextEvent('partial'),
+      usageEvent('assistant', 17, 5),
+    );
     const { child } = createMockChild(stdout, 1);
     vi.mocked(spawn).mockReturnValue(child as never);
 
@@ -213,6 +231,28 @@ describe('runScenario', () => {
     try {
       const output = await runScenario(makeScenario(), fixture.dir);
       expect(output.exit_code).toBe(1);
+      expect(output.tokens).toEqual({ input: 17, output: 5 });
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('successful run includes token totals from terminal usage', async () => {
+    const stdout = ndjsonLines(
+      usageEvent('assistant', 10, 2),
+      {
+        ...resultEvent('output'),
+        usage: { input_tokens: 24, output_tokens: 9 },
+      },
+    );
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    const fixture = createRealFixture();
+    try {
+      const output = await runScenario(makeScenario(), fixture.dir);
+
+      expect(output.tokens).toEqual({ input: 24, output: 9 });
     } finally {
       fixture.cleanup();
     }
@@ -260,7 +300,8 @@ describe('runScenario', () => {
     // Use fake timers so we can advance the timeout without real waiting.
     vi.useFakeTimers();
 
-    const { child, triggerClose } = createMockChild('', 0, {
+    const stdout = ndjsonLines(usageEvent('message_delta', 11, 4));
+    const { child, triggerClose } = createMockChild(stdout, 0, {
       delayClose: true,
     });
     vi.mocked(spawn).mockReturnValue(child as never);
@@ -282,6 +323,24 @@ describe('runScenario', () => {
 
       const output = await promise;
       expect(output.timed_out).toBe(true);
+      expect(output.tokens).toEqual({ input: 11, output: 4 });
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('malformed stream output returns zero token totals without token-specific failure', async () => {
+    const { child } = createMockChild('not json\n', 1);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    const fixture = createRealFixture();
+    try {
+      const output = await runScenario(makeScenario(), fixture.dir);
+
+      expect(output.exit_code).toBe(1);
+      expect(output.extracted_text).toBe('');
+      expect(output.stream_events).toEqual([]);
+      expect(output.tokens).toEqual({ input: 0, output: 0 });
     } finally {
       fixture.cleanup();
     }
