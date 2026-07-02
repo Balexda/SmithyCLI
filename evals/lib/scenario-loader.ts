@@ -313,6 +313,15 @@ function validateScenario(
     scenario.fixture = obj['fixture'];
   }
 
+  // Optional scenario metadata: requires_git (boolean)
+  if (obj['requires_git'] !== undefined) {
+    if (typeof obj['requires_git'] !== 'boolean') {
+      skip("'requires_git' must be a boolean when provided");
+      return null;
+    }
+    scenario.requires_git = obj['requires_git'];
+  }
+
   // Optional: model (string)
   if (obj['model'] !== undefined) {
     if (typeof obj['model'] !== 'string') {

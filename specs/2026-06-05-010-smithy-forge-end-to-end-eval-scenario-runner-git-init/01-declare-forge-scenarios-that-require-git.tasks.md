@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Add the scenario git requirement field**
+- [x] **Add the scenario git requirement field**
 
   Extend the shared eval scenario type in `evals/lib/types.ts` with the optional git requirement metadata from the data model. Keep the field absent by default for existing in-memory scenarios and YAML cases, and avoid changing unrelated scenario fields or report shapes.
 
@@ -28,7 +28,7 @@
   - No runner behavior is introduced by this type-only change.
   - Public type comments identify the field as scenario metadata, not a runner default.
 
-- [ ] **Validate `requires_git` in the YAML loader**
+- [x] **Validate `requires_git` in the YAML loader**
 
   Update `evals/lib/scenario-loader.ts` so `loadScenarios` and `loadScenarioFromFile` preserve a boolean `requires_git` value when present and reject malformed values through the existing scenario-validation path. The loader should keep omitted values unset or false-equivalent for AS 1.2 while emitting a field-specific validation reason for AS 1.3.
 

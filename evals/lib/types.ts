@@ -138,6 +138,8 @@ export interface EvalScenario {
   skill: string;
   prompt: string;
   fixture?: string | undefined;
+  /** Scenario metadata: true when this case requires a git-backed temp copy. */
+  requires_git?: boolean | undefined;
   model?: string | undefined;
   timeout?: number | undefined;
   local_fixtures?: LocalFixtureSet | undefined;
