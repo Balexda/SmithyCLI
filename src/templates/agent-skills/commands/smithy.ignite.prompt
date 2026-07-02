@@ -276,6 +276,23 @@ Parse the input to set up the RFC:
 
 ## Phase 1.5: Approach Planning
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge before shaping the RFC approach.
+
+{{#ifAgent}}
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: RFC artifact
+- **Feature/problem description**: the user's idea description or the PRD content read during intake
+- **Codebase file paths**: any existing RFC files found during the `{{artifactsRoot}}docs/rfcs/` scan
+- **Domain hint**: infer `system`, `design`, or `both` from the idea, PRD, or referenced files
+
+{{>engraved-recall-advisory}}
+{{else}}
+{{>engraved-recall-degraded}}
+{{/ifAgent}}
+
 {{#ifAgent}}
 ### Competing Plans
 
@@ -289,6 +306,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: RFC artifact
 - **Feature/problem description**: the user's idea description or the PRD content read during intake
 - **Codebase file paths**: any existing RFC files found during the `{{artifactsRoot}}docs/rfcs/` scan (for context on existing patterns)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:

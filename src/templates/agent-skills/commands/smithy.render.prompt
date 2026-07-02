@@ -202,6 +202,24 @@ Handle the scout report as follows:
   question, but do not force separate discussion of each warning.
 - **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge during this scan before defining feature
+boundaries.
+
+{{#ifAgent}}
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: feature map artifact
+- **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
+- **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
+- **Domain hint**: infer `system`, `design`, or `both` from the milestone and referenced files
+
+{{>engraved-recall-advisory}}
+{{else}}
+{{>engraved-recall-degraded}}
+{{/ifAgent}}
+
 ---
 
 ## Phase 1.8: Approach Planning
@@ -220,6 +238,7 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
 - **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:

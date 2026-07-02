@@ -45,6 +45,23 @@ checkout. Confirm the resolved branch name to the user and move on.
 
 Read the relevant files in the codebase to understand the current architecture and where this feature fits. Note the file paths you discover — you will need them for planning.
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge before planning the strike.
+
+{{#ifAgent}}
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: strike document
+- **Feature/problem description**: the user's feature description from the input
+- **Codebase file paths**: the relevant files you discovered during exploration
+- **Domain hint**: infer `system`, `design`, or `both` from the explored files and requested work
+
+{{>engraved-recall-advisory}}
+{{else}}
+{{>engraved-recall-degraded}}
+{{/ifAgent}}
+
 {{#ifAgent}}
 ### Competing Plans
 
@@ -58,6 +75,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: strike document
 - **Feature/problem description**: the user's feature description from the input
 - **Codebase file paths**: the relevant files you discovered during exploration
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Capture the reconciled plan as:

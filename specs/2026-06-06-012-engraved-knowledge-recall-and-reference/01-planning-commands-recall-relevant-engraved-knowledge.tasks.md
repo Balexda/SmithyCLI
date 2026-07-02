@@ -103,7 +103,7 @@
 
 ### Tasks
 
-- [ ] **Add the inline consultation block to every planning command scan phase**
+- [x] **Add the inline consultation block to every planning command scan phase**
 
   Add an inline `{{#ifAgent}}<dispatch smithy-recall>{{else}}{{>engraved-recall-rules}}{{/ifAgent}}` consultation block to the scan phase of `smithy.strike`, `smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut`, preserving each command's existing one-shot and review-loop behavior. The sub-agent dispatch prose is written inline in the if-branch (not a shared snippet); only the rule body is shared via `{{>engraved-recall-rules}}`.
 
@@ -114,7 +114,7 @@
   - Existing clarify, refine, scout, PR-creation, and one-shot output behavior is preserved
   - Commands still proceed normally when recall returns an empty result
 
-- [ ] **Fold recall findings into clarification and debt**
+- [x] **Fold recall findings into clarification and debt**
 
   Update planning-command instructions so candidate invariant exceptions are presented as clarification/debt inputs and superseded/deprecated citations are surfaced as hazards for the generated artifact, without treating recall as a hard gate.
 
@@ -124,7 +124,7 @@
   - Recall findings remain advisory unless the parent planning command's existing rules escalate them
   - Empty or clean recall results require no artifact changes
 
-- [ ] **Assert every planning command consults engraved knowledge**
+- [x] **Assert every planning command consults engraved knowledge**
 
   Extend template coverage for all supported agents so the composed planning commands include the consultation block and preserve both the sub-agent-capable dispatch path and the degraded direct-read path.
 
