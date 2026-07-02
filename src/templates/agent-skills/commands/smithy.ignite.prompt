@@ -286,18 +286,9 @@ Dispatch the **smithy-recall** sub-agent with:
 - **Codebase file paths**: any existing RFC files found during the `{{artifactsRoot}}docs/rfcs/` scan
 - **Domain hint**: infer `system`, `design`, or `both` from the idea, PRD, or referenced files
 
-Use the returned recall result as advisory planning context. Route candidate
-invariant conflicts into the smithy-clarify context and, if unresolved, into
-the RFC's `## Specification Debt` table. Surface superseded/deprecated citation
-hazards before writing the RFC. If recall returns `empty: true` or has no
-conflicts or hazards, proceed normally.
+{{>engraved-recall-advisory}}
 {{else}}
-Read engraved durable knowledge directly using these rules, then use the result
-as advisory planning context. Route candidate invariant conflicts into
-clarification or specification debt, surface superseded/deprecated citation
-hazards before writing, and proceed normally for empty or clean results.
-
-{{>engraved-recall-rules}}
+{{>engraved-recall-degraded}}
 {{/ifAgent}}
 
 {{#ifAgent}}

@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(19);
+    expect(snippets.size).toBe(21);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -126,6 +126,8 @@ describe('loadSnippets', () => {
       'artifact-location-policy.md',
       'persona-convention.md',
       'engraved-recall-rules.md',
+      'engraved-recall-advisory.md',
+      'engraved-recall-degraded.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -207,6 +209,74 @@ describe('engraved-recall-rules snippet', () => {
     expect(result).toContain('docs/decisions/');
     expect(result).toContain('candidate new exception');
     expect(result).not.toContain('{{>engraved-recall-rules}}');
+  });
+});
+
+describe('engraved-recall consultation snippets', () => {
+  // US1 Slice 3 (review follow-up): the invariant halves of the planning
+  // commands' Engraved-Knowledge Consultation block are shared once, so the
+  // five commands (strike, ignite, render, mark, cut) restate only their
+  // per-command dispatch context inline. `engraved-recall-advisory` carries
+  // the sub-agent-path advisory-handling prose; `engraved-recall-degraded`
+  // carries the direct-read {{else}} branch and nests the rules snippet.
+  // Both must stay agent-agnostic (no {{#ifAgent}}), matching the snippets
+  // README convention that the conditional lives in the consuming command.
+  const ADVISORY = 'engraved-recall-advisory.md';
+  const DEGRADED = 'engraved-recall-degraded.md';
+
+  it('both snippets are loadable as partials via loadSnippets', () => {
+    const snippets = loadSnippets();
+    for (const name of [ADVISORY, DEGRADED]) {
+      expect(snippets.has(name)).toBe(true);
+      expect(snippets.get(name)!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('advisory snippet carries the advisory-handling contract, agent-agnostic', () => {
+    const content = loadSnippets().get(ADVISORY)!;
+    expect(content).toContain('advisory planning context');
+    expect(content).toContain('`## Specification Debt`');
+    expect(content).toMatch(/candidate\s+invariant conflicts/);
+    expect(content).toMatch(/superseded\/deprecated\s+citation\s+hazards/);
+    expect(content).toContain('proceed normally');
+    // Advisory prose is the sub-agent path's handling; it must not branch on
+    // the agent or re-derive the rules body.
+    expect(content).not.toContain('{{#ifAgent}}');
+    expect(content).not.toContain('{{>engraved-recall-rules}}');
+  });
+
+  it('degraded snippet reads the rules directly and nests the rules snippet', () => {
+    const content = loadSnippets().get(DEGRADED)!;
+    expect(content).toContain('Read engraved durable knowledge directly');
+    expect(content).toContain('{{>engraved-recall-rules}}');
+    expect(content).not.toContain('{{#ifAgent}}');
+  });
+
+  it('both snippets compose (degraded resolves the nested rules partial)', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+
+    const advisory = await resolveSnippets(
+      '# Host\n\n{{>engraved-recall-advisory}}\n',
+      renderer,
+    );
+    expect(advisory).toContain('advisory planning context');
+    expect(advisory).not.toContain('{{>engraved-recall-advisory}}');
+
+    const degraded = await resolveSnippets(
+      '# Host\n\n{{>engraved-recall-degraded}}\n',
+      renderer,
+    );
+    // Nested partial resolution: the rules body is inlined transitively.
+    expect(degraded).toContain('Read engraved durable knowledge directly');
+    expect(degraded).toContain('## Engraved Recall Rules');
+    expect(degraded).toContain('docs/decisions/');
+    expect(degraded).not.toContain('{{>engraved-recall-degraded}}');
+    expect(degraded).not.toContain('{{>engraved-recall-rules}}');
   });
 });
 
@@ -1641,11 +1711,16 @@ describe('getComposedTemplates', () => {
       expect(template, filename).toContain('{{#ifAgent}}');
       expect(template, filename).toContain('Dispatch the **smithy-recall** sub-agent');
       expect(template, filename).toContain('{{else}}');
-      expect(template, filename).toContain('{{>engraved-recall-rules}}');
       expect(template, filename).toContain('{{/ifAgent}}');
-      expect(template, filename).toMatch(/candidate\s+invariant conflicts/);
-      expect(template, filename).toMatch(/superseded\/deprecated\s+citation\s+hazards/);
-      expect(template, filename).toContain('proceed normally');
+      // The invariant advisory-handling prose and the degraded direct-read
+      // branch are shared through snippets, not restated inline per command.
+      // Only the per-command dispatch context (planning context, description,
+      // paths, domain hint) stays inline.
+      expect(template, filename).toContain('{{>engraved-recall-advisory}}');
+      expect(template, filename).toContain('{{>engraved-recall-degraded}}');
+      // The command must not reach past the degraded snippet to include the
+      // rules partial directly — the shared prose is single-sourced now.
+      expect(template, filename).not.toContain('{{>engraved-recall-rules}}');
     }
   });
 
