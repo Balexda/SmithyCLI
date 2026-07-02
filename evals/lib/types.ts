@@ -84,6 +84,18 @@ export interface EventSummary {
   textLength: number;
 }
 
+export type DispatchUsageEvidenceClassification =
+  | 'dispatch_attributable'
+  | 'parent_only';
+
+/** Classification record for whether stream usage can be tied to a dispatch. */
+export interface DispatchUsageEvidence {
+  classification: DispatchUsageEvidenceClassification;
+  source_capture: string;
+  observed_relationship: string;
+  reviewed_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // Scenario / expectation types (from YAML definitions)
 // ---------------------------------------------------------------------------
