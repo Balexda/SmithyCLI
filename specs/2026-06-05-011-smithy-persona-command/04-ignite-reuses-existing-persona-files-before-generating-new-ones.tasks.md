@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add pre-draft persona discovery**
+- [x] **Add pre-draft persona discovery**
 
   Update `src/templates/agent-skills/commands/smithy.ignite.prompt` so Sub-phase 3b reads the README-defined persona convention and checks the resolved persona directory before dispatching `smithy-prose` for Personas. Keep discovery scoped to the active `{{artifactsRoot}}` so in-repo and external-artifacts modes do not cross-contaminate persona stores.
 
@@ -27,7 +27,7 @@
   - If no persona files exist, ignite follows the existing cold-draft path.
   - Discovery does not change RFC-mode behavior for `smithy.persona`.
 
-- [ ] **Match needed personas by canonical slug identity**
+- [x] **Match needed personas by canonical slug identity**
 
   Define the Sub-phase 3b reuse match as a deterministic filename-slug comparison: derive kebab-case slugs from personas named or clearly described during Phase 2 clarification, and treat matching `<slug>.persona.md` files as covering those personas. Avoid fuzzy matching, interactive selection, or a new registry.
 

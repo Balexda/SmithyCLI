@@ -12,6 +12,8 @@ into a solid, reviewable plan.
 
 {{>artifact-location-policy}}
 
+{{>persona-convention}}
+
 ## Input
 
 The user's idea or document path: $ARGUMENTS
@@ -502,7 +504,29 @@ After smithy-prose returns, append the returned content to `<slug>.rfc.md`.
 
 ### Sub-phase 3b: Personas
 
-Dispatch **smithy-prose** with:
+Before drafting Personas cold, discover reusable durable personas:
+
+1. Read the **Persona Artifact Convention** above as the canonical storage,
+   filename-slug identity, and matching contract. Do not introduce a separate
+   schema, registry, index, or identity field for this sub-phase.
+2. Resolve the active persona directory from the same `{{artifactsRoot}}` used
+   for this ignite run and list existing `.persona.md` files there. Keep this
+   discovery scoped to that active artifacts root so in-repo and
+   external-artifacts modes never cross-contaminate persona stores.
+3. From personas named or clearly described during Phase 2 clarification,
+   derive deterministic kebab-case slugs from each persona name or role.
+4. Compare those needed slugs to discovered persona filenames using exact
+   filename-slug identity: `<slug>.persona.md` covers the matching needed
+   persona. A needed slug with no matching file remains uncovered. Avoid fuzzy
+   matching, semantic similarity, interactive selection, or any new registry.
+
+This slice adds coverage detection only — it does not yet change how the
+`## Personas` section is drafted. Record which needed personas are covered by a
+matching `<slug>.persona.md` file and which remain uncovered as informational
+notes for the projection and gap-only drafting that a later slice introduces.
+If no `.persona.md` files exist, there is simply nothing to reuse. Then,
+**regardless of the match results** (no files, some covered, or all covered),
+follow the existing cold-draft path and dispatch **smithy-prose** with:
 
 - **section_assignment**: "Personas"
 - **idea_description**: the user's idea description or PRD content from intake
