@@ -97,6 +97,12 @@ export interface SubAgentEvidence {
   pattern: string;
 }
 
+/** Scenario metadata for repository-local fixture evidence consumed before invocation. */
+export interface LocalFixtureSet {
+  issue: string;
+  ci_log: string;
+}
+
 /**
  * Persisted baseline snapshot of a known-good skill output.
  * Loaded from `evals/baselines/<scenario_name>.json`; used by
@@ -116,6 +122,7 @@ export interface EvalScenario {
   prompt: string;
   model?: string | undefined;
   timeout?: number | undefined;
+  local_fixtures?: LocalFixtureSet | undefined;
   structural_expectations: StructuralExpectations;
   sub_agent_evidence?: SubAgentEvidence[] | undefined;
 }

@@ -21,13 +21,29 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 import type {
   EvalScenario,
+  LocalFixtureSet,
   StructuralExpectations,
   SubAgentEvidence,
 } from './types.js';
+
+const localFixtureFields = ['issue', 'ci_log'] as const;
+const localFixtureAreas: Record<(typeof localFixtureFields)[number], string> = {
+  issue: 'evals/fixture/issues',
+  ci_log: 'evals/fixture/ci-logs',
+};
+
+// Repository root derived from this module's own location, not `process.cwd()`.
+// The eval helpers resolve scenario files via `import.meta.url` so they stay
+// CWD-independent; fixture resolution must do the same, otherwise a scenario
+// loaded from an absolute path while the process runs outside the checkout
+// would reject valid fixtures with a misleading "file is not readable" error.
+// `evals/lib/scenario-loader.ts` -> `../../` is the repository root.
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /**
  * Load every valid `*.yaml` scenario in `casesDir`.
@@ -308,6 +324,13 @@ function validateScenario(
     scenario.timeout = obj['timeout'];
   }
 
+  // Optional: local_fixtures ({ issue: string, ci_log: string })
+  if (obj['local_fixtures'] !== undefined) {
+    const localFixtures = validateLocalFixtures(obj['local_fixtures'], skip);
+    if (!localFixtures) return null;
+    scenario.local_fixtures = localFixtures;
+  }
+
   // Optional: sub_agent_evidence ([{ agent: string, pattern: string }])
   if (obj['sub_agent_evidence'] !== undefined) {
     const v = obj['sub_agent_evidence'];
@@ -342,4 +365,109 @@ function validateScenario(
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+function validateLocalFixtures(
+  value: unknown,
+  skip: (reason: string) => void,
+): LocalFixtureSet | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    skip("'local_fixtures' must be a mapping with 'issue' and 'ci_log' strings");
+    return null;
+  }
+
+  const rec = value as Record<string, unknown>;
+  const allowed = new Set<string>(localFixtureFields);
+  for (const key of Object.keys(rec)) {
+    if (!allowed.has(key)) {
+      skip(`'local_fixtures.${key}' is not supported`);
+      return null;
+    }
+  }
+
+  const fixtures: Partial<LocalFixtureSet> = {};
+  for (const field of localFixtureFields) {
+    const rawPath = rec[field];
+    if (!isNonEmptyString(rawPath)) {
+      skip(`'local_fixtures.${field}' must be a non-empty string`);
+      return null;
+    }
+
+    const normalized = normalizeFixturePath(rawPath);
+    if (normalized === null) {
+      skip(
+        `'local_fixtures.${field}' must be a repository-relative path without parent-directory segments`,
+      );
+      return null;
+    }
+
+    const allowedArea = localFixtureAreas[field];
+    if (!isPathUnderArea(normalized, allowedArea)) {
+      skip(`'local_fixtures.${field}' must be under '${allowedArea}/'`);
+      return null;
+    }
+
+    const repoPath = path.resolve(repoRoot, normalized);
+    let stats: fs.Stats;
+    try {
+      stats = fs.statSync(repoPath);
+      fs.accessSync(repoPath, fs.constants.R_OK);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      skip(`'local_fixtures.${field}' file is not readable: ${normalized} (${msg})`);
+      return null;
+    }
+
+    if (!stats.isFile()) {
+      skip(`'local_fixtures.${field}' must point to a readable file: ${normalized}`);
+      return null;
+    }
+
+    // The declared-string check above only constrains the path *text*. Resolve
+    // the real paths and confirm the fixture still lies under the real
+    // allowed-area directory, so a symlink inside the area cannot redirect to a
+    // file outside the repository / allowed directory.
+    let realFixturePath: string;
+    let realAreaPath: string;
+    try {
+      realFixturePath = fs.realpathSync(repoPath);
+      realAreaPath = fs.realpathSync(path.resolve(repoRoot, allowedArea));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      skip(`'local_fixtures.${field}' could not be resolved: ${normalized} (${msg})`);
+      return null;
+    }
+
+    if (!isContainedIn(realFixturePath, realAreaPath)) {
+      skip(
+        `'local_fixtures.${field}' resolves outside '${allowedArea}/' (symlink escape): ${normalized}`,
+      );
+      return null;
+    }
+
+    fixtures[field] = normalized;
+  }
+
+  return fixtures as LocalFixtureSet;
+}
+
+function normalizeFixturePath(rawPath: string): string | null {
+  if (path.isAbsolute(rawPath)) return null;
+
+  const parts = rawPath.split(/[\\/]+/);
+  if (parts.some((part) => part === '' || part === '..')) return null;
+
+  const normalized = path.posix.normalize(parts.join('/'));
+  if (normalized === '.' || normalized.startsWith('../')) return null;
+  return normalized;
+}
+
+function isPathUnderArea(repoPath: string, allowedArea: string): boolean {
+  return repoPath.startsWith(`${allowedArea}/`) && repoPath.length > allowedArea.length + 1;
+}
+
+/** True when `childAbs` is a strict descendant of `parentAbs` (both absolute). */
+function isContainedIn(childAbs: string, parentAbs: string): boolean {
+  const rel = path.relative(parentAbs, childAbs);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }

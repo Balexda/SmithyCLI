@@ -21,6 +21,8 @@ import { loadScenarios, loadScenarioFromFile } from './scenario-loader.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const realCasesDir = path.resolve(here, '..', 'cases');
+const validIssueFixture = 'evals/fixture/issues/fix-from-issue-health-check.md';
+const validCiLogFixture = 'evals/fixture/ci-logs/fix-from-issue-health-check.log';
 
 /**
  * Create an isolated temp directory under the OS temp root. Returns its path.
@@ -258,6 +260,200 @@ describe('loadScenarios', () => {
       expect(scenarios).toEqual([]);
       expect(errSpy).toHaveBeenCalled();
     });
+
+    it('preserves valid local_fixtures metadata', () => {
+      const dir = mkdir();
+      const content = [
+        'name: fixture-case',
+        'skill: /smithy.fix',
+        'prompt: diagnose from local evidence',
+        'local_fixtures:',
+        `  issue: ${validIssueFixture}`,
+        `  ci_log: ${validCiLogFixture}`,
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'fixture-case.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.local_fixtures).toEqual({
+        issue: validIssueFixture,
+        ci_log: validCiLogFixture,
+      });
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('leaves scenarios without local_fixtures unchanged', () => {
+      const dir = mkdir();
+      const content = [
+        'name: no-fixtures',
+        'skill: /smithy.strike',
+        'prompt: whatever',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'no-fixtures.yaml'), content);
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.local_fixtures).toBeUndefined();
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('skips local_fixtures with unsupported fields', () => {
+      const dir = mkdir();
+      const content = [
+        'name: unsupported-fixture-field',
+        'skill: /smithy.fix',
+        'prompt: diagnose',
+        'local_fixtures:',
+        `  issue: ${validIssueFixture}`,
+        `  ci_log: ${validCiLogFixture}`,
+        '  transcript: evals/fixture/transcripts/run.txt',
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'unsupported.yaml'), content);
+
+      expect(loadScenarios(dir)).toEqual([]);
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('unsupported.yaml');
+      expect(joined).toContain('local_fixtures.transcript');
+    });
+
+    it('skips local_fixtures with escaping paths', () => {
+      const dir = mkdir();
+      const content = [
+        'name: escaping-fixture',
+        'skill: /smithy.fix',
+        'prompt: diagnose',
+        'local_fixtures:',
+        '  issue: evals/fixture/issues/../ci-logs/fix-from-issue-health-check.log',
+        `  ci_log: ${validCiLogFixture}`,
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'escaping.yaml'), content);
+
+      expect(loadScenarios(dir)).toEqual([]);
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('escaping.yaml');
+      expect(joined).toContain('local_fixtures.issue');
+      expect(joined).toContain('parent-directory');
+    });
+
+    it('skips local_fixtures outside the allowed fixture area', () => {
+      const dir = mkdir();
+      const content = [
+        'name: wrong-fixture-area',
+        'skill: /smithy.fix',
+        'prompt: diagnose',
+        'local_fixtures:',
+        `  issue: ${validCiLogFixture}`,
+        `  ci_log: ${validCiLogFixture}`,
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'wrong-area.yaml'), content);
+
+      expect(loadScenarios(dir)).toEqual([]);
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('wrong-area.yaml');
+      expect(joined).toContain("local_fixtures.issue");
+      expect(joined).toContain('evals/fixture/issues/');
+    });
+
+    it('skips local_fixtures that point at missing files', () => {
+      const dir = mkdir();
+      const content = [
+        'name: missing-fixture',
+        'skill: /smithy.fix',
+        'prompt: diagnose',
+        'local_fixtures:',
+        '  issue: evals/fixture/issues/does-not-exist.md',
+        `  ci_log: ${validCiLogFixture}`,
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'missing.yaml'), content);
+
+      expect(loadScenarios(dir)).toEqual([]);
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('missing.yaml');
+      expect(joined).toContain('local_fixtures.issue');
+      expect(joined).toContain('does-not-exist.md');
+    });
+
+    it('skips local_fixtures that point at directories', () => {
+      const dir = mkdir();
+      const content = [
+        'name: directory-fixture',
+        'skill: /smithy.fix',
+        'prompt: diagnose',
+        'local_fixtures:',
+        '  issue: evals/fixture/issues',
+        `  ci_log: ${validCiLogFixture}`,
+        'structural_expectations:',
+        '  required_headings:',
+        '    - "## Summary"',
+        '',
+      ].join('\n');
+      fs.writeFileSync(path.join(dir, 'directory.yaml'), content);
+
+      expect(loadScenarios(dir)).toEqual([]);
+      const joined = joinErrorCalls(errSpy);
+      expect(joined).toContain('directory.yaml');
+      expect(joined).toContain('local_fixtures.issue');
+      expect(joined).toContain('evals/fixture/issues/');
+    });
+
+    it('skips local_fixtures whose real path escapes the area via symlink', () => {
+      // The declared string is inside the allowed area, so only a real-path
+      // resolution can catch the escape. Plant a symlink in the real issues
+      // area that points to a file outside it (the ci-log fixture).
+      const repoRoot = path.resolve(here, '..', '..');
+      const linkName = 'symlink-escape-fixture.md';
+      const linkPath = path.join(repoRoot, 'evals', 'fixture', 'issues', linkName);
+      const target = path.join(repoRoot, validCiLogFixture);
+      fs.symlinkSync(target, linkPath);
+      try {
+        const dir = mkdir();
+        const content = [
+          'name: symlink-escape',
+          'skill: /smithy.fix',
+          'prompt: diagnose',
+          'local_fixtures:',
+          `  issue: evals/fixture/issues/${linkName}`,
+          `  ci_log: ${validCiLogFixture}`,
+          'structural_expectations:',
+          '  required_headings:',
+          '    - "## Summary"',
+          '',
+        ].join('\n');
+        fs.writeFileSync(path.join(dir, 'symlink.yaml'), content);
+
+        expect(loadScenarios(dir)).toEqual([]);
+        const joined = joinErrorCalls(errSpy);
+        expect(joined).toContain('symlink.yaml');
+        expect(joined).toContain('local_fixtures.issue');
+        expect(joined).toContain('symlink escape');
+      } finally {
+        fs.rmSync(linkPath, { force: true });
+      }
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -427,5 +623,27 @@ describe('loadScenarioFromFile', () => {
     const file = path.join(dir, 'invalid.yaml');
     fs.writeFileSync(file, 'skill: /smithy.strike\n');
     expect(() => loadScenarioFromFile(file)).toThrow(/failed validation/i);
+  });
+
+  it('throws field-specific validation errors for invalid local_fixtures', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'invalid-local-fixtures.yaml');
+    const content = [
+      'name: invalid-local-fixtures',
+      'skill: /smithy.fix',
+      'prompt: diagnose',
+      'local_fixtures:',
+      `  issue: ${validIssueFixture}`,
+      '  ci_log: evals/fixture/ci-logs/does-not-exist.log',
+      'structural_expectations:',
+      '  required_headings:',
+      '    - "## Summary"',
+      '',
+    ].join('\n');
+    fs.writeFileSync(file, content);
+
+    expect(() => loadScenarioFromFile(file)).toThrow(
+      /local_fixtures\.ci_log.*does-not-exist\.log/i,
+    );
   });
 });
