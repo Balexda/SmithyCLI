@@ -41,6 +41,22 @@ function joinErrorCalls(spy: ReturnType<typeof vi.spyOn>): string {
   return calls.map((args) => args.map((a) => String(a)).join(' ')).join('\n');
 }
 
+function scenarioYaml(
+  name: string,
+  extraLines: string[] = [],
+): string {
+  return [
+    `name: ${name}`,
+    'skill: /smithy.strike',
+    'prompt: do the thing',
+    ...extraLines,
+    'structural_expectations:',
+    '  required_headings:',
+    '    - "## Summary"',
+    '',
+  ].join('\n');
+}
+
 describe('loadScenarios', () => {
   let errSpy: ReturnType<typeof vi.spyOn>;
   let outSpy: ReturnType<typeof vi.spyOn>;
@@ -87,6 +103,29 @@ describe('loadScenarios', () => {
     it('emits nothing on stdout or stderr for a clean load', () => {
       loadScenarios(realCasesDir);
       expect(outSpy).not.toHaveBeenCalled();
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('leaves omitted fixture metadata absent', () => {
+      const dir = mkdir();
+      fs.writeFileSync(path.join(dir, 'default.yaml'), scenarioYaml('default-case'));
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]).not.toHaveProperty('fixture');
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('preserves a valid relative fixture selector', () => {
+      const dir = mkdir();
+      fs.writeFileSync(
+        path.join(dir, 'jvm.yaml'),
+        scenarioYaml('jvm-case', ['fixture: jvm']),
+      );
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios).toHaveLength(1);
+      expect(scenarios[0]!.fixture).toBe('jvm');
       expect(errSpy).not.toHaveBeenCalled();
     });
   });
@@ -454,6 +493,41 @@ describe('loadScenarios', () => {
         fs.rmSync(linkPath, { force: true });
       }
     });
+
+    it('skips malformed fixture selectors and continues loading valid files', () => {
+      const dir = mkdir();
+      const malformedFixtures = [
+        ['empty.yaml', 'fixture: ""'],
+        ['non-string.yaml', 'fixture: 123'],
+        ['absolute.yaml', 'fixture: /tmp/custom-fixture'],
+        ['parent.yaml', 'fixture: ../jvm'],
+        ['escape.yaml', 'fixture: jvm/../../other'],
+        ['win-drive-rel.yaml', 'fixture: "C:tmp"'],
+        ['win-drive-abs.yaml', 'fixture: "C:\\\\fixtures"'],
+      ] as const;
+      for (const [filename, fixtureLine] of malformedFixtures) {
+        fs.writeFileSync(
+          path.join(dir, filename),
+          scenarioYaml(filename.replace('.yaml', ''), [fixtureLine]),
+        );
+      }
+      fs.writeFileSync(
+        path.join(dir, 'valid.yaml'),
+        scenarioYaml('valid-case', ['fixture: jvm']),
+      );
+
+      const scenarios = loadScenarios(dir);
+      expect(scenarios.map((scenario) => scenario.name)).toEqual(['valid-case']);
+      expect(scenarios[0]!.fixture).toBe('jvm');
+      expect(errSpy).toHaveBeenCalledTimes(malformedFixtures.length);
+      for (const [filename] of malformedFixtures) {
+        const matchingCalls = (errSpy.mock.calls as unknown[][]).filter((args) =>
+          String(args[0]).includes(filename),
+        );
+        expect(matchingCalls).toHaveLength(1);
+        expect(String(matchingCalls[0]![0]).match(/fixture/g)).toHaveLength(1);
+      }
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -645,5 +719,14 @@ describe('loadScenarioFromFile', () => {
     expect(() => loadScenarioFromFile(file)).toThrow(
       /local_fixtures\.ci_log.*does-not-exist\.log/i,
     );
+  });
+
+  it('throws with a fixture validation failure for malformed fixture metadata', () => {
+    const dir = mkdir();
+    const file = path.join(dir, 'invalid-fixture.yaml');
+    fs.writeFileSync(file, scenarioYaml('invalid-fixture', ['fixture: ../jvm']));
+
+    expect(() => loadScenarioFromFile(file)).toThrow(/fixture/i);
+    expect(errSpy).not.toHaveBeenCalled();
   });
 });

@@ -302,6 +302,17 @@ function validateScenario(
     structural_expectations,
   };
 
+  // Optional: fixture selector (relative path under evals/fixture)
+  if (obj['fixture'] !== undefined) {
+    if (!isValidFixtureSelector(obj['fixture'])) {
+      skip(
+        "'fixture' must be a non-empty relative path without absolute roots or '..' segments",
+      );
+      return null;
+    }
+    scenario.fixture = obj['fixture'];
+  }
+
   // Optional: model (string)
   if (obj['model'] !== undefined) {
     if (typeof obj['model'] !== 'string') {
@@ -470,4 +481,20 @@ function isPathUnderArea(repoPath: string, allowedArea: string): boolean {
 function isContainedIn(childAbs: string, parentAbs: string): boolean {
   const rel = path.relative(parentAbs, childAbs);
   return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+function isValidFixtureSelector(value: unknown): value is string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return false;
+  }
+  if (path.isAbsolute(value) || path.win32.isAbsolute(value)) {
+    return false;
+  }
+  // Reject Windows drive-letter prefixes (e.g. `C:tmp`). These are
+  // drive-relative rather than absolute, so `win32.isAbsolute` returns false,
+  // yet they escape the fixture root on Windows.
+  if (/^[a-zA-Z]:/.test(value)) {
+    return false;
+  }
+  return !value.split(/[\\/]+/).some((segment) => segment === '..');
 }
