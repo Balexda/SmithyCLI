@@ -21,10 +21,14 @@
 
   Add a pure graph-discovery path that walks the selected repository root and reads `design/screens/*.design.md` and `design/flows/*.flow.md` artifacts using their YAML front matter. The discovery result should record each screen `id`, flow `id`, flow `screens` references, and flow `test-body` path, while treating the repo filesystem as the source of truth instead of any smithy session state.
 
+  Define the **candidate test-body universe** explicitly. Because `test-body` is a driver-neutral repo-relative path that may live anywhere in the project's test tree (`maestro/flows/AddTitle.yaml`, `tests/e2e/add-title.spec.ts`, …), the authoritative universe of flow test bodies is the set of `test-body:` paths declared across all `design/flows/*.flow.md` files — the declared path is the contract (per `smithy.helper-flow-definition`). Flow-lint MUST NOT blind-scan the project's test directories, which would flag unrelated tests as orphans. The reverse "test body without `.flow.md`" (orphan) direction is therefore evaluated only against files under an explicitly supplied flow-test root (or the conventional stub location `mark` emits), never against the whole repo; when no such root is available the reverse scan is reported as not-run rather than guessed. This scoping is the driver-neutral answer to FR-025's "and vice versa" and its residual openness is tracked as SD-010.
+
   _Acceptance criteria:_
   - Screen annotations are discovered from `design/screens/*.design.md`
   - Flow definitions are discovered from `design/flows/*.flow.md`
   - Flow discovery reads `id`, `screens`, and `test-body` fields
+  - The candidate test-body universe is the set of `test-body:` paths declared by `design/flows/*.flow.md`, not a blind scan of project test directories
+  - Orphan (test-body-without-`.flow.md`) detection is scoped to an explicitly supplied flow-test root or conventional stub location, so unrelated project tests are never flagged
   - Discovery can run from an arbitrary repo root or subpath
   - Discovery performs no agent, network, or forge-specific calls
 
@@ -35,7 +39,7 @@
   _Acceptance criteria:_
   - Missing `screens:` targets fail with the severed `ScreenId` and flow named
   - Missing paired `test-body` files fail with the owning `.flow.md` named
-  - Orphan executable test bodies fail with the orphan path named
+  - Orphan executable test bodies (within the scoped flow-test root per Slice 1's discovery rule) fail with the orphan path named
   - Duplicate `ScreenId` values fail with every conflicting artifact named
   - Duplicate `FlowId` values fail with every conflicting artifact named
 
@@ -156,6 +160,7 @@
 | SD-006 | inherited from spec: Whether `SC`/`FL` nodes are always atomic or can be sub-sliced (and whether `flow-scaffold` #410 is in scope, which the epic recommends holding). | Constraints | Low | Medium | inherited | Owned by User Story 3; this story validates artifacts regardless of how the producing tasks were sliced. |
 | SD-007 | inherited from spec: Build-phase coverage honesty: a build screen can be "done" with a missing brief state and no executable gate until its flows wire. | Edge Cases | Medium | Low | inherited | Partially related but not resolved; flow-lint checks graph integrity, not whether every intended brief state has executable coverage. |
 | SD-008 | inherited from spec: Visual-intent honesty under the non-blocking gate: how a `brief`-mode node that never received a bundle surfaces its unrealized prototype rather than silently shipping skill-only. | Interaction & UX | Medium | Medium | inherited | Owned by User Story 4; flow-lint does not validate visual-intent fulfillment. |
+| SD-010 | new (this story): Fully driver-neutral enumeration of orphan test bodies (a test body whose `.flow.md` was removed or renamed) is reliable only within the declared `test-body:` set or an explicitly supplied flow-test root; blind-scanning arbitrary driver layouts risks false positives on unrelated tests. A general convention or machine-readable stub marker for detecting stray test bodies anywhere in the repo is deferred. | Edge Cases | Medium | Medium | open | Scoped in Slice 1: the candidate universe is the declared `test-body:` paths; orphan detection runs only against a supplied flow-test root / conventional stub location, never a whole-repo scan. |
 
 ---
 
@@ -174,6 +179,6 @@ Recommended implementation sequence:
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
 | User Story 1: mark authors a UI spec with a typed ordering ledger + durable artifacts | depends on | Flow-lint validates the screen and flow artifact graph authored by mark. |
-| User Story 2: Tool-agnostic screen/flow generation from the project's own stack | depends on | Flow-lint consumes the driver-neutral `test-body` field and stable ID conventions established by the helper contracts. |
+| User Story 2: Tool-agnostic screen/flow generation from the project's own stack | related | Flow-lint consumes the driver-neutral `test-body` field and stable ID conventions, but these come from the helper contracts (authoritative inputs per the spec's Assumptions), not from US2's generation work — so US6 does not gate on US2. This matches the spec ledger's authoritative `Depends On: US1` for US6. |
 | User Story 3: render → mark → cut → forge is identical for UI and backend nodes | related | Forge fills executable test bodies for flow-wire work, but flow-lint remains independently invocable and smithy-state-free. |
 | User Story 7: UI work is visible to status, dependency, and audit tooling | depended upon by | Status and audit can rely on flow-lint for deterministic cross-reference validation rather than duplicating graph-integrity checks. |
