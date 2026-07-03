@@ -19,11 +19,11 @@
 
 - [ ] **Update stale voice-lint status language**
 
-  Update `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` §8, the `src/templates/agent-skills/README.md` voice convention section, and the `CLAUDE.md` `smithy.helper-voice` skill description so each describes the audit voice-tag lint as shipped. Remove any wording that frames the lint as planned future EPIC #419 slice work, while preserving the source-vs-deployed boundary: deployable templates must not point readers at source-only documentation paths as instructions.
+  Update `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` §8, the `src/templates/agent-skills/README.md` voice convention section, and the `CLAUDE.md` `smithy.helper-voice` skill description so each describes the audit voice-tag lint as shipped. The concrete stale marker to remove is the future-tense framing in the skill §8 and README — `The lint currently carries the per-section specs directly; as [every] template surface is wired through it will read them from the same template files` — which implies the enforcement is not yet complete; replace it with present-tense shipped-state wording. (CLAUDE.md already reads present-tense — verify it stays that way.) Preserve the source-vs-deployed boundary: deployable templates must not point readers at source-only documentation paths as instructions.
 
   _Acceptance criteria:_
-  - `grep -r "planned in slice 4" src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt src/templates/agent-skills/README.md CLAUDE.md` returns no matches.
-  - The skill §8, README convention section, and CLAUDE.md skill line all describe the voice-tag lint as an existing `smithy.audit` enforcement surface.
+  - `grep -rn "is wired through it will" src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt src/templates/agent-skills/README.md` returns no matches (the future-tense "will read them from the template files" framing is gone).
+  - The skill §8, README convention section, and CLAUDE.md skill line all describe the voice-tag lint in the present tense, as an existing `smithy.audit` enforcement surface.
   - No deployable prompt adds a source-tree-only README or `src/...` path as a required runtime reference.
 
 - [ ] **Reconcile the `examples` enum by adopting `optional`**
@@ -37,12 +37,12 @@
 
 - [ ] **Add drift coverage and validate**
 
-  Add focused regression coverage in `src/templates.test.ts` or an existing template/documentation test so the stale status phrase cannot reappear and the `examples` enum remains identical across the skill, README, and audit checklist. Keep assertions structural: compare the enum markers and stable phrase, not long prose paragraphs. Then run the standard validation scripts without regenerating derived snapshots.
+  Add focused regression coverage in `src/templates.test.ts` or an existing template/documentation test so the future-tense stale-status marker cannot reappear and the `examples` enum remains identical across the skill, README, and audit checklist. Keep assertions structural: compare the enum markers and the stable status phrase, not long prose paragraphs. Then run the standard validation scripts without regenerating derived snapshots.
 
   _Acceptance criteria:_
-  - A test fails if `planned in slice 4` appears in the skill, README, or CLAUDE.md.
+  - A test fails if the future-tense marker `is wired through it will` reappears in the skill §8 or README voice convention section.
   - A test fails if the `examples` enum differs across the skill §8, README convention section, and audit checklist.
-  - `npm test` and `npm run typecheck` pass.
+  - `npm run build`, `npm test`, and `npm run typecheck` pass.
   - `.claude/` and `.smithy/smithy-manifest.json` remain unchanged.
 
 **PR Outcome**: Voice documentation reflects the shipped audit lint, the `examples` enum is aligned by adopting `optional` everywhere, and regression coverage guards both the status wording and enum agreement.
