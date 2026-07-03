@@ -229,7 +229,7 @@ As a developer tracking progress, I want screen/flow/story nodes in the ledger t
 | US2 | Tool-agnostic screen/flow generation from the project's own stack | — | specs/2026-06-06-012-screens-and-flows-as-ui-feature-kinds/02-tool-agnostic-screen-flow-generation-from-the-projects-own-stack.tasks.md |
 | US3 | render → mark → cut → forge is identical for UI and backend nodes | US1, US2 | specs/2026-06-06-012-screens-and-flows-as-ui-feature-kinds/03-render-mark-cut-forge-is-identical-for-ui-and-backend-nodes.tasks.md |
 | US4 | A non-blocking visual-design gate with import / brief / none modes | US1 | — |
-| US5 | render is a clean, UI-aware entry point with prototype ingestion | — | — |
+| US5 | render is a clean, UI-aware entry point with prototype ingestion | — | specs/2026-06-06-012-screens-and-flows-as-ui-feature-kinds/05-render-is-a-clean-ui-aware-entry-point-with-prototype-ingestion.tasks.md |
 | US6 | flow-lint validates the screen/flow/test graph in app CI | US1 | — |
 | US7 | UI work is visible to status, dependency, and audit tooling | US1 | — |
 
