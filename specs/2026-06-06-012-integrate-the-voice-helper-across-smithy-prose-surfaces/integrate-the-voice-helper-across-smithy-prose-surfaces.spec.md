@@ -131,7 +131,7 @@ Recommended implementation sequence:
 | US1 | Prose-drafting surfaces consult the skill in draft mode (smithy.prose trim + planning commands invoke directly) | — | `specs/2026-06-06-012-integrate-the-voice-helper-across-smithy-prose-surfaces/01-prose-drafting-surfaces-consult-the-skill-in-draft-mode.tasks.md` |
 | US2 | Forge advertises the voice skill for deliverable prose | — | `specs/2026-06-06-012-integrate-the-voice-helper-across-smithy-prose-surfaces/02-forge-advertises-the-voice-skill-for-deliverable-prose.tasks.md` |
 | US3 | Review steps apply voice review-mode as a named category | — | — |
-| US4 | Reliable trigger for arbitrary-text voice cleanup | — | — |
+| US4 | Reliable trigger for arbitrary-text voice cleanup | — | `specs/2026-06-06-012-integrate-the-voice-helper-across-smithy-prose-surfaces/04-reliable-trigger-for-arbitrary-text-voice-cleanup.tasks.md` |
 | US5 | Reconcile stale voice-status claims and the examples-enum divergence | — | — |
 
 All five stories edit largely disjoint template files and share no data-flow prerequisite — the skill's two-mode contract is already shipped and stable, so no foundation slice gates the others. They may be implemented concurrently. (US1, US4, and US5 each touch the `SKILL.prompt` file in different regions — frontmatter description, §8 body, and the Coexistence note respectively — so coordinate at merge, but this is a file-overlap concern, not a logical dependency.)
