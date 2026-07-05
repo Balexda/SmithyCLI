@@ -731,6 +731,9 @@ describe('getComposedTemplates', () => {
     const discoveryIdx = subphase3bBlock.indexOf('Before drafting Personas cold');
     const projectionIdx = subphase3bBlock.indexOf('For each covered persona, read the matching `.persona.md` file');
     const dispatchIdx = subphase3bBlock.indexOf('dispatch **smithy-prose** for only those gaps');
+    expect(discoveryIdx).toBeGreaterThan(-1);
+    expect(projectionIdx).toBeGreaterThan(-1);
+    expect(dispatchIdx).toBeGreaterThan(-1);
     expect(projectionIdx).toBeGreaterThan(discoveryIdx);
     expect(dispatchIdx).toBeGreaterThan(projectionIdx);
     expect(subphase3bBlock).toMatch(/preserve the\s+persona's role, context, and friction/);

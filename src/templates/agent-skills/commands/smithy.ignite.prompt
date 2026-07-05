@@ -552,7 +552,7 @@ dispatch **smithy-prose** for only those gaps with:
 
 - **section_assignment**: "Personas"
 - **idea_description**: the user's idea description or PRD content from intake
-- **clarify_output**: the Q&A and assumptions from Phase 2 clarification, narrowed to the uncovered persona names or roles so covered personas are not regenerated cold
+- **clarify_output**: the Q&A and assumptions from Phase 2 clarification, narrowed to the uncovered persona names or roles so covered personas are not regenerated cold (include only the clarification context for the uncovered personas; exclude the names, roles, and context of any persona already covered by a matching `.persona.md` file)
 - **rfc_file_path**: the path to the accumulating `<slug>.rfc.md` (which at this point contains the header plus Summary and Motivation)
 - **tone_directives**: "Draft only the uncovered personas listed in clarify_output. Do not regenerate personas covered by existing `.persona.md` files. Every uncovered persona is mandatory and MUST appear with a role and a description of how this RFC benefits them. Do not return placeholder or empty content."
 
