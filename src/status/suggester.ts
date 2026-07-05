@@ -84,16 +84,24 @@ function numericIdSuffix(id: string): string | undefined {
  */
 function cutTargetFromVirtualTasks(
   record: ArtifactRecord,
-): { folder: string; digits: string | undefined } | null {
+): { folder: string; digits: string | undefined; nodeId: string | undefined } | null {
   const parentPath = record.parent_path;
   if (typeof parentPath !== 'string' || parentPath.length === 0) {
     return null;
   }
   const folder = specFolderFromPath(parentPath);
-  const digits = record.parent_row_id !== undefined
-    ? numericIdSuffix(record.parent_row_id)
-    : undefined;
-  return { folder, digits };
+  // Screen (`SC<N>`) and flow (`FL<N>`) ledger nodes carry a numeric
+  // suffix too, but `smithy.cut`'s digit argument selects a `US<N>`
+  // story — passing an `SC`/`FL` digit would silently target the wrong
+  // row. Emit a folder-only hint for those kinds and let the reason name
+  // the actual node instead of a fabricated user story.
+  const kind = record.parent_row_kind;
+  const isTypedUiNode = kind === 'screen' || kind === 'flow';
+  const digits =
+    !isTypedUiNode && record.parent_row_id !== undefined
+      ? numericIdSuffix(record.parent_row_id)
+      : undefined;
+  return { folder, digits, nodeId: record.parent_row_id };
 }
 
 /**
@@ -416,9 +424,15 @@ export function suggestNextAction(
           args = cutTarget.digits !== undefined
             ? [cutTarget.folder, cutTarget.digits]
             : [cutTarget.folder];
-          reason = cutTarget.digits !== undefined
-            ? `Tasks file ${record.title} does not exist yet; run smithy.cut to create it from user story US${cutTarget.digits}.`
-            : `Tasks file ${record.title} does not exist yet; run smithy.cut to create it.`;
+          if (cutTarget.digits !== undefined) {
+            reason = `Tasks file ${record.title} does not exist yet; run smithy.cut to create it from user story US${cutTarget.digits}.`;
+          } else if (cutTarget.nodeId !== undefined) {
+            // Screen/flow node (or a row with no numeric suffix): name
+            // the ledger node rather than fabricating a US story number.
+            reason = `Tasks file ${record.title} does not exist yet; run smithy.cut to decompose ledger node ${cutTarget.nodeId}.`;
+          } else {
+            reason = `Tasks file ${record.title} does not exist yet; run smithy.cut to create it.`;
+          }
           break;
         }
         // Defensive fallback: scanner didn't populate parent fields.

@@ -36,7 +36,12 @@ const ID_PREFIX_BY_TYPE: Record<ArtifactType, IdPrefix> = {
   tasks: 'S',
 };
 
-const ID_REGEX = /^(M|F|US|S|SC|FL)[1-9][0-9]*$/;
+// Backend-only tables keep the canonical prefix set. Only a typed UI
+// ledger (a spec table with a `Kind` column) additionally accepts the
+// `SC`/`FL` screen/flow prefixes — so an `SC1` typo in a backend spec is
+// still dropped as an invalid ID exactly as before UI ledgers existed.
+const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
+const ID_REGEX_UI_LEDGER = /^(M|F|US|S|SC|FL)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
 /**
@@ -108,6 +113,12 @@ export function parseDependencyTable(
 
   const { dataStart, columnIndex } = headerInfo;
 
+  // A spec table is a typed UI ledger only when it carries the `Kind`
+  // column. Backend-only spec tables keep the canonical 4-column shape
+  // and must reject `SC`/`FL` IDs (a typo there is a real error, not a
+  // silently-scanned screen/flow child).
+  const isUiLedger = columnIndex.kind !== undefined;
+
   // Parse data rows beginning after the separator line.
   const rows: DependencyRow[] = [];
   const rawRows: Array<{ cells: string[]; sourceIndex: number }> = [];
@@ -144,7 +155,8 @@ export function parseDependencyTable(
         ? ''
         : (cells[columnIndex.design] ?? '').trim();
 
-    if (!ID_REGEX.test(id)) {
+    const idRegex = isUiLedger ? ID_REGEX_UI_LEDGER : ID_REGEX;
+    if (!idRegex.test(id)) {
       warnings.push(
         `dependency_order: row ${sourceIndex} has invalid ID '${id}' — dropped`,
       );
@@ -166,9 +178,9 @@ export function parseDependencyTable(
           : id.startsWith('FL')
             ? 'FL'
             : (id[0] ?? '');
-    if (!isAllowedRowPrefix(artifactType, rowPrefix)) {
+    if (!isAllowedRowPrefix(artifactType, rowPrefix, isUiLedger)) {
       warnings.push(
-        `dependency_order: row ${id} has prefix '${rowPrefix}' but expected ${allowedRowPrefixLabel(artifactType)} for artifact type '${artifactType}'`,
+        `dependency_order: row ${id} has prefix '${rowPrefix}' but expected ${allowedRowPrefixLabel(artifactType, isUiLedger)} for artifact type '${artifactType}'`,
       );
     }
 
@@ -816,24 +828,32 @@ function findHeaderIndex(
 function isAllowedRowPrefix(
   artifactType: ArtifactType,
   rowPrefix: string,
+  isUiLedger: boolean,
 ): boolean {
-  return ALLOWED_ROW_PREFIXES[artifactType].includes(rowPrefix);
+  return allowedRowPrefixes(artifactType, isUiLedger).includes(rowPrefix);
 }
 
 /**
- * The row-ID prefixes a given artifact type may carry. `spec` accepts
- * the typed UI ledger prefixes (`SC`/`FL`) alongside `US`; every other
- * type is limited to its single canonical prefix.
+ * The row-ID prefixes a given table may carry. A spec table that is a
+ * typed UI ledger (has a `Kind` column) accepts `SC`/`FL` alongside
+ * `US`; a backend-only spec table and every other artifact type are
+ * limited to their single canonical prefix.
  */
-const ALLOWED_ROW_PREFIXES: Record<ArtifactType, readonly string[]> = {
-  rfc: [ID_PREFIX_BY_TYPE.rfc],
-  features: [ID_PREFIX_BY_TYPE.features],
-  spec: ['US', 'SC', 'FL'],
-  tasks: [ID_PREFIX_BY_TYPE.tasks],
-};
+function allowedRowPrefixes(
+  artifactType: ArtifactType,
+  isUiLedger: boolean,
+): readonly string[] {
+  if (artifactType === 'spec' && isUiLedger) {
+    return ['US', 'SC', 'FL'];
+  }
+  return [ID_PREFIX_BY_TYPE[artifactType]];
+}
 
-function allowedRowPrefixLabel(artifactType: ArtifactType): string {
-  const prefixes = ALLOWED_ROW_PREFIXES[artifactType];
+function allowedRowPrefixLabel(
+  artifactType: ArtifactType,
+  isUiLedger: boolean,
+): string {
+  const prefixes = allowedRowPrefixes(artifactType, isUiLedger);
   if (prefixes.length === 1) return `'${prefixes[0]}'`;
   return `one of ${prefixes.map((p) => `'${p}'`).join(', ')}`;
 }

@@ -337,18 +337,39 @@ trailing content
     expect(result.table.rows[0]?.design).toBeUndefined();
   });
 
-  it('names the full allowed prefix set when a spec row prefix is wrong', () => {
+  it('names the full allowed prefix set when a typed UI ledger row prefix is wrong', () => {
     const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| M1 | screen | Wrong prefix | — | — | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toContain(
+      "dependency_order: row M1 has prefix 'M' but expected one of 'US', 'SC', 'FL' for artifact type 'spec'",
+    );
+  });
+
+  it('drops SC/FL IDs in a backend-only spec table as invalid, leaving parsing unchanged', () => {
+    // A backend spec keeps the canonical 4-column shape (no `Kind`
+    // column). `SC`/`FL` prefixes are UI-ledger-only, so an `SC1` typo
+    // here must be dropped as an invalid ID exactly as before typed UI
+    // ledgers existed — never scanned as a screen child.
+    const markdown = `# Backend Spec
 
 ## Dependency Order
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| M1 | Wrong prefix | — | — |
+| US1 | Real story | — | — |
+| SC1 | Stray screen prefix | — | — |
 `;
     const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.rows.map((row) => row.id)).toEqual(['US1']);
     expect(result.warnings).toContain(
-      "dependency_order: row M1 has prefix 'M' but expected one of 'US', 'SC', 'FL' for artifact type 'spec'",
+      "dependency_order: row 2 has invalid ID 'SC1' — dropped",
     );
   });
 
