@@ -59,6 +59,7 @@ ${FENCE}yaml
 kind: ui
 phase: build
 design_system: story-spider-design
+design: import
 bundle: design/bundles/add-title.zip
 flag: add_title_v1
 screens: [AddTitle]
@@ -73,6 +74,7 @@ ${FENCE}yaml
 kind: ui
 phase: wire
 design_system: story-spider-design
+design: import
 flag: add_title_v1
 screens: [AddTitle]
 flows: [AddTitle]
@@ -95,6 +97,7 @@ ${FENCE}
       kind: 'ui',
       phase: 'build',
       design_system: 'story-spider-design',
+      design: 'import',
       bundle: 'design/bundles/add-title.zip',
       flag: 'add_title_v1',
       screens: ['AddTitle'],
@@ -149,6 +152,7 @@ ${FENCE}
 
 ${FENCE}yaml
 kind: backend
+design: brief
 flag: stray_flag
 ${FENCE}
 `;
@@ -156,6 +160,11 @@ ${FENCE}
     expect(
       warnings.some(
         (w) => w.startsWith('feature_ui_fields:') && w.includes('ui-only key flag'),
+      ),
+    ).toBe(true);
+    expect(
+      warnings.some(
+        (w) => w.startsWith('feature_ui_fields:') && w.includes('ui-only key design'),
       ),
     ).toBe(true);
   });
@@ -167,6 +176,7 @@ ${FENCE}yaml
 kind: ui
 phase: build
 design_system: ds
+design: none
 flag: lonely_flag
 screens: [S]
 flows: [F]

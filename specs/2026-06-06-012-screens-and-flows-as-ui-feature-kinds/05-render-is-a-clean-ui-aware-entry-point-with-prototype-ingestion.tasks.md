@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Require complete UI feature metadata in render output**
+- [x] **Require complete UI feature metadata in render output**
 
   Update `src/templates/agent-skills/commands/smithy.render.prompt` and the shared `feature-kinds` snippet it consumes so every rendered UI feature carries the complete UI metadata needed by downstream `mark`: `kind`, `phase`, `design_system`, per-node design mode, `flag` when flag-gated, and the screen/flow identifiers appropriate to the feature's phase. Keep backend features typed as backend without UI-only fields.
 
@@ -28,7 +28,7 @@
   - Feature-map prose makes backend-to-spec versus UI-to-screen/flow fan-out evident
   - Existing legacy backend rendering behavior remains supported
 
-- [ ] **Express the build/wire seam in Dependency Order**
+- [x] **Express the build/wire seam in Dependency Order**
 
   Strengthen render's feature-map instructions so flag-gated UI work is split into a build feature and a wire feature sharing one `flag`, with ordering captured only in the feature map's `## Dependency Order` table. The build feature should be able to run ahead of backend work; the wire feature depends on the build feature and any backend prerequisite.
 
