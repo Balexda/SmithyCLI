@@ -7,6 +7,7 @@ import path from 'node:path';
 
 const CLI = path.resolve('dist/cli.js');
 const FIXTURE_DIR = path.resolve('evals/fixture');
+const JVM_FIXTURE_DIR = path.join(FIXTURE_DIR, 'jvm');
 
 function hashDirectory(dirPath: string): string {
   const hash = crypto.createHash('sha256');
@@ -91,5 +92,47 @@ describe('evals/fixture deployment', () => {
     const hashAfter = hashDirectory(FIXTURE_DIR);
 
     expect(hashAfter).toBe(hashBefore);
+  });
+
+  it('commits a minimal JVM Gradle fixture shape (FR-009 through FR-014)', () => {
+    const expectedFiles = [
+      '.gitignore',
+      'README.md',
+      'settings.gradle',
+      'build.gradle',
+      'src/main/java/dev/smithy/fixture/GreetingService.java',
+      'src/test/java/dev/smithy/fixture/GreetingServiceTest.java',
+    ];
+
+    for (const file of expectedFiles) {
+      expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, file))).toBe(true);
+    }
+
+    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'gradlew'))).toBe(false);
+    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'gradlew.bat'))).toBe(false);
+    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'build'))).toBe(false);
+    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, '.gradle'))).toBe(false);
+
+    const buildFile = fs.readFileSync(path.join(JVM_FIXTURE_DIR, 'build.gradle'), 'utf-8');
+    expect(buildFile).toContain("id 'java'");
+    expect(buildFile).toContain("tasks.register('fixtureTest', JavaExec)");
+    expect(buildFile).toContain('dependsOn fixtureTest');
+
+    const readme = fs.readFileSync(path.join(JVM_FIXTURE_DIR, 'README.md'), 'utf-8');
+    expect(readme).toContain('does not commit a Gradle wrapper');
+    expect(readme).toContain('gradle compileJava');
+    expect(readme).toContain('gradle check');
+    expect(readme).toContain('fails by design');
+
+    const source = fs.readFileSync(
+      path.join(JVM_FIXTURE_DIR, 'src/main/java/dev/smithy/fixture/GreetingService.java'),
+      'utf-8',
+    );
+    const test = fs.readFileSync(
+      path.join(JVM_FIXTURE_DIR, 'src/test/java/dev/smithy/fixture/GreetingServiceTest.java'),
+      'utf-8',
+    );
+    expect(source).toContain('return value;');
+    expect(test).toContain('assertEquals("yhtimS", service.reverse("Smithy"))');
   });
 });

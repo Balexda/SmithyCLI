@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.register('fixtureTest', JavaExec) {
+    group = 'verification'
+    description = 'Runs the fixture-local deterministic Java test.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.smithy.fixture.GreetingServiceTest'
+    dependsOn testClasses
+}
+
+tasks.named('test') {
+    enabled = false
+}
+
+tasks.named('check') {
+    dependsOn fixtureTest
+}
