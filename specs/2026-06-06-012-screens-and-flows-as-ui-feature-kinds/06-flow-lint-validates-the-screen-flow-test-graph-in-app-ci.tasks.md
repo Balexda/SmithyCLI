@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Discover durable UI artifacts from the repo tree**
+- [x] **Discover durable UI artifacts from the repo tree**
 
   Add a pure graph-discovery path that walks the selected repository root and reads `design/screens/*.design.md` and `design/flows/*.flow.md` artifacts using their YAML front matter. The discovery result should record each screen `id`, flow `id`, flow `screens` references, and flow `test-body` path, while treating the repo filesystem as the source of truth instead of any smithy session state.
 
@@ -32,7 +32,7 @@
   - Discovery can run from an arbitrary repo root or subpath
   - Discovery performs no agent, network, or forge-specific calls
 
-- [ ] **Validate graph references and uniqueness**
+- [x] **Validate graph references and uniqueness**
 
   Implement the `flow-lint` validation rules over the discovered graph. A `.flow.md` must fail when any `screens:` entry has no matching screen annotation, when its `test-body` file is missing, when an executable test body exists without a matching `.flow.md`, or when a flat `ScreenId` or `FlowId` is reused in the repo.
 
@@ -43,7 +43,7 @@
   - Duplicate `ScreenId` values fail with every conflicting artifact named
   - Duplicate `FlowId` values fail with every conflicting artifact named
 
-- [ ] **Cover resolved and broken graph fixtures**
+- [x] **Cover resolved and broken graph fixtures**
 
   Add focused tests for the graph resolver and validator using minimal fixture trees. The fixtures should include one fully resolved graph and separate broken graphs for dangling screen references, missing or orphaned test bodies, and duplicate IDs so the user story's independent test can be run without a real app.
 
