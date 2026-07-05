@@ -68,7 +68,7 @@ export function scenarioRunToResult(
     scenario_name: scenario.name,
     status,
     extracted_text: output.extracted_text,
-    tokens: output.tokens,
+    tokens: { input: output.tokens.input, output: output.tokens.output },
     duration_ms: output.duration_ms,
     structural_checks: structuralChecks,
   };
