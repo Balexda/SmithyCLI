@@ -190,6 +190,50 @@ ${FENCE}
     ).toBe(true);
   });
 
+  it('does not require flows on a build feature but does on wire', () => {
+    const md = `### Feature 1: Build without flows
+
+${FENCE}yaml
+kind: ui
+phase: build
+design_system: ds
+design: none
+flag: f
+screens: [S]
+${FENCE}
+
+### Feature 2: Wire without flows
+
+${FENCE}yaml
+kind: ui
+phase: wire
+design_system: ds
+design: none
+flag: f
+screens: [S]
+${FENCE}
+`;
+    const { warnings } = parseFeatures(md);
+    // build feature omitting flows must NOT warn about missing flows
+    expect(
+      warnings.some(
+        (w) =>
+          w.startsWith('feature_ui_fields:') &&
+          w.includes('F1') &&
+          w.includes('flows'),
+      ),
+    ).toBe(false);
+    // wire feature omitting flows MUST warn
+    expect(
+      warnings.some(
+        (w) =>
+          w.startsWith('feature_ui_fields:') &&
+          w.includes('F2') &&
+          w.includes('missing required flows'),
+      ),
+    ).toBe(true);
+  });
+
   it('does not throw on a features file with no Feature sections', () => {
     const md = `# Feature Map: Empty
 

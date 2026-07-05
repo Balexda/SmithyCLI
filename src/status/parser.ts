@@ -576,7 +576,10 @@ export function parseFeatures(content: string): {
       if (feature.design === undefined) missing.push('design');
       if (feature.screens === undefined || feature.screens.length === 0)
         missing.push('screens');
-      if (feature.flows === undefined) missing.push('flows');
+      // `flows` is optional for `build` (mock-satisfiable candidates) and
+      // required only for `wire`, which connects flows to real data.
+      if (feature.phase === 'wire' && feature.flows === undefined)
+        missing.push('flows');
       for (const key of missing) {
         warnings.push(
           `feature_ui_fields: ui ${feature.id} missing required ${key}`,

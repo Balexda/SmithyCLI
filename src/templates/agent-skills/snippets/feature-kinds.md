@@ -19,7 +19,7 @@ durable design truth.
 | `kind` | both | Yes (new) | `backend` or `ui`. Missing on legacy maps → `backend`. |
 | `phase` | ui | Yes | `build` or `wire` (feature-level). |
 | `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. |
-| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`. Render must set this explicitly; downstream `mark` copies it into the UI ledger's `Design` column instead of inferring from the title. |
+| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render must set this explicitly; downstream `mark` copies it into the `Design` cell of each of the feature's `SC<N>` ledger rows instead of inferring from the title. Screens needing distinct modes go in separate features. |
 | `bundle` | ui | No | Path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
@@ -46,6 +46,10 @@ flows: [AddTitle]
 prototype bundle is supplied at render and rides forward; `brief` means mark will
 author durable intent that can be handed to a visual tool. The mode is carried in
 metadata so readers and downstream commands do not infer it from feature titles.
+It is **feature-level**: every `ScreenId` in the feature's `screens` list shares
+the one `design` value, so a feature that would need two different modes for two
+screens must be split into separate features (one per mode) — which the
+one-screen-per-build model already favors.
 
 **Phase semantics.** `build` implements the screen component against a mock
 behind `flag` (rendering every brief state with design-system tokens only);

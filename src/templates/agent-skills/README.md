@@ -210,7 +210,7 @@ artifacts that downstream commands consume.
 | `kind` | both | Yes (new) | `backend` or `ui`. Selects the `smithy.mark` authoring path. A missing `kind` on legacy feature maps defaults to `backend`. |
 | `phase` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
 | `design_system` | ui | Yes | Reference to the committed design skill (for example `story-spider-design`); source of truth even when a bundle is present. |
-| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`. Render sets this explicitly; mark copies it into the UI ledger's `Design` column. |
+| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render sets this explicitly; mark copies it into the `Design` cell of each `SC<N>` row. Screens needing distinct modes go in separate features. |
 | `bundle` | ui | No | Repo-relative path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
