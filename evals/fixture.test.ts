@@ -108,10 +108,22 @@ describe('evals/fixture deployment', () => {
       expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, file))).toBe(true);
     }
 
-    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'gradlew'))).toBe(false);
-    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'gradlew.bat'))).toBe(false);
-    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, 'build'))).toBe(false);
-    expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, '.gradle'))).toBe(false);
+    // Assert on committed (git-tracked) contents rather than the working
+    // tree: running `gradle` locally creates the ignored build/ and .gradle/
+    // directories, which must not make this test fail for contributors.
+    const trackedFiles = execFileSync('git', ['ls-files'], {
+      cwd: JVM_FIXTURE_DIR,
+      encoding: 'utf-8',
+    })
+      .split('\n')
+      .filter(Boolean);
+
+    // No Gradle wrapper is committed (system Gradle is documented instead).
+    expect(trackedFiles).not.toContain('gradlew');
+    expect(trackedFiles).not.toContain('gradlew.bat');
+    // No generated Gradle output is committed.
+    expect(trackedFiles.some((file) => file.startsWith('build/'))).toBe(false);
+    expect(trackedFiles.some((file) => file.startsWith('.gradle/'))).toBe(false);
 
     const buildFile = fs.readFileSync(path.join(JVM_FIXTURE_DIR, 'build.gradle'), 'utf-8');
     expect(buildFile).toContain("id 'java'");
