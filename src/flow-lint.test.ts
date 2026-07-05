@@ -98,6 +98,42 @@ describe('flow-lint graph discovery', () => {
     });
   });
 
+  it('reports orphan discovery as not-run when the explicit flow-test root is missing', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'ui-flows/AddTitle.yaml'));
+    write('ui-flows/AddTitle.yaml', '# flow\n');
+
+    const graph = discoverFlowGraph(root, { flowTestRoot: 'does-not-exist' });
+
+    expect(graph.orphanTestBodies).toEqual({ status: 'not-run', roots: [], paths: [] });
+  });
+
+  it('reports orphan discovery as not-run when the flow-test root escapes the artifact root', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'ui-flows/AddTitle.yaml'));
+    write('ui-flows/AddTitle.yaml', '# flow\n');
+
+    const graph = discoverFlowGraph(root, { flowTestRoot: '../..' });
+
+    expect(graph.orphanTestBodies).toEqual({ status: 'not-run', roots: [], paths: [] });
+  });
+
+  it('ignores hidden files under the scoped flow-test root', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'ui-flows/AddTitle.yaml'));
+    write('ui-flows/AddTitle.yaml', '# flow\n');
+    write('ui-flows/.gitkeep', '');
+    write('ui-flows/.DS_Store', '');
+
+    const graph = discoverFlowGraph(root, { flowTestRoot: 'ui-flows' });
+
+    expect(graph.orphanTestBodies).toEqual({
+      status: 'scanned',
+      roots: ['ui-flows'],
+      paths: [],
+    });
+  });
+
   it('scopes orphan test-body discovery to the conventional stub location when present', () => {
     write('design/screens/Library.design.md', screen('Library'));
     write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
@@ -183,6 +219,38 @@ describe('flow-lint graph validation', () => {
         'design/screens/Library.design.md',
         'design/screens/Nested/LibraryCopy.design.md',
       ],
+    });
+  });
+
+  it('fails duplicate test-body declarations shared across flows', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/Shared.yaml'));
+    write('design/flows/EditTitle.flow.md', flow('EditTitle', ['Library'], 'maestro/flows/Shared.yaml'));
+    write('maestro/flows/Shared.yaml', '# flow\n');
+
+    const findings = validateFlowGraph(discoverFlowGraph(root));
+
+    expect(findings).toContainEqual({
+      type: 'duplicate-test-body',
+      testBodyPath: 'maestro/flows/Shared.yaml',
+      paths: [
+        'design/flows/AddTitle.flow.md',
+        'design/flows/EditTitle.flow.md',
+      ],
+    });
+  });
+
+  it('fails a test-body path that escapes the artifact root', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], '../escapes/AddTitle.yaml'));
+
+    const { findings } = lintFlowGraph(root);
+
+    expect(findings).toContainEqual({
+      type: 'missing-test-body',
+      flowId: 'AddTitle',
+      flowPath: 'design/flows/AddTitle.flow.md',
+      testBodyPath: '../escapes/AddTitle.yaml',
     });
   });
 

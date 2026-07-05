@@ -46,6 +46,11 @@ export type FlowLintFinding =
       testBodyPath: string;
     }
   | {
+      type: 'duplicate-test-body';
+      testBodyPath: string;
+      paths: string[];
+    }
+  | {
       type: 'duplicate-screen-id';
       screenId: string;
       paths: string[];
@@ -118,6 +123,23 @@ export function validateFlowGraph(graph: FlowGraph): FlowLintFinding[] {
     }
   }
 
+  const flowsByTestBody = new Map<string, string[]>();
+  for (const flow of graph.flows) {
+    if (flow.testBodyPath === '') continue;
+    const existing = flowsByTestBody.get(flow.testBodyPath) ?? [];
+    existing.push(flow.path);
+    flowsByTestBody.set(flow.testBodyPath, existing);
+  }
+  for (const [testBodyPath, paths] of flowsByTestBody) {
+    if (paths.length > 1) {
+      findings.push({
+        type: 'duplicate-test-body',
+        testBodyPath,
+        paths: paths.sort(),
+      });
+    }
+  }
+
   for (const flow of graph.flows) {
     for (const screenId of flow.screens) {
       if (!screensById.has(screenId)) {
@@ -130,8 +152,8 @@ export function validateFlowGraph(graph: FlowGraph): FlowLintFinding[] {
       }
     }
 
-    const absoluteTestBodyPath = path.join(graph.root, flow.testBodyPath);
-    if (!isFile(absoluteTestBodyPath)) {
+    const absoluteTestBodyPath = resolveWithinRoot(graph.root, flow.testBodyPath);
+    if (absoluteTestBodyPath === null || !isFile(absoluteTestBodyPath)) {
       findings.push({
         type: 'missing-test-body',
         flowId: flow.id,
@@ -188,17 +210,21 @@ function discoverOrphanTestBodies(
   declaredTestBodyPaths: Set<string>,
   explicitFlowTestRoot?: string,
 ): OrphanScanResult {
-  const scopedRoots = explicitFlowTestRoot
-    ? [resolveScopedRoot(root, explicitFlowTestRoot)]
-    : conventionalFlowTestRoots(root);
+  const scopedRoots =
+    explicitFlowTestRoot !== undefined
+      ? [resolveScopedRoot(root, explicitFlowTestRoot)].filter(
+          (scanRoot): scanRoot is string => scanRoot !== null,
+        )
+      : conventionalFlowTestRoots(root);
 
   if (scopedRoots.length === 0) {
     return { status: 'not-run', roots: [], paths: [] };
   }
 
-  const orphanPaths = scopedRoots.flatMap((scanRoot) =>
-    listFiles(scanRoot).map((filePath) => relativePath(root, filePath)),
-  ).filter((testBodyPath) => !declaredTestBodyPaths.has(testBodyPath));
+  const orphanPaths = scopedRoots
+    .flatMap((scanRoot) => listFiles(scanRoot).map((filePath) => relativePath(root, filePath)))
+    .filter((testBodyPath) => !isHiddenPath(testBodyPath))
+    .filter((testBodyPath) => !declaredTestBodyPaths.has(testBodyPath));
 
   return {
     status: 'scanned',
@@ -225,10 +251,13 @@ function resolveArtifactRoot(rootOrSubpath: string): string {
   }
 }
 
-function resolveScopedRoot(root: string, scopedRoot: string): string {
-  return path.isAbsolute(scopedRoot)
-    ? fs.realpathSync(scopedRoot)
-    : fs.realpathSync(path.join(root, scopedRoot));
+function resolveScopedRoot(root: string, scopedRoot: string): string | null {
+  const joined = path.isAbsolute(scopedRoot) ? scopedRoot : path.join(root, scopedRoot);
+  // A missing/broken flow-test root must degrade to a not-run orphan scan
+  // (Slice 1 contract), never throw; and it must not escape the artifact root.
+  if (!isDirectory(joined)) return null;
+  const resolved = fs.realpathSync(joined);
+  return isWithinRoot(root, resolved) ? resolved : null;
 }
 
 function conventionalFlowTestRoots(root: string): string[] {
@@ -296,7 +325,28 @@ function relativePath(root: string, target: string): string {
 }
 
 function normalizeRelativePath(value: string): string {
-  return value.split(path.sep).join('/').replace(/^\.\//, '');
+  // Normalize both the host separator and a foreign (Windows) separator so a
+  // repo-relative `test-body` authored on Windows resolves deterministically
+  // when the check runs on a POSIX CI host.
+  return value.split(/[\\/]/).join('/').replace(/^\.\//, '');
+}
+
+// Resolve a repo-relative path against the artifact root, returning null when
+// it escapes the root (absolute path or `..` traversal). `test-body` is a
+// repo-relative contract, so an out-of-root target is never a valid body.
+function resolveWithinRoot(root: string, relativeTarget: string): string | null {
+  if (relativeTarget === '') return null;
+  const resolved = path.resolve(root, relativeTarget);
+  return isWithinRoot(root, resolved) ? resolved : null;
+}
+
+function isWithinRoot(root: string, target: string): boolean {
+  const rel = path.relative(root, target);
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+function isHiddenPath(relativePathValue: string): boolean {
+  return relativePathValue.split('/').some((segment) => segment.startsWith('.'));
 }
 
 function isDirectory(target: string): boolean {
