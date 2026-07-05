@@ -193,8 +193,11 @@ Phase 0).
 ## Phase 1: Intake
 
 1. Parse the input to identify:
-   - **Spec folder path** — validate it exists and contains the three spec
-     artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`).
+   - **Spec folder path** — if the input names a spec **file** path (e.g.
+     `.../add-title/add-title.spec.md`), first derive the parent spec folder
+     from it (the file's containing directory) before validating. Then validate
+     the folder exists and contains the three spec artifacts (`.spec.md`,
+     `.data-model.md`, `.contracts.md`).
    - **Target work node** — either a backend user story number (`US<N>`) or a
      typed UI ledger node ID (`SC<N>`, `FL<N>`, or `US<N>`). Validate the node
      exists in the spec file.
@@ -234,16 +237,23 @@ Phase 0).
      `ID | Title | Depends On | Artifact`, with `US<N>` rows. Preserve the
      existing backend user-story slicing behavior.
    - **Typed UI ledger**: the 6-column shape
-     `ID | Kind | Title | Depends On | Design | Artifact`, with `SC<N>`,
-     `FL<N>`, and `US<N>` rows. Treat this as node-kind work, not as a
+     `ID | Kind | Title | Depends On | Design | Artifact`, which may contain any
+     mix of `SC<N>`, `FL<N>`, and `US<N>` rows — those kinds are allowed, not
+     all required. The smallest honest ledger (e.g. a single `SC<N>` row for a
+     screen-only feature with no flows or backend work) is valid; classify and
+     auto-select from whatever kinds are present.
+     Treat this as node-kind work, not as a
      backend-only user-story list.
 5. Extract the target work node:
    - For backend story tables, extract the target user story — its title,
      acceptance scenarios, priority, and any FRs that trace to it.
-   - For typed UI ledgers, extract the target ledger row by exact node ID. Also
-     load the user story context whose acceptance scenarios require node-kind
-     slicing, plus the ledger row's `Kind`, durable artifact pointer from
-     `Title`, `Depends On`, `Design`, and current `Artifact` cell.
+   - For typed UI ledgers, extract the target ledger row by exact node ID. Load
+     that row's `Kind`, `Title`, `Depends On`, `Design`, and current `Artifact`
+     cells, plus the user story context whose acceptance scenarios require
+     node-kind slicing. The row's **durable artifact pointer** is not a separate
+     cell — it is embedded in the `Title` text via the `→ <artifact>`
+     convention (e.g. `Add Title screen → design/screens/AddTitle.design.md`);
+     parse it out of `Title`.
 6. Derive the **node slug** — a short kebab-case name from the user story title
    or typed ledger row title after removing any `→ <artifact>` pointer (e.g.,
    "User Story 4: Slice a User Story into Tasks" → `slice-story-into-tasks`,
@@ -280,7 +290,9 @@ Phase 0).
 - If the node ID is invalid for a typed UI ledger, list the available `SC`,
   `FL`, and `US` rows with their current `Artifact` cells and ask the user to
   pick one.
-- Story numbers above 99 are not supported — flag this and stop.
+- Story numbers above 99 are not supported — flag this and stop. This limit is
+  specific to backend-story `<NN>` filename formatting; it does not constrain
+  typed UI node IDs (e.g. `SC120` is a valid node ID).
 
 ---
 
@@ -588,8 +600,16 @@ SC and FL nodes may be a single slice when the node can be built coherently in
 one PR, but they are not inherently atomic. Split them into multiple PR-sized
 slices when the screen or flow is too large, risky, or cross-cutting for one PR.
 
-Add a short node context block near the top of typed-UI tasks files, immediately
-after the source/data-model/contracts/story metadata:
+For typed-UI tasks files, adapt the base tasks-file header (the
+`# Tasks: <User Story Title>` template in Phase 4) to the node: title the file
+`# Tasks: <Node Title>` using the row title with any `→ <artifact>` pointer
+removed, keep the `**Source**:` / `**Data Model**:` / `**Contracts**:` lines,
+and replace the `**Story Number**:` line with the node context block below. `US`
+nodes inside a typed UI ledger keep the standard user-story header and
+`**Story Number**:` line.
+
+Add this node context block near the top of typed-UI tasks files, immediately
+after the source/data-model/contracts metadata (in place of `**Story Number**:`):
 
 ```markdown
 **Node ID**: <SC1|FL1|US1>
