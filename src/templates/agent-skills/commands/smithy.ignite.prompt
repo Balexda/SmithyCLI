@@ -427,7 +427,12 @@ Before drafting orchestrator-inline RFC prose in this phase, load
 source for directly authored RFC sections such as Decisions and coherence
 repairs. Keep Summary, Motivation / Problem Statement, and Personas delegated
 to `smithy-prose` where those sub-phases already own the narrative drafting,
-and do not inline the helper's taxonomy here.
+and do not inline the helper's taxonomy here. Sub-phase 3b is the sole
+Personas exception to this delegation rule: covered personas are projected
+inline by the orchestrator from their `.persona.md` files, and only the
+uncovered-persona gaps are delegated to `smithy-prose` — so when every needed
+persona is covered, no `smithy-prose` Personas dispatch occurs at all. See
+Sub-phase 3b for the full projection-and-gap procedure.
 
 {{#ifAgent}}
 ### RFC File Creation
