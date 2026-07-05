@@ -20,7 +20,7 @@ durable design truth.
 | `phase` | ui | Yes | `build` or `wire` (feature-level). |
 | `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. A screen with a `bundle` still requires `design_system`. |
 | `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render must set this explicitly; downstream `mark` copies it into the `Design` cell of each of the feature's `SC<N>` ledger rows instead of inferring from the title. Screens needing distinct modes go in separate features. |
-| `bundle` | ui | No | Path to a visual prototype boundary object (for example a Figma export, Claude Design export, or equivalent visual-tool bundle) — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
+| `bundle` | ui | No | Repo-relative path to a visual prototype boundary object (for example a Figma export, Claude Design export, or equivalent visual-tool bundle) — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
 | `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. Build features may list mock-satisfiable candidate flows; wire features must list the flows they connect to real data. |
