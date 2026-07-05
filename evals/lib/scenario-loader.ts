@@ -30,12 +30,14 @@ import type {
   StructuralExpectations,
   SubAgentEvidence,
 } from './types.js';
+import {
+  LOCAL_FIXTURE_AREAS,
+  normalizeRepositoryPath,
+  isPathUnderAllowedArea,
+  isContainedIn,
+} from './fixture-paths.js';
 
 const localFixtureFields = ['issue', 'ci_log'] as const;
-const localFixtureAreas: Record<(typeof localFixtureFields)[number], string> = {
-  issue: 'evals/fixture/issues',
-  ci_log: 'evals/fixture/ci-logs',
-};
 
 // Repository root derived from this module's own location, not `process.cwd()`.
 // The eval helpers resolve scenario files via `import.meta.url` so they stay
@@ -413,7 +415,7 @@ function validateLocalFixtures(
       return null;
     }
 
-    const normalized = normalizeFixturePath(rawPath);
+    const normalized = normalizeRepositoryPath(rawPath);
     if (normalized === null) {
       skip(
         `'local_fixtures.${field}' must be a repository-relative path without parent-directory segments`,
@@ -421,8 +423,8 @@ function validateLocalFixtures(
       return null;
     }
 
-    const allowedArea = localFixtureAreas[field];
-    if (!isPathUnderArea(normalized, allowedArea)) {
+    const allowedArea = LOCAL_FIXTURE_AREAS[field];
+    if (!isPathUnderAllowedArea(normalized, allowedArea)) {
       skip(`'local_fixtures.${field}' must be under '${allowedArea}/'`);
       return null;
     }
@@ -469,27 +471,6 @@ function validateLocalFixtures(
   }
 
   return fixtures as LocalFixtureSet;
-}
-
-function normalizeFixturePath(rawPath: string): string | null {
-  if (path.isAbsolute(rawPath)) return null;
-
-  const parts = rawPath.split(/[\\/]+/);
-  if (parts.some((part) => part === '' || part === '..')) return null;
-
-  const normalized = path.posix.normalize(parts.join('/'));
-  if (normalized === '.' || normalized.startsWith('../')) return null;
-  return normalized;
-}
-
-function isPathUnderArea(repoPath: string, allowedArea: string): boolean {
-  return repoPath.startsWith(`${allowedArea}/`) && repoPath.length > allowedArea.length + 1;
-}
-
-/** True when `childAbs` is a strict descendant of `parentAbs` (both absolute). */
-function isContainedIn(childAbs: string, parentAbs: string): boolean {
-  const rel = path.relative(parentAbs, childAbs);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 function isValidFixtureSelector(value: unknown): value is string {

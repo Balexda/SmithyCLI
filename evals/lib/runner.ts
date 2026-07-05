@@ -18,6 +18,13 @@ import {
   extractCanonicalText,
   extractTokenTotals,
 } from './parse-stream.js';
+import {
+  LOCAL_FIXTURE_AREAS,
+  type LocalFixtureField,
+  normalizeRepositoryPath,
+  isPathUnderAllowedArea,
+  isContainedIn,
+} from './fixture-paths.js';
 
 /** Path to the built Smithy CLI, resolved relative to this module. */
 const CLI_PATH = path.resolve(
@@ -45,17 +52,10 @@ const CHECKSUM_EXCLUDE_DIRS = new Set([
   'dist',
 ]);
 
-const LOCAL_FIXTURE_AREAS = {
-  issue: 'evals/fixture/issues',
-  ci_log: 'evals/fixture/ci-logs',
-} as const;
-
 interface LocalFixtureBindings {
   issue_path: string;
   ci_log_path: string;
 }
-
-type LocalFixtureField = 'issue' | 'ci_log';
 
 // ---------------------------------------------------------------------------
 // Fixture checksum
@@ -523,10 +523,13 @@ function resolveLocalFixturePath(
   try {
     stats = fs.statSync(tmpFixturePath);
     fs.accessSync(tmpFixturePath, fs.constants.R_OK);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+  } catch {
+    // Deliberately omit the raw fs error text: it embeds absolute temp-dir
+    // paths (under os.tmpdir()), which leak the environment and make the
+    // offline eval's diagnostics non-deterministic. The normalized
+    // repository-relative path already identifies the offending fixture.
     throw new Error(
-      `local_fixtures.${field} is not readable in temp fixture copy: ${normalized} (${msg})`,
+      `local_fixtures.${field} is not readable in temp fixture copy: ${normalized}`,
     );
   }
 
@@ -541,10 +544,11 @@ function resolveLocalFixturePath(
   try {
     realFixturePath = fs.realpathSync(tmpFixturePath);
     realAreaPath = fs.realpathSync(tmpAreaPath);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+  } catch {
+    // As above, omit the raw fs error text to avoid leaking absolute temp-dir
+    // paths into the thrown message.
     throw new Error(
-      `local_fixtures.${field} could not be resolved in temp fixture copy: ${normalized} (${msg})`,
+      `local_fixtures.${field} could not be resolved in temp fixture copy: ${normalized}`,
     );
   }
 
@@ -603,27 +607,6 @@ function codexSkillName(skill: string): string {
   return normalized;
 }
 
-function normalizeRepositoryPath(rawPath: string): string | null {
-  if (path.isAbsolute(rawPath) || path.win32.isAbsolute(rawPath)) return null;
-  if (/^[a-zA-Z]:/.test(rawPath)) return null;
-
-  const parts = rawPath.split(/[\\/]+/);
-  if (parts.some((part) => part === '' || part === '..')) return null;
-
-  const normalized = path.posix.normalize(parts.join('/'));
-  if (normalized === '.' || normalized.startsWith('../')) return null;
-  return normalized;
-}
-
-function isPathUnderAllowedArea(repoPath: string, allowedArea: string): boolean {
-  return repoPath.startsWith(`${allowedArea}/`) && repoPath.length > allowedArea.length + 1;
-}
-
 function fixtureTempRelativePath(repoFixturePath: string): string {
   return repoFixturePath.replace(/^evals\/fixture\//, '');
-}
-
-function isContainedIn(childAbs: string, parentAbs: string): boolean {
-  const rel = path.relative(parentAbs, childAbs);
-  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
