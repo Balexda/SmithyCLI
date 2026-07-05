@@ -716,6 +716,31 @@ describe('getComposedTemplates', () => {
     expect(subphase3bBlock).toContain('`<slug>.persona.md` covers');
     expect(subphase3bBlock).toMatch(/Avoid fuzzy\s+matching/);
     expect(subphase3bBlock).toContain('If no `.persona.md` files exist');
+    expect(subphase3bBlock).not.toContain('coverage detection only');
+    expect(subphase3bBlock).not.toContain('regardless of the match results');
+  });
+
+  it('smithy.ignite projects reusable personas and cold-drafts only uncovered gaps', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3bIdx = ignite.indexOf('Sub-phase 3b: Personas');
+    const subphase3cIdx = ignite.indexOf('Sub-phase 3c: Goals + Out of Scope');
+    expect(subphase3bIdx).toBeGreaterThan(-1);
+    expect(subphase3cIdx).toBeGreaterThan(subphase3bIdx);
+    const subphase3bBlock = ignite.slice(subphase3bIdx, subphase3cIdx);
+
+    const discoveryIdx = subphase3bBlock.indexOf('Before drafting Personas cold');
+    const projectionIdx = subphase3bBlock.indexOf('For each covered persona, read the matching `.persona.md` file');
+    const dispatchIdx = subphase3bBlock.indexOf('dispatch **smithy-prose** for only those gaps');
+    expect(projectionIdx).toBeGreaterThan(discoveryIdx);
+    expect(dispatchIdx).toBeGreaterThan(projectionIdx);
+    expect(subphase3bBlock).toMatch(/preserve the\s+persona's role, context, and friction/);
+    expect(subphase3bBlock).toContain('project it into the RFC-specific');
+    expect(subphase3bBlock).toContain('narrowed to the uncovered persona names or roles');
+    expect(subphase3bBlock).toContain('Do not regenerate personas covered by existing `.persona.md` files');
+    expect(subphase3bBlock).toContain('If every needed persona is covered');
+    expect(subphase3bBlock).toMatch(/do not\s+dispatch smithy-prose for Personas/);
+    expect(subphase3bBlock).toContain('Combine the file-sourced projections and any cold-drafted uncovered gap content');
+    expect(subphase3bBlock).toContain('exactly one `## Personas` section');
   });
 
   it('smithy.pr-review scripts start with bash shebang', () => {

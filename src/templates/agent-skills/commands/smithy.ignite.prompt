@@ -538,27 +538,38 @@ Before drafting Personas cold, discover reusable durable personas:
    persona. A needed slug with no matching file remains uncovered. Avoid fuzzy
    matching, semantic similarity, interactive selection, or any new registry.
 
-This slice adds coverage detection only — it does not yet change how the
-`## Personas` section is drafted. Record which needed personas are covered by a
-matching `<slug>.persona.md` file and which remain uncovered as informational
-notes for the projection and gap-only drafting that a later slice introduces.
-If no `.persona.md` files exist, there is simply nothing to reuse. Then,
-**regardless of the match results** (no files, some covered, or all covered),
-follow the existing cold-draft path and dispatch **smithy-prose** with:
+For each covered persona, read the matching `.persona.md` file before drafting
+the RFC section. Treat that durable file as source context: preserve the
+persona's role, context, and friction, but project it into the RFC-specific
+`## Personas` section by explaining how this RFC benefits that persona. The RFC
+projection is not a byte-for-byte copy of the durable file; it is a tailored
+benefit framing grounded in the durable file's narrative.
+
+For each uncovered needed persona, keep it in an uncovered-persona gaps list.
+If no `.persona.md` files exist, every needed persona is uncovered and there is
+simply nothing to reuse. If the uncovered-persona gaps list is non-empty,
+dispatch **smithy-prose** for only those gaps with:
 
 - **section_assignment**: "Personas"
 - **idea_description**: the user's idea description or PRD content from intake
-- **clarify_output**: the Q&A and assumptions from Phase 2 clarification
+- **clarify_output**: the Q&A and assumptions from Phase 2 clarification, narrowed to the uncovered persona names or roles so covered personas are not regenerated cold
 - **rfc_file_path**: the path to the accumulating `<slug>.rfc.md` (which at this point contains the header plus Summary and Motivation)
-- **tone_directives**: "Personas named or described during Phase 2 clarification are mandatory — every persona surfaced there MUST appear in the drafted `## Personas` section with a role and a description of how this RFC benefits them. Do not return placeholder or empty content."
+- **tone_directives**: "Draft only the uncovered personas listed in clarify_output. Do not regenerate personas covered by existing `.persona.md` files. Every uncovered persona is mandatory and MUST appear with a role and a description of how this RFC benefits them. Do not return placeholder or empty content."
 
-After smithy-prose returns, verify that the returned content contains a
-non-empty `## Personas` section with at least one named persona. If the
-sub-agent returns empty output, placeholder content (e.g., the template's
-`<Persona 1 ...>` literal), or a response missing the `## Personas` heading,
-**halt the pipeline** with a diagnostic that points at the Phase 2
-clarification record so the user can confirm which personas were identified
-before retrying. Otherwise, append the returned content to the RFC file.
+If every needed persona is covered by matching `.persona.md` files, do not
+dispatch smithy-prose for Personas. Build the `## Personas` section entirely
+from the file-sourced projections.
+
+Combine the file-sourced projections and any cold-drafted uncovered gap content
+into exactly one `## Personas` section. If both sources are present, include
+both in that single section; do not append a second `## Personas` heading.
+Verify that the combined content contains a non-empty `## Personas` section with
+at least one named persona. If the combined result is empty, placeholder content
+(e.g., the template's `<Persona 1 ...>` literal), or missing the `## Personas`
+heading, **halt the pipeline** with a diagnostic that points at the Phase 2
+clarification record and the reusable persona coverage record so the user can
+confirm which personas were identified before retrying. Otherwise, append the
+combined `## Personas` section to the RFC file.
 
 ### Sub-phase 3c: Goals + Out of Scope
 
