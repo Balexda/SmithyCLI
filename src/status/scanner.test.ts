@@ -678,6 +678,57 @@ ${TABLE_HEADER}
     );
   });
 
+  it('accepts typed UI ledgers and emits distinct SC, FL, and US task records', () => {
+    const uiHeader =
+      '| ID | Kind | Title (→ mark durable file) | Depends On | Design | Artifact |\n' +
+      '|----|------|-----------------------------|------------|--------|----------|';
+    write(
+      'specs/ui/ui.spec.md',
+      `# UI Spec\n\n## Dependency Order\n\n${uiHeader}\n` +
+        '| SC1 | screen | AddTitle screen | — | brief | specs/ui/sc-01-add-title-screen.tasks.md |\n' +
+        '| FL1 | flow | AddTitle flow | SC1 | — | — |\n' +
+        '| US1 | story | Persist title | FL1 | — | specs/ui/01-persist-title.tasks.md |\n',
+    );
+    write(
+      'specs/ui/sc-01-add-title-screen.tasks.md',
+      `# Tasks: AddTitle Screen\n\n## Slice 1: Build\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Build | — | — |\n`,
+    );
+    write(
+      'specs/ui/01-persist-title.tasks.md',
+      `# Tasks: Persist Title\n\n## Slice 1: Persist\n\n- [ ] Todo\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Persist | — | — |\n`,
+    );
+
+    const records = scan(root);
+    const screen = byPath(records, 'specs/ui/sc-01-add-title-screen.tasks.md');
+    const flow = byPath(records, 'specs/ui/fl-01-addtitle-flow.tasks.md');
+    const story = byPath(records, 'specs/ui/01-persist-title.tasks.md');
+
+    expect(screen).toMatchObject({
+      status: 'done',
+      parent_row_id: 'SC1',
+      parent_row_kind: 'screen',
+      parent_row_design: 'brief',
+    });
+    expect(flow).toMatchObject({
+      virtual: true,
+      status: 'not-started',
+      parent_row_id: 'FL1',
+      parent_row_kind: 'flow',
+    });
+    expect(story).toMatchObject({
+      status: 'not-started',
+      parent_row_id: 'US1',
+      parent_row_kind: 'story',
+    });
+    const spec = byPath(records, 'specs/ui/ui.spec.md');
+    expect(spec?.dependency_order.rows.map((row) => row.id)).toEqual([
+      'SC1',
+      'FL1',
+      'US1',
+    ]);
+    expect(spec?.status).toBe('in-progress');
+  });
+
   it('AS 9.3: feature-map row pointing at a real spec folder rolls up from that spec\'s status', () => {
     // Single-hop feature-map → spec rollup. The feature map's
     // `## Dependency Order` has exactly one row whose `Artifact` cell

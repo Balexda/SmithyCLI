@@ -536,6 +536,8 @@ function actionSignature(action: NextAction): string {
  * depth is added here.
  */
 function rowIdDepth(rowId: string): number | null {
+  if (rowId.startsWith('SC')) return 3;
+  if (rowId.startsWith('FL')) return 3;
   if (rowId.startsWith('US')) return 3;
   if (rowId.startsWith('S')) return 4;
   if (rowId.startsWith('F')) return 2;
@@ -691,8 +693,14 @@ function formatNodeLine(
   // replaces the FQ id, which would otherwise hide the row id
   // entirely for any actionable row). The id paints dim so the title
   // stays the dominant visual element.
-  const idPrefix = theme.paint.dim(`${node.row.id} `);
+  const idPrefix = theme.paint.dim(`${formatNodeIdentity(node)} `);
   return `${connector}${idPrefix}${node.row.title}  ${marker}  ${suffix}`;
+}
+
+function formatNodeIdentity(node: DependencyNode): string {
+  const kind = node.row.kind;
+  if (kind === undefined) return node.row.id;
+  return `${node.row.id} ${kind}`;
 }
 
 /**

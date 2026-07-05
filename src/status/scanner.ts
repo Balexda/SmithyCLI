@@ -241,6 +241,8 @@ export function scan(root: string): ArtifactRecord[] {
         } else {
           child.parent_path = parent.path;
           child.parent_row_id = row.id;
+          if (row.kind !== undefined) child.parent_row_kind = row.kind;
+          if (row.design !== undefined) child.parent_row_design = row.design;
         }
       } else {
         child = makeVirtualRecord(resolution.path, resolution.type, row, parent);
@@ -610,6 +612,7 @@ function resolveChildForRow(
       const type: ArtifactType = 'tasks';
       const parentDir = repoDirname(parent.path);
       const nn = paddedNumberFromId(row.id);
+      const filePrefix = tasksFilenamePrefix(row.id, nn);
 
       if (row.artifact_path !== null) {
         const declared = normalizePath(row.artifact_path);
@@ -623,7 +626,7 @@ function resolveChildForRow(
         // the filename convention — a single `<NN>-*.tasks.md` under
         // the spec's folder is unambiguous and recovers linkage that
         // would otherwise produce a floating orphan.
-        const fallback = findTasksByStoryNumber(parentDir, nn, records);
+        const fallback = findTasksByRowId(parentDir, row.id, nn, records);
         if (fallback !== null) {
           return { path: fallback, type };
         }
@@ -639,12 +642,12 @@ function resolveChildForRow(
       // `<parentDir>/<NN>-*.tasks.md` should link to that real file,
       // not a virtual derived from the row title (the row title and
       // the on-disk slug routinely diverge in practice).
-      const fallback = findTasksByStoryNumber(parentDir, nn, records);
+      const fallback = findTasksByRowId(parentDir, row.id, nn, records);
       if (fallback !== null) {
         return { path: fallback, type };
       }
       return {
-        path: repoJoin(parentDir, `${nn}-${slugify(row.title)}.tasks.md`),
+        path: repoJoin(parentDir, `${filePrefix}-${slugify(row.title)}.tasks.md`),
         type,
       };
     }
@@ -666,17 +669,21 @@ function resolveChildForRow(
  * no match or more than one (ambiguous cases fall through to the
  * caller's virtual-placeholder path so a warning can surface).
  */
-function findTasksByStoryNumber(
+function findTasksByRowId(
   parentDir: string,
+  rowId: string,
   nn: string,
   records: Map<string, ArtifactRecord>,
 ): string | null {
-  const prefix = parentDir === '' ? `${nn}-` : `${parentDir}/${nn}-`;
+  const prefixes = tasksLookupPrefixes(rowId, nn).map((prefix) =>
+    parentDir === '' ? prefix : `${parentDir}/${prefix}`,
+  );
   let match: string | null = null;
   for (const [p, rec] of records) {
     if (rec.type !== 'tasks') continue;
     if (rec.virtual === true) continue;
-    if (!p.startsWith(prefix)) continue;
+    const prefix = prefixes.find((candidate) => p.startsWith(candidate));
+    if (prefix === undefined) continue;
     if (!p.endsWith('.tasks.md')) continue;
     // Reject nested sub-folder matches: only direct children of
     // `parentDir` count. A tasks file at `specs/a/b/01-foo.tasks.md`
@@ -759,7 +766,7 @@ function makeVirtualRecord(
   row: DependencyRow,
   parent: ArtifactRecord,
 ): ArtifactRecord {
-  return {
+  const record: ArtifactRecord = {
     type,
     path: p,
     title: row.title,
@@ -774,6 +781,9 @@ function makeVirtualRecord(
     },
     warnings: [],
   };
+  if (row.kind !== undefined) record.parent_row_kind = row.kind;
+  if (row.design !== undefined) record.parent_row_design = row.design;
+  return record;
 }
 
 // ---------------------------------------------------------------------------
@@ -873,6 +883,17 @@ function paddedNumberFromId(id: string): string {
   const digits = id.match(/[0-9]+$/)?.[0];
   if (digits === undefined) return id.toLowerCase();
   return digits.padStart(2, '0');
+}
+
+function tasksFilenamePrefix(rowId: string, nn: string): string {
+  if (rowId.startsWith('SC')) return `sc-${nn}`;
+  if (rowId.startsWith('FL')) return `fl-${nn}`;
+  return nn;
+}
+
+function tasksLookupPrefixes(rowId: string, nn: string): string[] {
+  const typed = tasksFilenamePrefix(rowId, nn);
+  return [`${typed}-`];
 }
 
 function idPrefixForType(type: ArtifactType): DependencyOrderTable['id_prefix'] {

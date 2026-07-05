@@ -36,7 +36,7 @@ const ID_PREFIX_BY_TYPE: Record<ArtifactType, IdPrefix> = {
   tasks: 'S',
 };
 
-const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
+const ID_REGEX = /^(M|F|US|S|SC|FL)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
 /**
@@ -51,9 +51,12 @@ const FORMAT_LEGACY_WARNING =
   'format_legacy: `## Dependency Order` uses checkbox list; expected 4-column table (ID | Title | Depends On | Artifact). ' +
   'Migrate this section to the canonical 4-column schema — see `src/templates/agent-skills/README.md`.';
 
-const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
-type ColumnName = (typeof EXPECTED_HEADERS)[number];
-type ColumnIndex = Record<ColumnName, number>;
+const REQUIRED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
+const OPTIONAL_HEADERS = ['kind', 'design'] as const;
+type RequiredColumnName = (typeof REQUIRED_HEADERS)[number];
+type OptionalColumnName = (typeof OPTIONAL_HEADERS)[number];
+type ColumnIndex = Record<RequiredColumnName, number> &
+  Partial<Record<OptionalColumnName, number>>;
 
 /**
  * Parse the `## Dependency Order` section of a Smithy artifact.
@@ -134,6 +137,12 @@ export function parseDependencyTable(
     const title = (cells[columnIndex.title] ?? '').trim();
     const dependsOnCell = (cells[columnIndex['depends on']] ?? '').trim();
     const artifactCell = (cells[columnIndex.artifact] ?? '').trim();
+    const kindCell =
+      columnIndex.kind === undefined ? '' : (cells[columnIndex.kind] ?? '').trim();
+    const designCell =
+      columnIndex.design === undefined
+        ? ''
+        : (cells[columnIndex.design] ?? '').trim();
 
     if (!ID_REGEX.test(id)) {
       warnings.push(
@@ -150,8 +159,14 @@ export function parseDependencyTable(
     }
     seenIds.add(id);
 
-    const rowPrefix = id.startsWith('US') ? 'US' : (id[0] as IdPrefix);
-    if (rowPrefix !== id_prefix) {
+    const rowPrefix = id.startsWith('US')
+      ? 'US'
+      : id.startsWith('SC')
+          ? 'SC'
+          : id.startsWith('FL')
+            ? 'FL'
+            : (id[0] ?? '');
+    if (!isAllowedRowPrefix(artifactType, rowPrefix)) {
       warnings.push(
         `dependency_order: row ${id} has prefix '${rowPrefix}' but expected '${id_prefix}' for artifact type '${artifactType}'`,
       );
@@ -184,8 +199,14 @@ export function parseDependencyTable(
       artifact_path = unwrappedArtifact;
     }
 
+    const row: DependencyRow = { id, title, depends_on: [], artifact_path };
+    const kind = parseUiKind(kindCell);
+    if (kind !== undefined) row.kind = kind;
+    const design = parseDesignMode(designCell);
+    if (design !== undefined) row.design = design;
+
     partials.push({
-      row: { id, title, depends_on: [], artifact_path },
+      row,
       rawDependsOn,
     });
   }
@@ -725,13 +746,24 @@ function findTableHeader(
     // causes the match to fail.
     const resolved: Partial<ColumnIndex> = {};
     let valid = true;
-    for (const label of EXPECTED_HEADERS) {
-      const first = cells.indexOf(label);
+    for (const label of REQUIRED_HEADERS) {
+      const first = findHeaderIndex(cells, label);
       if (first === -1) {
         valid = false;
         break;
       }
-      if (cells.indexOf(label, first + 1) !== -1) {
+      if (findHeaderIndex(cells, label, first + 1) !== -1) {
+        valid = false;
+        break;
+      }
+      resolved[label] = first;
+    }
+    if (!valid) continue;
+
+    for (const label of OPTIONAL_HEADERS) {
+      const first = findHeaderIndex(cells, label);
+      if (first === -1) continue;
+      if (findHeaderIndex(cells, label, first + 1) !== -1) {
         valid = false;
         break;
       }
@@ -750,6 +782,45 @@ function findTableHeader(
     };
   }
   return null;
+}
+
+function findHeaderIndex(
+  cells: string[],
+  label: RequiredColumnName | OptionalColumnName,
+  fromIndex = 0,
+): number {
+  for (let i = fromIndex; i < cells.length; i++) {
+    const cell = cells[i];
+    if (cell === undefined) continue;
+    if (label === 'title') {
+      if (cell === 'title' || cell.startsWith('title ')) return i;
+      continue;
+    }
+    if (cell === label) return i;
+  }
+  return -1;
+}
+
+function isAllowedRowPrefix(
+  artifactType: ArtifactType,
+  rowPrefix: string,
+): boolean {
+  if (artifactType === 'spec') {
+    return rowPrefix === 'US' || rowPrefix === 'SC' || rowPrefix === 'FL';
+  }
+  return rowPrefix === ID_PREFIX_BY_TYPE[artifactType];
+}
+
+function parseUiKind(value: string): DependencyRow['kind'] | undefined {
+  if (value === '' || value === EM_DASH) return undefined;
+  if (value === 'screen' || value === 'flow' || value === 'story') return value;
+  return undefined;
+}
+
+function parseDesignMode(value: string): DependencyRow['design'] | undefined {
+  if (value === '' || value === EM_DASH) return undefined;
+  if (value === 'none' || value === 'import' || value === 'brief') return value;
+  return undefined;
 }
 
 /**

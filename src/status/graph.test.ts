@@ -142,6 +142,37 @@ describe('buildDependencyGraph — within-artifact topological layering (AS 10.1
   });
 });
 
+describe('buildDependencyGraph — typed UI ledger dependencies', () => {
+  it('resolves SC, FL, and US dependencies within the same spec ledger', () => {
+    const specPath = 'specs/ui/ui.spec.md';
+    const spec = makeRecord({
+      type: 'spec',
+      path: specPath,
+      status: 'in-progress',
+      dependency_order: {
+        id_prefix: 'US',
+        format: 'table',
+        rows: [
+          row('SC1', [], { kind: 'screen', title: 'Screen' }),
+          row('FL1', ['SC1'], { kind: 'flow', title: 'Flow' }),
+          row('US1', ['FL1'], { kind: 'story', title: 'Backend' }),
+        ],
+      },
+    });
+
+    const graph = buildDependencyGraph([spec]);
+
+    expect(graph.layers).toEqual([
+      { layer: 0, node_ids: [`${specPath}#SC1`] },
+      { layer: 1, node_ids: [`${specPath}#FL1`] },
+      { layer: 2, node_ids: [`${specPath}#US1`] },
+    ]);
+    expect(graph.nodes[`${specPath}#SC1`]?.row.kind).toBe('screen');
+    expect(graph.nodes[`${specPath}#FL1`]?.row.kind).toBe('flow');
+    expect(graph.nodes[`${specPath}#US1`]?.row.kind).toBe('story');
+  });
+});
+
 describe('buildDependencyGraph — determinism (SD-013)', () => {
   it('orders Layer 0 by record discovery order, then by row order within each table', () => {
     // Two records, each with two independent rows. Both records belong

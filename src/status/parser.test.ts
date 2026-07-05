@@ -276,6 +276,46 @@ trailing content
     });
   });
 
+  it('accepts typed UI ledger columns and preserves screen, flow, and story row metadata', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title (→ mark's durable file) | Depends On | Design | Artifact |
+|----|------|-------------------------------|------------|--------|----------|
+| SC1 | screen | AddTitle | — | brief | specs/ui/sc-01-add-title.tasks.md |
+| FL1 | flow | AddTitle flow | SC1 | — | — |
+| US1 | story | Persist title | FL1 | — | specs/ui/01-persist-title.tasks.md |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toEqual([]);
+    expect(result.table.format).toBe('table');
+    expect(result.table.rows).toEqual([
+      {
+        id: 'SC1',
+        kind: 'screen',
+        title: 'AddTitle',
+        depends_on: [],
+        design: 'brief',
+        artifact_path: 'specs/ui/sc-01-add-title.tasks.md',
+      },
+      {
+        id: 'FL1',
+        kind: 'flow',
+        title: 'AddTitle flow',
+        depends_on: ['SC1'],
+        artifact_path: null,
+      },
+      {
+        id: 'US1',
+        kind: 'story',
+        title: 'Persist title',
+        depends_on: ['FL1'],
+        artifact_path: 'specs/ui/01-persist-title.tasks.md',
+      },
+    ]);
+  });
+
   it('coerces backtick-wrapped absolute Artifact paths to null with a warning', () => {
     // Backtick unwrapping must happen before the absolute-path check so
     // a backticked absolute path is still rejected instead of being

@@ -650,6 +650,27 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
     );
   }
 
+  function writeUiLedgerFixture(): void {
+    const uiHeader =
+      '| ID | Kind | Title (→ mark durable file) | Depends On | Design | Artifact |\n' +
+      '|----|------|-----------------------------|------------|--------|----------|';
+    write(
+      'specs/ui/ui.spec.md',
+      `# UI Spec\n\n## Dependency Order\n\n${uiHeader}\n` +
+        '| SC1 | screen | AddTitle screen | — | brief | specs/ui/sc-01-add-title.tasks.md |\n' +
+        '| FL1 | flow | AddTitle flow | SC1 | — | — |\n' +
+        '| US1 | story | Persist title | FL1 | — | specs/ui/01-persist-title.tasks.md |\n',
+    );
+    write(
+      'specs/ui/sc-01-add-title.tasks.md',
+      `# Tasks: AddTitle Screen\n\n## Slice 1: Build\n\n- [x] Done\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Build | — | — |\n`,
+    );
+    write(
+      'specs/ui/01-persist-title.tasks.md',
+      `# Tasks: Persist Title\n\n## Slice 1: Persist\n\n- [ ] Todo\n\n## Dependency Order\n\n${TABLE_HEADER}\n| S1 | Persist | — | — |\n`,
+    );
+  }
+
   // --- AS 10.5: JSON graph populated unconditionally ---
 
   it('AS 10.5: JSON `graph` is populated from buildDependencyGraph (multi-row spec, --all reveals done nodes)', () => {
@@ -697,6 +718,39 @@ describe('statusAction --graph integration (US10 Slice 3)', () => {
       cycles: [],
       dangling_refs: [],
     });
+  });
+
+  it('surfaces typed UI node identity in JSON and human graph output', () => {
+    writeUiLedgerFixture();
+
+    statusAction({ root, format: 'json', all: true });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.graph.nodes['specs/ui/ui.spec.md#SC1']?.row.kind).toBe(
+      'screen',
+    );
+    expect(payload.graph.nodes['specs/ui/ui.spec.md#FL1']?.row.kind).toBe(
+      'flow',
+    );
+    expect(payload.graph.nodes['specs/ui/ui.spec.md#US1']?.row.kind).toBe(
+      'story',
+    );
+    expect(
+      payload.records.find(
+        (record) => record.path === 'specs/ui/fl-01-addtitle-flow.tasks.md',
+      ),
+    ).toMatchObject({
+      virtual: true,
+      status: 'not-started',
+      parent_row_id: 'FL1',
+      parent_row_kind: 'flow',
+    });
+
+    logSpy.mockClear();
+    statusAction({ root, graph: true, all: true });
+    const stdout = captured();
+    expect(stdout).toContain('SC1 screen AddTitle screen');
+    expect(stdout).toContain('FL1 flow AddTitle flow');
+    expect(stdout).toContain('US1 story Persist title');
   });
 
   it('JSON `graph` empty-repo shape under `--all` reports mode `all`', () => {
