@@ -316,6 +316,42 @@ trailing content
     ]);
   });
 
+  it('warns on unrecognized Kind and Design values instead of silently dropping them', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| SC1 | scren | AddTitle | — | breif | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toContain(
+      "dependency_order: row SC1 has unrecognized Kind 'scren' — expected screen, flow, or story; ignored",
+    );
+    expect(result.warnings).toContain(
+      "dependency_order: row SC1 has unrecognized Design 'breif' — expected none, import, or brief; ignored",
+    );
+    // The bad cells are dropped from the row, not carried through.
+    expect(result.table.rows[0]?.kind).toBeUndefined();
+    expect(result.table.rows[0]?.design).toBeUndefined();
+  });
+
+  it('names the full allowed prefix set when a spec row prefix is wrong', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Title | Depends On | Artifact |
+|----|-------|------------|----------|
+| M1 | Wrong prefix | — | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toContain(
+      "dependency_order: row M1 has prefix 'M' but expected one of 'US', 'SC', 'FL' for artifact type 'spec'",
+    );
+  });
+
   it('coerces backtick-wrapped absolute Artifact paths to null with a warning', () => {
     // Backtick unwrapping must happen before the absolute-path check so
     // a backticked absolute path is still rejected instead of being

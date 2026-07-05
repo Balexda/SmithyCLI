@@ -168,7 +168,7 @@ export function parseDependencyTable(
             : (id[0] ?? '');
     if (!isAllowedRowPrefix(artifactType, rowPrefix)) {
       warnings.push(
-        `dependency_order: row ${id} has prefix '${rowPrefix}' but expected '${id_prefix}' for artifact type '${artifactType}'`,
+        `dependency_order: row ${id} has prefix '${rowPrefix}' but expected ${allowedRowPrefixLabel(artifactType)} for artifact type '${artifactType}'`,
       );
     }
 
@@ -201,9 +201,21 @@ export function parseDependencyTable(
 
     const row: DependencyRow = { id, title, depends_on: [], artifact_path };
     const kind = parseUiKind(kindCell);
-    if (kind !== undefined) row.kind = kind;
+    if (kind !== undefined) {
+      row.kind = kind;
+    } else if (isMeaningfulCell(kindCell)) {
+      warnings.push(
+        `dependency_order: row ${id} has unrecognized Kind '${kindCell}' — expected screen, flow, or story; ignored`,
+      );
+    }
     const design = parseDesignMode(designCell);
-    if (design !== undefined) row.design = design;
+    if (design !== undefined) {
+      row.design = design;
+    } else if (isMeaningfulCell(designCell)) {
+      warnings.push(
+        `dependency_order: row ${id} has unrecognized Design '${designCell}' — expected none, import, or brief; ignored`,
+      );
+    }
 
     partials.push({
       row,
@@ -805,10 +817,33 @@ function isAllowedRowPrefix(
   artifactType: ArtifactType,
   rowPrefix: string,
 ): boolean {
-  if (artifactType === 'spec') {
-    return rowPrefix === 'US' || rowPrefix === 'SC' || rowPrefix === 'FL';
-  }
-  return rowPrefix === ID_PREFIX_BY_TYPE[artifactType];
+  return ALLOWED_ROW_PREFIXES[artifactType].includes(rowPrefix);
+}
+
+/**
+ * The row-ID prefixes a given artifact type may carry. `spec` accepts
+ * the typed UI ledger prefixes (`SC`/`FL`) alongside `US`; every other
+ * type is limited to its single canonical prefix.
+ */
+const ALLOWED_ROW_PREFIXES: Record<ArtifactType, readonly string[]> = {
+  rfc: [ID_PREFIX_BY_TYPE.rfc],
+  features: [ID_PREFIX_BY_TYPE.features],
+  spec: ['US', 'SC', 'FL'],
+  tasks: [ID_PREFIX_BY_TYPE.tasks],
+};
+
+function allowedRowPrefixLabel(artifactType: ArtifactType): string {
+  const prefixes = ALLOWED_ROW_PREFIXES[artifactType];
+  if (prefixes.length === 1) return `'${prefixes[0]}'`;
+  return `one of ${prefixes.map((p) => `'${p}'`).join(', ')}`;
+}
+
+/**
+ * True for a cell that carries an author-supplied value worth
+ * validating — non-empty and not the em-dash placeholder.
+ */
+function isMeaningfulCell(value: string): boolean {
+  return value !== '' && value !== EM_DASH;
 }
 
 function parseUiKind(value: string): DependencyRow['kind'] | undefined {
