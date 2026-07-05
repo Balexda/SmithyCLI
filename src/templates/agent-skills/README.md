@@ -389,9 +389,9 @@ artifacts that downstream commands consume.
 |-----|------|----------|-------|
 | `kind` | both | Yes (new) | `backend` or `ui`. Selects the `smithy.mark` authoring path. A missing `kind` on legacy feature maps defaults to `backend`. |
 | `phase` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
-| `design_system` | ui | Yes | Reference to the committed design skill (for example `story-spider-design`); source of truth even when a bundle is present. |
+| `design_system` | ui | Yes | Reference to the committed design skill (for example `story-spider-design`); source of truth even when a bundle is present. A screen with a `bundle` still requires `design_system`. |
 | `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render sets this explicitly; mark copies it into the `Design` cell of each `SC<N>` row. Screens needing distinct modes go in separate features. |
-| `bundle` | ui | No | Repo-relative path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
+| `bundle` | ui | No | Repo-relative path to a visual prototype boundary object, such as a Figma export, Claude Design export, or equivalent visual-tool bundle — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
 | `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. |
@@ -401,11 +401,15 @@ spec (prose delta).
 
 ### Design mode semantics
 
-| `design` | Means |
-|----------|-------|
-| `none` | No visual loop; build from the committed design skill. |
-| `import` | Prototype-first; a bundle is supplied at render and rides forward. |
-| `brief` | Mark-authored durable intent can be handed to a visual tool. |
+`design` is a feature-level key that render sets explicitly and mark copies into
+the `Design` cell of each `SC<N>` row of the UI spec ledger. It is not used by
+the backend spec-triad path. The only valid values are:
+
+| `design` | Means | Bundle behavior |
+|----------|-------|-----------------|
+| `none` | No visual loop; simple pass-through screen work builds from the committed design skill. | No bundle required. |
+| `import` | Prototype-first; a prototype already exists before `mark`. | A bundle may enter at `render`, ride to `forge` as visual source context, and be honored under the conflict rule. Detailed prototype-to-screen/flow derivation belongs to the render import-ingestion story. |
+| `brief` | Mark-authored intent for a visual tool; the `.design.md`/`.flow.md` artifacts are the brief. | A bundle may be attached later; if present, downstream build honors it under the conflict rule. |
 
 ### Phase semantics
 
@@ -508,8 +512,8 @@ choices, deferred bits) colocated with the code so it travels and versions with
 the component.
 
 The full authoring contract — YAML front-matter schema (`id`, `component-path`,
-`design_system`, `bundle`), the rationale-only body rule, the skeleton template,
-a worked `Library.design.md` example, naming decisions, and a review checklist
+`design_system`, optional `bundle`), the rationale-only body rule, the skeleton
+template, a worked `Library.design.md` example, naming decisions, and a review checklist
 — lives in the body-on-demand skill **`smithy.helper-screen-design`**
 (`skills/smithy.helper-screen-design/SKILL.prompt`). Agents lazy-load it via
 `Skill("smithy.helper-screen-design")` when authoring or auditing a screen

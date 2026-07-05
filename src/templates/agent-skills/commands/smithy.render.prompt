@@ -327,7 +327,7 @@ kind: ui
 phase: build
 design_system: <committed design skill, e.g. story-spider-design>
 design: <none|import|brief>
-bundle: <optional visual prototype bundle path, or omit the key>
+bundle: <optional visual prototype boundary object path, or omit the key>
 flag: <feature-flag name gating this screen>
 screens: [<ScreenId>]
 flows: [<FlowId>]
