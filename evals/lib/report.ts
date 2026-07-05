@@ -68,6 +68,7 @@ export function scenarioRunToResult(
     scenario_name: scenario.name,
     status,
     extracted_text: output.extracted_text,
+    tokens: output.tokens,
     duration_ms: output.duration_ms,
     structural_checks: structuralChecks,
   };
@@ -106,10 +107,13 @@ export function buildReport(
   totalDurationMs: number,
 ): EvalReport {
   let passed = 0;
+  const tokens = { input: 0, output: 0 };
   for (const result of results) {
     if (result.status === 'pass') {
       passed += 1;
     }
+    tokens.input += result.tokens.input;
+    tokens.output += result.tokens.output;
   }
   const failed = results.length - passed;
   const overall_status: EvalReport['overall_status'] =
@@ -122,6 +126,7 @@ export function buildReport(
     failed,
     overall_status,
     results: results.slice(),
+    tokens,
     total_duration_ms: totalDurationMs,
   };
 }

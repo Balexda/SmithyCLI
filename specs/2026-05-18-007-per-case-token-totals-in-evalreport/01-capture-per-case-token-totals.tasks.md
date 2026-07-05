@@ -65,7 +65,7 @@
 
 ### Tasks
 
-- [ ] **Copy runner tokens into eval results**
+- [x] **Copy runner tokens into eval results**
 
   Extend `EvalResult` in `evals/lib/types.ts` and update `scenarioRunToResult` in `evals/lib/report.ts` so each result carries the `RunOutput.tokens` value. The copy must be status-independent so AS 1.3 remains true for timeout and error scenarios.
 
@@ -76,7 +76,7 @@
   - Pass, fail, timeout, and error results all preserve token totals.
   - Unit coverage verifies token preservation across status precedence paths.
 
-- [ ] **Aggregate tokens in eval reports**
+- [x] **Aggregate tokens in eval reports**
 
   Extend `EvalReport` and `buildReport` so aggregate input and output counts are summed from per-case `EvalResult.tokens`. Keep the current result ordering, status counts, timestamp behavior, and `formatReport` output stable because User Story 2 owns token rendering.
 

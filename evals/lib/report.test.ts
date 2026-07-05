@@ -224,6 +224,55 @@ describe('scenarioRunToResult', () => {
       expect(result.duration_ms).toBe(9876);
     });
 
+    it('copies token totals from output.tokens', () => {
+      const scenario = makeScenario();
+      const output = makeOutput({ tokens: { input: 123, output: 45 } });
+      const result = scenarioRunToResult(scenario, output, [passingCheck]);
+
+      expect(result.tokens).toEqual({ input: 123, output: 45 });
+    });
+
+    it('preserves token totals across pass, fail, timeout, and error statuses', () => {
+      const cases: Array<{
+        name: string;
+        output: RunOutput;
+        checks: CheckResult[];
+      }> = [
+        {
+          name: 'pass',
+          output: makeOutput({ tokens: { input: 10, output: 1 } }),
+          checks: [passingCheck],
+        },
+        {
+          name: 'fail',
+          output: makeOutput({ tokens: { input: 20, output: 2 } }),
+          checks: [failingCheck],
+        },
+        {
+          name: 'timeout',
+          output: makeOutput({
+            timed_out: true,
+            tokens: { input: 30, output: 3 },
+          }),
+          checks: [passingCheck],
+        },
+        {
+          name: 'error',
+          output: makeOutput({
+            exit_code: 1,
+            tokens: { input: 40, output: 4 },
+          }),
+          checks: [passingCheck],
+        },
+      ];
+
+      for (const c of cases) {
+        const result = scenarioRunToResult(makeScenario(), c.output, c.checks);
+        expect(result.status).toBe(c.name);
+        expect(result.tokens).toEqual(c.output.tokens);
+      }
+    });
+
     it('populates structural_checks from the input array', () => {
       const scenario = makeScenario();
       const output = makeOutput();
@@ -283,6 +332,7 @@ function makeResult(overrides: Partial<EvalResult> = {}): EvalResult {
     scenario_name: 'sample',
     status: 'pass',
     extracted_text: '## Plan\n\nDetails.',
+    tokens: { input: 0, output: 0 },
     duration_ms: 100,
     structural_checks: [passingCheck],
     ...overrides,
@@ -352,6 +402,7 @@ describe('buildReport', () => {
       expect(report.passed).toBe(0);
       expect(report.failed).toBe(0);
       expect(report.results).toEqual([]);
+      expect(report.tokens).toEqual({ input: 0, output: 0 });
       expect(report.total_duration_ms).toBe(0);
       expect(typeof report.timestamp).toBe('string');
     });
@@ -378,6 +429,37 @@ describe('buildReport', () => {
       expect(report.results[0]?.scenario_name).toBe('first');
       expect(report.results[1]?.scenario_name).toBe('second');
       expect(report.results[2]?.scenario_name).toBe('third');
+    });
+
+    it('sums token totals from every included result across mixed statuses', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'a',
+          status: 'pass',
+          tokens: { input: 10, output: 1 },
+        }),
+        makeResult({
+          scenario_name: 'b',
+          status: 'fail',
+          tokens: { input: 20, output: 2 },
+        }),
+        makeResult({
+          scenario_name: 'c',
+          status: 'timeout',
+          tokens: { input: 30, output: 3 },
+          error: 'timed out',
+        }),
+        makeResult({
+          scenario_name: 'd',
+          status: 'error',
+          tokens: { input: 40, output: 4 },
+          error: 'exit 1',
+        }),
+      ];
+
+      const report = buildReport(results, 1000);
+
+      expect(report.tokens).toEqual({ input: 100, output: 10 });
     });
   });
 
