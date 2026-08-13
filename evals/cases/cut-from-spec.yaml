@@ -26,11 +26,15 @@ structural_expectations:
     - '## Specification Debt'
     - '## PR'
   required_patterns:
-    # AS 3.1 / AS 3.2 proxy: cut Phase 1 step 3 reads upstream
-    # `## Specification Debt` and prefixes inherited rows with this literal.
-    # Cross-ref: src/templates/agent-skills/commands/smithy.cut.prompt
+    # AS 3.1 / AS 3.2 proxy: cut Phase 1 step 3 reads the upstream
+    # `## Specification Debt` index table and marks each carried-down row
+    # with an `Origin` naming the parent artifact and its SD id. The
+    # one-shot terminal summary surfaces that marker per debt bullet, which
+    # is the only inheritance signal visible in stdout — the index table
+    # itself lands in the tasks file on disk, which this harness does not
+    # read. Cross-ref: src/templates/agent-skills/commands/smithy.cut.prompt
     # Phase 1 step 3, "Inherit upstream debt".
-    - 'inherited from spec:'
+    - 'Origin: spec:SD-[0-9]{3}'
     # One-shot summary marker from `one-shot-output.md`.
     - '\*\*Spec folder\*\*'
     # Accept either successful PR creation or the documented auth/network

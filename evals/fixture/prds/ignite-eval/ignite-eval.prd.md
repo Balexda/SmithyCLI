@@ -119,11 +119,28 @@ warranted because the differentiator is UX-shape, not capability.
 
 ## Specification Debt
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | Windows support is unclear — symlink semantics differ enough that a first cut should likely target macOS + Linux only and explicitly defer Windows. | Functional Scope | High | High | open | — |
-| SD-002 | The manifest schema (`dotfiles.toml`) is sketched but not specified — exact key names, conflict-resolution semantics, and whether per-host overrides are first-class fields all need definition. | Domain & Data Model | High | Medium | open | — |
-| SD-003 | Behavior when a target symlink already exists and points elsewhere is undefined — overwrite-with-backup vs. refuse-and-warn vs. interactive-prompt all have advocates. | Edge Cases | Medium | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | Windows support scope | Functional Scope | High | High | local |
+| SD-002 | Manifest schema undefined | Domain & Data Model | High | Medium | local |
+| SD-003 | Existing-symlink collision policy | Edge Cases | Medium | Medium | local |
+
+### SD-001 — Windows support scope
+
+Windows support is unclear — symlink semantics differ enough that a first cut
+should likely target macOS + Linux only and explicitly defer Windows.
+
+### SD-002 — Manifest schema undefined
+
+The manifest schema (`dotfiles.toml`) is sketched but not specified — exact key
+names, conflict-resolution semantics, and whether per-host overrides are
+first-class fields all need definition.
+
+### SD-003 — Existing-symlink collision policy
+
+Behavior when a target symlink already exists and points elsewhere is undefined
+— unresolved choice between overwrite-with-backup, refuse-and-warn, and
+interactive-prompt.
 
 ## Open Questions
 

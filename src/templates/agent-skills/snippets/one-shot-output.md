@@ -28,8 +28,8 @@ was unambiguous.`)
 
 <count> items deferred — see `## Specification Debt` in the artifact.
 
-- <debt item 1 description> [Impact: <level>]
-- <debt item 2 description> [Impact: <level>]
+- <debt item 1 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
+- <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
 (If clarify returned zero debt items, write: `None — no specification debt
@@ -58,8 +58,12 @@ was recorded.`)
   array. Preserve the `[Critical Assumption]` annotation on any item whose
   severity was Critical.
 - **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Impact level. The leading count MUST
-  match the number of bullets rendered. Each bullet's description must
+  `debt_items` array, including its Title, Impact level, and Origin. The
+  leading count MUST match the number of bullets rendered. `Origin` is
+  `local` for items discovered while authoring this artifact, or
+  `<parent-kind>:SD-NNN` for items carried down from a parent artifact
+  (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
+  was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
   between X and Y" — and must come straight from `debt_items` without
   rewording. Do not synthesize bullets here from requirements,

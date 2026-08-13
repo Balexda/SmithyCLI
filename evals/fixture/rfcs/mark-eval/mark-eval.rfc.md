@@ -71,11 +71,11 @@ those cases lead to different support conversations.
 
 ## Open Questions
 
-- None — all ambiguities resolved.
+_None — no specification debt was recorded._
 
 ## Specification Debt
 
-- None — all ambiguities resolved.
+_None — no specification debt was recorded._
 
 ## Milestones
 

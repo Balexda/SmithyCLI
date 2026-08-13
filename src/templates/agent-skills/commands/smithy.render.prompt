@@ -141,12 +141,13 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                      |
 
 For each Low-confidence finding routed to debt, append a new row to the
-feature map's `## Specification Debt` table with the next available `SD-NNN`
+feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever refine or prior clarify passes
-already wrote — do not reset). Use the finding's `description` for the
-Description column, set `Source Category` to `plan-review:<finding category>`
+already wrote — do not reset). Use the finding's `description` as the body of a new
+`### SD-NNN — <Title>` detail section, derive a `Title` slug of 40
+characters or fewer from it, set `Source Category` to `plan-review:<finding category>`
 (e.g., `plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+confidence into Confidence, and set `Origin` to `local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The Phase 0c commit below captures both the refine diff
@@ -360,14 +361,7 @@ emitting/updating the Maestro flow + flow.md for each flow above.>
 <!-- Repeat for each feature. backend features carry only `kind: backend`. -->
 
 <!-- Specification Debt appears here for templates without ## Assumptions sections -->
-## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
-
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
-
-_If no debt items, write: "None — all ambiguities resolved."_
+{{>spec-debt-section}}
 
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
@@ -422,12 +416,13 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                      |
 
 For each Low-confidence finding routed to debt, append a new row to the
-feature map's `## Specification Debt` table with the next available `SD-NNN`
+feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever clarify already wrote in Phase 2
-— do not reset). Use the finding's `description` for the Description column,
-set `Source Category` to `plan-review:<finding category>` (e.g.,
+— do not reset). Use the finding's `description` as the body of a new
+`### SD-NNN — <Title>` detail section, derive a `Title` slug of 40
+characters or fewer from it, set `Source Category` to `plan-review:<finding category>` (e.g.,
 `plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+confidence into Confidence, and set `Origin` to `local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The commit below captures both the original feature map
