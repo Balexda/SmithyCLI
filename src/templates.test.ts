@@ -551,7 +551,7 @@ describe('feature-kinds snippet', () => {
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
-    expect(byCategory.commands).toHaveLength(12);
+    expect(byCategory.commands).toHaveLength(13);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(14);
     expect(byCategory.skills).toHaveLength(8);
@@ -580,6 +580,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(commands).toContain('smithy.render.md');
     expect(commands).toContain('smithy.fix.md');
     expect(commands).toContain('smithy.orders.md');
+    expect(commands).toContain('smithy.resolve.md');
     expect(commands).toContain('smithy.spark.md');
     expect(commands).toContain('smithy.engrave.md');
     expect(commands).toContain('smithy.persona.md');
