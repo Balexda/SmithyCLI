@@ -63,6 +63,67 @@ describe('deploy', () => {
     expect(fs.existsSync(rulesPath)).toBe(false);
   });
 
+  describe('external artifact store rules', () => {
+    const rules = async (artifactsRoot: string): Promise<string> => {
+      await deploy(tmpDir, true, artifactsRoot);
+      return fs.readFileSync(
+        path.join(tmpDir, '.codex', 'rules', 'default.rules'),
+        'utf8',
+      );
+    };
+
+    it('grants the resolved store path, not a wildcard', async () => {
+      // Codex prefix rules have no wildcard segment — `buildPrefixPattern`
+      // strips a trailing `*` and then tokens match exactly. Emitting the
+      // Claude-style `~/.smithy/repos/*` would collapse to the literal token
+      // `~/.smithy/repos/`, which matches no real command. The deployer
+      // already knows the store, so it grants that path directly.
+      const content = await rules('~/.smithy/repos/widget/');
+      expect(content).toContain(
+        'prefix_rule(pattern=["git","-C","~/.smithy/repos/widget/","add","-A"], decision="allow")',
+      );
+      expect(content).toContain(
+        'prefix_rule(pattern=["git","-C","~/.smithy/repos/widget/","commit","--no-gpg-sign","-m"], decision="allow")',
+      );
+    });
+
+    it('emits no rule carrying a bare store-namespace token', async () => {
+      // The mangled shape this exists to prevent: a rule that looks like it
+      // grants store access but can never match.
+      const content = await rules('~/.smithy/repos/widget/');
+      expect(content).not.toContain('"~/.smithy/repos/"');
+      expect(content).not.toContain('"~/.smithy/projects/"');
+    });
+
+    it('grants the shared project store when that is the resolved root', async () => {
+      const content = await rules('~/.smithy/projects/default/');
+      expect(content).toContain(
+        'prefix_rule(pattern=["git","-C","~/.smithy/projects/default/","add","-A"], decision="allow")',
+      );
+    });
+
+    it('emits no store rules in repo mode', async () => {
+      // Nothing to grant: artifacts live in the repo and ride its history.
+      const content = await rules('');
+      expect(content).not.toContain('~/.smithy/');
+      expect(content).not.toContain('"-C"');
+    });
+
+    it('never grants push, reset, clean, or checkout against the store', async () => {
+      const content = await rules('~/.smithy/repos/widget/');
+      const storeRules = content
+        .split('\n')
+        .filter((line) => line.includes('"-C"'));
+      expect(storeRules.length).toBeGreaterThan(0);
+      for (const line of storeRules) {
+        expect(line).not.toContain('"push"');
+        expect(line).not.toContain('"reset"');
+        expect(line).not.toContain('"clean"');
+        expect(line).not.toContain('"checkout"');
+      }
+    });
+  });
+
   it('returns deployed file paths', async () => {
     const files = await deploy(tmpDir, false);
     expect(files.length).toBeGreaterThan(0);

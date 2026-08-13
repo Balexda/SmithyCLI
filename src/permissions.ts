@@ -23,29 +23,39 @@ export const platforms: Record<PlatformPackageManager, { label: string; permissi
 };
 
 /**
- * The `git -C <store>` argument forms auto-allowed against an external
- * artifact store, generated for both the trailing-slash and bare spellings of
- * `<base>/<store-name>`. See the `-C` entry under `git` below for why both
- * are needed.
+ * The git operations auto-allowed against an external artifact store, as
+ * argument strings following `git -C <store>`.
  *
  * Deliberately read-and-commit only. `push`, `reset`, `clean`, and `checkout`
  * are absent: the store's history is the whole point of git-backing it, and
  * whether it syncs to a remote is the user's decision.
+ *
+ * Shared across agents on purpose. Claude and Codex express these very
+ * differently — Claude takes wildcard command strings, while Codex needs
+ * exact token prefixes built from the resolved store path (see
+ * `buildStoreRules` in `./agents/codex.ts`) — and the one thing that must
+ * not diverge between them is *which* operations an agent may run unattended.
+ */
+export const STORE_GIT_ARGS = [
+  'add -A',
+  'add *',
+  'commit -m *',
+  'commit --no-gpg-sign -m *',
+  'status',
+  'status -s',
+  'log --oneline *',
+  'diff *',
+  'show *',
+] as const;
+
+/**
+ * The `git -C <store>` permission strings for one store namespace, generated
+ * for both the trailing-slash and bare spellings of `<base>/<store-name>`.
+ * See the `-C` entry under `git` below for why both are needed.
  */
 function storeGitPermissions(base: string): string[] {
-  const args = [
-    'add -A',
-    'add *',
-    'commit -m *',
-    'commit --no-gpg-sign -m *',
-    'status',
-    'status -s',
-    'log --oneline *',
-    'diff *',
-    'show *',
-  ];
   return [`${base}/*`, `${base}/*/`].flatMap((prefix) =>
-    args.map((arg) => `${prefix} ${arg}`),
+    STORE_GIT_ARGS.map((arg) => `${prefix} ${arg}`),
   );
 }
 

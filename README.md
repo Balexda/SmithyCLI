@@ -46,6 +46,8 @@ Where an external store lands depends on whether you ran `smithy init` inside a 
 - `<repoKey>` is **worktree-stable**. It's derived from git's shared git-common-dir (`git rev-parse --git-common-dir`) rather than the working-directory name, so every linked worktree of a repo *and* its main checkout resolve to the same key and share one store. `smithy status` therefore reports identical, repo-keyed paths no matter which worktree you run it from. When git can't identify the repo, Smithy falls back to the `origin` remote name, then the directory name. The key is always sanitized to a single filesystem-safe path segment.
 - `projects/default/` is the store for planning that isn't anchored to a single repo — an RFC spanning several services, or work started from a scratch directory. A repo-keyed store can't serve that case: outside a repo the key would fall back to whatever folder you happened to be standing in, and the store would move the moment you changed directories.
 
+> **Known limitation.** Running Smithy from outside a git repo, artifact authoring and `smithy status` work against `projects/default/`, but the commands that finish by opening a pull request — `smithy.strike` and `smithy.ignite` — will fail at that step, because they commit, push, and open the PR against a repo that isn't there. Use them from inside a member repo for now.
+
 ### Discovery
 
 `smithy status` finds artifacts by trying each store in turn and keeping the first that has any:
