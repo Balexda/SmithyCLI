@@ -156,7 +156,7 @@ The section is a **narrow index table plus per-item detail sections**:
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
 | SD-001 | Health endpoint path not pinned | Functional Scope | Medium | Medium | local |
-| SD-002 | Windows symlink semantics | Non-Functional Quality | High | Low | spec:SD-007 |
+| SD-002 | Windows symlink semantics | Non-Functional Quality | High | Low | spec:SD-002 |
 
 ### SD-001 — Health endpoint path not pinned
 
@@ -166,7 +166,7 @@ second avoids a new public path but couples liveness to an internal contract.
 
 ### Resolved
 
-#### SD-000 — Webhook transport
+#### SD-003 — Webhook transport
 
 **Question:** Whether webhook delivery must support HTTPS-only endpoints.
 
@@ -177,7 +177,7 @@ second avoids a new public path but couples liveness to an internal contract.
 
 | Column | Rule |
 |--------|------|
-| **`ID`** | `SD-` followed by a zero-padded three-digit integer. Matches `^SD-[0-9]{3}$`. Unique within the artifact, sequential from `SD-001`, never reused and never skipped. An item carried down from a parent keeps the parent's ID verbatim; the artifact's own new items continue numbering after the highest carried-down ID. |
+| **`ID`** | `SD-` followed by a zero-padded three-digit integer. Matches `^SD-[0-9]{3}$`. Unique within the artifact and never reused — resolving an item retires its ID rather than freeing it. An artifact that authors all its own debt numbers sequentially from `SD-001`. An item carried down from a parent **keeps the parent's ID verbatim**, and the artifact's own new items take the next free number above the highest ID already present. Gaps are therefore normal in an artifact that inherits, and a row whose ID disagrees with the ID in its own `Origin` means something renumbered a carried-down item. |
 | **`Title`** | A short slug naming the unresolved choice — **40 characters or fewer**, roughly 4–7 words. Not a sentence, and not the question itself; the question lives in the detail section. This budget is what keeps the index narrow — without it the column degenerates into the prose column this format exists to remove. |
 | **`Source Category`** | Open vocabulary, not an enum. Core values: `Functional Scope`, `Integration`, `Interaction & UX`, `Non-Functional Quality`, `Edge Cases`, `Scope Edges`, `Domain & Data Model`, `Testing Strategy`, `Technical Risk`, `Constraints`. Findings routed from plan-review use the `plan-review:<finding category>` namespace. New values are permitted when no core value fits; keep them to 30 characters or fewer. |
 | **`Impact`** | Closed enum: `Critical` / `High` / `Medium` / `Low`. `Important` is drift — reject it. |
@@ -219,8 +219,11 @@ both are structural:
 
 ### Rules that apply at every level
 
-- **The empty state is exactly `None — no specification debt was recorded.`** —
-  no table, no detail sections, no `### Resolved` subsection.
+- **The empty state is exactly one italic line** — `_None — no specification
+  debt was recorded._` — with no table, no detail sections, and no
+  `### Resolved` subsection. Write the literal, not a paraphrase and not a
+  quoted copy of it. (The terminal one-shot summary uses the same sentence
+  without the italic markers; that is a different surface.)
 - **Never put an unescaped `|` inside a table cell.** Pipes belong in detail
   prose. An unescaped pipe silently shifts every column to its right.
 - **`## Specification Debt` is the only home for unresolved uncertainty.** No

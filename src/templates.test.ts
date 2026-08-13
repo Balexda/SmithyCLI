@@ -3135,6 +3135,50 @@ describe('getComposedTemplates', () => {
     expect(cmd).toContain('None — no specification debt was recorded.');
   });
 
+  it.each([
+    ['smithy.strike.md'],
+    ['smithy.mark.md'],
+    ['smithy.cut.md'],
+    ['smithy.render.md'],
+    ['smithy.ignite.md'],
+  ])('%s maps review severity into the Impact enum instead of copying it', file => {
+    const cmd = composed.commands.get(file)!;
+    expect(cmd).toBeDefined();
+    // Review severities are Critical/Important/Minor (review-protocol), but
+    // Impact admits only Critical/High/Medium/Low. Copying verbatim is how
+    // `Important` ended up in 12 Impact cells across this repo's artifacts —
+    // values plan-review's own debt lint now treats as malformed.
+    expect(cmd).not.toContain('copy severity into Impact');
+    expect(cmd).toContain('`Important` becomes `High`');
+  });
+
+  it.each([
+    ['smithy.strike.md'],
+    ['smithy.mark.md'],
+    ['smithy.cut.md'],
+    ['smithy.render.md'],
+    ['smithy.ignite.md'],
+  ])('%s routes plan-review findings into a detail section, not a column', file => {
+    const cmd = composed.commands.get(file)!;
+    expect(cmd).toBeDefined();
+    // There is no Description column any more; a finding's prose belongs in
+    // the item's detail section, and the row needs a Title derived from it.
+    expect(cmd).not.toContain('Description column');
+    // Prose wraps across lines in these templates, so match on collapsed
+    // whitespace rather than a fixed line break.
+    expect(cmd.replace(/\s+/g, ' ')).toContain('`### SD-NNN — <Title>` detail section');
+    expect(cmd.replace(/\s+/g, ' ')).toContain('derive a `Title` slug of 40 characters or fewer');
+  });
+
+  it('cut distinguishes a legitimately empty upstream debt section from a broken one', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    // An empty parent is the expected outcome, not a parse failure — warning
+    // on it would cry wolf on most specs.
+    expect(cut).toContain('legitimately empty is not an error');
+    expect(cut).toMatch(/absent entirely\*\* or its index table is\s+\*\*malformed\*\*/);
+  });
+
   it('cut carries debt provenance as an Origin field, not a description prefix', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();

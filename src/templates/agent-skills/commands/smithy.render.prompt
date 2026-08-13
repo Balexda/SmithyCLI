@@ -143,11 +143,13 @@ table:
 For each Low-confidence finding routed to debt, append a new row to the
 feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever refine or prior clarify passes
-already wrote — do not reset). Use the finding's `description` as the body of a new
-`### SD-NNN — <Title>` detail section, derive a `Title` slug of 40
-characters or fewer from it, set `Source Category` to `plan-review:<finding category>`
-(e.g., `plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, and set `Origin` to `local`.
+already wrote — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The Phase 0c commit below captures both the refine diff
@@ -418,11 +420,13 @@ table from the contracts:
 For each Low-confidence finding routed to debt, append a new row to the
 feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever clarify already wrote in Phase 2
-— do not reset). Use the finding's `description` as the body of a new
-`### SD-NNN — <Title>` detail section, derive a `Title` slug of 40
-characters or fewer from it, set `Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, and set `Origin` to `local`.
+— do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The commit below captures both the original feature map

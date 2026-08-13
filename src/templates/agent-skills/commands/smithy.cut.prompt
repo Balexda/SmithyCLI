@@ -96,11 +96,13 @@ table:
 For each Low-confidence finding routed to debt, append a new row to the
 tasks file's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever the tasks file already contains,
-including debt inherited from the spec — do not reset). Use the finding's
-`description` for the Description column, set `Source Category` to
-`plan-review:<finding category>` (e.g., `plan-review:Internal
-contradiction`), copy severity into Impact and confidence into Confidence,
-and set `Origin` to `local`.
+including debt inherited from the spec — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the tasks file in place using the
 `proposed_fix`. The Phase 0c commit below captures both the refine diff and
@@ -203,12 +205,19 @@ Phase 0).
    `**Source**:` header. This is what keeps one spec's debt from being
    duplicated in full into every tasks file cut generates.
 
-   If the upstream `## Specification Debt` section is absent, empty, or its
-   index table is malformed, treat this as a non-blocking warning: append an
-   italic note directly below the `## Specification Debt` heading and above
-   the index table: `_Upstream spec debt could not be parsed — inheritance
-   skipped._` This keeps the warning outside the table so it does not break
-   the structured row format.
+   **An upstream section that is legitimately empty is not an error.** If the
+   spec's `## Specification Debt` section holds the empty-state line
+   (`_None — no specification debt was recorded._`) or an index table with no
+   rows, carry down zero rows and say nothing — that is the common, expected
+   outcome, and it means the spec recorded no debt, not that anything failed.
+
+   Only when the section is **absent entirely** or its index table is
+   **malformed** (missing or reordered columns, rows whose cells do not line
+   up) treat it as a non-blocking warning: append an italic note directly
+   below the `## Specification Debt` heading and above the index table:
+   `_Upstream spec debt could not be parsed — inheritance skipped._` This
+   keeps the warning outside the table so it does not break the structured
+   row format.
 4. Extract the target user story — its title, acceptance scenarios, priority,
    and any FRs that trace to it.
 5. Derive the **story slug** — a short kebab-case name from the user story
@@ -625,10 +634,13 @@ For each Low-confidence finding routed to debt, append a new row to the
 tasks file's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever the tasks file already
 contains, including debt inherited from the spec in Phase 1 and new items
-from cut's own clarify run — do not reset). Use the finding's `description`
-for the Description column, set `Source Category` to `plan-review:<finding
-category>` (e.g., `plan-review:Internal contradiction`), copy severity into
-Impact and confidence into Confidence, and set `Origin` to `local`.
+from cut's own clarify run — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the tasks file in place using the
 `proposed_fix`. The commit below captures both the original tasks file and

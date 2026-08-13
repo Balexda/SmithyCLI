@@ -14,7 +14,7 @@ sentences. Never a directive.>
 
 ### Resolved
 
-#### SD-000 — <Title>
+#### SD-003 — <Title>
 
 **Question:** <the open question this item recorded>
 
@@ -24,7 +24,11 @@ _`Title` is a short slug (40 characters or fewer) — the full statement lives i
 the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
 detail section for every row whose `Origin` is `local`; rows carried down from a
 parent artifact get an index row only, because their prose lives in the parent.
-Never put an unescaped `|` in a table cell — pipes belong in detail prose. Omit
-the `### Resolved` subsection entirely when nothing has been resolved. If there
-are no debt items at all, replace this whole section body with:
-"None — no specification debt was recorded."_
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
