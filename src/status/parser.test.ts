@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 // Import through the `./index.js` barrel — that is the stable public
 // surface downstream modules consume, and these tests double as an
 // assertion that the barrel re-exports the parser correctly.
-import { parseArtifact, parseDependencyTable, parseFeatures } from './index.js';
+import {
+  extractImplementationRepo,
+  parseArtifact,
+  parseDependencyTable,
+  parseFeatures,
+} from './index.js';
 
 const featureWarnings = (warnings: string[]): string[] =>
   warnings.filter((w) => w.startsWith('feature_'));
@@ -900,5 +905,221 @@ Just prose.
   it('omits slices on non-tasks records', () => {
     const record = parseArtifact('specs/foo/a.spec.md', '# Spec\n');
     expect(record.slices).toBeUndefined();
+  });
+});
+
+const repoWarnings = (warnings: string[]): string[] =>
+  warnings.filter((w) => w.startsWith('implementation_repo:'));
+
+describe('extractImplementationRepo', () => {
+  it('reads a backticked declaration and ignores trailing narrative', () => {
+    const parsed = extractImplementationRepo(
+      '**Implementation repo**: `story-spider` — the mobile client\n',
+    );
+    expect(parsed).toEqual({ value: 'story-spider', error: null });
+  });
+
+  it('accepts a bare single token and an `owner/repo` name', () => {
+    expect(extractImplementationRepo('**Implementation repo**: story-spider')).toEqual(
+      { value: 'story-spider', error: null },
+    );
+    expect(
+      extractImplementationRepo('**Implementation repo**: `balexda/smithycli`'),
+    ).toEqual({ value: 'balexda/smithycli', error: null });
+  });
+
+  it('matches the label case-insensitively and tolerates leading whitespace', () => {
+    expect(
+      extractImplementationRepo('  **Implementation Repo**:   `foo`'),
+    ).toEqual({ value: 'foo', error: null });
+  });
+
+  it('reports no declaration and no error when the header is absent', () => {
+    // The load-bearing case: every tasks file authored before this field
+    // existed lands here, and must not be treated as broken.
+    expect(extractImplementationRepo('# Tasks\n\n**Story Number**: 03\n')).toEqual({
+      value: null,
+      error: null,
+    });
+  });
+
+  it.each([
+    ['empty value', '**Implementation repo**:', 'declares an empty repo'],
+    ['empty backticks', '**Implementation repo**: ``', 'declares an empty repo'],
+    [
+      'unterminated backtick',
+      '**Implementation repo**: `story-spider',
+      'has an unterminated backtick',
+    ],
+    [
+      'comma-separated list',
+      '**Implementation repo**: `story-spider,smithycli`',
+      'declares more than one repo',
+    ],
+    [
+      'space-separated list',
+      '**Implementation repo**: story-spider smithycli',
+      'declares more than one repo',
+    ],
+    [
+      'absolute path',
+      '**Implementation repo**: `/home/user/story-spider`',
+      'declares a path',
+    ],
+    [
+      'traversing path',
+      '**Implementation repo**: `../story-spider`',
+      'declares a path',
+    ],
+    [
+      'nested path',
+      '**Implementation repo**: `work/repos/story-spider`',
+      'declares a path',
+    ],
+  ])('rejects a %s', (_label, markdown, expectedError) => {
+    const parsed = extractImplementationRepo(markdown);
+    expect(parsed.value).toBeNull();
+    expect(parsed.error).toContain(expectedError);
+  });
+});
+
+describe('parseArtifact — implementation repo', () => {
+  const tasksWithHeader = `# Tasks: Demo
+
+**Source**: \`specs/foo/demo.spec.md\` — User Story 3
+**Implementation repo**: \`story-spider\`
+**Story Number**: 03
+
+## Slice 1: Producer
+
+- [x] a
+
+## Slice 2: Consumer
+
+**Repo**: \`story-spider-api\`
+
+- [ ] b
+`;
+
+  it('records the declared header repo and marks it as declared', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.repo).toBe('story-spider');
+    expect(record.repo_declared).toBe(true);
+    expect(repoWarnings(record.warnings)).toEqual([]);
+  });
+
+  it('inherits the header on slices without an override and honors the override', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Producer', status: 'done', repo: 'story-spider' },
+      {
+        id: 'S2',
+        title: 'Consumer',
+        status: 'not-started',
+        repo: 'story-spider-api',
+      },
+    ]);
+  });
+
+  it('does not count a `**Repo**:` line as a task checkbox', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.total).toBe(2);
+    expect(record.completed).toBe(1);
+  });
+
+  it('leaves repo unset and warns nothing when no declaration exists', () => {
+    // Legacy artifacts: the caller (`applyDefaultRepo`) supplies the
+    // invoking repo, so the parser must not manufacture a value or a
+    // warning here.
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      '# Tasks\n\n## Slice 1: Foo\n\n- [ ] a\n',
+    );
+    expect(record.repo).toBeUndefined();
+    expect(record.repo_declared).toBeUndefined();
+    expect(record.slices?.[0]?.repo).toBeUndefined();
+    expect(repoWarnings(record.warnings)).toEqual([]);
+  });
+
+  it('warns on a malformed header and leaves every slice repo unresolved', () => {
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      '# Tasks\n\n**Implementation repo**: `a, b`\n\n## Slice 1: Foo\n\n- [ ] a\n',
+    );
+    expect(record.repo).toBeUndefined();
+    expect(repoWarnings(record.warnings)).toHaveLength(1);
+    expect(record.warnings[0]).toContain('header declares more than one repo');
+    expect(record.slices?.[0]?.repo).toBeUndefined();
+  });
+
+  it('warns on a malformed slice override without falling back to the header', () => {
+    // Falling back would hide the ambiguity behind a plausible-looking
+    // repo, which is exactly the failure this field exists to surface.
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      `# Tasks
+
+**Implementation repo**: \`story-spider\`
+
+## Slice 1: Foo
+
+**Repo**: \`a b\`
+
+- [ ] a
+`,
+    );
+    expect(record.repo).toBe('story-spider');
+    expect(record.slices?.[0]?.repo).toBeUndefined();
+    expect(record.warnings[0]).toContain(
+      'implementation_repo: slice S1 declares more than one repo',
+    );
+  });
+
+  it('warns when a slice declares two `**Repo**:` lines', () => {
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      `# Tasks
+
+## Slice 1: Foo
+
+**Repo**: \`a\`
+**Repo**: \`b\`
+
+- [ ] a
+`,
+    );
+    expect(record.slices?.[0]?.repo).toBeUndefined();
+    expect(record.warnings[0]).toContain('slice S1 declares 2');
+  });
+
+  it('scopes a `**Repo**:` line to its own slice', () => {
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      `# Tasks
+
+**Implementation repo**: \`base\`
+
+## Slice 1: Foo
+
+**Repo**: \`other\`
+
+- [ ] a
+
+## Slice 2: Bar
+
+- [ ] b
+`,
+    );
+    expect(record.slices?.[0]?.repo).toBe('other');
+    expect(record.slices?.[1]?.repo).toBe('base');
+  });
+
+  it('ignores an implementation-repo header on a non-tasks artifact', () => {
+    const record = parseArtifact(
+      'specs/foo/demo.spec.md',
+      '# Spec\n\n**Implementation repo**: `story-spider`\n',
+    );
+    expect(record.repo).toBeUndefined();
+    expect(repoWarnings(record.warnings)).toEqual([]);
   });
 });

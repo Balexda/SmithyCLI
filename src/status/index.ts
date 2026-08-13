@@ -8,12 +8,15 @@
 
 export * from './types.js';
 export {
+  extractImplementationRepo,
   extractSourceHeader,
   parseArtifact,
   parseDependencyTable,
   parseFeatures,
   type ParsedDependencyTable,
+  type ParsedRepoDeclaration,
 } from './parser.js';
+export { applyDefaultRepo } from './repo.js';
 export { classifyRecord } from './classifier.js';
 export { formatNextAction, suggestNextAction } from './suggester.js';
 export { scan } from './scanner.js';

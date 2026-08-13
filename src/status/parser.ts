@@ -40,6 +40,25 @@ const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
 /**
+ * The tasks-file header field declaring which repository the story's
+ * slices are implemented in, and the per-slice override that wins over
+ * it for a single `## Slice N:` section. Both are matched
+ * case-insensitively so `**Implementation Repo**` parses like
+ * `**Implementation repo**`.
+ */
+const IMPLEMENTATION_REPO_REGEX = /^\s*\*\*Implementation repo\*\*\s*:\s*(.*)$/im;
+const SLICE_REPO_REGEX = /^\s*\*\*Repo\*\*\s*:\s*(.*)$/i;
+
+/**
+ * Prefix shared by every warning about a malformed implementation-repo
+ * declaration. Load-bearing: `classifyRecord` keys off it to resolve the
+ * owning tasks record to `unknown`, so a slice nobody can route to a
+ * worktree surfaces at status time rather than at forge time. Do not
+ * alter it.
+ */
+const REPO_WARNING_PREFIX = 'implementation_repo: ';
+
+/**
  * Warning emitted when a `## Dependency Order` section uses the legacy
  * checkbox-list format instead of the canonical 4-column table. FR-028
  * requires this text to point authors at the canonical schema
@@ -54,6 +73,33 @@ const FORMAT_LEGACY_WARNING =
 const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
 type ColumnName = (typeof EXPECTED_HEADERS)[number];
 type ColumnIndex = Record<ColumnName, number>;
+
+/**
+ * A {@link SliceSummary} plus the raw, unvalidated `**Repo**:` values
+ * found in the slice's body. Internal to this module: `parseArtifact`
+ * validates them, folds in the header default, and hands the caller a
+ * plain {@link SliceSummary} carrying only the resolved `repo`.
+ *
+ * `rawRepos` is a list rather than a single value so a slice that
+ * declares the field twice is reported as ambiguous instead of silently
+ * resolving to whichever line came first.
+ */
+interface ParsedSliceSummary extends SliceSummary {
+  rawRepos: string[];
+}
+
+/**
+ * Result of reading a repo declaration. Exactly one of the two fields is
+ * meaningful at a time: `error` is a human-readable clause (appended to
+ * {@link REPO_WARNING_PREFIX} plus a subject by the caller) when the
+ * declaration is present but unusable, and `value` is the normalized
+ * repo name when it is usable. Both null means "no declaration", which
+ * is a legitimate state — not an error.
+ */
+export interface ParsedRepoDeclaration {
+  value: string | null;
+  error: string | null;
+}
 
 /**
  * Parse the `## Dependency Order` section of a Smithy artifact.
@@ -290,11 +336,42 @@ export function parseArtifact(
   };
 
   if (type === 'tasks') {
+    // The file's own `**Implementation repo**:` declaration, if any. A
+    // MISSING declaration is not an error — the scan's caller fills it in
+    // with the repo `smithy status` was invoked in (see `applyDefaultRepo`
+    // in `src/status/repo.ts`), which is what every artifact authored
+    // before this field existed meant anyway. Only a malformed value
+    // warns, because a value nobody can resolve to one repo cannot be
+    // routed to a worktree.
+    let headerRepo: string | undefined;
+    try {
+      const header = extractImplementationRepo(content);
+      if (header.error !== null) {
+        warnings.push(`${REPO_WARNING_PREFIX}header ${header.error}`);
+      } else if (header.value !== null) {
+        headerRepo = header.value;
+        record.repo = header.value;
+        record.repo_declared = true;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(
+        `parser: unexpected error while reading implementation repo — ${message}`,
+      );
+    }
+
     try {
       const counts = countSlices(content);
       record.completed = counts.completed;
       record.total = counts.total;
-      record.slices = counts.slices;
+      record.slices = counts.slices.map((parsed) => {
+        const { rawRepos, ...slice } = parsed;
+        // Per-slice precedence: the slice's own `**Repo**:` override wins,
+        // else the header. The third fallback (the invoking repo) is
+        // applied by the caller, which is the only layer that knows it.
+        const resolved = resolveSliceRepo(slice.id, rawRepos, headerRepo, warnings);
+        return resolved === undefined ? slice : { ...slice, repo: resolved };
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       warnings.push(
@@ -372,11 +449,15 @@ function filenameStem(filePath: string): string {
  * an empty slice is treated as `not-started` rather than complete.
  * Checkboxes outside a `## Slice <N>:` section (e.g., `## Dependency
  * Order`, appendices) are ignored when resolving per-slice completion.
+ *
+ * Each summary also carries the raw `**Repo**:` lines found in its slice
+ * body, unvalidated — `parseArtifact` resolves them against the file
+ * header. A `**Repo**:` line is never counted as a task checkbox.
  */
 function countSlices(content: string): {
   completed: number;
   total: number;
-  slices: SliceSummary[];
+  slices: ParsedSliceSummary[];
 } {
   const lines = content.split('\n');
   const sliceHeadingRegex = /^##\s+Slice\s+(\d+):\s*(.*)$/;
@@ -390,7 +471,8 @@ function countSlices(content: string): {
   let sliceCheckboxCompleted = 0;
   let currentSliceId: string | null = null;
   let currentSliceTitle = '';
-  const slices: SliceSummary[] = [];
+  let currentSliceRepos: string[] = [];
+  const slices: ParsedSliceSummary[] = [];
 
   const finalizeSlice = (): void => {
     if (!insideSlice) return;
@@ -412,6 +494,7 @@ function countSlices(content: string): {
         id: currentSliceId,
         title: currentSliceTitle,
         status,
+        rawRepos: currentSliceRepos,
       });
     }
   };
@@ -423,6 +506,7 @@ function countSlices(content: string): {
       insideSlice = match !== null;
       sliceCheckboxTotal = 0;
       sliceCheckboxCompleted = 0;
+      currentSliceRepos = [];
       if (match !== null) {
         // Normalize through `parseInt` so a zero-padded heading
         // (`## Slice 01: …`) still yields the canonical `S<N>` form
@@ -442,6 +526,11 @@ function countSlices(content: string): {
       continue;
     }
     if (!insideSlice) continue;
+    const repoMatch = SLICE_REPO_REGEX.exec(line);
+    if (repoMatch !== null) {
+      currentSliceRepos.push(repoMatch[1] ?? '');
+      continue;
+    }
     const match = checkboxRegex.exec(line);
     if (match === null) continue;
     sliceCheckboxTotal += 1;
@@ -668,6 +757,123 @@ export function extractSourceHeader(content: string): string | null {
   const declared = match[1]?.trim() ?? '';
   if (declared.length === 0) return null;
   return declared;
+}
+
+/**
+ * Extract the repository declared by the canonical `**Implementation
+ * repo**:` header that `smithy.cut` emits at the top of a tasks file:
+ *
+ * ```
+ * **Implementation repo**: `story-spider`
+ * ```
+ *
+ * The value is normally wrapped in backticks; a bare single token is
+ * accepted too. Leading whitespace and trailing narrative after a
+ * backticked value are tolerated. Only the first occurrence in the file
+ * is read.
+ *
+ * Returns `{ value: null, error: null }` when the header is absent —
+ * that is not a failure. Artifacts authored before this field existed
+ * simply mean "the repo you are standing in", and the caller supplies
+ * that default (`applyDefaultRepo` in `src/status/repo.ts`). A present
+ * but unusable value returns a populated `error` instead. Never throws.
+ */
+export function extractImplementationRepo(
+  content: string,
+): ParsedRepoDeclaration {
+  const match = IMPLEMENTATION_REPO_REGEX.exec(content);
+  if (match === null) return { value: null, error: null };
+  return normalizeRepoValue(match[1] ?? '');
+}
+
+/**
+ * Resolve one slice's effective repo from its raw `**Repo**:` overrides
+ * and the file-level header value, pushing a warning for any ambiguity.
+ *
+ * Precedence is the single rule downstream parsers depend on: the
+ * slice's own override wins, else the header. A malformed or duplicated
+ * override yields `undefined` (and a warning) rather than silently
+ * falling back to the header — a slice whose declared repo cannot be
+ * read is exactly the case that must surface at status time.
+ */
+function resolveSliceRepo(
+  sliceId: string,
+  rawRepos: string[],
+  headerRepo: string | undefined,
+  warnings: string[],
+): string | undefined {
+  if (rawRepos.length === 0) return headerRepo;
+  if (rawRepos.length > 1) {
+    warnings.push(
+      `${REPO_WARNING_PREFIX}slice ${sliceId} declares ${rawRepos.length} \`**Repo**\` lines — expected exactly one`,
+    );
+    return undefined;
+  }
+  const override = normalizeRepoValue(rawRepos[0] ?? '');
+  if (override.error !== null) {
+    warnings.push(`${REPO_WARNING_PREFIX}slice ${sliceId} ${override.error}`);
+    return undefined;
+  }
+  return override.value ?? headerRepo;
+}
+
+/**
+ * Normalize the right-hand side of a repo declaration into a single repo
+ * name, or explain why it is not one.
+ *
+ * Accepted: a backticked value (`` `story-spider` ``, optionally
+ * followed by narrative) or a bare single token. `owner/repo` is a valid
+ * repo name and passes.
+ *
+ * Rejected — every rejection is a value a consumer could not route to
+ * one worktree:
+ * - empty (`**Implementation repo**:` with nothing after it)
+ * - an unterminated backtick
+ * - more than one value (comma-, semicolon-, or whitespace-separated) —
+ *   the field is deliberately singular, and a per-slice `**Repo**:`
+ *   override is how a story spans repos
+ * - a filesystem path (absolute, `..`-traversing, or more than one `/`)
+ */
+function normalizeRepoValue(raw: string): ParsedRepoDeclaration {
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    return { value: null, error: 'declares an empty repo' };
+  }
+
+  let value: string;
+  if (trimmed.startsWith('`')) {
+    const fenced = /^`([^`]*)`/.exec(trimmed);
+    if (fenced === null) {
+      return { value: null, error: 'has an unterminated backtick' };
+    }
+    value = (fenced[1] ?? '').trim();
+  } else {
+    value = trimmed;
+  }
+
+  if (value === '') {
+    return { value: null, error: 'declares an empty repo' };
+  }
+  if (/[\s,;]/.test(value)) {
+    return {
+      value: null,
+      error: `declares more than one repo ('${value}') — expected exactly one`,
+    };
+  }
+  if (isAbsolutePath(value) || value.split('/').includes('..')) {
+    return {
+      value: null,
+      error: `declares a path ('${value}') rather than a repo name`,
+    };
+  }
+  if ((value.match(/\//g) ?? []).length > 1) {
+    return {
+      value: null,
+      error: `declares a path ('${value}') rather than a repo name`,
+    };
+  }
+
+  return { value, error: null };
 }
 
 /**

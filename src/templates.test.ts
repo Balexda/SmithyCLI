@@ -1974,6 +1974,34 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(dependencyIdx);
   });
 
+  it('cut template requires an **Implementation repo** header in the tasks file shape', () => {
+    // Structural, not remembered: the field has to sit in the emitted
+    // template block (right after **Story Number**) so an omission is
+    // visible in the artifact rather than depending on the agent
+    // recalling a rule from prose.
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('**Story Number**: <NN>\n**Implementation repo**: `<repo>`');
+    // The per-slice override lives in the `## Slice N:` shape.
+    expect(cut).toContain('**Repo**: `<repo>`');
+  });
+
+  it('cut template states the single-repo slice invariant and the resolution rule', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('implementable within **exactly one repository**');
+    expect(cut).toContain('### Cross-Repo Notes');
+    // The precedence chain downstream parsers depend on.
+    expect(cut).toMatch(
+      /`\*\*Repo\*\*:`.*→.*`\*\*Implementation repo\*\*:`.*→.*invoked in/s,
+    );
+  });
+
+  it('forge template gates implementation on the declared repo', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('**Check the implementation repo.**');
+    expect(forge).toContain('git rev-parse --show-toplevel');
+    expect(forge).toContain('Implementation repo mismatch');
+  });
+
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();

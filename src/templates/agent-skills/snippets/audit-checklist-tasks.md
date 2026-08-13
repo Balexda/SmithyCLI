@@ -3,6 +3,7 @@
 | Category | What to check |
 |----------|---------------|
 | **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
+| **Repo Declaration** | Does the header carry an `**Implementation repo**` field naming exactly one repo (never a list, never a filesystem path)? Is every slice implementable in exactly one repository — flag any slice whose tasks reference files in more than one repo, since `smithy.forge` runs in one worktree and cannot implement it. Does each per-slice `**Repo**:` line name exactly one repo, and appear at most once per slice? Where slices declare different repos, are they ordered producer-repo-before-consumer-repo in `## Dependency Order`, with the contract between them recorded under `### Cross-Repo Notes`? |
 | **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
 | **Testability** | Is it clear how each slice should be tested? Are integration test concerns addressed? |
 | **Edge Case Coverage** | Are boundary conditions, error paths, and failure modes covered in the tasks? |
