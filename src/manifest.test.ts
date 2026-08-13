@@ -22,9 +22,12 @@ vi.mock('child_process', async (importOriginal) => {
 });
 
 const { execFileSync } = await import('child_process');
-const { repoKey, resolveArtifactsRoot, templateArtifactsPrefix } = await import(
-  './manifest.js'
-);
+const {
+  isInsideGitRepo,
+  repoKey,
+  resolveArtifactsRoot,
+  templateArtifactsPrefix,
+} = await import('./manifest.js');
 
 // Run a real git command for fixture setup, bypassing the mock entirely.
 function git(args: string[], cwd: string): void {
@@ -166,13 +169,43 @@ describe('repoKey', () => {
   });
 });
 
+describe('isInsideGitRepo', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(execFileSync).mockReset();
+  });
+
+  it('is true inside a git checkout and false in a plain directory', () => {
+    passGitThrough();
+
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-inrepo-'));
+    try {
+      const repoDir = path.join(parent, 'repo');
+      const plainDir = path.join(parent, 'plain');
+      fs.mkdirSync(repoDir);
+      fs.mkdirSync(plainDir);
+      git(['init', '-q'], repoDir);
+
+      expect(isInsideGitRepo(repoDir)).toBe(true);
+      // `parent` lives under the OS temp dir, which is not itself a repo.
+      expect(isInsideGitRepo(plainDir)).toBe(false);
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('reports false when the git binary is unavailable', () => {
+    vi.mocked(execFileSync).mockImplementation((() => {
+      throw new Error('spawn git ENOENT');
+    }) as never);
+
+    expect(isInsideGitRepo('/work/widget')).toBe(false);
+  });
+});
+
 describe('resolveArtifactsRoot', () => {
   beforeEach(() => {
     vi.spyOn(os, 'homedir').mockReturnValue('/fake/home');
-    // Non-git target → repoKey resolves to basename.
-    vi.mocked(execFileSync).mockImplementation((() => {
-      throw new Error('not a git repository');
-    }) as never);
   });
 
   afterEach(() => {
@@ -180,39 +213,110 @@ describe('resolveArtifactsRoot', () => {
     vi.mocked(execFileSync).mockReset();
   });
 
-  it('returns the repo-keyed external root under ~/.smithy/repos/', () => {
+  it('returns the repo-keyed external root under ~/.smithy/repos/ inside a repo', () => {
+    passGitThrough();
+
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-extroot-'));
+    try {
+      const repoDir = path.join(parent, 'widget');
+      fs.mkdirSync(repoDir);
+      git(['init', '-q'], repoDir);
+
+      expect(resolveArtifactsRoot(repoDir, 'external')).toBe(
+        path.join('/fake/home', '.smithy', 'repos', 'widget'),
+      );
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to ~/.smithy/projects/default/ outside a repo', () => {
+    // Not a git repo — `repoKey` would still return `widget`, but a store
+    // keyed on a directory basename is unfindable from anywhere else, so
+    // cross-repo work goes to the fixed project store instead.
+    vi.mocked(execFileSync).mockImplementation((() => {
+      throw new Error('not a git repository');
+    }) as never);
+
     expect(resolveArtifactsRoot('/work/widget', 'external')).toBe(
-      path.join('/fake/home', '.smithy', 'repos', 'widget'),
+      path.join('/fake/home', '.smithy', 'projects', 'default'),
     );
   });
 
   it('returns targetDir unchanged for repo mode', () => {
+    vi.mocked(execFileSync).mockImplementation((() => {
+      throw new Error('not a git repository');
+    }) as never);
+
     expect(resolveArtifactsRoot('/work/widget', 'repo')).toBe('/work/widget');
     expect(resolveArtifactsRoot('/work/widget')).toBe('/work/widget');
   });
 });
 
 describe('templateArtifactsPrefix', () => {
-  beforeEach(() => {
-    vi.mocked(execFileSync).mockImplementation((() => {
-      throw new Error('not a git repository');
-    }) as never);
-  });
-
   afterEach(() => {
     vi.restoreAllMocks();
     vi.mocked(execFileSync).mockReset();
   });
 
-  it('returns the repo-keyed tilde prefix for external mode', () => {
+  it('returns the repo-keyed tilde prefix inside a repo', () => {
+    passGitThrough();
+
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-extpx-'));
+    try {
+      const repoDir = path.join(parent, 'widget');
+      fs.mkdirSync(repoDir);
+      git(['init', '-q'], repoDir);
+
+      expect(templateArtifactsPrefix(repoDir, 'external')).toBe(
+        '~/.smithy/repos/widget/',
+      );
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('returns the project-store tilde prefix outside a repo', () => {
+    vi.mocked(execFileSync).mockImplementation((() => {
+      throw new Error('not a git repository');
+    }) as never);
+
     expect(templateArtifactsPrefix('/work/widget', 'external')).toBe(
-      '~/.smithy/repos/widget/',
+      '~/.smithy/projects/default/',
     );
   });
 
   it('returns an empty prefix for repo mode', () => {
+    vi.mocked(execFileSync).mockImplementation((() => {
+      throw new Error('not a git repository');
+    }) as never);
+
     expect(templateArtifactsPrefix('/work/widget', 'repo')).toBe('');
     expect(templateArtifactsPrefix('/work/widget')).toBe('');
+  });
+
+  it('names the same store as resolveArtifactsRoot in both branches', () => {
+    // The prompt-facing tilde form and the on-disk absolute form must always
+    // point at one store — otherwise agents write where status cannot look.
+    vi.spyOn(os, 'homedir').mockReturnValue('/fake/home');
+    passGitThrough();
+
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-parity-'));
+    try {
+      const repoDir = path.join(parent, 'widget');
+      const plainDir = path.join(parent, 'loose');
+      fs.mkdirSync(repoDir);
+      fs.mkdirSync(plainDir);
+      git(['init', '-q'], repoDir);
+
+      for (const dir of [repoDir, plainDir]) {
+        const tilde = templateArtifactsPrefix(dir, 'external');
+        const absolute = resolveArtifactsRoot(dir, 'external');
+        expect(tilde.replace(/^~/, '/fake/home').replace(/\/$/, '')).toBe(absolute);
+      }
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
   });
 
   it('renders identical prefixes from the main checkout and a worktree (display matches storage)', () => {

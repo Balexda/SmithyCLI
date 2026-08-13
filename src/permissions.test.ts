@@ -413,3 +413,43 @@ describe('flattenPermissions — regression guard for existing install auto-allo
     expect(all).toContain('nodenv install *');
   });
 });
+
+describe('external artifact store permissions', () => {
+  const result = flattenPermissions();
+
+  it('allows committing to a repo-keyed store via git -C', () => {
+    // `git -C <store> commit` is how agents record artifact changes in
+    // external mode. Permission matching is prefix-based on the whole
+    // command string, so these need their own entries — the bare
+    // `git commit -m *` never matches a `-C`-prefixed invocation.
+    expect(result).toContain('git -C ~/.smithy/repos/* add -A');
+    expect(result).toContain('git -C ~/.smithy/repos/* commit -m *');
+  });
+
+  it('allows committing to the shared project store', () => {
+    expect(result).toContain('git -C ~/.smithy/projects/* add -A');
+    expect(result).toContain('git -C ~/.smithy/projects/* commit -m *');
+  });
+
+  it('uses tilde paths so no developer home directory is committed', () => {
+    // These strings land in a shared .claude/settings.json.
+    for (const entry of result) {
+      if (entry.startsWith('git -C ')) {
+        expect(entry).toMatch(/^git -C ~\/\.smithy\//);
+      }
+    }
+  });
+
+  it('does not auto-allow pushing or destructive commands against a store', () => {
+    // Syncing a store to a remote is the user's decision, and history is the
+    // whole point of the store — an agent must not be able to reset it.
+    const storeEntries = result.filter((e) => e.startsWith('git -C '));
+    expect(storeEntries.length).toBeGreaterThan(0);
+    for (const entry of storeEntries) {
+      expect(entry).not.toContain(' push');
+      expect(entry).not.toContain(' reset');
+      expect(entry).not.toContain(' clean');
+      expect(entry).not.toContain(' checkout');
+    }
+  });
+});

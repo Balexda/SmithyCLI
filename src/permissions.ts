@@ -94,6 +94,39 @@ export const permissions: Record<string, PermissionEntry> = {
     "push origin": ["*"],
     "push --force-with-lease": [""],
     "push --force-with-lease origin": ["*"],
+
+    // External artifact stores (`artifactsLocation: external`) are git repos
+    // under `~/.smithy/`, and agents commit to them there via `git -C <store>`.
+    // That form needs its own entries: permission matching is prefix-based on
+    // the whole command string, so `git -C ~/x commit -m "y"` does not match
+    // the bare `git commit -m *` above.
+    //
+    // Scoped to the two store namespaces rather than granting `git -C *`, and
+    // written in tilde form on purpose — these strings land in a committed
+    // `.claude/settings.json`, so an expanded `/home/<user>/...` path would
+    // leak one developer's home directory to the whole team. The prompts tell
+    // agents the tilde path is authoritative, so that is the form they emit.
+    //
+    // Read and commit only: no `push`, no `reset`, no `clean`. Syncing a
+    // store to a remote is the user's call, not an agent's.
+    "-C": [
+      "~/.smithy/repos/* add -A",
+      "~/.smithy/repos/* add *",
+      "~/.smithy/repos/* commit -m *",
+      "~/.smithy/repos/* status",
+      "~/.smithy/repos/* status -s",
+      "~/.smithy/repos/* log --oneline *",
+      "~/.smithy/repos/* diff *",
+      "~/.smithy/repos/* show *",
+      "~/.smithy/projects/* add -A",
+      "~/.smithy/projects/* add *",
+      "~/.smithy/projects/* commit -m *",
+      "~/.smithy/projects/* status",
+      "~/.smithy/projects/* status -s",
+      "~/.smithy/projects/* log --oneline *",
+      "~/.smithy/projects/* diff *",
+      "~/.smithy/projects/* show *",
+    ],
   },
 
   // --- Filesystem (read + create, no delete) ---

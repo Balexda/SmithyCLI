@@ -3764,4 +3764,30 @@ describe('getComposedTemplates artifactsRoot', () => {
     expect(strike).toContain('~/.smithy/x/specs/strikes/');
     expect(strike).not.toContain('{{artifactsRoot}}');
   });
+
+  it('includes the store commit protocol only in external mode', async () => {
+    // In repo mode the same instructions would tell the agent to commit the
+    // *code* repo mid-plan, so the block has to be genuinely absent — not
+    // merely prefaced with a condition the agent is trusted to evaluate.
+    const external = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    const strike = external.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('### Committing artifacts to the store');
+    expect(strike).toContain('git -C ~/.smithy/myrepo/ add -A');
+    expect(strike).toContain('git -C ~/.smithy/myrepo/ commit -m');
+    expect(strike).not.toContain('{{#ifExternalArtifacts}}');
+
+    const inRepo = await getComposedTemplates('claude');
+    const repoStrike = inRepo.commands.get('smithy.strike.md')!;
+    expect(repoStrike).not.toContain('### Committing artifacts to the store');
+    expect(repoStrike).not.toContain('git -C ');
+    expect(repoStrike).not.toContain('{{#ifExternalArtifacts}}');
+  });
+
+  it('tells agents not to push the store', async () => {
+    // The store may have a remote the user controls; pushing it is their
+    // call, and a stray push could publish planning they kept off the repo.
+    const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    const strike = c.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('Do not `git push`');
+  });
 });

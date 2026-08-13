@@ -125,6 +125,35 @@ describe('CLI init --yes (non-interactive)', () => {
   });
 
   describe('--artifacts-location', () => {
+    // External mode creates a git-backed store under `~/.smithy/`, so every
+    // invocation below runs against a throwaway HOME. Without this the suite
+    // would write into (and commit inside) the developer's real home
+    // directory, and `smithy status` assertions would see whatever stores
+    // happen to exist on the machine.
+    let fakeHome: string;
+
+    beforeEach(() => {
+      fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-home-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(fakeHome, { recursive: true, force: true });
+    });
+
+    /** Run the built CLI in `tmpDir` with HOME pointed at the throwaway. */
+    function runCli(args: string[]): string {
+      return execFileSync('node', [CLI, ...args], {
+        encoding: 'utf-8',
+        cwd: tmpDir,
+        env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
+      });
+    }
+
+    /** Make `tmpDir` a real git repo so the store resolves to repos/<key>/. */
+    function initGitRepo(): void {
+      execFileSync('git', ['init', '-q'], { cwd: tmpDir, stdio: 'ignore' });
+    }
+
     it('defaults to repo mode — no artifactsLocation field in the manifest, no tilde prefix in deployed prompts', () => {
       execFileSync('node', [CLI, 'init', '-a', 'claude', '-y'], {
         encoding: 'utf-8',
@@ -150,11 +179,8 @@ describe('CLI init --yes (non-interactive)', () => {
     });
 
     it('--artifacts-location external persists in the manifest and bakes ~/.smithy/repos/<repo>/ into deployed prompts', () => {
-      execFileSync(
-        'node',
-        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
-        { encoding: 'utf-8', cwd: tmpDir },
-      );
+      initGitRepo();
+      runCli(['init', '-a', 'claude', '-y', '--artifacts-location', 'external']);
       const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       expect(manifest.artifactsLocation).toBe('external');
@@ -169,16 +195,24 @@ describe('CLI init --yes (non-interactive)', () => {
       expect(strike).not.toContain('{{artifactsRoot}}');
     });
 
-    it('update round-trips the artifactsLocation field — no flag required', () => {
-      execFileSync(
-        'node',
-        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
-        { encoding: 'utf-8', cwd: tmpDir },
+    it('bakes ~/.smithy/projects/default/ into deployed prompts outside a git repo', () => {
+      // `tmpDir` is deliberately left as a plain directory. `repoKey` would
+      // still yield its basename, but a store keyed that way is unfindable
+      // from anywhere else — cross-repo work goes to the fixed project store.
+      runCli(['init', '-a', 'claude', '-y', '--artifacts-location', 'external']);
+
+      const strike = fs.readFileSync(
+        path.join(tmpDir, '.claude', 'commands', 'smithy.strike.md'),
+        'utf8',
       );
-      execFileSync('node', [CLI, 'update', '-y'], {
-        encoding: 'utf-8',
-        cwd: tmpDir,
-      });
+      expect(strike).toContain('~/.smithy/projects/default/specs/strikes/');
+      expect(strike).not.toContain(`~/.smithy/repos/${path.basename(tmpDir)}/`);
+    });
+
+    it('update round-trips the artifactsLocation field — no flag required', () => {
+      initGitRepo();
+      runCli(['init', '-a', 'claude', '-y', '--artifacts-location', 'external']);
+      runCli(['update', '-y']);
       const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
       expect(manifest.artifactsLocation).toBe('external');
@@ -192,16 +226,9 @@ describe('CLI init --yes (non-interactive)', () => {
     });
 
     it('update --artifacts-location repo migrates an external manifest back to in-repo paths', () => {
-      execFileSync(
-        'node',
-        [CLI, 'init', '-a', 'claude', '-y', '--artifacts-location', 'external'],
-        { encoding: 'utf-8', cwd: tmpDir },
-      );
-      execFileSync(
-        'node',
-        [CLI, 'update', '-y', '--artifacts-location', 'repo'],
-        { encoding: 'utf-8', cwd: tmpDir },
-      );
+      initGitRepo();
+      runCli(['init', '-a', 'claude', '-y', '--artifacts-location', 'external']);
+      runCli(['update', '-y', '--artifacts-location', 'repo']);
 
       const manifestPath = path.join(tmpDir, '.smithy', 'smithy-manifest.json');
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));

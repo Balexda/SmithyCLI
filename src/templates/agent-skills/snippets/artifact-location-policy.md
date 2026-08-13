@@ -11,12 +11,16 @@ prefix.
 - When `{{artifactsRoot}}` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `{{artifactsRoot}}` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `{{artifactsRoot}}` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `{{artifactsRoot}}docs/rfcs/...`,
+  `{{artifactsRoot}}docs/personas/...`, `{{artifactsRoot}}specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -39,3 +43,26 @@ When you scan for existing artifacts (e.g. "list folders in
 `{{artifactsRoot}}docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+{{#ifExternalArtifacts}}
+
+### Committing artifacts to the store
+
+`{{artifactsRoot}}` is a **git repository** that Smithy initialized. It is
+the only history these artifacts have: nothing else tracks them, and an
+uncommitted file you overwrite is gone. Commit your work there.
+
+After you finish writing or updating artifacts — once the artifact is
+complete, not after every partial write:
+
+```bash
+git -C {{artifactsRoot}} add -A
+git -C {{artifactsRoot}} commit -m "<command>: <what changed>"
+```
+
+- If the commit reports nothing to commit, that is fine — carry on rather
+  than treating it as a failure.
+- **Do not `git push`** the store. Any remote on it belongs to the user, who
+  decides when it syncs.
+- This is **separate from, and never a substitute for**, the code commits you
+  make in the target repo on the working branch. Committing the store does
+  not put anything in the user's pull request.{{/ifExternalArtifacts}}
