@@ -431,6 +431,26 @@ describe('external artifact store permissions', () => {
     expect(result).toContain('git -C ~/.smithy/projects/* commit -m *');
   });
 
+  it('covers the trailing-slash path the prompts actually emit', () => {
+    // `{{artifactsRoot}}` always ends in `/`, so agents emit
+    // `git -C ~/.smithy/repos/<key>/ add -A`. Matching that against the bare
+    // `~/.smithy/repos/* …` form would need `*` to swallow the separator,
+    // which permission wildcards do not reliably do — so the `*/` form has
+    // to be listed too or every commit hits an approval prompt.
+    expect(result).toContain('git -C ~/.smithy/repos/*/ add -A');
+    expect(result).toContain('git -C ~/.smithy/repos/*/ commit -m *');
+    expect(result).toContain('git -C ~/.smithy/projects/*/ add -A');
+    expect(result).toContain('git -C ~/.smithy/projects/*/ commit -m *');
+  });
+
+  it('covers the --no-gpg-sign commit form the prompts specify', () => {
+    // The prompt tells agents to pass --no-gpg-sign so a machine with
+    // `commit.gpgsign` set doesn't block on a passphrase. That flag form is
+    // a different command string, so it needs its own entry.
+    expect(result).toContain('git -C ~/.smithy/repos/*/ commit --no-gpg-sign -m *');
+    expect(result).toContain('git -C ~/.smithy/projects/*/ commit --no-gpg-sign -m *');
+  });
+
   it('uses tilde paths so no developer home directory is committed', () => {
     // These strings land in a shared .claude/settings.json.
     for (const entry of result) {

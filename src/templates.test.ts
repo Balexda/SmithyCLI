@@ -3773,7 +3773,10 @@ describe('getComposedTemplates artifactsRoot', () => {
     const strike = external.commands.get('smithy.strike.md')!;
     expect(strike).toContain('### Committing artifacts to the store');
     expect(strike).toContain('git -C ~/.smithy/myrepo/ add -A');
-    expect(strike).toContain('git -C ~/.smithy/myrepo/ commit -m');
+    // --no-gpg-sign must be in the instruction, matching what
+    // `ensureArtifactStore` runs — otherwise a machine with `commit.gpgsign`
+    // set blocks the agent on a passphrase prompt.
+    expect(strike).toContain('git -C ~/.smithy/myrepo/ commit --no-gpg-sign -m');
     expect(strike).not.toContain('{{#ifExternalArtifacts}}');
 
     const inRepo = await getComposedTemplates('claude');
@@ -3781,6 +3784,16 @@ describe('getComposedTemplates artifactsRoot', () => {
     expect(repoStrike).not.toContain('### Committing artifacts to the store');
     expect(repoStrike).not.toContain('git -C ');
     expect(repoStrike).not.toContain('{{#ifExternalArtifacts}}');
+  });
+
+  it('lets agents skip the commit when the store has no git repository', async () => {
+    // `ensureArtifactStore` degrades to a warning when git is unavailable, so
+    // a historyless store is a supported state. The prompt must not turn that
+    // into a guaranteed failure at the end of every artifact-writing run.
+    const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    const strike = c.commands.get('smithy.strike.md')!;
+    expect(strike).toContain('skip this step entirely and carry');
+    expect(strike).toContain('not run `git init` yourself');
   });
 
   it('tells agents not to push the store', async () => {

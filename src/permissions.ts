@@ -22,6 +22,33 @@ export const platforms: Record<PlatformPackageManager, { label: string; permissi
   linux: { label: 'apt/dpkg (Linux)', permissionKeys: ['apt', 'apt-cache', 'dpkg'], osPlatforms: ['linux'] },
 };
 
+/**
+ * The `git -C <store>` argument forms auto-allowed against an external
+ * artifact store, generated for both the trailing-slash and bare spellings of
+ * `<base>/<store-name>`. See the `-C` entry under `git` below for why both
+ * are needed.
+ *
+ * Deliberately read-and-commit only. `push`, `reset`, `clean`, and `checkout`
+ * are absent: the store's history is the whole point of git-backing it, and
+ * whether it syncs to a remote is the user's decision.
+ */
+function storeGitPermissions(base: string): string[] {
+  const args = [
+    'add -A',
+    'add *',
+    'commit -m *',
+    'commit --no-gpg-sign -m *',
+    'status',
+    'status -s',
+    'log --oneline *',
+    'diff *',
+    'show *',
+  ];
+  return [`${base}/*`, `${base}/*/`].flatMap((prefix) =>
+    args.map((arg) => `${prefix} ${arg}`),
+  );
+}
+
 export const permissions: Record<string, PermissionEntry> = {
   // --- Git ---
   // Flag variants are listed explicitly because Gemini CLI's wildcard
@@ -109,23 +136,22 @@ export const permissions: Record<string, PermissionEntry> = {
     //
     // Read and commit only: no `push`, no `reset`, no `clean`. Syncing a
     // store to a remote is the user's call, not an agent's.
+    //
+    // Both a trailing-slash and a bare form of each store path are listed.
+    // `{{artifactsRoot}}` always ends in `/` (so `{{artifactsRoot}}specs/...`
+    // concatenates), which means agents emit
+    // `git -C ~/.smithy/repos/<key>/ add -A` — matching that against
+    // `~/.smithy/repos/* add -A` would require `*` to swallow the trailing
+    // separator, which permission wildcards do not reliably do. The `*/`
+    // form matches it without spanning a `/` at all; the bare form is kept
+    // for hand-typed commands that omit the slash.
+    //
+    // `commit --no-gpg-sign -m *` mirrors what the prompt tells agents to
+    // run (and what `ensureArtifactStore` runs itself) so a machine with
+    // `commit.gpgsign` set doesn't hit an approval prompt on the flag form.
     "-C": [
-      "~/.smithy/repos/* add -A",
-      "~/.smithy/repos/* add *",
-      "~/.smithy/repos/* commit -m *",
-      "~/.smithy/repos/* status",
-      "~/.smithy/repos/* status -s",
-      "~/.smithy/repos/* log --oneline *",
-      "~/.smithy/repos/* diff *",
-      "~/.smithy/repos/* show *",
-      "~/.smithy/projects/* add -A",
-      "~/.smithy/projects/* add *",
-      "~/.smithy/projects/* commit -m *",
-      "~/.smithy/projects/* status",
-      "~/.smithy/projects/* status -s",
-      "~/.smithy/projects/* log --oneline *",
-      "~/.smithy/projects/* diff *",
-      "~/.smithy/projects/* show *",
+      ...storeGitPermissions("~/.smithy/repos"),
+      ...storeGitPermissions("~/.smithy/projects"),
     ],
   },
 

@@ -47,22 +47,31 @@ will be consistent with the paths in this prompt.
 
 ### Committing artifacts to the store
 
-`{{artifactsRoot}}` is a **git repository** that Smithy initialized. It is
-the only history these artifacts have: nothing else tracks them, and an
-uncommitted file you overwrite is gone. Commit your work there.
+`smithy init` initializes `{{artifactsRoot}}` as a **git repository**. When it
+succeeded, that history is the only record these artifacts have — nothing
+else tracks them, and an uncommitted file you overwrite is gone. So commit
+your work there.
 
 After you finish writing or updating artifacts — once the artifact is
 complete, not after every partial write:
 
 ```bash
 git -C {{artifactsRoot}} add -A
-git -C {{artifactsRoot}} commit -m "<command>: <what changed>"
+git -C {{artifactsRoot}} commit --no-gpg-sign -m "<command>: <what changed>"
 ```
 
+- `--no-gpg-sign` keeps the commit from blocking on a signing passphrase
+  prompt on machines that set `commit.gpgsign`.
 - If the commit reports nothing to commit, that is fine — carry on rather
   than treating it as a failure.
+- **If the store is not a git repository, skip this step entirely and carry
+  on.** `smithy init` warns and continues when git is unavailable, so a
+  historyless store is a supported state — not a reason to fail the run. Do
+  not run `git init` yourself to work around it.
 - **Do not `git push`** the store. Any remote on it belongs to the user, who
   decides when it syncs.
 - This is **separate from, and never a substitute for**, the code commits you
   make in the target repo on the working branch. Committing the store does
-  not put anything in the user's pull request.{{/ifExternalArtifacts}}
+  not put anything in the user's pull request.
+
+{{/ifExternalArtifacts}}
