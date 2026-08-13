@@ -976,6 +976,11 @@ describe('extractImplementationRepo', () => {
       '**Implementation repo**: `work/repos/story-spider`',
       'declares a path',
     ],
+    [
+      'unfilled template placeholder',
+      '**Implementation repo**: `<repo>`',
+      'still carries the template placeholder',
+    ],
   ])('rejects a %s', (_label, markdown, expectedError) => {
     const parsed = extractImplementationRepo(markdown);
     expect(parsed.value).toBeNull();

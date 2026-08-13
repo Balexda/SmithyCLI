@@ -854,6 +854,15 @@ function normalizeRepoValue(raw: string): ParsedRepoDeclaration {
   if (value === '') {
     return { value: null, error: 'declares an empty repo' };
   }
+  if (/^<.*>$/.test(value)) {
+    // The template placeholder survived into the artifact. Left alone it
+    // would resolve to a repo literally named `<repo>`, which reads as a
+    // real declaration everywhere downstream — louder to reject it here.
+    return {
+      value: null,
+      error: `still carries the template placeholder ('${value}')`,
+    };
+  }
   if (/[\s,;]/.test(value)) {
     return {
       value: null,

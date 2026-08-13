@@ -201,9 +201,10 @@ standing in a worktree editing the wrong repo.
 - **A missing declaration is not an error.** It resolves to the repo the
   command was invoked in — which is what every artifact authored before this
   field existed meant anyway.
-- **A malformed declaration is.** Empty, multi-valued, or path-shaped values
-  make the owning record `unknown` with an `implementation_repo:` warning,
-  because no consumer can route them to one worktree. That failure belongs at
+- **A malformed declaration is.** Empty, multi-valued, path-shaped, or
+  still-carrying-the-`<repo>`-placeholder values make the owning record
+  `unknown` with an `implementation_repo:` warning, because no consumer can
+  route them to one worktree. That failure belongs at
   status time, not at forge time.
 - **`smithy status` does not check the filesystem.** In external mode it scans
   the artifact store and cannot see the implementation checkouts at all, so an

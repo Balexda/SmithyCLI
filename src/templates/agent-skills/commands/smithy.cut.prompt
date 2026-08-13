@@ -370,7 +370,7 @@ Draft the tasks file with this structure:
 
 **Goal**: <What this slice delivers as a standalone working increment.>
 
-**Repo**: `<repo>`   ← omit unless this slice lands in a different repo than the header
+**Repo**: `<repo>` _(omit this line unless the slice lands in a different repo than the header)_
 
 **Justification**: <Why this slice stands alone — not disconnected scaffolding.>
 
