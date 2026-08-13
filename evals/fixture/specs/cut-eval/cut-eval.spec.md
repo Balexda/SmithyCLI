@@ -2,11 +2,12 @@
 SCENARIO: cut-from-spec (evals/cases/cut-from-spec.yaml)
 TYPE: representative (non-flawed) parent-artifact plant
 PURPOSE: Provides input to the cut-from-spec eval scenario, which exercises
-  /smithy.cut against this spec and asserts the resulting tasks file
-  inherits SD-001 with the `inherited from spec:` literal.
+  /smithy.cut against this spec and asserts the resulting tasks file carries
+  SD-001 down with an `Origin` of `spec:SD-001`.
 DO NOT "fix" or "clean up": this file is a deliberate eval fixture. Removing
-  US1 or flipping SD-001 to `resolved` will silently break the
-  cut-from-spec scenario.
+  US1, or moving SD-001 into the `### Resolved` subsection, will silently
+  break the cut-from-spec scenario — cut only carries down rows that are
+  still in the index table.
 -->
 
 # Feature Specification: Add a Health Check Endpoint to the Fixture Express Application
@@ -88,9 +89,17 @@ US1 is the only story in this spec — cut's "user story 1" routing must resolve
 
 ## Specification Debt
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | Health check endpoint contract is not pinned to a specific path (`/health`, `/healthz`, `/status`) — downstream task slices must choose and the choice is currently ambiguous. The chosen path becomes part of the public contract orchestrators integrate against, so the choice is non-trivial to revisit once external consumers have hard-coded it. | Functional Scope | Medium | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | Health endpoint path not pinned | Functional Scope | Medium | Medium | local |
+
+### SD-001 — Health endpoint path not pinned
+
+Health check endpoint contract is not pinned to a specific path (`/health`,
+`/healthz`, `/status`) — downstream task slices must choose and the choice is
+currently ambiguous. The chosen path becomes part of the public contract
+orchestrators integrate against, so the choice is non-trivial to revisit once
+external consumers have hard-coded it.
 
 ## Out of Scope
 

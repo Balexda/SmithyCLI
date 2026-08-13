@@ -197,8 +197,9 @@ rather than into an interactive Questions list.
 **Expected**:
 - [ ] High-confidence items appear in the assumptions list
 - [ ] Medium and Low-confidence items appear in a `debt_items` list with
-      structured columns: ID (SD-NNN), Description, Source Category, Impact,
-      Confidence, Status (`open`), Resolution (`—` for unresolved items)
+      structured fields: ID (SD-NNN), Title (40 characters or fewer),
+      Description, Source Category, Impact, Confidence, Origin (`local`).
+      There is no Status or Resolution field
 - [ ] Each debt item has a sequential SD-NNN identifier starting at SD-001
 - [ ] No `### Questions` section appears in the output
 - [ ] The return summary includes `bail_out` (boolean) and
@@ -226,18 +227,21 @@ spec's `## Specification Debt` section with correct placement and structure.
 - [ ] The spec file contains a `## Specification Debt` section
 - [ ] The `## Specification Debt` heading appears between `## Assumptions`
       and `## Out of Scope`
-- [ ] At least one structured debt item is present with columns: ID,
-      Description, Source Category, Impact, Confidence, Status, Resolution
+- [ ] The section opens with an index table whose columns are: ID, Title,
+      Source Category, Impact, Confidence, Origin
 - [ ] Each item's ID follows the `SD-NNN` format (sequential from SD-001)
-- [ ] Open items have Resolution set to `—`
+- [ ] Every row whose `Origin` is `local` has exactly one matching
+      `### SD-NNN — <Title>` detail section carrying the full statement
+- [ ] No `Status` or `Resolution` column is present
+- [ ] `### Resolved` is absent on a first pass (nothing resolved yet)
 
 ---
 
 ## A9: cut tasks artifact inherits debt from the upstream spec
 
-**Purpose**: Verify that smithy.cut inherits `## Specification Debt` items
-from the source spec and carries them forward into the generated tasks file
-with the correct origin annotation and status.
+**Purpose**: Verify that smithy.cut carries `## Specification Debt` items
+down from the source spec into the generated tasks file with the correct
+`Origin` and without duplicating the parent's prose.
 
 **Steps**:
 1. Build and deploy the latest templates:
@@ -246,17 +250,20 @@ with the correct origin annotation and status.
    node dist/cli.js update -d /path/to/SmithyCLI
    ```
 2. Prepare a spec folder where `<slug>.spec.md` contains a
-   `## Specification Debt` section with at least one item whose status is
-   `open` (e.g., `SD-001 | <description> | Domain & Data Model | Medium |
-   Medium | open | —`).
+   `## Specification Debt` section with at least one row in its index table
+   (e.g., `| SD-001 | Retry budget unclear | Domain & Data Model | Medium |
+   Medium | local |`) plus the matching `### SD-001 — Retry budget unclear`
+   detail section.
 3. Invoke smithy.cut (or a general-purpose agent acting as smithy.cut) on
    that spec and user story.
 4. Inspect the produced `<NN>-<story-slug>.tasks.md` file.
 
 **Expected**:
 - [ ] The tasks file contains a `## Specification Debt` section
-- [ ] The upstream debt item appears in the tasks file's debt table
-- [ ] The inherited item's Description is prefixed with
-      `inherited from spec: <original SD-NNN description>`
-- [ ] The inherited item's Status is `inherited` (not `open`)
-- [ ] The Resolution column remains `—` for the inherited item
+- [ ] The upstream debt item appears in the tasks file's index table
+- [ ] The carried-down row's `Origin` is `spec:SD-001`, matching its own ID
+- [ ] The carried-down row's `Title`, `Source Category`, `Impact`, and
+      `Confidence` are copied verbatim from the spec
+- [ ] The tasks file contains **no** detail section for the carried-down
+      item — its prose stays in the parent spec
+- [ ] No `inherited from spec:` text prefix appears anywhere in the file

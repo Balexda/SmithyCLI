@@ -194,14 +194,7 @@ with this format:
 
 <Important decisions and tradeoffs made during the planning phase.>
 
-## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
-
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
-
-_If no debt items, write: "None — all ambiguities resolved."_
+{{>spec-debt-section}}
 
 ## Single Slice
 <!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
@@ -254,12 +247,15 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Surface once in the terminal output for the user; do not add to the PR body.            |
 
 For each Low-confidence finding routed to debt, append a new row to the
-`## Specification Debt` table with the next available `SD-NNN` identifier
+`## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever clarify already wrote during Phase 2 — do
-not reset). Use the finding's `description` for the Description column, set
+not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
 `Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding routed to auto-fix, edit the strike document
 in place using the `proposed_fix`. The commit immediately below will capture

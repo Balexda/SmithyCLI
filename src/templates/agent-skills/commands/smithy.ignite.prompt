@@ -234,12 +234,11 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the RFC's
-`## Specification Debt` table with the next available `SD-NNN` identifier
+`## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever refine or prior clarify passes already
 wrote — do not reset). Use the finding's `description` for the Description
 column, set `Source Category` to `plan-review:<finding category>`, copy
-severity into Impact and confidence into Confidence, set Status to `open`,
-and leave Resolution as `—`.
+severity into Impact and confidence into Confidence, and set `Origin` to `local`.
 
 For each High-confidence finding, edit the RFC file in place using the
 `proposed_fix`. The Phase 0c commit below captures both the refine diff and
@@ -742,14 +741,7 @@ influence downstream design decisions. Keep this at "WHAT not HOW" level.>
 - <Decision 1 — what was decided and the rationale>
 - <Decision 2>
 
-## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
-
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
-
-_If no debt items, write: "None — all ambiguities resolved."_
+{{>spec-debt-section}}
 
 ## Milestones
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
@@ -812,12 +804,15 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the RFC's
-`## Specification Debt` table with the next available `SD-NNN` identifier
+`## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever clarify / Phase 3 already wrote — do not
-reset). Use the finding's `description` for the Description column, set
+reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
 `Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the RFC file in place using the
 `proposed_fix`. The commit below captures the RFC and the applied fixes in
@@ -854,7 +849,7 @@ and file write — proceed directly through plan-review, commit, and PR:
    snippet's `## Assumptions` section (the snippet / PR body is the only
    Assumptions surface — the RFC artifact itself has no `## Assumptions`
    section). Write `debt_items` into **both** the RFC's
-   `## Specification Debt` table **and** the snippet's
+   `## Specification Debt` section **and** the snippet's
    `## Specification Debt` summary so the PR body and the artifact stay
    in sync.
 

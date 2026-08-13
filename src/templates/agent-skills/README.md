@@ -132,6 +132,124 @@ section in every artifact**, using the same 4-column Markdown table schema:
   features, user stories, and slices, so the authoring commands and the
   scanner share one implementation.
 
+## Specification Debt Format
+
+Every planning artifact — `.prd.md`, `.rfc.md`, `.features.md`, `.spec.md`,
+`.tasks.md`, `.strike.md` — carries exactly one `## Specification Debt`
+section. Its position differs per artifact type and is fixed by that
+artifact's template:
+
+| Artifact | Position |
+|----------|----------|
+| `.spec.md` | between `## Assumptions` and `## Out of Scope` |
+| `.tasks.md` | before `## Dependency Order` |
+| `.rfc.md` | after `## Decisions`, before `## Milestones` |
+| `.features.md` | before `## Cross-Milestone Dependencies` |
+| `.prd.md` | after `## Assumptions`, last structured section |
+| `.strike.md` | between `## Decisions` and `## Single Slice` |
+
+The section is a **narrow index table plus per-item detail sections**:
+
+```markdown
+## Specification Debt
+
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | Health endpoint path not pinned | Functional Scope | Medium | Medium | local |
+| SD-002 | Windows symlink semantics | Non-Functional Quality | High | Low | spec:SD-002 |
+
+### SD-001 — Health endpoint path not pinned
+
+Unresolved choice between exposing the check at `/healthz` and reusing the
+existing `/internal/status` route. The first is conventional for probes; the
+second avoids a new public path but couples liveness to an internal contract.
+
+### Resolved
+
+#### SD-003 — Webhook transport
+
+**Question:** Whether webhook delivery must support HTTPS-only endpoints.
+
+**Answer:** Resolved 2026-04-10 — user confirmed webhooks are HTTP-only.
+```
+
+### Column rules
+
+| Column | Rule |
+|--------|------|
+| **`ID`** | `SD-` followed by a zero-padded three-digit integer. Matches `^SD-[0-9]{3}$`. Unique within the artifact and never reused — resolving an item retires its ID rather than freeing it. An artifact that authors all its own debt numbers sequentially from `SD-001`. An item carried down from a parent **keeps the parent's ID verbatim**, and the artifact's own new items take the next free number above the highest ID already present. Gaps are therefore normal in an artifact that inherits, and a row whose ID disagrees with the ID in its own `Origin` means something renumbered a carried-down item. |
+| **`Title`** | A short slug naming the unresolved choice — **40 characters or fewer**, roughly 4–7 words. Not a sentence, and not the question itself; the question lives in the detail section. This budget is what keeps the index narrow — without it the column degenerates into the prose column this format exists to remove. |
+| **`Source Category`** | Open vocabulary, not an enum. Core values: `Functional Scope`, `Integration`, `Interaction & UX`, `Non-Functional Quality`, `Edge Cases`, `Scope Edges`, `Domain & Data Model`, `Testing Strategy`, `Technical Risk`, `Constraints`. Findings routed from plan-review use the `plan-review:<finding category>` namespace. New values are permitted when no core value fits; keep them to 30 characters or fewer. |
+| **`Impact`** | Closed enum: `Critical` / `High` / `Medium` / `Low`. `Important` is drift — reject it. |
+| **`Confidence`** | Closed enum: `High` / `Medium` / `Low`. Records how confident the producing sub-agent was that it could **not** resolve the item itself. It is not a second priority axis — `Impact` is that. |
+| **`Origin`** | `local` for items discovered while authoring this artifact, or `<parent-kind>:SD-NNN` for items carried down from a parent, where `<parent-kind>` is one of `prd`, `rfc`, `features`, `spec`, `tasks`, `strike`. `Origin` names the **immediate** parent, not the ultimate source. The parent's path is never repeated here — it is already declared once in the artifact's header block (`**Source**:` on `.tasks.md`, `**Source Feature Map**:` on `.spec.md`). |
+
+### Detail sections
+
+One `### SD-NNN — <Title>` per index row whose `Origin` is `local`. The body
+states the open question, or the unresolved choice between named alternatives,
+in 1–3 sentences — never a directive (the kind gate in `smithy-clarify`
+Step 3b decides what qualifies). The heading's `<Title>` must match the index
+row's `Title` cell exactly.
+
+**Rows carried down from a parent get no detail section.** Their prose lives
+once, in the parent artifact, reachable via `Origin` plus the header's parent
+declaration. This is what stops a single spec's debt from being duplicated in
+full into every downstream tasks file.
+
+### Resolved
+
+`### Resolved` is the last subsection of `## Specification Debt`. Each entry is
+a `#### SD-NNN — <Title>` block carrying `**Question:**` and `**Answer:**`.
+Resolving an item **moves** its row out of the index; the ID is never reused.
+
+Resolving an item that was carried down from a parent materializes the
+upstream question locally: quote the parent's question into `**Question:**`
+and record the local decision in `**Answer:**`. The downstream artifact does
+not write back to the parent.
+
+### Status is derived, not stored
+
+There is no `Status` column. Lifecycle and provenance are separate axes, and
+both are structural:
+
+- **`open`** — a row in the index table whose `Origin` is `local`.
+- **`inherited`** — a row in the index table with any other `Origin`.
+- **`resolved`** — an entry under `### Resolved`, absent from the index table.
+
+### Rules that apply at every level
+
+- **The empty state is exactly one italic line** — `_None — no specification
+  debt was recorded._` — with no table, no detail sections, and no
+  `### Resolved` subsection. Write the literal, not a paraphrase and not a
+  quoted copy of it. (The terminal one-shot summary uses the same sentence
+  without the italic markers; that is a different surface.)
+- **Never put an unescaped `|` inside a table cell.** Pipes belong in detail
+  prose. An unescaped pipe silently shifts every column to its right.
+- **`## Specification Debt` is the only home for unresolved uncertainty.** No
+  `## Open Questions` heading in RFCs — translate those into `SD-NNN` rows.
+- **This README is the single source of truth.** Command templates compose
+  `{{>spec-debt-section}}` and link back here rather than restating the
+  schema inline, so the rules cannot drift between commands.
+
+### Why this format
+
+- **A table cell is the wrong container for a paragraph.** Across the 427 debt
+  rows that predate this format, `Description` had a median of 335 characters
+  (p90 579, max 1319) while sitting beside columns holding a single enum word;
+  36% of rows also carried a 143-character median `Resolution` in a second
+  cell. Markdown sizes columns by content, so the prose columns were squeezed
+  by the enum ones and the section was unreadable at any width.
+- **The index stays scannable as debt accumulates.** Every index cell is a
+  short atomic value, so the table renders at roughly 90–110 columns and stays
+  legible at fifty items, while prose grows without bound below it.
+- **Derived state cannot drift.** The old `Status` column was 100% derivable
+  from position and provenance, and drifted anyway (a stray `closed`, and
+  `Important` in `Impact`). Encoding it structurally makes those unrepresentable.
+- **Provenance as a field beats a text prefix.** The old
+  `inherited from spec: …` convention buried structured data in prose, where it
+  survived neither rewording nor machine checking.
+
 ## Implementation Repo Declaration (`.tasks.md`)
 
 **Most tasks files carry none of this.** A single-repo or monorepo install has
