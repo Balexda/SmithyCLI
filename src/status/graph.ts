@@ -239,18 +239,29 @@ export function buildDependencyGraph(
       //     the per-slice status — we just consult it here.
       //   - otherwise → the owning record's status (non-tasks leaf, or a
       //     tasks file with no parsed `slices`).
+      //
+      // The implementation repo resolves from the same two sources, so a
+      // dispatcher reading this graph can route a node to a worktree
+      // without re-parsing Markdown: a slice row takes its own slice's
+      // repo, any other row takes its downstream artifact's (a user
+      // story's repo is its tasks file's). Left unset when neither has
+      // one — e.g. a story whose tasks file does not exist yet.
       let rolledUpStatus: DependencyNode['status'];
+      let repo: string | undefined;
       if (downstream !== undefined) {
         rolledUpStatus = downstream.status;
+        repo = downstream.repo;
       } else {
         const slice = record.slices?.find((s) => s.id === row.id);
         rolledUpStatus = slice?.status ?? record.status;
+        repo = slice?.repo;
       }
       nodes[id] = {
         record_path: record.path,
         row,
         status: rolledUpStatus,
         decomposed,
+        ...(repo !== undefined ? { repo } : {}),
       };
       discoveryOrder.set(id, cursor);
       cursor += 1;

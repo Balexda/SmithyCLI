@@ -201,7 +201,12 @@ export interface StatusOptions {
  *
  * `records` is the post-filter `ArtifactRecord[]` from
  * {@link filterRecords} — the canonical flat representation every
- * machine consumer reads. `graph` is populated by
+ * machine consumer reads. A `tasks` record authored in a cross-repo
+ * project store carries the `repo` it declared — on the record, on each
+ * of its slices, and on each slice node in `graph` — so an orchestrator
+ * can route work without parsing Markdown. Single-repo and monorepo
+ * installs declare nothing and the field is simply absent. `graph` is
+ * populated by
  * {@link buildDependencyGraph} (US10 Slice 3) over the *pre-filter*
  * record set per SD-010 so the graph reflects the full scan even when
  * `--status` / `--type` are present, then projected through

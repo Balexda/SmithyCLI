@@ -133,6 +133,23 @@ Every `## Dependency Order` section at every level uses the same 4-column Markdo
 
 The canonical schema and rules live in `src/templates/agent-skills/README.md`. When adding, refactoring, or documenting any smithy command template, link to that README rather than redefining the format — the goal is one source of truth.
 
+### Implementation Repo Declaration
+
+Every slice must be implementable in exactly one repository — `smithy.forge`
+runs in one worktree and produces one PR, so a slice spanning repos cannot be
+implemented and must be split along the repo boundary.
+
+**Cross-repo planning only** (a `~/.smithy/projects/…` store spanning several
+checkouts), a `.tasks.md` file also names where its work lands: an
+`**Implementation repo**` header field (exactly one repo, never a list) plus an
+optional per-slice `**Repo**` override, resolved slice-override-then-header.
+Single-repo and monorepo tasks files declare nothing — there is one possible
+answer — and the fields are simply absent. `smithy status --format json`
+reports whatever was declared on tasks records, slice summaries, and slice
+graph nodes, and validates nothing; `smithy.forge` owns the only check, failing
+fast when a declared repo is not the one it is standing in. Full schema in
+`src/templates/agent-skills/README.md`.
+
 ### Engraved Knowledge (Decisions, Invariants, Principles)
 
 A separate root-level artifact family captures **durable commitments** —

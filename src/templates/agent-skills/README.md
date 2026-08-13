@@ -250,6 +250,68 @@ both are structural:
   `inherited from spec: …` convention buried structured data in prose, where it
   survived neither rewording nor machine checking.
 
+## Implementation Repo Declaration (`.tasks.md`)
+
+**Most tasks files carry none of this.** A single-repo or monorepo install has
+exactly one repository, every slice lands in it, and the artifact says nothing —
+that is the correct and expected shape.
+
+The fields below exist for **cross-repo planning**: a `~/.smithy/projects/…`
+store holding artifacts for work that spans several checkouts. There the store
+root and the implementation repo are deliberately different roots and one store
+covers more than one repo, so "which repo does this slice land in?" has more
+than one answer and the artifact is the only place it can be recorded.
+
+```markdown
+# Tasks: Wire Add-Title to the library store
+
+**Source**: `specs/2026-06-06-012-add-title/add-title.spec.md` — User Story 3
+**Story Number**: 03
+**Implementation repo**: `story-spider`
+
+## Slice 1: Publish the titles endpoint
+
+**Repo**: `story-spider-api`
+```
+
+| Field | Where | Rule |
+|-------|-------|------|
+| `**Implementation repo**` | Tasks file header | **Exactly one repo, never a list** — the story's primary repo. |
+| `**Repo**` | Inside a `## Slice N:` body | Optional. **Exactly one repo.** Overrides the header for that slice only; omit it when the slice lands in the header's repo. |
+
+**Resolution**: a slice's own `**Repo**:` wins, else the header. Nothing else —
+an absent declaration means absent, not "guess". That is why the header stays a
+single primary repo even when slices differ.
+
+### The single-repo slice invariant
+
+**Every slice must be implementable within exactly one repository.** This one
+holds everywhere, declaration or not: `smithy.forge` runs in one repo's worktree
+and produces one PR, so a slice whose tasks span repos cannot be implemented at
+all. The repo boundary is a slicing constraint of the same rank as "PR-sized".
+
+A story that needs coordinated change across repos is expressed as **one slice
+per repo**, ordered producer-repo-before-consumer-repo in the `## Dependency
+Order` table, with the contract between them recorded under
+`### Cross-Repo Notes`.
+
+Task paths stay repo-relative and unchanged in shape (`lib/constants/Experiment.kt`)
+— the declaration supplies the root they hang off.
+
+### What tooling does with it
+
+- **`smithy status`** reports what the artifact declared, verbatim: `repo` on a
+  `tasks` record, on each of its `slices` entries, and on each slice node in
+  `graph.nodes`, so an orchestrator maps slice → repo without regexing Markdown.
+  Absent declaration, absent field. Status validates nothing here and infers
+  nothing — in a cross-repo store it cannot even see the checkouts.
+- **`smithy.cut`** needs only *read* access to a repo to slice against it (a
+  checkout, a fetched tree, whatever).
+- **`smithy.forge`** owns the only hard check, because it is the step that
+  needs a local checkout: when a slice declares a repo, forge compares it
+  against the repo it is standing in and stops rather than editing the wrong
+  one. No declaration means single-repo planning, and forge simply proceeds.
+
 ## Voice and Audience Tagging Convention
 
 Each `##` section in a Smithy planning artifact carries a voice spec —

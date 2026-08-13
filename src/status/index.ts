@@ -8,6 +8,7 @@
 
 export * from './types.js';
 export {
+  extractImplementationRepo,
   extractSourceHeader,
   parseArtifact,
   parseDependencyTable,

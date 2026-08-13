@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 // Import through the `./index.js` barrel — that is the stable public
 // surface downstream modules consume, and these tests double as an
 // assertion that the barrel re-exports the parser correctly.
-import { parseArtifact, parseDependencyTable, parseFeatures } from './index.js';
+import {
+  extractImplementationRepo,
+  parseArtifact,
+  parseDependencyTable,
+  parseFeatures,
+} from './index.js';
 
 const featureWarnings = (warnings: string[]): string[] =>
   warnings.filter((w) => w.startsWith('feature_'));
@@ -900,5 +905,127 @@ Just prose.
   it('omits slices on non-tasks records', () => {
     const record = parseArtifact('specs/foo/a.spec.md', '# Spec\n');
     expect(record.slices).toBeUndefined();
+  });
+});
+describe('extractImplementationRepo', () => {
+  it('reads a backticked declaration and ignores trailing narrative', () => {
+    expect(
+      extractImplementationRepo(
+        '**Implementation repo**: `story-spider` — the mobile client\n',
+      ),
+    ).toBe('story-spider');
+  });
+
+  it('accepts a bare token and an `owner/repo` name', () => {
+    expect(extractImplementationRepo('**Implementation repo**: story-spider')).toBe(
+      'story-spider',
+    );
+    expect(
+      extractImplementationRepo('**Implementation repo**: `balexda/smithycli`'),
+    ).toBe('balexda/smithycli');
+  });
+
+  it('matches the label case-insensitively and tolerates leading whitespace', () => {
+    expect(extractImplementationRepo('  **Implementation Repo**:   `foo`')).toBe(
+      'foo',
+    );
+  });
+
+  it('returns null when the header is absent', () => {
+    // The common case: a single-repo or monorepo install has exactly one
+    // repository, so its tasks files declare nothing.
+    expect(
+      extractImplementationRepo('# Tasks\n\n**Story Number**: 03\n'),
+    ).toBeNull();
+  });
+
+  it('returns null for an empty value', () => {
+    expect(extractImplementationRepo('**Implementation repo**:')).toBeNull();
+    expect(extractImplementationRepo('**Implementation repo**: ``')).toBeNull();
+  });
+});
+
+describe('parseArtifact — implementation repo', () => {
+  const tasksWithHeader = `# Tasks: Demo
+
+**Source**: \`specs/foo/demo.spec.md\` — User Story 3
+**Implementation repo**: \`story-spider\`
+**Story Number**: 03
+
+## Slice 1: Producer
+
+- [x] a
+
+## Slice 2: Consumer
+
+**Repo**: \`story-spider-api\`
+
+- [ ] b
+`;
+
+  it('records the declared header repo', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.repo).toBe('story-spider');
+  });
+
+  it('inherits the header on slices without an override and honors the override', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.slices).toEqual([
+      { id: 'S1', title: 'Producer', status: 'done', repo: 'story-spider' },
+      {
+        id: 'S2',
+        title: 'Consumer',
+        status: 'not-started',
+        repo: 'story-spider-api',
+      },
+    ]);
+  });
+
+  it('does not count a `**Repo**:` line as a task checkbox', () => {
+    const record = parseArtifact('specs/foo/03-demo.tasks.md', tasksWithHeader);
+    expect(record.total).toBe(2);
+    expect(record.completed).toBe(1);
+  });
+
+  it('leaves repo absent on a file that declares nothing', () => {
+    // Single-repo and monorepo installs: nothing to declare, nothing to
+    // resolve, and no warning — the field simply is not there.
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      '# Tasks\n\n## Slice 1: Foo\n\n- [ ] a\n',
+    );
+    expect(record.repo).toBeUndefined();
+    expect(record.slices?.[0]?.repo).toBeUndefined();
+    expect(record.warnings).toEqual([]);
+  });
+
+  it('scopes a `**Repo**:` override to its own slice', () => {
+    const record = parseArtifact(
+      'specs/foo/03-demo.tasks.md',
+      `# Tasks
+
+**Implementation repo**: \`base\`
+
+## Slice 1: Foo
+
+**Repo**: \`other\`
+
+- [ ] a
+
+## Slice 2: Bar
+
+- [ ] b
+`,
+    );
+    expect(record.slices?.[0]?.repo).toBe('other');
+    expect(record.slices?.[1]?.repo).toBe('base');
+  });
+
+  it('ignores an implementation-repo header on a non-tasks artifact', () => {
+    const record = parseArtifact(
+      'specs/foo/demo.spec.md',
+      '# Spec\n\n**Implementation repo**: `story-spider`\n',
+    );
+    expect(record.repo).toBeUndefined();
   });
 });

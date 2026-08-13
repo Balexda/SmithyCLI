@@ -40,6 +40,14 @@ const ID_REGEX = /^(M|F|US|S)[1-9][0-9]*$/;
 const EM_DASH = '—';
 
 /**
+ * The per-slice `**Repo**:` override, which wins over the file's
+ * `**Implementation repo**:` header for a single `## Slice N:` section.
+ * Matched case-insensitively, like the header (see
+ * {@link extractImplementationRepo}).
+ */
+const SLICE_REPO_REGEX = /^\s*\*\*Repo\*\*\s*:\s*(.*)$/i;
+
+/**
  * Warning emitted when a `## Dependency Order` section uses the legacy
  * checkbox-list format instead of the canonical 4-column table. FR-028
  * requires this text to point authors at the canonical schema
@@ -54,6 +62,16 @@ const FORMAT_LEGACY_WARNING =
 const EXPECTED_HEADERS = ['id', 'title', 'depends on', 'artifact'] as const;
 type ColumnName = (typeof EXPECTED_HEADERS)[number];
 type ColumnIndex = Record<ColumnName, number>;
+
+/**
+ * A {@link SliceSummary} plus the slice's own `**Repo**:` override, if
+ * it declared one. Internal to this module: `parseArtifact` folds in the
+ * file header and hands the caller a plain {@link SliceSummary} carrying
+ * only the resolved `repo`.
+ */
+interface ParsedSliceSummary extends SliceSummary {
+  rawRepo?: string;
+}
 
 /**
  * Parse the `## Dependency Order` section of a Smithy artifact.
@@ -290,11 +308,26 @@ export function parseArtifact(
   };
 
   if (type === 'tasks') {
+    // Which repo the slices land in, when the artifact says. Only
+    // cross-repo project stores declare this: a single-repo or monorepo
+    // install has exactly one answer, so its tasks files say nothing and
+    // `repo` stays absent. Reported verbatim — the parser has no opinion
+    // on whether the named repo exists, and `smithy.forge` is the step
+    // that checks the declaration against the checkout it is standing in.
+    const headerRepo = extractImplementationRepo(content);
+    if (headerRepo !== null) record.repo = headerRepo;
+
     try {
       const counts = countSlices(content);
       record.completed = counts.completed;
       record.total = counts.total;
-      record.slices = counts.slices;
+      record.slices = counts.slices.map((parsed) => {
+        const { rawRepo, ...slice } = parsed;
+        // The slice's own `**Repo**:` override wins; otherwise it
+        // inherits the header.
+        const repo = rawRepo ?? headerRepo ?? undefined;
+        return repo === undefined ? slice : { ...slice, repo };
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       warnings.push(
@@ -372,11 +405,15 @@ function filenameStem(filePath: string): string {
  * an empty slice is treated as `not-started` rather than complete.
  * Checkboxes outside a `## Slice <N>:` section (e.g., `## Dependency
  * Order`, appendices) are ignored when resolving per-slice completion.
+ *
+ * Each summary also carries the raw `**Repo**:` lines found in its slice
+ * body, unvalidated — `parseArtifact` resolves them against the file
+ * header. A `**Repo**:` line is never counted as a task checkbox.
  */
 function countSlices(content: string): {
   completed: number;
   total: number;
-  slices: SliceSummary[];
+  slices: ParsedSliceSummary[];
 } {
   const lines = content.split('\n');
   const sliceHeadingRegex = /^##\s+Slice\s+(\d+):\s*(.*)$/;
@@ -390,7 +427,8 @@ function countSlices(content: string): {
   let sliceCheckboxCompleted = 0;
   let currentSliceId: string | null = null;
   let currentSliceTitle = '';
-  const slices: SliceSummary[] = [];
+  let currentSliceRepo: string | null = null;
+  const slices: ParsedSliceSummary[] = [];
 
   const finalizeSlice = (): void => {
     if (!insideSlice) return;
@@ -412,6 +450,7 @@ function countSlices(content: string): {
         id: currentSliceId,
         title: currentSliceTitle,
         status,
+        ...(currentSliceRepo === null ? {} : { rawRepo: currentSliceRepo }),
       });
     }
   };
@@ -423,6 +462,7 @@ function countSlices(content: string): {
       insideSlice = match !== null;
       sliceCheckboxTotal = 0;
       sliceCheckboxCompleted = 0;
+      currentSliceRepo = null;
       if (match !== null) {
         // Normalize through `parseInt` so a zero-padded heading
         // (`## Slice 01: …`) still yields the canonical `S<N>` form
@@ -442,6 +482,14 @@ function countSlices(content: string): {
       continue;
     }
     if (!insideSlice) continue;
+    const repoMatch = SLICE_REPO_REGEX.exec(line);
+    if (repoMatch !== null) {
+      // First declaration wins; a `**Repo**:` line is never a checkbox.
+      if (currentSliceRepo === null) {
+        currentSliceRepo = normalizeRepoValue(repoMatch[1] ?? '');
+      }
+      continue;
+    }
     const match = checkboxRegex.exec(line);
     if (match === null) continue;
     sliceCheckboxTotal += 1;
@@ -668,6 +716,45 @@ export function extractSourceHeader(content: string): string | null {
   const declared = match[1]?.trim() ?? '';
   if (declared.length === 0) return null;
   return declared;
+}
+
+/**
+ * Extract the repository declared by the canonical `**Implementation
+ * repo**:` header, which `smithy.cut` emits only for stories planned in
+ * a cross-repo project store:
+ *
+ * ```
+ * **Implementation repo**: `story-spider`
+ * ```
+ *
+ * The value is normally wrapped in backticks; a bare token is accepted
+ * too. Leading whitespace and trailing narrative after a backticked
+ * value are tolerated. Only the first occurrence is read.
+ *
+ * Returns `null` when the header is absent, which is the common case and
+ * not a failure: a single-repo or monorepo install has exactly one
+ * repository, so its tasks files have nothing to say and consumers have
+ * nothing to resolve. The value is returned verbatim — validating it
+ * against the repositories that actually exist is `smithy.forge`\'s job,
+ * since it is the step that needs a checkout. Never throws.
+ */
+export function extractImplementationRepo(content: string): string | null {
+  const match = /^\s*\*\*Implementation repo\*\*\s*:\s*(.*)$/im.exec(content);
+  if (match === null) return null;
+  return normalizeRepoValue(match[1] ?? '');
+}
+
+/**
+ * Reduce the right-hand side of a repo declaration to the declared name:
+ * unwrap a leading backticked span (dropping any trailing narrative),
+ * otherwise take the trimmed line. Returns `null` for an empty value so
+ * an unfilled field reads the same as an absent one.
+ */
+function normalizeRepoValue(raw: string): string | null {
+  const trimmed = raw.trim();
+  const fenced = /^`([^`]*)`/.exec(trimmed);
+  const value = (fenced === null ? trimmed : (fenced[1] ?? '')).trim();
+  return value === '' ? null : value;
 }
 
 /**

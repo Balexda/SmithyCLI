@@ -850,3 +850,71 @@ describe('buildDependencyGraph — cycle detection (AS 10.3)', () => {
     ]);
   });
 });
+
+describe('buildDependencyGraph — implementation repo on nodes', () => {
+  it('takes a slice row repo from its own slice summary', () => {
+    // Slices live inline, so their repo cannot come from a downstream
+    // record — the per-slice summary is the only source.
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/foo/01-demo.tasks.md',
+      repo: 'story-spider',
+      slices: [
+        { id: 'S1', title: 'Producer', status: 'done', repo: 'story-spider' },
+        {
+          id: 'S2',
+          title: 'Consumer',
+          status: 'not-started',
+          repo: 'story-spider-api',
+        },
+      ],
+      dependency_order: {
+        rows: [row('S1'), row('S2', ['S1'])],
+        id_prefix: 'S',
+        format: 'table',
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    expect(graph.nodes['specs/foo/01-demo.tasks.md#S1']?.repo).toBe(
+      'story-spider',
+    );
+    expect(graph.nodes['specs/foo/01-demo.tasks.md#S2']?.repo).toBe(
+      'story-spider-api',
+    );
+  });
+
+  it('takes a user-story row repo from its downstream tasks record', () => {
+    const spec = makeRecord({
+      path: 'specs/foo/demo.spec.md',
+      dependency_order: {
+        rows: [row('US1', [], { artifact_path: 'specs/foo/01-demo.tasks.md' })],
+        id_prefix: 'US',
+        format: 'table',
+      },
+    });
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/foo/01-demo.tasks.md',
+      repo: 'story-spider',
+      parent_path: 'specs/foo/demo.spec.md',
+      parent_row_id: 'US1',
+    });
+    const graph = buildDependencyGraph([spec, tasks]);
+    expect(graph.nodes['specs/foo/demo.spec.md#US1']?.repo).toBe('story-spider');
+  });
+
+  it('omits repo when neither the slice nor the downstream record has one', () => {
+    const tasks = makeRecord({
+      type: 'tasks',
+      path: 'specs/foo/01-demo.tasks.md',
+      slices: [{ id: 'S1', title: 'Foo', status: 'not-started' }],
+      dependency_order: {
+        rows: [row('S1')],
+        id_prefix: 'S',
+        format: 'table',
+      },
+    });
+    const graph = buildDependencyGraph([tasks]);
+    expect(graph.nodes['specs/foo/01-demo.tasks.md#S1']?.repo).toBeUndefined();
+  });
+});

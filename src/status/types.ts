@@ -201,6 +201,19 @@ export interface ArtifactRecord {
    */
   features?: FeatureSummary[];
   /**
+   * Implementation repository declared by a `tasks` record's
+   * `**Implementation repo**:` header — the repo whose worktree
+   * `smithy.forge` must be standing in to implement these slices.
+   *
+   * Present only when the artifact says so, which in practice means
+   * planning done in a cross-repo project store. A single-repo or
+   * monorepo install has exactly one repository, declares nothing, and
+   * leaves this absent. Reported verbatim; nothing here validates the
+   * name against repositories that exist. Always one repo, never a list
+   * — per-slice deviations live on {@link SliceSummary.repo}.
+   */
+  repo?: string;
+  /**
    * Repo-relative path to the parent artifact. `null` means "no parent"
    * (top-level RFCs, orphans); an omitted field means "unknown".
    */
@@ -261,6 +274,18 @@ export interface SliceSummary {
    * `in-progress`.
    */
   status: 'done' | 'in-progress' | 'not-started';
+  /**
+   * Implementation repository for this slice, already resolved so
+   * consumers never re-apply the precedence rule: the slice's own
+   * `**Repo**:` override if it declared one, else the file's
+   * `**Implementation repo**:` header. Absent when neither did.
+   *
+   * Exactly one repo per slice: a slice whose tasks span repositories is
+   * invalid and must be split along the repo boundary (see the
+   * implementation-repo section of
+   * `src/templates/agent-skills/README.md`).
+   */
+  repo?: string;
 }
 
 /** Feature kind declared by a `**Kind**` field on a feature-map entry. */
@@ -387,6 +412,16 @@ export interface DependencyNode {
    * decomposed (slices have no child file).
    */
   decomposed: boolean;
+  /**
+   * Implementation repository for the work this node represents, so an
+   * orchestrator can route a node to a worktree without parsing
+   * Markdown. Resolved by {@link buildDependencyGraph} from the same two
+   * sources it uses for {@link status}: a slice row takes its own
+   * slice's repo, any other row takes its downstream record's. Absent
+   * whenever the underlying artifact declared none — the normal case
+   * outside a cross-repo project store.
+   */
+  repo?: string;
 }
 
 /**

@@ -43,6 +43,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | Category | What to check |
   |----------|---------------|
   | **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
+  | **Repo Declaration** | Is every slice implementable in exactly one repo — no slice whose tasks span repos? For cross-repo planning only: does the header declare exactly one `**Implementation repo**`, does each per-slice `**Repo**:` override name exactly one repo, and are differing slices ordered producer-repo-first in the Dependency Order table with the contract recorded under Cross-Repo Notes? A single-repo or monorepo tasks file should carry no repo fields at all. |
   | **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
   | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
   | **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
@@ -242,6 +243,11 @@ Phase 0).
 
 1. Explore the codebase to understand:
    - Which modules, files, and systems are affected by this user story.
+   - **Which repository each affected area lives in** — but only when this is
+     cross-repo planning (a `~/.smithy/projects/…` store spanning several
+     checkouts). There the artifact is the only place "which repo?" can be
+     recorded, and the answer drives slice boundaries. In a single-repo or
+     monorepo install the answer is the one repo you are in; skip this.
    - Existing patterns, conventions, and test infrastructure relevant to the
      changes.
    - Base your analysis on the codebase **as it exists now**. If this story
@@ -374,6 +380,7 @@ Draft the tasks file with this structure:
 **Data Model**: `{{artifactsRoot}}specs/<folder>/<slug>.data-model.md`
 **Contracts**: `{{artifactsRoot}}specs/<folder>/<slug>.contracts.md`
 **Story Number**: <NN>
+**Implementation repo**: `<repo>` _(cross-repo project stores only — omit this line in a single-repo or monorepo install)_
 
 ---
 
@@ -381,6 +388,8 @@ Draft the tasks file with this structure:
 <!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
 
 **Goal**: <What this slice delivers as a standalone working increment.>
+
+**Repo**: `<repo>` _(omit unless this slice lands in a different repo than the header)_
 
 **Justification**: <Why this slice stands alone — not disconnected scaffolding.>
 
@@ -431,11 +440,23 @@ Direction must be either `depends on` or `depended upon by`.
 | User Story <X>: <title> | depends on | <what this story needs from or provides to the other story> |
 
 _If no cross-story dependencies exist, state "None — this story is self-contained."_
+
+### Cross-Repo Notes
+
+_Only when slices declare more than one repo. State the contract between them —
+what the producing repo publishes, what the consuming repo consumes, and what has
+to be released or merged before the downstream slice can start._
+
+_If every slice lands in the same repo, state "None — single repo."_
 ```
 
 Guidelines for slicing:
 
 - Each slice MUST be scoped to a single PR's worth of work.
+- Each slice MUST be implementable within **exactly one repository**. The repo
+  boundary is a slicing constraint of the same rank as "PR-sized": `smithy.forge`
+  runs in one repo's worktree and produces one PR, so a slice whose tasks span
+  repos cannot be implemented at all. Split such a slice along the repo boundary.
 - Each slice MUST have a standalone goal — it delivers a working increment, not
   disconnected scaffolding.
 - Each slice MUST trace to at least one FR or acceptance scenario.
@@ -445,6 +466,51 @@ Guidelines for slicing:
   code — do not batch these into a separate "testing slice".
 - Populate the `## Specification Debt` section with both (1) items carried down from the source spec (in Phase 1) and (2) new items from cut's own clarify run. Carried-down rows use `Origin: spec:<upstream SD-NNN>` and get **no** detail section; cut's own items use `Origin: local` and each get a `### SD-NNN — <Title>` detail section. Assign new SD-NNN identifiers to cut's own items, continuing from where the carried-down list left off. New items are bound by the same kind gate as `smithy-clarify` Step 3: never add a row that did not come from clarify's `debt_items`, and never reword a description into a directive. Requirement, acceptance-test, dependency/coordination, deferral, and post-hoc resolution findings have homes elsewhere in the tasks file (acceptance criteria on each task, the `## Dependency Order` table, follow-up issues) and must not appear here.
 - In the `## Dependency Order` table, `Depends On` must be exactly `—` or a comma-separated list of same-table `S<N>` IDs (e.g., `S1` or `S1, S2`); do not use prose. `Artifact` must always be `—` for every slice row — slices live inline as `## Slice N:` bodies and have no separate artifact file.
+
+### Declaring the implementation repo (cross-repo planning only)
+
+**First decide whether this applies at all.** Look at where these artifacts
+live:
+
+- **A single repo or a monorepo** — the artifacts sit inside the repo, or in a
+  store keyed to it. There is exactly one repository, every slice lands in it,
+  and there is nothing to choose. **Omit the repo fields entirely.** Do not add
+  a line that restates the only repo there is.
+- **A cross-repo project store** (`~/.smithy/projects/…`, planning that spans
+  several checkouts) — "which repo?" is a real question with more than one
+  answer, and the artifact is the only place it can be recorded. Declare it.
+
+When it applies:
+
+- Add an `**Implementation repo**` field to the header, its value in backticks —
+  **exactly one repo, never a list.** It is the story's primary repo.
+- Add a `**Repo**` field to a slice, its value in backticks, only when that
+  slice lands somewhere other than the header's repo. Also exactly one repo.
+- The rule downstream tooling applies: a slice's own `**Repo**:` wins, else the
+  header. That is why the header stays a single primary repo even when slices
+  differ.
+- Name the repo the way the repo is known (`story-spider`, or `owner/repo`),
+  never a filesystem path — the checkout location differs per developer.
+- **Task paths stay repo-relative, exactly as today** (`lib/constants/Experiment.kt`,
+  `src/status/parser.ts`). The declaration supplies the root, so paths do not
+  change shape; they are relative to that slice's repo.
+
+**When a story genuinely spans repos** (a producer change in one, a consumer
+change in another):
+
+1. Emit **one slice per repo** — never a single slice that touches both.
+2. Give each cross-repo slice its own `**Repo**:` line.
+3. Record the ordering in `## Dependency Order` — the producing repo's slice
+   before the consuming repo's, with the consumer's `Depends On` naming it.
+4. Fill in `### Cross-Repo Notes` with the contract between them: what the
+   producer publishes, what the consumer consumes, and what must merge or
+   release before the downstream slice can start.
+
+You need **read** access to a repo to slice against it — a local checkout, a
+fetched tree, or any other way of reading its code. That is enough for cut. It
+is not enough for `smithy.forge`, which needs a local checkout of the declared
+repo and will refuse to run anywhere else. Never declare a repo you could not
+read while slicing.
 
 Guidelines for task authoring:
 
@@ -721,6 +787,12 @@ is the contract.
 - **DO** require FR traceability — every slice must reference which FRs and
   acceptance scenarios it addresses.
 - **DO** keep slices PR-sized. If a slice feels too large, split it further.
+- **DO** declare exactly one `**Implementation repo**` in the header when
+  planning in a cross-repo project store — and omit the repo fields entirely in
+  a single-repo or monorepo install, where there is nothing to choose.
+- **DO NOT** emit a slice whose tasks span more than one repository — split it
+  along the repo boundary and order the resulting slices in
+  `## Dependency Order`. A cross-repo slice cannot be forged.
 - **DO** use zero-padded two-digit numbering for the filename (`01-`, `02-`,
   ..., `99-`) for consistent sort order.
 - **DO** invoke smithy-clarify for ambiguity scanning and triage.
