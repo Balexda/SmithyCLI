@@ -59,8 +59,32 @@ This may be:
    - **Goal** — the slice's stated goal
    - **Tasks** — the ordered checklist of implementation steps
    - **Addresses** — the FRs and acceptance scenarios this slice covers
-4. **Read the source spec.** The tasks file header references its source spec (`.spec.md`), data model (`.data-model.md`), and contracts (`.contracts.md`). Read these for context on requirements, entities, and interfaces.
-5. **Check cross-story dependencies.** If the tasks file includes a
+4. **Check the implementation repo, if the slice declares one.** Cross-repo
+   planning records the target repository in the tasks file; single-repo and
+   monorepo tasks files declare nothing, because there is only one answer.
+
+   Look for the slice's own `**Repo**` line, else the file header's
+   `**Implementation repo**` field. **No declaration → nothing to check.**
+   Proceed in the repo you are in.
+
+   When one is declared, confirm you are standing in it before touching a
+   file. Read the current repo's identity from git —
+   `git rev-parse --show-toplevel` (compare its basename) and, when the
+   declaration carries a slash, `git config --get remote.origin.url` (compare
+   the `owner/repo` tail, with any `.git` suffix stripped). Match
+   case-insensitively.
+
+   - **Match** → proceed.
+   - **Mismatch** → **STOP.** Do not implement anything. Report the declared
+     repo, the repo you are actually in, and tell the user to re-run forge from
+     a checkout of the declared repo. Editing whichever repo you happen to be
+     standing in produces a PR against the wrong repository and is never the
+     recovery.
+   - **Repo identity undeterminable** (no git, detached environment) → proceed,
+     but say so plainly in the **Outstanding Issues** deliverable so the user
+     knows the check did not run.
+5. **Read the source spec.** The tasks file header references its source spec (`.spec.md`), data model (`.data-model.md`), and contracts (`.contracts.md`). Read these for context on requirements, entities, and interfaces.
+6. **Check cross-story dependencies.** If the tasks file includes a
    "Cross-Story Dependencies" section listing stories this slice depends on,
    check whether those stories' slices have been implemented:
    - Treat the dependent stories' `.tasks.md` files as the primary source of
@@ -466,6 +490,10 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
 
 - **Tasks file not found**: Stop with a clear error message.
 - **Slice number out of range**: Stop and list available slices with their goals.
+- **Implementation repo mismatch**: The slice's declared repo is not the repo
+  you are standing in. Stop before touching any file; name both repos and point
+  the user at a checkout of the declared one. Never fall back to editing the
+  current repo.
 - **Branch already exists**: Ask the user whether to continue on the existing branch or abort.
 - **Slice already forged (PR exists)**: Warn the user and confirm before proceeding.
 - **Unchecked tasks at PR time**: If the Slice Completion Check finds any

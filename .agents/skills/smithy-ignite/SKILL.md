@@ -23,12 +23,16 @@ prefix.
 - When `` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -51,6 +55,35 @@ When you scan for existing artifacts (e.g. "list folders in
 `docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+
+## Persona Artifact Convention
+
+Persona files are durable, cross-RFC reference artifacts. Store them flat at
+`docs/personas/<slug>.persona.md`, where `<slug>` is a
+kebab-case slug derived from the persona name or role. Do not add a date or
+sequence prefix. The filename slug is the stable identity for discovery and
+matching; `.persona.md` files do not carry a separate machine-readable identity
+key such as `slug:` or `**Role**:`, and there is no persona registry or index.
+
+The canonical file shape is:
+
+```markdown
+# Persona: <Name/Role>
+
+**Created**: YYYY-MM-DD
+
+<Narrative prose describing the persona's role and context.>
+
+<Narrative prose describing the friction they experience today.>
+
+<Narrative prose describing how their work changes when relevant capabilities ship.>
+```
+
+Each persona file contains exactly one persona. The body is narrative prose,
+not a bullet inventory, and stays reusable across RFCs rather than tied to one
+solution. Persona files sit outside the `## Dependency Order` lineage: they
+must not include M/F/US/S identifiers, a `## Dependency Order` section, or an
+inline `## Specification Debt` table.
 ## Input
 
 The user's idea or document path: $ARGUMENTS
@@ -248,12 +281,11 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the RFC's
-`## Specification Debt` table with the next available `SD-NNN` identifier
+`## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever refine or prior clarify passes already
 wrote — do not reset). Use the finding's `description` for the Description
 column, set `Source Category` to `plan-review:<finding category>`, copy
-severity into Impact and confidence into Confidence, set Status to `open`,
-and leave Resolution as `—`.
+severity into Impact and confidence into Confidence, and set `Origin` to `local`.
 
 For each High-confidence finding, edit the RFC file in place using the
 `proposed_fix`. The Phase 0c commit below captures both the refine diff and
@@ -290,6 +322,22 @@ Parse the input to set up the RFC:
 
 ## Phase 1.5: Approach Planning
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge before shaping the RFC approach.
+
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: RFC artifact
+- **Feature/problem description**: the user's idea description or the PRD content read during intake
+- **Codebase file paths**: any existing RFC files found during the `docs/rfcs/` scan
+- **Domain hint**: infer `system`, `design`, or `both` from the idea, PRD, or referenced files
+
+Use the returned recall result as advisory planning context. Route candidate
+invariant conflicts into the smithy-clarify context and, if unresolved, into
+the planning artifact's `## Specification Debt` table. Surface
+superseded/deprecated citation hazards before writing the artifact. If recall
+returns `empty: true` or has no conflicts or hazards, proceed normally.
 ### Competing Plans
 
 Use competing **smithy-plan** sub-agents to generate the approach from multiple
@@ -366,6 +414,7 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: RFC artifact
 - **Feature/problem description**: the user's idea description or the PRD content read during intake
 - **Codebase file paths**: any existing RFC files found during the `docs/rfcs/` scan (for context on existing patterns)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
@@ -578,7 +627,29 @@ After smithy-prose returns, append the returned content to `<slug>.rfc.md`.
 
 ### Sub-phase 3b: Personas
 
-Dispatch **smithy-prose** with:
+Before drafting Personas cold, discover reusable durable personas:
+
+1. Read the **Persona Artifact Convention** above as the canonical storage,
+   filename-slug identity, and matching contract. Do not introduce a separate
+   schema, registry, index, or identity field for this sub-phase.
+2. Resolve the active persona directory from the same `` used
+   for this ignite run and list existing `.persona.md` files there. Keep this
+   discovery scoped to that active artifacts root so in-repo and
+   external-artifacts modes never cross-contaminate persona stores.
+3. From personas named or clearly described during Phase 2 clarification,
+   derive deterministic kebab-case slugs from each persona name or role.
+4. Compare those needed slugs to discovered persona filenames using exact
+   filename-slug identity: `<slug>.persona.md` covers the matching needed
+   persona. A needed slug with no matching file remains uncovered. Avoid fuzzy
+   matching, semantic similarity, interactive selection, or any new registry.
+
+This slice adds coverage detection only — it does not yet change how the
+`## Personas` section is drafted. Record which needed personas are covered by a
+matching `<slug>.persona.md` file and which remain uncovered as informational
+notes for the projection and gap-only drafting that a later slice introduces.
+If no `.persona.md` files exist, there is simply nothing to reuse. Then,
+**regardless of the match results** (no files, some covered, or all covered),
+follow the existing cold-draft path and dispatch **smithy-prose** with:
 
 - **section_assignment**: "Personas"
 - **idea_description**: the user's idea description or PRD content from intake
@@ -773,14 +844,39 @@ influence downstream design decisions. Keep this at "WHAT not HOW" level.>
 - <Decision 2>
 
 ## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | <slug naming the unresolved choice> | <clarify scan category> | High | Medium | local |
+| SD-002 | <slug of a carried-down item> | <clarify scan category> | Medium | Medium | spec:SD-002 |
 
-_If no debt items, write: "None — all ambiguities resolved."_
+### SD-001 — <Title>
 
+<The unresolved choice, stated as an open question or as "unresolved choice
+between X and Y". Name the alternatives and what each one would imply. 1-3
+sentences. Never a directive.>
+
+### Resolved
+
+#### SD-003 — <Title>
+
+**Question:** <the open question this item recorded>
+
+**Answer:** <what was decided, on what basis, and when.>
+
+_`Title` is a short slug (40 characters or fewer) — the full statement lives in
+the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
+detail section for every row whose `Origin` is `local`; rows carried down from a
+parent artifact get an index row only, because their prose lives in the parent.
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
 ## Milestones
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
@@ -842,12 +938,15 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the RFC's
-`## Specification Debt` table with the next available `SD-NNN` identifier
+`## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever clarify / Phase 3 already wrote — do not
-reset). Use the finding's `description` for the Description column, set
+reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
 `Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the RFC file in place using the
 `proposed_fix`. The commit below captures the RFC and the applied fixes in
@@ -883,7 +982,7 @@ and file write — proceed directly through plan-review, commit, and PR:
    snippet's `## Assumptions` section (the snippet / PR body is the only
    Assumptions surface — the RFC artifact itself has no `## Assumptions`
    section). Write `debt_items` into **both** the RFC's
-   `## Specification Debt` table **and** the snippet's
+   `## Specification Debt` section **and** the snippet's
    `## Specification Debt` summary so the PR body and the artifact stay
    in sync.
 
@@ -918,8 +1017,8 @@ was unambiguous.`)
 
 <count> items deferred — see `## Specification Debt` in the artifact.
 
-- <debt item 1 description> [Impact: <level>]
-- <debt item 2 description> [Impact: <level>]
+- <debt item 1 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
+- <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
 (If clarify returned zero debt items, write: `None — no specification debt
@@ -948,8 +1047,12 @@ was recorded.`)
   array. Preserve the `[Critical Assumption]` annotation on any item whose
   severity was Critical.
 - **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Impact level. The leading count MUST
-  match the number of bullets rendered. Each bullet's description must
+  `debt_items` array, including its Title, Impact level, and Origin. The
+  leading count MUST match the number of bullets rendered. `Origin` is
+  `local` for items discovered while authoring this artifact, or
+  `<parent-kind>:SD-NNN` for items carried down from a parent artifact
+  (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
+  was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
   between X and Y" — and must come straight from `debt_items` without
   rewording. Do not synthesize bullets here from requirements,

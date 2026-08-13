@@ -36,7 +36,34 @@ The parent agent passes you:
 
 ---
 
-## Canonical Scan Roots
+## Scan Constraints
+
+Use only `Glob`, `Grep`, and `Read`. Never edit files, run commands, create
+records, recompute a status index, or write derived state.
+
+When the parent supplies scan-root overrides, use them in place of the canonical
+roots below.
+
+For invariant records, also read:
+
+- `## Rule` - compare the proposed work against this rule.
+- `## Known Exceptions` - use only to decide whether a conflict is already
+  covered by an accepted exception.
+
+Include a one-line `basis` for each relevant record explaining the strongest
+overlap, such as `domain=system and topics include agent-router`, or
+`scope matches src/templates/agent-skills/commands`.
+
+---
+
+## Engraved Recall Rules
+
+These rules govern engraved-knowledge recall: which records are relevant, when an
+invariant conflict is worth surfacing, when a citation is stale, and what an
+empty result looks like. They produce a recall result with `relevant`,
+`conflicts`, `superseded_citations`, `empty`, and `empty_reason` fields.
+
+### Canonical scan roots
 
 For `system` work, scan:
 
@@ -50,117 +77,61 @@ For `design` work, scan:
 - `docs/design/invariants/` for `*.invariant.md`
 - `docs/design/constitution/` for principle records
 
-For `both`, scan both partitions. Missing roots are normal.
+For mixed or unclear work, scan both partitions. Missing roots are normal.
 
-Use only `Glob`, `Grep`, and `Read`. Never edit files, run commands, create
-records, recompute a status index, or write derived state.
+### Relevance ranking
 
----
+Treat engraved-record frontmatter as the source of truth. Rank records by overlap
+with the planning context, preferring frontmatter matches on
+`domain`, `topics`, `scope`, and `applies_to` over loose body-text matches:
 
-## Record Fields To Read
+- `domain` matches the inferred or provided domain. For `both`, keep both domains
+  and rank stronger topical/scope matches higher.
+- `topics` overlap with the request, artifact title, feature language, or supplied
+  topic hints.
+- `scope` overlaps with referenced paths, packages, modules, or layers.
+- `applies_to` overlaps with commands, user-visible surfaces, APIs, or workflows
+  named by the planning context.
+- Body text (`## Decision`, `## Rule`, `## Statement`) clarifies relevance only
+  when frontmatter overlap is tied or sparse.
 
-Treat the engraved-record frontmatter as the source of truth. Read these fields
-when present:
+Return only records with credible relevance, strongest first, each with a
+one-line basis. Do not return every engraved record by default.
 
-| Field | Use |
-|-------|-----|
-| `id`, `kind`, `title`, `domain` | Identify and describe the record. |
-| `status` | Ground truth lifecycle/alignment. Flag decision citations whose status is `superseded` or `deprecated`. |
-| `topics` | Relevance overlap with planning topics and keywords. |
-| `scope` | Relevance overlap with repo paths, modules, packages, or layers. |
-| `applies_to` | Relevance overlap with user-visible surfaces, commands, APIs, or workflows. |
-| `supersedes`, `superseded_by`, `establishes`, `established_by` | Context only. Do not derive lifecycle or graph state from these fields. |
-
-For invariant records, also read:
-
-- `## Rule` - compare the proposed work against this rule.
-- `## Known Exceptions` - use only to decide whether a conflict is already
-  covered by an accepted exception.
-
----
-
-## Relevance Ranking
-
-Rank records by overlap with the planning context. Prefer direct frontmatter
-matches over loose text matches:
-
-1. `domain` matches the inferred or provided domain. For `both`, keep both
-   domains and rank stronger topical/scope matches higher.
-2. `topics` overlap with the request, artifact title, feature language, or
-   supplied topic hints.
-3. `scope` overlaps with referenced paths, packages, modules, layers, or files.
-4. `applies_to` overlaps with commands, user-visible surfaces, APIs, workflows,
-   or product areas named by the planning context.
-5. Body text (`## Decision`, `## Rule`, `## Statement`) clarifies relevance when
-   frontmatter overlap is tied or sparse.
-
-For each relevant record, include a one-line `basis` explaining the strongest
-overlap, such as `domain=system and topics include agent-router`, or
-`scope matches src/templates/agent-skills/commands`.
-
-Do not return every engraved record by default. Return only records with a
-credible domain/topic/scope/applies_to/body match, sorted strongest first.
-
----
-
-## Candidate Invariant Conflicts
+### Candidate invariant conflicts
 
 For each relevant invariant, compare the proposed work against its `## Rule`.
+Return apparent divergence as a **candidate new exception** — advisory guidance,
+not a hard block.
 
-When the proposed work appears to diverge from the rule, return a **candidate
-new exception** in `conflicts`. This is advisory only. Do not call it a hard
-block, and do not instruct the parent to stop unless the parent command's own
-rules independently escalate it.
+Before raising a conflict, inspect the invariant's `## Known Exceptions` ledger:
 
-Before returning a conflict, inspect the invariant's `## Known Exceptions`
-ledger:
+- Suppress the conflict only when an existing row's disposition starts with
+  `Accepted:` and its `Where` / `What diverges` coverage clearly covers the same
+  divergence.
+- Do not suppress for `Temporary:` rows — temporary drift is still guidance the
+  planner should see.
+- Treat the empty placeholder ledger row (cells containing only `—`) as no
+  existing exception coverage.
 
-- Suppress the conflict when an existing row's `Disposition + Why` cell starts
-  with `Accepted:` and its `Where` / `What diverges` coverage clearly covers
-  the same divergence.
-- Do not suppress the conflict for `Temporary:` rows. Temporary drift is still
-  guidance the planner should see.
-- Treat the empty placeholder ledger row as no exception coverage. Placeholder
-  rows commonly contain `—` in every cell.
-- If ledger coverage is ambiguous, include the conflict and mention the
-  ambiguity in `basis`.
+### Superseded or deprecated citations
 
-Conflicts are candidate exception guidance, not validation failures.
-
----
-
-## Superseded Or Deprecated Citation Hazards
-
-Look for citations in the planning context and draft text that reference
-engraved decision IDs, titles, or paths. If the cited decision's frontmatter
-`status` is `superseded` or `deprecated`, return an entry in
-`superseded_citations`.
-
-Rules:
+Search the planning context and draft text for cited decision IDs, titles, or
+paths. If a cited decision's frontmatter `status` is `superseded` or `deprecated`,
+report it in `superseded_citations`.
 
 - Read `status` from frontmatter as ground truth.
-- Do not independently derive supersession from `supersedes` /
-  `superseded_by`, citation graphs, or status artifacts.
-- Mention replacement context from `superseded_by` only if it is present in the
-  cited record; do not infer it.
-- Only flag decision citation hazards. Invariants and principles have different
-  status axes.
+- Do not independently derive supersession from `supersedes` / `superseded_by`,
+  citation graphs, or status artifacts.
 
----
+### Empty states
 
-## Empty Results
-
-Return a well-formed empty result instead of an error:
-
-- If no engraved records exist in the selected scan roots, return
-  `empty: true` and `empty_reason: "no_records"`.
-- If engraved records exist but none credibly match the planning context, return
-  `empty: true` and `empty_reason: "no_match"`.
-- When `empty` is true, `relevant`, `conflicts`, and `superseded_citations` must
-  be empty arrays.
-- When any relevant record, conflict, or citation hazard is returned, set
-  `empty: false` and `empty_reason: null`.
-
+- If no engraved records exist in the selected scan roots, the result is
+  `empty: true` with `empty_reason: "no_records"`.
+- If records exist but none credibly match the planning context, the result is
+  `empty: true` with `empty_reason: "no_match"`.
+- When `empty` is true, keep `relevant`, `conflicts`, and `superseded_citations`
+  empty.
 ---
 
 ## Output
@@ -216,6 +187,9 @@ When there are no results:
   "empty_reason": "no_records"
 }
 ```
+
+When any relevant record, conflict, or citation hazard is returned, set
+`empty: false` and `empty_reason: null`.
 
 ---
 

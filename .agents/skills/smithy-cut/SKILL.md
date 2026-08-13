@@ -25,12 +25,16 @@ prefix.
 - When `` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -53,6 +57,7 @@ When you scan for existing artifacts (e.g. "list folders in
 `docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+
 ## Input
 
 The user's input: $ARGUMENTS
@@ -82,6 +87,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | Category | What to check |
   |----------|---------------|
   | **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
+  | **Repo Declaration** | Is every slice implementable in exactly one repo — no slice whose tasks span repos? For cross-repo planning only: does the header declare exactly one `**Implementation repo**`, does each per-slice `**Repo**:` override name exactly one repo, and are differing slices ordered producer-repo-first in the Dependency Order table with the contract recorded under Cross-Repo Notes? A single-repo or monorepo tasks file should carry no repo fields at all. |
   | **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
   | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario from the user story? Are any FRs unaddressed? |
   | **Dependency Order** | Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? |
@@ -133,13 +139,15 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                   |
 
 For each Low-confidence finding routed to debt, append a new row to the
-tasks file's `## Specification Debt` table with the next available `SD-NNN`
+tasks file's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever the tasks file already contains,
-including debt inherited from the spec — do not reset). Use the finding's
-`description` for the Description column, set `Source Category` to
-`plan-review:<finding category>` (e.g., `plan-review:Internal
-contradiction`), copy severity into Impact and confidence into Confidence,
-set Status to `open`, and leave Resolution as `—`.
+including debt inherited from the spec — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the tasks file in place using the
 `proposed_fix`. The Phase 0c commit below captures both the refine diff and
@@ -229,8 +237,8 @@ was unambiguous.`)
 
 <count> items deferred — see `## Specification Debt` in the artifact.
 
-- <debt item 1 description> [Impact: <level>]
-- <debt item 2 description> [Impact: <level>]
+- <debt item 1 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
+- <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
 (If clarify returned zero debt items, write: `None — no specification debt
@@ -259,8 +267,12 @@ was recorded.`)
   array. Preserve the `[Critical Assumption]` annotation on any item whose
   severity was Critical.
 - **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Impact level. The leading count MUST
-  match the number of bullets rendered. Each bullet's description must
+  `debt_items` array, including its Title, Impact level, and Origin. The
+  leading count MUST match the number of bullets rendered. `Origin` is
+  `local` for items discovered while authoring this artifact, or
+  `<parent-kind>:SD-NNN` for items carried down from a parent artifact
+  (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
+  was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
   between X and Y" — and must come straight from `debt_items` without
   rewording. Do not synthesize bullets here from requirements,
@@ -315,10 +327,14 @@ attempting to render the full format above:
   block.
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,
-update those items in the tasks file's `## Specification Debt` table: change
-status from `open` or `inherited` to `resolved` and populate the Resolution
-column with a note describing how and when the item was addressed (e.g.,
-`Resolved 2026-04-10 — user confirmed webhooks are HTTP-only`).
+**move** each one out of the tasks file's `## Specification Debt` index table
+and into its `### Resolved` subsection as a `#### SD-NNN — <Title>` block
+carrying `**Question:**` and `**Answer:**`. The answer records how and when
+the item was addressed (e.g., `Resolved 2026-04-10 — user confirmed webhooks
+are HTTP-only`). The ID is never reused. For an item carried down from the
+spec — one whose `Origin` was not `local` — quote the parent's question into
+the `**Question:**` line, since the tasks file holds no detail section of its
+own for it. Do not write the resolution back to the parent spec.
 
 This phase runs INSTEAD of Phases 1-5 when a tasks file already exists. If more
 refinement is needed, the user can re-run the command (another pass through
@@ -334,20 +350,35 @@ Phase 0).
    - **User story number** — validate it exists in the spec file.
 2. Read all three spec artifacts to build full context.
 3. **Inherit upstream debt.** After reading the source spec's three artifact
-   files, also read the spec's `## Specification Debt` section. Extract all
-   items with `status: open` or `status: inherited`. Carry them forward into
-   the tasks file's `## Specification Debt` table with status `inherited` and
-   a description prefixed with
-   `inherited from spec: <original SD-NNN description>`. Preserve the
-   upstream SD-NNN identifiers in the ID column (cut's own new items will
-   continue numbering from where the inherited list leaves off — see Phase 4
-   guidelines). Leave the Resolution column as `—`. If the upstream
-   `## Specification Debt` section is absent, empty, or the table is
-   malformed, treat this as a non-blocking warning: append an italic note
-   directly below the `## Specification Debt` table heading (before any table
-   rows): `_Upstream spec debt could not be parsed — inheritance skipped._`
-   This keeps the warning outside the table so it does not break the
-   structured row format.
+   files, also read the spec's `## Specification Debt` section. Carry forward
+   every row in its index table — that is, everything **not** under the
+   spec's `### Resolved` subsection. For each carried-down row, copy the
+   upstream `Title`, `Source Category`, `Impact`, and `Confidence` verbatim,
+   preserve the upstream `SD-NNN` in the `ID` column, and set `Origin` to
+   `spec:<the upstream SD-NNN>` (so a row that was `SD-004` in the spec
+   arrives as ID `SD-004`, Origin `spec:SD-004` — any divergence between the
+   two signals an accidental renumber). Cut's own new items continue
+   numbering from where the carried-down list leaves off — see Phase 4
+   guidelines.
+
+   **Do not write a detail section for a carried-down row.** Its prose lives
+   once, in the parent spec, reachable through `Origin` plus the tasks file's
+   `**Source**:` header. This is what keeps one spec's debt from being
+   duplicated in full into every tasks file cut generates.
+
+   **An upstream section that is legitimately empty is not an error.** If the
+   spec's `## Specification Debt` section holds the empty-state line
+   (`_None — no specification debt was recorded._`) or an index table with no
+   rows, carry down zero rows and say nothing — that is the common, expected
+   outcome, and it means the spec recorded no debt, not that anything failed.
+
+   Only when the section is **absent entirely** or its index table is
+   **malformed** (missing or reordered columns, rows whose cells do not line
+   up) treat it as a non-blocking warning: append an italic note directly
+   below the `## Specification Debt` heading and above the index table:
+   `_Upstream spec debt could not be parsed — inheritance skipped._` This
+   keeps the warning outside the table so it does not break the structured
+   row format.
 4. Extract the target user story — its title, acceptance scenarios, priority,
    and any FRs that trace to it.
 5. Derive the **story slug** — a short kebab-case name from the user story
@@ -372,6 +403,11 @@ Phase 0).
 
 1. Explore the codebase to understand:
    - Which modules, files, and systems are affected by this user story.
+   - **Which repository each affected area lives in** — but only when this is
+     cross-repo planning (a `~/.smithy/projects/…` store spanning several
+     checkouts). There the artifact is the only place "which repo?" can be
+     recorded, and the answer drives slice boundaries. In a single-repo or
+     monorepo install the answer is the one repo you are in; skip this.
    - Existing patterns, conventions, and test infrastructure relevant to the
      changes.
    - Base your analysis on the codebase **as it exists now**. If this story
@@ -405,6 +441,22 @@ Handle the scout report as follows:
   question, but do not force separate discussion of each warning.
 - **Clean**: Proceed directly to Phase 2.8 (or Phase 3 if not in agent mode) with no additional context.
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge during this scan before decomposing slices.
+
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: task slicing for User Story `<N>`
+- **Feature/problem description**: the target user story title, acceptance scenarios, priority, and traced FRs from Phase 1
+- **Codebase file paths**: the code areas mapped to acceptance scenarios during Phase 2 plus the spec artifacts
+- **Domain hint**: infer `system`, `design`, or `both` from the story, spec artifacts, and mapped code areas
+
+Use the returned recall result as advisory planning context. Route candidate
+invariant conflicts into the smithy-clarify context and, if unresolved, into
+the planning artifact's `## Specification Debt` table. Surface
+superseded/deprecated citation hazards before writing the artifact. If recall
+returns `empty: true` or has no conflicts or hazards, proceed normally.
 ---
 
 ## Phase 2.8: Approach Planning
@@ -479,6 +531,7 @@ Pass each smithy-slice sub-agent:
 - **Spec artifacts**: paths to the `.spec.md`, `.data-model.md`, and `.contracts.md`
 - **Codebase file paths**: the code areas mapped to acceptance scenarios during Phase 2
 - **Scout report**: the scout report from Phase 2.5 (if it contained conflicts or warnings)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled decomposition to the user as:
@@ -540,6 +593,7 @@ Draft the tasks file with this structure:
 **Data Model**: `specs/<folder>/<slug>.data-model.md`
 **Contracts**: `specs/<folder>/<slug>.contracts.md`
 **Story Number**: <NN>
+**Implementation repo**: `<repo>` _(cross-repo project stores only — omit this line in a single-repo or monorepo install)_
 
 ---
 
@@ -547,6 +601,8 @@ Draft the tasks file with this structure:
 <!-- audience: builder; mode: how-to; length: 5-15 steps; diagram: optional; examples: forbidden -->
 
 **Goal**: <What this slice delivers as a standalone working increment.>
+
+**Repo**: `<repo>` _(omit unless this slice lands in a different repo than the header)_
 
 **Justification**: <Why this slice stands alone — not disconnected scaffolding.>
 
@@ -575,14 +631,39 @@ Draft the tasks file with this structure:
 ---
 
 ## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | <slug naming the unresolved choice> | <clarify scan category> | High | Medium | local |
+| SD-002 | <slug of a carried-down item> | <clarify scan category> | Medium | Medium | spec:SD-002 |
 
-_If no debt items, write: "None — all ambiguities resolved."_
+### SD-001 — <Title>
 
+<The unresolved choice, stated as an open question or as "unresolved choice
+between X and Y". Name the alternatives and what each one would imply. 1-3
+sentences. Never a directive.>
+
+### Resolved
+
+#### SD-003 — <Title>
+
+**Question:** <the open question this item recorded>
+
+**Answer:** <what was decided, on what basis, and when.>
+
+_`Title` is a short slug (40 characters or fewer) — the full statement lives in
+the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
+detail section for every row whose `Origin` is `local`; rows carried down from a
+parent artifact get an index row only, because their prose lives in the parent.
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
 ---
 
 ## Dependency Order
@@ -604,11 +685,23 @@ Direction must be either `depends on` or `depended upon by`.
 | User Story <X>: <title> | depends on | <what this story needs from or provides to the other story> |
 
 _If no cross-story dependencies exist, state "None — this story is self-contained."_
+
+### Cross-Repo Notes
+
+_Only when slices declare more than one repo. State the contract between them —
+what the producing repo publishes, what the consuming repo consumes, and what has
+to be released or merged before the downstream slice can start._
+
+_If every slice lands in the same repo, state "None — single repo."_
 ```
 
 Guidelines for slicing:
 
 - Each slice MUST be scoped to a single PR's worth of work.
+- Each slice MUST be implementable within **exactly one repository**. The repo
+  boundary is a slicing constraint of the same rank as "PR-sized": `smithy.forge`
+  runs in one repo's worktree and produces one PR, so a slice whose tasks span
+  repos cannot be implemented at all. Split such a slice along the repo boundary.
 - Each slice MUST have a standalone goal — it delivers a working increment, not
   disconnected scaffolding.
 - Each slice MUST trace to at least one FR or acceptance scenario.
@@ -616,8 +709,53 @@ Guidelines for slicing:
 - Slices are numbered sequentially starting at 1.
 - Include tests, docs, and validation steps within the slice that introduces the
   code — do not batch these into a separate "testing slice".
-- Populate the `## Specification Debt` section with both (1) inherited items from the source spec (carried over in Phase 1) and (2) new items from cut's own clarify run. Inherited items use status `inherited`; new items use status `open`. Assign new SD-NNN identifiers to cut's own items, continuing from where the inherited list left off. New items are bound by the same kind gate as `smithy-clarify` Step 3: never add a row that did not come from clarify's `debt_items`, and never reword a description into a directive. Requirement, acceptance-test, dependency/coordination, deferral, and post-hoc resolution findings have homes elsewhere in the tasks file (acceptance criteria on each task, the `## Dependency Order` table, follow-up issues) and must not appear here.
+- Populate the `## Specification Debt` section with both (1) items carried down from the source spec (in Phase 1) and (2) new items from cut's own clarify run. Carried-down rows use `Origin: spec:<upstream SD-NNN>` and get **no** detail section; cut's own items use `Origin: local` and each get a `### SD-NNN — <Title>` detail section. Assign new SD-NNN identifiers to cut's own items, continuing from where the carried-down list left off. New items are bound by the same kind gate as `smithy-clarify` Step 3: never add a row that did not come from clarify's `debt_items`, and never reword a description into a directive. Requirement, acceptance-test, dependency/coordination, deferral, and post-hoc resolution findings have homes elsewhere in the tasks file (acceptance criteria on each task, the `## Dependency Order` table, follow-up issues) and must not appear here.
 - In the `## Dependency Order` table, `Depends On` must be exactly `—` or a comma-separated list of same-table `S<N>` IDs (e.g., `S1` or `S1, S2`); do not use prose. `Artifact` must always be `—` for every slice row — slices live inline as `## Slice N:` bodies and have no separate artifact file.
+
+### Declaring the implementation repo (cross-repo planning only)
+
+**First decide whether this applies at all.** Look at where these artifacts
+live:
+
+- **A single repo or a monorepo** — the artifacts sit inside the repo, or in a
+  store keyed to it. There is exactly one repository, every slice lands in it,
+  and there is nothing to choose. **Omit the repo fields entirely.** Do not add
+  a line that restates the only repo there is.
+- **A cross-repo project store** (`~/.smithy/projects/…`, planning that spans
+  several checkouts) — "which repo?" is a real question with more than one
+  answer, and the artifact is the only place it can be recorded. Declare it.
+
+When it applies:
+
+- Add an `**Implementation repo**` field to the header, its value in backticks —
+  **exactly one repo, never a list.** It is the story's primary repo.
+- Add a `**Repo**` field to a slice, its value in backticks, only when that
+  slice lands somewhere other than the header's repo. Also exactly one repo.
+- The rule downstream tooling applies: a slice's own `**Repo**:` wins, else the
+  header. That is why the header stays a single primary repo even when slices
+  differ.
+- Name the repo the way the repo is known (`story-spider`, or `owner/repo`),
+  never a filesystem path — the checkout location differs per developer.
+- **Task paths stay repo-relative, exactly as today** (`lib/constants/Experiment.kt`,
+  `src/status/parser.ts`). The declaration supplies the root, so paths do not
+  change shape; they are relative to that slice's repo.
+
+**When a story genuinely spans repos** (a producer change in one, a consumer
+change in another):
+
+1. Emit **one slice per repo** — never a single slice that touches both.
+2. Give each cross-repo slice its own `**Repo**:` line.
+3. Record the ordering in `## Dependency Order` — the producing repo's slice
+   before the consuming repo's, with the consumer's `Depends On` naming it.
+4. Fill in `### Cross-Repo Notes` with the contract between them: what the
+   producer publishes, what the consumer consumes, and what must merge or
+   release before the downstream slice can start.
+
+You need **read** access to a repo to slice against it — a local checkout, a
+fetched tree, or any other way of reading its code. That is enough for cut. It
+is not enough for `smithy.forge`, which needs a local checkout of the declared
+repo and will refuse to run anywhere else. Never declare a repo you could not
+read while slicing.
 
 Guidelines for task authoring:
 
@@ -804,14 +942,16 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                   |
 
 For each Low-confidence finding routed to debt, append a new row to the
-tasks file's `## Specification Debt` table with the next available `SD-NNN`
+tasks file's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever the tasks file already
 contains, including debt inherited from the spec in Phase 1 and new items
-from cut's own clarify run — do not reset). Use the finding's `description`
-for the Description column, set `Source Category` to `plan-review:<finding
-category>` (e.g., `plan-review:Internal contradiction`), copy severity into
-Impact and confidence into Confidence, set Status to `open`, and leave
-Resolution as `—`.
+from cut's own clarify run — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the tasks file in place using the
 `proposed_fix`. The commit below captures both the original tasks file and
@@ -910,8 +1050,8 @@ was unambiguous.`)
 
 <count> items deferred — see `## Specification Debt` in the artifact.
 
-- <debt item 1 description> [Impact: <level>]
-- <debt item 2 description> [Impact: <level>]
+- <debt item 1 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
+- <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
 (If clarify returned zero debt items, write: `None — no specification debt
@@ -940,8 +1080,12 @@ was recorded.`)
   array. Preserve the `[Critical Assumption]` annotation on any item whose
   severity was Critical.
 - **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Impact level. The leading count MUST
-  match the number of bullets rendered. Each bullet's description must
+  `debt_items` array, including its Title, Impact level, and Origin. The
+  leading count MUST match the number of bullets rendered. `Origin` is
+  `local` for items discovered while authoring this artifact, or
+  `<parent-kind>:SD-NNN` for items carried down from a parent artifact
+  (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
+  was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
   between X and Y" — and must come straight from `debt_items` without
   rewording. Do not synthesize bullets here from requirements,
@@ -1004,6 +1148,12 @@ attempting to render the full format above:
 - **DO** require FR traceability — every slice must reference which FRs and
   acceptance scenarios it addresses.
 - **DO** keep slices PR-sized. If a slice feels too large, split it further.
+- **DO** declare exactly one `**Implementation repo**` in the header when
+  planning in a cross-repo project store — and omit the repo fields entirely in
+  a single-repo or monorepo install, where there is nothing to choose.
+- **DO NOT** emit a slice whose tasks span more than one repository — split it
+  along the repo boundary and order the resulting slices in
+  `## Dependency Order`. A cross-repo slice cannot be forged.
 - **DO** use zero-padded two-digit numbering for the filename (`01-`, `02-`,
   ..., `99-`) for consistent sort order.
 - **DO** invoke smithy-clarify for ambiguity scanning and triage.

@@ -223,9 +223,15 @@ re-run." The debt table is already in `debt_items` — do not duplicate it in
   structured `ClarifyResult` summary to the parent agent containing:
   1. **`assumptions`** — final list of assumptions, including
      `[Critical Assumption]` annotations for Critical-impact items.
-  2. **`debt_items`** — structured table with columns: ID (SD-NNN sequential),
-     Description, Source Category, Impact, Confidence, Status (`open`),
-     Resolution (`—` for unresolved items).
+  2. **`debt_items`** — structured records with fields: ID (SD-NNN
+     sequential), Title (a slug of 40 characters or fewer naming the
+     unresolved choice), Description (the full statement, 1–3 sentences —
+     this becomes the item's detail section, not a table cell), Source
+     Category, Impact (`Critical`/`High`/`Medium`/`Low`), Confidence
+     (`High`/`Medium`/`Low`), Origin (`local` — everything you produce is
+     discovered in the artifact being authored). There is no Status or
+     Resolution field: an item's lifecycle is carried structurally by the
+     parent artifact's `## Specification Debt` section, not by a column.
   3. **`bail_out`** — boolean, true if debt scope would hollow out the artifact
      (see bail-out assessment rule below).
   4. **`bail_out_summary`** — human-readable guidance string, populated only when

@@ -30,12 +30,16 @@ prefix.
 - When `` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -58,6 +62,7 @@ When you scan for existing artifacts (e.g. "list folders in
 `docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+
 ## Input
 
 The user's idea or document path: $ARGUMENTS
@@ -109,7 +114,8 @@ Use the **smithy-refine** sub-agent. Pass it:
 After smithy-refine returns:
 1. Apply high-confidence refinements directly to the PRD file in place.
 2. Record low-confidence findings as new debt items in the PRD's
-   `## Specification Debt` section, with `status: open`.
+   `## Specification Debt` section, with `Origin: local` and a
+   `### SD-NNN — <Title>` detail section each.
 3. Skip to **Phase 4: One-Shot Summary** once the file is updated.
 
 Do not STOP and ask for approval between review and write — spark is one-shot,
@@ -320,9 +326,11 @@ survey-error debt item that spark records when smithy-survey returns an
 candidates must carry a `[Critical Assumption]` annotation at the start of
 the bullet.
 
-**Specification Debt**: The standard 7-column table. Include every debt item
-from clarify **and** every debt item added during Phase 2.5, assigning
-sequential `SD-NNN` identifiers across the merged list. Follow the
+**Specification Debt**: The standard index table plus per-item detail
+sections. Include every debt item from clarify **and** every debt item added
+during Phase 2.5, assigning sequential `SD-NNN` identifiers across the merged
+list. Every item a PRD records is discovered locally, so each row carries
+`Origin: local` and gets its own `### SD-NNN — <Title>` detail section. Follow the
 positioning rule from the reduce-interaction-friction spec (FR-006):
 `## Specification Debt` appears **after** `## Assumptions`. The PRD has no
 `## Out of Scope` section — scope edges are part of the Problem Statement
@@ -333,13 +341,40 @@ Format:
 
 ```markdown
 ## Specification Debt
+<!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | <slug naming the unresolved choice> | <clarify scan category> | High | Medium | local |
+| SD-002 | <slug of a carried-down item> | <clarify scan category> | Medium | Medium | spec:SD-002 |
+
+### SD-001 — <Title>
+
+<The unresolved choice, stated as an open question or as "unresolved choice
+between X and Y". Name the alternatives and what each one would imply. 1-3
+sentences. Never a directive.>
+
+### Resolved
+
+#### SD-003 — <Title>
+
+**Question:** <the open question this item recorded>
+
+**Answer:** <what was decided, on what basis, and when.>
+
+_`Title` is a short slug (40 characters or fewer) — the full statement lives in
+the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
+detail section for every row whose `Origin` is `local`; rows carried down from a
+parent artifact get an index row only, because their prose lives in the parent.
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
 ```
-
-_If no debt items, write: "None — all ambiguities resolved."_
 
 Append both sections to the PRD file.
 
@@ -486,14 +521,39 @@ we want.>
 - <ordinary assumption>
 
 ## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | <slug naming the unresolved choice> | <clarify scan category> | High | Medium | local |
+| SD-002 | <slug of a carried-down item> | <clarify scan category> | Medium | Medium | spec:SD-002 |
 
-_If no debt items, write: "None — all ambiguities resolved."_
+### SD-001 — <Title>
 
+<The unresolved choice, stated as an open question or as "unresolved choice
+between X and Y". Name the alternatives and what each one would imply. 1-3
+sentences. Never a directive.>
+
+### Resolved
+
+#### SD-003 — <Title>
+
+**Question:** <the open question this item recorded>
+
+**Answer:** <what was decided, on what basis, and when.>
+
+_`Title` is a short slug (40 characters or fewer) — the full statement lives in
+the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
+detail section for every row whose `Origin` is `local`; rows carried down from a
+parent artifact get an index row only, because their prose lives in the parent.
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
 ## Open Questions
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
