@@ -137,10 +137,21 @@ As an operator, I want the health endpoint to surface a non-`200` status when th
 
 ## Specification Debt
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | Readiness vs. liveness semantics: this story implements only liveness. Dependency-aware readiness (database ping, queue probe) is deferred but may be requested before production launch. | Functional Scope | Medium | High | open | — |
-| SD-002 | The mechanism by which the process is declared "unhealthy" is unspecified — FR-003 names the contract but not how the bit is set. A follow-up story selects between a static in-memory flag, a watchdog probe, or a sidecar signal. | Domain & Data Model | Medium | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | Readiness vs. liveness semantics | Functional Scope | Medium | High | local |
+| SD-002 | Unhealthy-bit mechanism | Domain & Data Model | Medium | Medium | local |
+
+### SD-001 — Readiness vs. liveness semantics
+
+This story implements only liveness. Dependency-aware readiness (database ping,
+queue probe) is deferred but may be requested before production launch.
+
+### SD-002 — Unhealthy-bit mechanism
+
+The mechanism by which the process is declared "unhealthy" is unspecified —
+FR-003 names the contract but not how the bit is set. Unresolved choice between
+a static in-memory flag, a watchdog probe, and a sidecar signal.
 
 ## Out of Scope
 

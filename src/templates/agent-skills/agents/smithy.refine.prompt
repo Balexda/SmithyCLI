@@ -161,13 +161,25 @@ Everything that passes the kind gate where **Confidence is Medium or
 Low** becomes a debt item.
 
 For each, record a structured `DebtItem` entry containing:
+- **ID** — `SD-NNN`, continuing the artifact's existing numbering
+- **Title** — a slug of 40 characters or fewer naming the unresolved
+  choice. Not a sentence; the statement goes in Description.
 - **Description** — the finding stated as an open question or
   "unresolved choice between X and Y", plus why confidence is low.
-  Never a directive.
+  Never a directive. This becomes the item's detail section, not a
+  table cell, so it is not width-constrained.
 - **Source Category** — the audit category that produced the finding
 - **Impact** — Critical / High / Medium / Low (from Step 2)
-- **Confidence** — Medium or Low (from Step 2)
-- **Status** — `open`
+- **Confidence** — Medium or Low (from Step 2). The column itself
+  admits `High` as well; refine never emits it, because a
+  High-confidence finding becomes a refinement rather than debt.
+- **Origin** — `local`. Everything refine produces is discovered in
+  the artifact under review.
+
+There is no Status or Resolution field. An item's lifecycle is carried
+structurally by the artifact's `## Specification Debt` section — open
+items sit in the index table, resolved ones move to its `### Resolved`
+subsection.
 
 These populate the `debt_items` field of the returned `RefineResult`. The
 parent agent records them in the artifact's `## Specification Debt` section.
@@ -227,7 +239,8 @@ parent agent records them in the artifact's `## Specification Debt` section.
      and Impact. The parent agent applies these verbatim.
   2. **`debt_items`** — structured list of findings refine could not
      confidently resolve (Medium or Low confidence). Each entry has
-     Description, Source Category, Impact, Confidence, and Status (`open`).
+     Title, Description, Source Category, Impact, Confidence, and Origin
+     (`local`).
   3. **`summary`** — human-readable summary of what was audited and what
      was found, including the Step 1 audit findings table and a short
      narrative of how findings were triaged.

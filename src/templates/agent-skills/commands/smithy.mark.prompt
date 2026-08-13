@@ -340,14 +340,7 @@ Recommended implementation sequence:
 
 - ...
 
-## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
-
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
-
-_If no debt items, write: "None — all ambiguities resolved."_
+{{>spec-debt-section}}
 
 ## Out of Scope
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
@@ -375,7 +368,7 @@ Guidelines for the spec:
 - Do NOT include implementation phases, milestones, or task breakdowns.
 - Do NOT include specific file paths, function names, or implementation details.
 - DO trace back to RFC sections when input is an RFC.
-- Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the description, source_category, impact, confidence, and status fields directly from clarify's return — never reword a description into a directive, and never add a row that did not come from `debt_items`. The kind gate is enforced by `smithy-clarify` Step 3; do not bypass it here by manually appending requirement, acceptance-test, dependency-coordination, deferral, or post-hoc resolution rows. Leave Resolution as `—` for all `open` items.
+- Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the title, source_category, impact, confidence, and origin fields into the index table and the description into the item's `### SD-NNN — <Title>` detail section, directly from clarify's return — never reword a description into a directive, and never add an item that did not come from `debt_items`. Everything clarify returns is `Origin: local`, so every item gets a detail section. The kind gate is enforced by `smithy-clarify` Step 3; do not bypass it here by manually appending requirement, acceptance-test, dependency-coordination, deferral, or post-hoc resolution items. Omit `### Resolved` on a first pass — nothing has been resolved yet.
 - The `## Dependency Order` section lists all user stories in recommended
   implementation sequence as a 4-column table using `US<N>` IDs (e.g., `US1`,
   `US2`). Order rows by dependency graph, not by priority — stories with no
@@ -733,13 +726,15 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the
-`.spec.md` file's `## Specification Debt` table with the next available
+`.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever clarify already wrote
-in Phase 2 — do not reset). Use the finding's `description` for the
-Description column, set `Source Category` to `plan-review:<finding
-category>` (e.g., `plan-review:Internal contradiction`), copy severity into
-Impact and confidence into Confidence, set Status to `open`, and leave
-Resolution as `—`.
+in Phase 2 — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the referenced spec artifact file in
 place using the `proposed_fix`. The commit below captures both the original
@@ -865,12 +860,14 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
 
 For each Low-confidence finding routed to debt, append a new row to the
-`.spec.md` file's `## Specification Debt` table with the next available
+`.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever the spec already
-contains — do not reset). Use the finding's `description` for the
-Description column, set `Source Category` to `plan-review:<finding
-category>`, copy severity into Impact and confidence into Confidence, set
-Status to `open`, and leave Resolution as `—`.
+contains — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>`, map severity into
+Impact (`Critical` stays `Critical`; `Important` becomes `High` —
+`Important` is not a valid `Impact` value) and copy confidence into
+Confidence, and set `Origin` to `local`.
 
 For each High-confidence finding, edit the referenced spec artifact file in
 place using the `proposed_fix`. The Phase 0c commit below captures both the
@@ -926,10 +923,14 @@ Debt (from refine's `debt_items`), and PR (the captured URL).
 
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,
-update those items in the spec's `## Specification Debt` table: change status
-from `open` or `inherited` to `resolved` and populate the Resolution column
-with a note describing how and when the item was addressed (e.g., `Resolved
-2026-04-10 — user confirmed webhooks are HTTP-only`).
+**move** each one out of the spec's `## Specification Debt` index table and
+into its `### Resolved` subsection as a `#### SD-NNN — <Title>` block
+carrying `**Question:**` and `**Answer:**`. The answer records how and when
+the item was addressed (e.g., `Resolved 2026-04-10 — user confirmed webhooks
+are HTTP-only`). The ID is never reused. For an item carried down from a
+parent artifact — one whose `Origin` was not `local` — quote the parent's
+question into the `**Question:**` line. Do not write the resolution back to
+the parent.
 
 **Priority re-ordering**: If any user story priorities changed during refinement,
 renumber and reorder the user stories so all P1 stories come first, then P2,

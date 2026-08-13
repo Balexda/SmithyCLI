@@ -34,7 +34,7 @@ and decide whether they need to update, cancel, or review a subscription.
 
 ## Specification Debt
 
-None — all ambiguities resolved.
+_None — no specification debt was recorded._
 
 ## Dependency Order
 

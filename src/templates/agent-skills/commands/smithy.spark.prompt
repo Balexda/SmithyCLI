@@ -70,7 +70,8 @@ Use the **smithy-refine** sub-agent. Pass it:
 After smithy-refine returns:
 1. Apply high-confidence refinements directly to the PRD file in place.
 2. Record low-confidence findings as new debt items in the PRD's
-   `## Specification Debt` section, with `status: open`.
+   `## Specification Debt` section, with `Origin: local` and a
+   `### SD-NNN — <Title>` detail section each.
 3. Skip to **Phase 4: One-Shot Summary** once the file is updated.
 
 Do not STOP and ask for approval between review and write — spark is one-shot,
@@ -281,9 +282,11 @@ survey-error debt item that spark records when smithy-survey returns an
 candidates must carry a `[Critical Assumption]` annotation at the start of
 the bullet.
 
-**Specification Debt**: The standard 7-column table. Include every debt item
-from clarify **and** every debt item added during Phase 2.5, assigning
-sequential `SD-NNN` identifiers across the merged list. Follow the
+**Specification Debt**: The standard index table plus per-item detail
+sections. Include every debt item from clarify **and** every debt item added
+during Phase 2.5, assigning sequential `SD-NNN` identifiers across the merged
+list. Every item a PRD records is discovered locally, so each row carries
+`Origin: local` and gets its own `### SD-NNN — <Title>` detail section. Follow the
 positioning rule from the reduce-interaction-friction spec (FR-006):
 `## Specification Debt` appears **after** `## Assumptions`. The PRD has no
 `## Out of Scope` section — scope edges are part of the Problem Statement
@@ -293,14 +296,9 @@ section before the closing Open Questions block.
 Format:
 
 ```markdown
-## Specification Debt
+{{>spec-debt-section}}
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
 ```
-
-_If no debt items, write: "None — all ambiguities resolved."_
 
 Append both sections to the PRD file.
 
@@ -446,14 +444,7 @@ we want.>
 - [Critical Assumption] <promoted Critical+High item, if any>
 - <ordinary assumption>
 
-## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
-
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
-
-_If no debt items, write: "None — all ambiguities resolved."_
+{{>spec-debt-section}}
 
 ## Open Questions
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->

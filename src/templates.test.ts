@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(21);
+    expect(snippets.size).toBe(22);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -128,6 +128,7 @@ describe('loadSnippets', () => {
       'engraved-recall-rules.md',
       'engraved-recall-advisory.md',
       'engraved-recall-degraded.md',
+      'spec-debt-section.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -152,6 +153,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
     expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
+    expect(snippets.get('spec-debt-section.md')).toContain('## Specification Debt');
   });
 });
 
@@ -429,6 +431,69 @@ describe('one-shot-output snippet', () => {
     expect(result).toContain('## Specification Debt');
     expect(result).toContain('## PR');
     expect(result).not.toContain('{{>one-shot-output}}');
+  });
+});
+
+describe('spec-debt-section snippet', () => {
+  // The spec-debt-section snippet is the single source of the
+  // `## Specification Debt` artifact section. Before it existed, the same
+  // block was copy-pasted verbatim into seven sites across six command
+  // templates. These assertions lock its contract.
+
+  it('snippet has no YAML frontmatter (raw Markdown per snippets README)', () => {
+    const content = loadSnippets().get('spec-debt-section.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+  });
+
+  it('snippet carries the index table header, detail section, and Resolved subsection', () => {
+    const content = loadSnippets().get('spec-debt-section.md')!;
+    expect(content).toContain('| ID | Title | Source Category | Impact | Confidence | Origin |');
+    expect(content).toContain('### SD-001 — <Title>');
+    expect(content).toContain('### Resolved');
+    expect(content).toContain('**Question:**');
+    expect(content).toContain('**Answer:**');
+    // The empty state is one canonical string across every artifact type.
+    expect(content).toContain('None — no specification debt was recorded.');
+    // The legacy 7-column shape must not survive anywhere.
+    expect(content).not.toContain('| ID | Description | Source Category |');
+  });
+
+  it('snippet carries its own well-formed voice tag', () => {
+    const content = loadSnippets().get('spec-debt-section.md')!;
+    // The tag moved into the snippet because `length: tables only` stopped
+    // being true once detail prose joined the section — and because a value
+    // duplicated across six templates drifts. The hosts no longer carry it.
+    expect(content).toMatch(
+      /## Specification Debt\n<!-- audience: reviewer; mode: reference; length: [^;]+; diagram: optional; examples: discouraged -->/,
+    );
+  });
+
+  it('snippet contains no fenced code block', () => {
+    // Load-bearing, and not obvious: all seven host sites embed this snippet
+    // *inside* a ```markdown artifact fence. A fence in the snippet body would
+    // close the host fence early. That breaks far more than this section —
+    // the fence-extracting helpers in this file (extractFenceByAnchor and the
+    // per-command Dependency Order regexes) would silently match the wrong
+    // text, surfacing as failures about voice tags and dependency tables with
+    // no visible connection to the real cause.
+    const content = loadSnippets().get('spec-debt-section.md')!;
+    expect(content).not.toContain('```');
+    // Handlebars would re-process any expression left in the snippet body.
+    expect(content).not.toContain('{{');
+  });
+
+  it('snippet composes via the {{>spec-debt-section}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>spec-debt-section}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Specification Debt');
+    expect(result).toContain('| ID | Title | Source Category | Impact | Confidence | Origin |');
+    expect(result).not.toContain('{{>spec-debt-section}}');
   });
 });
 
@@ -3038,6 +3103,102 @@ describe('getComposedTemplates', () => {
     expect(cut).not.toContain('smithy-slice');
     expect(cut).not.toContain('smithy-reconcile-slices');
     expect(cut).not.toContain('Competing Slice Lenses');
+  });
+
+  it.each([
+    ['smithy.strike.md'],
+    ['smithy.mark.md'],
+    ['smithy.cut.md'],
+    ['smithy.render.md'],
+    ['smithy.ignite.md'],
+    ['smithy.spark.md'],
+  ])('%s emits the Specification Debt index-plus-details format', file => {
+    const cmd = composed.commands.get(file)!;
+    expect(cmd).toBeDefined();
+
+    // Partial fully resolved — a stale literal would ship to target repos.
+    expect(cmd).not.toContain('{{>spec-debt-section}}');
+
+    expect(cmd).toContain('## Specification Debt');
+    expect(cmd).toContain('| ID | Title | Source Category | Impact | Confidence | Origin |');
+    expect(cmd).toContain('### Resolved');
+
+    // Regression guard: the legacy 7-column table was identical in seven
+    // sites and nothing asserted its columns, so it drifted silently.
+    expect(cmd).not.toContain(
+      '| ID | Description | Source Category | Impact | Confidence | Status | Resolution |',
+    );
+    // Status is derived from position + Origin, never stored as a column.
+    expect(cmd).not.toMatch(/\|\s*Status\s*\|\s*Resolution\s*\|/);
+    // One canonical empty state, not the two that used to coexist.
+    expect(cmd).not.toContain('None — all ambiguities resolved');
+    expect(cmd).toContain('None — no specification debt was recorded.');
+  });
+
+  it.each([
+    ['smithy.strike.md'],
+    ['smithy.mark.md'],
+    ['smithy.cut.md'],
+    ['smithy.render.md'],
+    ['smithy.ignite.md'],
+  ])('%s maps review severity into the Impact enum instead of copying it', file => {
+    const cmd = composed.commands.get(file)!;
+    expect(cmd).toBeDefined();
+    // Review severities are Critical/Important/Minor (review-protocol), but
+    // Impact admits only Critical/High/Medium/Low. Copying verbatim is how
+    // `Important` ended up in 12 Impact cells across this repo's artifacts —
+    // values plan-review's own debt lint now treats as malformed.
+    expect(cmd).not.toContain('copy severity into Impact');
+    expect(cmd).toContain('`Important` becomes `High`');
+  });
+
+  it.each([
+    ['smithy.strike.md'],
+    ['smithy.mark.md'],
+    ['smithy.cut.md'],
+    ['smithy.render.md'],
+    ['smithy.ignite.md'],
+  ])('%s routes plan-review findings into a detail section, not a column', file => {
+    const cmd = composed.commands.get(file)!;
+    expect(cmd).toBeDefined();
+    // There is no Description column any more; a finding's prose belongs in
+    // the item's detail section, and the row needs a Title derived from it.
+    expect(cmd).not.toContain('Description column');
+    // Prose wraps across lines in these templates, so match on collapsed
+    // whitespace rather than a fixed line break.
+    expect(cmd.replace(/\s+/g, ' ')).toContain('`### SD-NNN — <Title>` detail section');
+    expect(cmd.replace(/\s+/g, ' ')).toContain('derive a `Title` slug of 40 characters or fewer');
+  });
+
+  it('cut distinguishes a legitimately empty upstream debt section from a broken one', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    // An empty parent is the expected outcome, not a parse failure — warning
+    // on it would cry wolf on most specs.
+    expect(cut).toContain('legitimately empty is not an error');
+    expect(cut).toMatch(/absent entirely\*\* or its index table is\s+\*\*malformed\*\*/);
+  });
+
+  it('cut carries debt provenance as an Origin field, not a description prefix', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+    // The old convention buried structured provenance inside prose, where it
+    // survived neither rewording nor machine checking.
+    expect(cut).not.toContain('inherited from spec:');
+    expect(cut).toContain('spec:<the upstream SD-NNN>');
+    // Carried-down rows must not duplicate the parent's prose downstream.
+    expect(cut).toContain('Do not write a detail section for a carried-down row.');
+  });
+
+  it('clarify and refine return Origin-shaped debt items with no Status field', () => {
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    const refine = composed.agents.get('smithy.refine.md')!;
+    for (const agent of [clarify, refine]) {
+      expect(agent).toBeDefined();
+      expect(agent).toContain('Origin');
+      expect(agent).toContain('Title');
+      expect(agent).not.toMatch(/Status\s*\(`open`\)/);
+    }
   });
 
   it('mark template uses 4-column Dependency Order table with US<N> IDs', () => {

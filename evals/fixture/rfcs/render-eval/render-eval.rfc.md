@@ -73,11 +73,11 @@ malformed input early to keep the read path's response shape stable.
 
 ## Open Questions
 
-- None — all ambiguities resolved.
+_None — no specification debt was recorded._
 
 ## Specification Debt
 
-None — all ambiguities resolved.
+_None — no specification debt was recorded._
 
 ## Milestones
 
