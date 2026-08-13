@@ -1974,30 +1974,30 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(dependencyIdx);
   });
 
-  it('cut template requires an **Implementation repo** header in the tasks file shape', () => {
-    // Structural, not remembered: the field has to sit in the emitted
-    // template block (right after **Story Number**) so an omission is
-    // visible in the artifact rather than depending on the agent
-    // recalling a rule from prose.
+  it('cut template carries the repo fields in the tasks file shape, marked conditional', () => {
+    // The fields sit in the emitted template block so the shape is
+    // visible, but each carries the condition inline: a single-repo or
+    // monorepo tasks file should come out with neither.
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toContain('**Story Number**: <NN>\n**Implementation repo**: `<repo>`');
-    // The per-slice override lives in the `## Slice N:` shape.
+    expect(cut).toContain('cross-repo project stores only');
     expect(cut).toContain('**Repo**: `<repo>`');
   });
 
-  it('cut template states the single-repo slice invariant and the resolution rule', () => {
+  it('cut template states the single-repo slice invariant and scopes the declaration', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
+    // The invariant holds everywhere, declaration or not.
     expect(cut).toContain('implementable within **exactly one repository**');
     expect(cut).toContain('### Cross-Repo Notes');
-    // The precedence chain downstream parsers depend on.
-    expect(cut).toMatch(
-      /`\*\*Repo\*\*:`.*→.*`\*\*Implementation repo\*\*:`.*→.*invoked in/s,
-    );
+    // The declaration itself is scoped to cross-repo planning.
+    expect(cut).toContain('Declaring the implementation repo (cross-repo planning only)');
+    expect(cut).toContain('**Omit the repo fields entirely.**');
   });
 
-  it('forge template gates implementation on the declared repo', () => {
+  it('forge template gates implementation on a declared repo, and only then', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
-    expect(forge).toContain('**Check the implementation repo.**');
+    expect(forge).toContain('**Check the implementation repo, if the slice declares one.**');
+    expect(forge).toContain('**No declaration → nothing to check.**');
     expect(forge).toContain('git rev-parse --show-toplevel');
     expect(forge).toContain('Implementation repo mismatch');
   });

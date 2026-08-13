@@ -859,7 +859,6 @@ describe('buildDependencyGraph — implementation repo on nodes', () => {
       type: 'tasks',
       path: 'specs/foo/01-demo.tasks.md',
       repo: 'story-spider',
-      repo_declared: true,
       slices: [
         { id: 'S1', title: 'Producer', status: 'done', repo: 'story-spider' },
         {

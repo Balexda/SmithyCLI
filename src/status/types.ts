@@ -201,27 +201,18 @@ export interface ArtifactRecord {
    */
   features?: FeatureSummary[];
   /**
-   * Effective implementation repository for a `tasks` record — the repo
-   * whose worktree `smithy.forge` must be standing in to implement these
-   * slices. Read from the tasks file's `**Implementation repo**:` header;
-   * when the file declares none, the scan's caller fills it with the repo
-   * `smithy status` was invoked in (see `applyDefaultRepo` in
-   * `src/status/repo.ts`). Omitted on non-tasks records, and on tasks
-   * records when neither source supplied a value.
+   * Implementation repository declared by a `tasks` record's
+   * `**Implementation repo**:` header — the repo whose worktree
+   * `smithy.forge` must be standing in to implement these slices.
    *
-   * Always exactly one repo — never a list. Per-slice deviations live on
-   * {@link SliceSummary.repo}, not here; this field stays the story's
-   * primary/default repo so a consumer always has a single fallback.
+   * Present only when the artifact says so, which in practice means
+   * planning done in a cross-repo project store. A single-repo or
+   * monorepo install has exactly one repository, declares nothing, and
+   * leaves this absent. Reported verbatim; nothing here validates the
+   * name against repositories that exist. Always one repo, never a list
+   * — per-slice deviations live on {@link SliceSummary.repo}.
    */
   repo?: string;
-  /**
-   * `true` when {@link repo} came from the artifact's own
-   * `**Implementation repo**:` header. Omitted when the value was
-   * inferred from the invoking repo (or when no value exists at all), so
-   * a machine consumer can tell a declaration from a default without
-   * re-reading the Markdown.
-   */
-  repo_declared?: boolean;
   /**
    * Repo-relative path to the parent artifact. `null` means "no parent"
    * (top-level RFCs, orphans); an omitted field means "unknown".
@@ -284,11 +275,10 @@ export interface SliceSummary {
    */
   status: 'done' | 'in-progress' | 'not-started';
   /**
-   * **Effective** implementation repository for this slice — already
-   * resolved, so consumers never re-apply the precedence rule. Resolution
-   * order: the slice's own `**Repo**:` override, else the file's
-   * `**Implementation repo**:` header, else the repo `smithy status` was
-   * invoked in. Omitted only when none of the three supplied a value.
+   * Implementation repository for this slice, already resolved so
+   * consumers never re-apply the precedence rule: the slice's own
+   * `**Repo**:` override if it declared one, else the file's
+   * `**Implementation repo**:` header. Absent when neither did.
    *
    * Exactly one repo per slice: a slice whose tasks span repositories is
    * invalid and must be split along the repo boundary (see the
@@ -423,15 +413,13 @@ export interface DependencyNode {
    */
   decomposed: boolean;
   /**
-   * Effective implementation repository for the work this node
-   * represents, so an orchestrator can route a node to a worktree
-   * without parsing Markdown. Resolved by {@link buildDependencyGraph}
-   * from the same two sources it uses for {@link status}: a slice row
-   * takes its owning slice's {@link SliceSummary.repo}; any other row
-   * takes its downstream record's {@link ArtifactRecord.repo} (a user
-   * story's repo is its tasks file's). Omitted when neither source has
-   * one — today that is any row above a tasks file that does not exist
-   * yet.
+   * Implementation repository for the work this node represents, so an
+   * orchestrator can route a node to a worktree without parsing
+   * Markdown. Resolved by {@link buildDependencyGraph} from the same two
+   * sources it uses for {@link status}: a slice row takes its own
+   * slice's repo, any other row takes its downstream record's. Absent
+   * whenever the underlying artifact declared none — the normal case
+   * outside a cross-repo project store.
    */
   repo?: string;
 }

@@ -134,9 +134,15 @@ section in every artifact**, using the same 4-column Markdown table schema:
 
 ## Implementation Repo Declaration (`.tasks.md`)
 
-A tasks file declares which repository its slices are implemented in. The
-lineage above says what work exists and in what order; this says **where the
-work lands**.
+**Most tasks files carry none of this.** A single-repo or monorepo install has
+exactly one repository, every slice lands in it, and the artifact says nothing —
+that is the correct and expected shape.
+
+The fields below exist for **cross-repo planning**: a `~/.smithy/projects/…`
+store holding artifacts for work that spans several checkouts. There the store
+root and the implementation repo are deliberately different roots and one store
+covers more than one repo, so "which repo does this slice land in?" has more
+than one answer and the artifact is the only place it can be recorded.
 
 ```markdown
 # Tasks: Wire Add-Title to the library store
@@ -152,67 +158,41 @@ work lands**.
 
 | Field | Where | Rule |
 |-------|-------|------|
-| `**Implementation repo**` | Tasks file header | **Required. Exactly one repo, never a list** — the story's primary/default repo. |
-| `**Repo**` | Inside a `## Slice N:` body | Optional. **Exactly one repo.** Overrides the header for that slice only. At most one per slice. |
+| `**Implementation repo**` | Tasks file header | **Exactly one repo, never a list** — the story's primary repo. |
+| `**Repo**` | Inside a `## Slice N:` body | Optional. **Exactly one repo.** Overrides the header for that slice only; omit it when the slice lands in the header's repo. |
 
-**Resolution rule** — one rule, applied in order, so every consumer agrees:
-
-```
-slice `**Repo**:`  →  file `**Implementation repo**:`  →  the repo the command was invoked in
-```
-
-The header stays a single primary repo even when slices differ; it never
-becomes a list. That keeps a usable fallback in every position and means a
-parser never has to disambiguate.
+**Resolution**: a slice's own `**Repo**:` wins, else the header. Nothing else —
+an absent declaration means absent, not "guess". That is why the header stays a
+single primary repo even when slices differ.
 
 ### The single-repo slice invariant
 
-**Every slice must be implementable within exactly one repository.** A slice
-whose tasks span repos is invalid: `smithy.forge` runs in one repo's worktree
-and produces one PR, so such a slice cannot be implemented at all. The repo
-boundary is a slicing constraint of the same rank as "PR-sized".
+**Every slice must be implementable within exactly one repository.** This one
+holds everywhere, declaration or not: `smithy.forge` runs in one repo's worktree
+and produces one PR, so a slice whose tasks span repos cannot be implemented at
+all. The repo boundary is a slicing constraint of the same rank as "PR-sized".
 
-A story that genuinely needs coordinated change across repos is expressed as
-**one slice per repo**, ordered producer-repo-before-consumer-repo in the
-`## Dependency Order` table, with the contract between them recorded under
+A story that needs coordinated change across repos is expressed as **one slice
+per repo**, ordered producer-repo-before-consumer-repo in the `## Dependency
+Order` table, with the contract between them recorded under
 `### Cross-Repo Notes`.
 
 Task paths stay repo-relative and unchanged in shape (`lib/constants/Experiment.kt`)
 — the declaration supplies the root they hang off.
 
-### Why it has to be declared
-
-In external artifacts mode the planning artifacts live in
-`~/.smithy/repos/<repoKey>/` while the code lives in a checkout somewhere else,
-and one artifact store can cover several checked-out repos. **The spec store
-root and the implementation repo root are deliberately different**, so "the
-repo" is ambiguous unless the artifact names it. Without the declaration a
-story authored from a parent directory can produce slices whose file paths
-belong to different repositories, and nothing catches it until forge is already
-standing in a worktree editing the wrong repo.
-
 ### What tooling does with it
 
-- **`smithy status`** resolves the rule above and surfaces the result on the
-  wire: `repo` on every `tasks` record, on each of its `slices` entries, and on
-  each slice node in `graph.nodes`, so an orchestrator maps slice → repo
-  without regexing Markdown. `repo_declared: true` marks a value the artifact
-  stated, distinguishing it from the invoking-repo default.
-- **A missing declaration is not an error.** It resolves to the repo the
-  command was invoked in — which is what every artifact authored before this
-  field existed meant anyway.
-- **A malformed declaration is.** Empty, multi-valued, path-shaped, or
-  still-carrying-the-`<repo>`-placeholder values make the owning record
-  `unknown` with an `implementation_repo:` warning, because no consumer can
-  route them to one worktree. That failure belongs at
-  status time, not at forge time.
-- **`smithy status` does not check the filesystem.** In external mode it scans
-  the artifact store and cannot see the implementation checkouts at all, so an
-  existence check would produce false failures. `smithy.cut` needs only *read*
-  access to a repo to slice against it (a checkout, a fetched tree, whatever);
-  `smithy.forge` is the step that requires a local checkout, and it owns the
-  hard check — it compares the declared repo against its cwd and stops rather
-  than editing whichever repo it happens to be in.
+- **`smithy status`** reports what the artifact declared, verbatim: `repo` on a
+  `tasks` record, on each of its `slices` entries, and on each slice node in
+  `graph.nodes`, so an orchestrator maps slice → repo without regexing Markdown.
+  Absent declaration, absent field. Status validates nothing here and infers
+  nothing — in a cross-repo store it cannot even see the checkouts.
+- **`smithy.cut`** needs only *read* access to a repo to slice against it (a
+  checkout, a fetched tree, whatever).
+- **`smithy.forge`** owns the only hard check, because it is the step that
+  needs a local checkout: when a slice declares a repo, forge compares it
+  against the repo it is standing in and stops rather than editing the wrong
+  one. No declaration means single-repo planning, and forge simply proceeds.
 
 ## Voice and Audience Tagging Convention
 

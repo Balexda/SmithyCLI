@@ -23,12 +23,6 @@ import type { ArtifactRecord, Status } from './types.js';
  *
  * 1. A record with `virtual === true` always resolves to `'not-started'`
  *    regardless of type, children, or dependency_order.
- * 1a. A record carrying an `implementation_repo:` warning resolves to
- *    `'unknown'`. The declaration is malformed, so no consumer can route
- *    the work to a repository — that failure belongs at status time, not
- *    at `smithy.forge` time when a worktree is already checked out. A
- *    *missing* declaration never produces this warning (it defaults to
- *    the invoking repo), so legacy artifacts are unaffected.
  * 2. A `tasks` record derives its status from `completed` / `total`,
  *    where both numbers count slices (a slice is "done" only when its
  *    `## Slice N:` section contains at least one checkbox and every
@@ -66,12 +60,6 @@ export function classifyRecord(
   // Rule 1: virtual records are always not-started.
   if (record.virtual === true) {
     return 'not-started';
-  }
-
-  // Rule 1a: an unusable implementation-repo declaration is a parse
-  // failure — the record names work nobody can route to a repository.
-  if (record.warnings.some((w) => w.startsWith('implementation_repo:'))) {
-    return 'unknown';
   }
 
   // Rule 2: tasks records derive status from checkbox counts alone.

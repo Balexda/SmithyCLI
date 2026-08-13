@@ -59,14 +59,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { readManifest, resolveArtifactsRoot, templateArtifactsPrefix } from '../manifest.js';
 import {
-  readManifest,
-  repoKey,
-  resolveArtifactsRoot,
-  templateArtifactsPrefix,
-} from '../manifest.js';
-import {
-  applyDefaultRepo,
   buildDependencyGraph,
   buildTree,
   collapseTree,
@@ -200,11 +194,12 @@ export interface StatusOptions {
  *
  * `records` is the post-filter `ArtifactRecord[]` from
  * {@link filterRecords} — the canonical flat representation every
- * machine consumer reads. Every `tasks` record (and each of its slices,
- * and each slice node in `graph`) carries a resolved `repo` so an
- * orchestrator can map work to a repository without parsing Markdown;
- * `repo_declared` distinguishes a value the artifact stated from one
- * defaulted to the invoking repo. `graph` is populated by
+ * machine consumer reads. A `tasks` record authored in a cross-repo
+ * project store carries the `repo` it declared — on the record, on each
+ * of its slices, and on each slice node in `graph` — so an orchestrator
+ * can route work without parsing Markdown. Single-repo and monorepo
+ * installs declare nothing and the field is simply absent. `graph` is
+ * populated by
  * {@link buildDependencyGraph} (US10 Slice 3) over the *pre-filter*
  * record set per SD-010 so the graph reflects the full scan even when
  * `--status` / `--type` are present, then projected through
@@ -443,15 +438,6 @@ export function statusAction(opts: StatusOptions = {}): void {
     const externalPrefix = templateArtifactsPrefix(resolvedRoot, 'external');
     applyExternalPrefix(records, externalPrefix);
   }
-  // Fill the last link of the implementation-repo precedence chain:
-  // slice `**Repo**:` → file `**Implementation repo**:` → the repo this
-  // command was invoked in. `resolvedRoot` (not `scanRoot`) is the right
-  // source even when the scan was redirected — in external artifacts
-  // mode the artifact store and the implementation checkout are
-  // deliberately different roots, and it is the checkout that the work
-  // lands in. Runs before the lazy `getGraph()` below so graph nodes see
-  // resolved repos.
-  applyDefaultRepo(records, repoKey(resolvedRoot));
   // US6: apply the `--status` / `--type` filters to the classified
   // record set before it reaches `buildTree` / the JSON emitter.
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
