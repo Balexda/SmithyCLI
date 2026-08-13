@@ -59,7 +59,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { readManifest, resolveArtifactsRoot, templateArtifactsPrefix } from '../manifest.js';
+import {
+  isInsideGitRepo,
+  projectStorePrefix,
+  projectStoreRoot,
+  readManifest,
+  resolveArtifactsRoot,
+  templateArtifactsPrefix,
+} from '../manifest.js';
 import {
   buildDependencyGraph,
   buildTree,
@@ -224,6 +231,14 @@ export interface StatusJsonPayload {
   summary: ScanSummary;
   records: ArtifactRecord[];
   graph: SerializedGraph;
+  /**
+   * The root discovery settled on — the working directory, or the tilde form
+   * of an external store (`~/.smithy/repos/<repoKey>/`,
+   * `~/.smithy/projects/default/`). Additive field: it tells a consumer which
+   * of the cascade's candidates won, so "why is this empty?" is answerable
+   * without re-deriving the resolution rules.
+   */
+  scan_root: string;
 }
 
 /**
@@ -412,27 +427,18 @@ export function statusAction(opts: StatusOptions = {}): void {
     return;
   }
 
-  // If the user didn't pass `--root` explicitly and the working directory has
-  // a smithy manifest declaring `artifactsLocation: 'external'`, redirect the
-  // scan to `~/.smithy/repos/<repoKey>/` so artifacts written off-tree are still found.
-  // Explicit `--root` always wins so power users can scan an arbitrary path.
-  const externalScanRoot =
-    opts.root === undefined ? resolveExternalArtifactsRoot(resolvedRoot) : null;
-  const scanRoot = externalScanRoot ?? resolvedRoot;
-  const records = scan(scanRoot);
-  // The scanner returns paths relative to `scanRoot`. When we redirected, those
-  // paths read like `specs/foo/01.tasks.md` but the actual files live at
-  // `~/.smithy/repos/<repoKey>/specs/foo/01.tasks.md`. Re-prepend the tilde
-  // prefix so the rendered tree, JSON records, and `Next: smithy.forge <path>
-  // <N>` hints all point at the real on-disk location. We reuse
-  // `templateArtifactsPrefix` (rather than rebuilding the prefix inline) so the
-  // displayed paths are guaranteed to match where the artifacts are actually
-  // stored — both go through the same worktree-stable `repoKey`. Skipped in the
-  // in-repo case (the cheap common path) where `externalScanRoot` is `null`.
-  if (externalScanRoot !== null) {
-    const externalPrefix = templateArtifactsPrefix(resolvedRoot, 'external');
-    applyExternalPrefix(records, externalPrefix);
-  }
+  // Without an explicit `--root`, discovery cascades over the places an
+  // install's artifacts can live (see `artifactScanCandidates`) and keeps the
+  // first root that actually has any. The cascade also re-prefixes the
+  // records it returns, so rendered paths, JSON records, and
+  // `Next: smithy.forge <path> <N>` hints all name the real on-disk location
+  // rather than a store-relative path the user can't act on.
+  //
+  // Explicit `--root` always wins, so power users can scan an arbitrary path.
+  const { records, scanRoot } =
+    opts.root === undefined
+      ? scanWithCascade(resolvedRoot)
+      : { records: scan(resolvedRoot), scanRoot: resolvedRoot };
   // US6: apply the `--status` / `--type` filters to the classified
   // record set before it reaches `buildTree` / the JSON emitter.
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
@@ -488,6 +494,7 @@ export function statusAction(opts: StatusOptions = {}): void {
         all: opts.all === true,
         ...(layerSelection !== undefined ? { layerSelection } : {}),
       }),
+      scan_root: scanRoot,
     };
     console.log(JSON.stringify(payload, null, 2));
     return;
@@ -505,6 +512,14 @@ export function statusAction(opts: StatusOptions = {}): void {
     noColor: opts.color === false,
     ascii: opts.ascii === true,
   });
+
+  // Name the store whenever discovery landed somewhere other than the working
+  // directory. Every path below is then prefixed with that store, so without
+  // this line the cascade is invisible and "these aren't my repo's artifacts"
+  // has no explanation on screen.
+  if (scanRoot !== resolvedRoot) {
+    console.log(theme.paint.dim(`Artifacts: ${scanRoot}`));
+  }
 
   // US10 Slice 3: `--graph` swaps the tree pipeline for the layered
   // view from `renderGraph`. The summary header still prints first so
@@ -833,26 +848,84 @@ function applyExternalPrefix(records: ArtifactRecord[], externalPrefix: string):
 }
 
 /**
- * If `<resolvedRoot>` has a smithy manifest declaring `artifactsLocation:
- * 'external'`, return the absolute path to `~/.smithy/repos/<repoKey>/` so the
- * scanner finds artifacts that were written off-tree. Returns `null` for
- * the in-repo case (the caller falls back to `resolvedRoot`). Either
- * manifest location ('repo' deploy at `.smithy/...`, 'user' deploy at
- * `~/.smithy/...`) is consulted — `artifactsLocation` is an orthogonal
- * setting on the manifest itself, not on the manifest's own location.
- *
- * If the external root doesn't exist on disk yet (the user just flipped
- * the flag and hasn't written any artifacts there), fall through to the
- * default so the scanner reports the same friendly "no artifacts found"
- * hint instead of bailing with a `stat` error.
+ * One place the scanner may find artifacts, paired with the display prefix
+ * to apply if it wins. `prefix` is `''` when the root *is* the working
+ * directory (paths already read correctly) and the tilde form of an
+ * external store otherwise, so rendered paths and `Next:` commands point at
+ * the real on-disk location.
  */
-function resolveExternalArtifactsRoot(resolvedRoot: string): string | null {
+interface ScanCandidate {
+  root: string;
+  prefix: string;
+}
+
+/**
+ * The ordered list of roots `smithy status` will try, most specific first.
+ * The caller scans each in turn and keeps the first that actually yields
+ * artifacts.
+ *
+ * A cascade rather than a single root because an external install has its
+ * artifacts in one of three places and the user shouldn't have to know
+ * which: the repo itself (artifacts predating the flip to external mode, or
+ * a repo that keeps some in-tree), the repo-keyed store, or the shared
+ * project store used for cross-repo work.
+ *
+ * Outside a git repo there is no in-tree store worth preferring, so the
+ * project store leads. `resolvedRoot` still trails it as a last resort —
+ * scanning a plain directory full of artifacts remains useful, and dropping
+ * it would make the result depend on whether `~/.smithy/projects/default/`
+ * happens to exist.
+ *
+ * Either manifest location is consulted ('repo' deploy at `.smithy/...`,
+ * 'user' deploy at `~/.smithy/...`) — `artifactsLocation` is an orthogonal
+ * setting on the manifest itself, not on the manifest's own location.
+ */
+function artifactScanCandidates(resolvedRoot: string): ScanCandidate[] {
+  const projects: ScanCandidate = {
+    root: projectStoreRoot(),
+    prefix: projectStorePrefix(),
+  };
+
+  if (!isInsideGitRepo(resolvedRoot)) {
+    return [projects, { root: resolvedRoot, prefix: '' }];
+  }
+
   const manifest =
     readManifest(resolvedRoot, 'repo') ?? readManifest(resolvedRoot, 'user');
-  if (!manifest || manifest.artifactsLocation !== 'external') return null;
-  const externalRoot = resolveArtifactsRoot(resolvedRoot, 'external');
-  if (!fs.existsSync(externalRoot)) return null;
-  return externalRoot;
+  if ((manifest?.artifactsLocation ?? 'repo') !== 'external') {
+    return [{ root: resolvedRoot, prefix: '' }];
+  }
+
+  return [
+    { root: resolvedRoot, prefix: '' },
+    {
+      root: resolveArtifactsRoot(resolvedRoot, 'external'),
+      prefix: templateArtifactsPrefix(resolvedRoot, 'external'),
+    },
+    projects,
+  ];
+}
+
+/**
+ * Walk {@link artifactScanCandidates} and return the first root that exists
+ * and yields at least one artifact, with its records already re-prefixed.
+ *
+ * When nothing matches, returns an empty record set anchored at
+ * `resolvedRoot` so the caller still prints the friendly "no artifacts
+ * found" hint rather than reporting a store the user has never used.
+ */
+function scanWithCascade(resolvedRoot: string): {
+  records: ArtifactRecord[];
+  scanRoot: string;
+} {
+  for (const candidate of artifactScanCandidates(resolvedRoot)) {
+    if (!fs.existsSync(candidate.root)) continue;
+    const records = scan(candidate.root);
+    if (records.length === 0) continue;
+    if (candidate.prefix.length > 0) applyExternalPrefix(records, candidate.prefix);
+    return { records, scanRoot: candidate.prefix || candidate.root };
+  }
+  return { records: [], scanRoot: resolvedRoot };
 }
 
 /**

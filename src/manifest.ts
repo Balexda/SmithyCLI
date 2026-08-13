@@ -21,6 +21,23 @@ const MANIFEST_FILENAME = 'smithy-manifest.json';
  */
 const REPOS_DIR = 'repos';
 
+/**
+ * Sibling grouping segment to {@link REPOS_DIR} for work that is *not*
+ * anchored to a single repository — planning done from a scratch directory,
+ * or an RFC that spans several repos. `repoKey` cannot serve that case: it
+ * always resolves to *something* (falling back to the directory basename),
+ * so a cross-repo store keyed that way would move every time the user
+ * changed directories and could never be found again.
+ */
+const PROJECTS_DIR = 'projects';
+
+/**
+ * The single project store used outside a repo. Fixed for now — there is
+ * deliberately no configurable slug and no config file, so the "where did my
+ * artifacts go?" answer stays a constant.
+ */
+const DEFAULT_PROJECT = 'default';
+
 export interface SmithyManifest {
   version: 1;
   smithyVersion: string;
@@ -152,11 +169,63 @@ export function repoKey(targetDir: string): string {
 }
 
 /**
+ * Absolute path to the shared project store, `~/.smithy/projects/default/`.
+ *
+ * {@link resolveArtifactsRoot} already returns this for a target outside a
+ * repo, but `smithy status` needs it as a *fallback* while standing inside
+ * one — a cross-repo RFC lives here no matter which member repo you ask
+ * from. Exported so that lookup doesn't have to rebuild the path by hand.
+ */
+export function projectStoreRoot(): string {
+  return path.join(os.homedir(), '.smithy', PROJECTS_DIR, DEFAULT_PROJECT);
+}
+
+/** Tilde form of {@link projectStoreRoot}, for display and prompt paths. */
+export function projectStorePrefix(): string {
+  return `~/.smithy/${PROJECTS_DIR}/${DEFAULT_PROJECT}/`;
+}
+
+/**
+ * Whether `dir` sits inside a git working tree — including a linked
+ * worktree, a submodule, or any subdirectory of one.
+ *
+ * This is the signal {@link repoKey} deliberately cannot give: `repoKey`
+ * always returns a usable key, falling back to the directory basename for
+ * non-git directories, so callers that need to distinguish "this is a repo"
+ * from "this is just a folder" have to ask separately. Uses the same
+ * `--git-common-dir` probe as `repoKey` so the two agree about what counts
+ * as a repo, and inherits `gitCapture`'s quiet failure: a missing git binary
+ * reads the same as "not a repo", which is the right answer for both.
+ */
+export function isInsideGitRepo(dir: string): boolean {
+  return gitCapture(dir, ['rev-parse', '--git-common-dir']) !== null;
+}
+
+/**
+ * The path segments under `~/.smithy/` naming the external artifact store
+ * that serves `targetDir`:
+ *   - inside a git repo → `repos/<repoKey(targetDir)>`
+ *   - outside one       → `projects/default`
+ *
+ * Single source of truth for {@link resolveArtifactsRoot} and
+ * {@link templateArtifactsPrefix}. Those two must always name the same
+ * store — one as an absolute filesystem path, the other as the tilde form
+ * baked into deployed prompts — and routing both through this helper is what
+ * stops them drifting apart.
+ */
+function externalStoreSegments(targetDir: string): string[] {
+  return isInsideGitRepo(targetDir)
+    ? [REPOS_DIR, repoKey(targetDir)]
+    : [PROJECTS_DIR, DEFAULT_PROJECT];
+}
+
+/**
  * Resolve the absolute directory under which planning artifacts (RFCs,
  * specs, tasks, strikes, PRDs) are written:
  *   - 'repo'     → `<targetDir>` (paths land at `docs/rfcs/...`, `specs/...`)
- *   - 'external' → `~/.smithy/repos/<repoKey(targetDir)>/` (paths land at
- *     `~/.smithy/repos/<repo>/docs/rfcs/...`, `~/.smithy/repos/<repo>/specs/...`)
+ *   - 'external' → `~/.smithy/repos/<repoKey(targetDir)>/` when `targetDir`
+ *     is inside a git repo, else `~/.smithy/projects/default/` (paths land
+ *     at `<store>/docs/rfcs/...`, `<store>/specs/...`)
  *
  * The `<repoKey>` segment is worktree-stable (see {@link repoKey}), so every
  * worktree of a repo shares one external store.
@@ -172,7 +241,7 @@ export function resolveArtifactsRoot(
   location: ArtifactsLocation = 'repo',
 ): string {
   if (location === 'external') {
-    return path.join(os.homedir(), '.smithy', REPOS_DIR, repoKey(targetDir));
+    return path.join(os.homedir(), '.smithy', ...externalStoreSegments(targetDir));
   }
   return targetDir;
 }
@@ -180,9 +249,10 @@ export function resolveArtifactsRoot(
 /**
  * The prefix that gets substituted into deployed prompts via the
  * `{{artifactsRoot}}` template variable. Returns `""` for in-repo mode
- * so paths render unchanged (`docs/rfcs/...`), or the tilde form
- * `~/.smithy/repos/<repoKey>/` for external mode so paths render as
- * `~/.smithy/repos/<repo>/docs/rfcs/...`.
+ * so paths render unchanged (`docs/rfcs/...`), or the tilde form of the
+ * external store — `~/.smithy/repos/<repoKey>/` inside a repo,
+ * `~/.smithy/projects/default/` outside one — so paths render as
+ * `<store>/docs/rfcs/...`.
  *
  * Tilde-form (not home-expanded) so committed deployed prompts stay
  * portable across team members. Agents (Claude Code, Gemini CLI, Codex)
@@ -193,7 +263,7 @@ export function templateArtifactsPrefix(
   location: ArtifactsLocation = 'repo',
 ): string {
   if (location === 'external') {
-    return `~/.smithy/${REPOS_DIR}/${repoKey(targetDir)}/`;
+    return `~/.smithy/${externalStoreSegments(targetDir).join('/')}/`;
   }
   return '';
 }

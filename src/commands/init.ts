@@ -24,6 +24,7 @@ import {
   writeManifest,
 } from '../manifest.js';
 import { ORDERS_TEMPLATE_TYPES, provisionOrdersTemplates } from '../orders-templates.js';
+import { ensureArtifactStore, type EnsureArtifactStoreResult } from '../artifact-store.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -60,6 +61,29 @@ export interface InitOptions {
   yes?: boolean;
   /** When true, suppresses the welcome banner and uses "Upgrade" in the completion message. */
   quiet?: boolean;
+}
+
+/**
+ * Print a one-line report for the external artifact store. Silent in repo
+ * mode (`result` is `null`) and for a store that was already git-backed on a
+ * re-run, so a routine `smithy update` stays quiet — the interesting cases
+ * are "just created it" and "couldn't".
+ */
+function reportArtifactStore(result: EnsureArtifactStoreResult | null): void {
+  if (result === null) return;
+  if (result.warning !== undefined) {
+    console.log(
+      picocolors.yellow(
+        `  Artifact store: ${result.warning} — artifacts will still be written, but without history`,
+      ),
+    );
+    return;
+  }
+  if (result.gitInitialized) {
+    console.log(
+      picocolors.dim(`  Artifact store: ${result.root} (git repository initialized)`),
+    );
+  }
 }
 
 export async function initAction(opts: InitOptions = {}): Promise<void> {
@@ -143,6 +167,11 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     artifactsLocation = await promptArtifactsLocation();
   }
   const artifactsRoot = templateArtifactsPrefix(targetDir, artifactsLocation);
+
+  // Create the external store and give it a git history, so an agent that
+  // clobbers an artifact leaves something to restore from. No-op in repo
+  // mode, where artifacts already ride the repo's own history.
+  reportArtifactStore(ensureArtifactStore(targetDir, artifactsLocation));
 
   // 5d. Orders templates — write canonical default bodies to
   // <manifestDir>/templates/orders/. Provisioning runs BEFORE the manifest-write

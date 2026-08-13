@@ -22,6 +22,43 @@ export const platforms: Record<PlatformPackageManager, { label: string; permissi
   linux: { label: 'apt/dpkg (Linux)', permissionKeys: ['apt', 'apt-cache', 'dpkg'], osPlatforms: ['linux'] },
 };
 
+/**
+ * The git operations auto-allowed against an external artifact store, as
+ * argument strings following `git -C <store>`.
+ *
+ * Deliberately read-and-commit only. `push`, `reset`, `clean`, and `checkout`
+ * are absent: the store's history is the whole point of git-backing it, and
+ * whether it syncs to a remote is the user's decision.
+ *
+ * Shared across agents on purpose. Claude and Codex express these very
+ * differently — Claude takes wildcard command strings, while Codex needs
+ * exact token prefixes built from the resolved store path (see
+ * `buildStoreRules` in `./agents/codex.ts`) — and the one thing that must
+ * not diverge between them is *which* operations an agent may run unattended.
+ */
+export const STORE_GIT_ARGS = [
+  'add -A',
+  'add *',
+  'commit -m *',
+  'commit --no-gpg-sign -m *',
+  'status',
+  'status -s',
+  'log --oneline *',
+  'diff *',
+  'show *',
+] as const;
+
+/**
+ * The `git -C <store>` permission strings for one store namespace, generated
+ * for both the trailing-slash and bare spellings of `<base>/<store-name>`.
+ * See the `-C` entry under `git` below for why both are needed.
+ */
+function storeGitPermissions(base: string): string[] {
+  return [`${base}/*`, `${base}/*/`].flatMap((prefix) =>
+    STORE_GIT_ARGS.map((arg) => `${prefix} ${arg}`),
+  );
+}
+
 export const permissions: Record<string, PermissionEntry> = {
   // --- Git ---
   // Flag variants are listed explicitly because Gemini CLI's wildcard
@@ -94,6 +131,38 @@ export const permissions: Record<string, PermissionEntry> = {
     "push origin": ["*"],
     "push --force-with-lease": [""],
     "push --force-with-lease origin": ["*"],
+
+    // External artifact stores (`artifactsLocation: external`) are git repos
+    // under `~/.smithy/`, and agents commit to them there via `git -C <store>`.
+    // That form needs its own entries: permission matching is prefix-based on
+    // the whole command string, so `git -C ~/x commit -m "y"` does not match
+    // the bare `git commit -m *` above.
+    //
+    // Scoped to the two store namespaces rather than granting `git -C *`, and
+    // written in tilde form on purpose — these strings land in a committed
+    // `.claude/settings.json`, so an expanded `/home/<user>/...` path would
+    // leak one developer's home directory to the whole team. The prompts tell
+    // agents the tilde path is authoritative, so that is the form they emit.
+    //
+    // Read and commit only: no `push`, no `reset`, no `clean`. Syncing a
+    // store to a remote is the user's call, not an agent's.
+    //
+    // Both a trailing-slash and a bare form of each store path are listed.
+    // `{{artifactsRoot}}` always ends in `/` (so `{{artifactsRoot}}specs/...`
+    // concatenates), which means agents emit
+    // `git -C ~/.smithy/repos/<key>/ add -A` — matching that against
+    // `~/.smithy/repos/* add -A` would require `*` to swallow the trailing
+    // separator, which permission wildcards do not reliably do. The `*/`
+    // form matches it without spanning a `/` at all; the bare form is kept
+    // for hand-typed commands that omit the slash.
+    //
+    // `commit --no-gpg-sign -m *` mirrors what the prompt tells agents to
+    // run (and what `ensureArtifactStore` runs itself) so a machine with
+    // `commit.gpgsign` set doesn't hit an approval prompt on the flag form.
+    "-C": [
+      ...storeGitPermissions("~/.smithy/repos"),
+      ...storeGitPermissions("~/.smithy/projects"),
+    ],
   },
 
   // --- Filesystem (read + create, no delete) ---

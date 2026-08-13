@@ -15,6 +15,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 import {
   formatSummaryHeader,
@@ -444,6 +445,7 @@ describe('StatusJsonPayload.graph type wiring', () => {
       },
       records: [],
       graph: populated,
+      scan_root: '/repo',
     };
     expect(payload.graph.nodes[fqId]?.record_path).toBe(
       'specs/sample/sample.spec.md',
@@ -489,6 +491,7 @@ describe('StatusJsonPayload.graph type wiring', () => {
       },
       records: [],
       graph: populated,
+      scan_root: '/repo',
     };
     const firstLayer = payload.graph.layers[0]!;
     expect(firstLayer.mode).toBe('all');
@@ -516,6 +519,7 @@ describe('StatusJsonPayload.graph type wiring', () => {
       },
       records: [],
       graph: stub,
+      scan_root: '/repo',
     };
     expect(payload.graph.mode).toBe('pending-only');
     expect(payload.graph.nodes).toEqual({});
@@ -1469,16 +1473,20 @@ describe('statusAction — pending-graph view + layer-filter flags', () => {
 });
 
 describe('statusAction artifacts-location integration', () => {
-  // The scanner is taught to read `.smithy/smithy-manifest.json` (or
-  // `~/.smithy/smithy-manifest.json`) and redirect its scan root to
-  // `~/.smithy/repos/<repoKey>/` when `artifactsLocation === 'external'`. These
-  // tests exercise that wiring end-to-end via real on-disk files.
+  // The scanner reads `.smithy/smithy-manifest.json` (or
+  // `~/.smithy/smithy-manifest.json`) and, when `artifactsLocation ===
+  // 'external'`, cascades over the repo, `~/.smithy/repos/<repoKey>/`, and
+  // `~/.smithy/projects/default/`. These tests exercise that wiring
+  // end-to-end via real on-disk files.
   //
-  // The redirect only fires when `opts.root` is `undefined` (the scanner
+  // The cascade only fires when `opts.root` is `undefined` (the scanner
   // falls back to `process.cwd()` then), so the cases that actually hit
-  // the new branch stub both `process.cwd` and `process.env.HOME` —
-  // tests that pass `root` explicitly intentionally bypass the redirect
-  // and document the "explicit --root always wins" rule.
+  // it stub both `process.cwd` and `process.env.HOME` — tests that pass
+  // `root` explicitly intentionally bypass the cascade and document the
+  // "explicit --root always wins" rule.
+  //
+  // `workdir` is a real git repo so the store resolves to the repo-keyed
+  // branch; the outside-a-repo branch has its own describe block below.
 
   let workdir: string;
   let fakeHome: string;
@@ -1488,6 +1496,7 @@ describe('statusAction artifacts-location integration', () => {
   beforeEach(() => {
     workdir = mkdtempSync(join(tmpdir(), 'smithy-status-workdir-'));
     fakeHome = mkdtempSync(join(tmpdir(), 'smithy-status-home-'));
+    execFileSync('git', ['init', '-q'], { cwd: workdir, stdio: 'ignore' });
     cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(workdir);
     vi.stubEnv('HOME', fakeHome);
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -1585,6 +1594,51 @@ describe('statusAction artifacts-location integration', () => {
     expect(payload.records).toEqual([]);
   });
 
+  it('prefers in-repo artifacts over the external store when both have some', () => {
+    // First step of the cascade. A repo that kept artifacts in-tree (from
+    // before the flip to external mode) must still see them — silently
+    // showing only the external store would make that work look lost.
+    writeManifest(workdir, 'external');
+    writeTasksFixture(workdir);
+    const externalRoot = resolveArtifactsRoot(workdir, 'external');
+    mkdirSync(join(externalRoot, 'specs', 'other'), { recursive: true });
+    writeFileSync(
+      join(externalRoot, 'specs', 'other', '99-other.tasks.md'),
+      '# Other\n\n## Slice 1: Only\n\n- [ ] One\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n| S1 | Only | — | — |\n',
+    );
+
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
+    expect(payload.scan_root).toBe(workdir);
+  });
+
+  it('falls back to ~/.smithy/projects/default/ when the repo and its keyed store are both empty', () => {
+    // Third step of the cascade: a cross-repo artifact authored outside any
+    // repo is still reachable from a member repo.
+    writeManifest(workdir, 'external');
+    const projectRoot = join(fakeHome, '.smithy', 'projects', 'default');
+    writeTasksFixture(projectRoot);
+
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records.length).toBeGreaterThan(0);
+    expect(payload.records[0]!.path).toBe(
+      '~/.smithy/projects/default/specs/sample/01-first.tasks.md',
+    );
+    expect(payload.scan_root).toBe('~/.smithy/projects/default/');
+  });
+
+  it('reports the winning scan root in the JSON payload', () => {
+    writeManifest(workdir, 'external');
+    const externalRoot = resolveArtifactsRoot(workdir, 'external');
+    writeTasksFixture(externalRoot);
+
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.scan_root).toBe(templateArtifactsPrefix(workdir, 'external'));
+  });
+
   it('explicit --root always wins, even when the manifest declares external', () => {
     writeManifest(workdir, 'external');
     // Pre-create both locations with different fixtures so the test can tell
@@ -1603,5 +1657,71 @@ describe('statusAction artifacts-location integration', () => {
     for (const r of payload.records) {
       expect(r.path.startsWith('~/.smithy/')).toBe(false);
     }
+  });
+});
+
+describe('statusAction discovery outside a git repo', () => {
+  // Standing in a plain directory there is no repo-keyed store to consult,
+  // so discovery leads with the shared project store — that is where
+  // cross-repo planning lands. The working directory stays as a trailing
+  // candidate so a folder full of artifacts still scans.
+
+  let workdir: string;
+  let fakeHome: string;
+  let cwdSpy: MockInstance<() => string>;
+  let logSpy: MockInstance<(...args: unknown[]) => void>;
+
+  beforeEach(() => {
+    workdir = mkdtempSync(join(tmpdir(), 'smithy-status-loose-'));
+    fakeHome = mkdtempSync(join(tmpdir(), 'smithy-status-home-'));
+    // Deliberately NOT a git repo.
+    cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(workdir);
+    vi.stubEnv('HOME', fakeHome);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    cwdSpy.mockRestore();
+    vi.unstubAllEnvs();
+    logSpy.mockRestore();
+    if (workdir) rmSync(workdir, { recursive: true, force: true });
+    if (fakeHome) rmSync(fakeHome, { recursive: true, force: true });
+  });
+
+  function captured(): string {
+    return logSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+  }
+
+  function writeTasksFixture(root: string): void {
+    const dir = join(root, 'specs', 'sample');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, '01-first.tasks.md'),
+      '# US1 Tasks\n\n## Slice 1: Only\n\n- [ ] One\n\n## Dependency Order\n\n| ID | Title | Depends On | Artifact |\n|----|-------|------------|----------|\n| S1 | Only | — | — |\n',
+    );
+  }
+
+  it('reads ~/.smithy/projects/default/ ahead of the working directory', () => {
+    writeTasksFixture(join(fakeHome, '.smithy', 'projects', 'default'));
+    writeTasksFixture(workdir);
+
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]!.path).toBe(
+      '~/.smithy/projects/default/specs/sample/01-first.tasks.md',
+    );
+    expect(payload.scan_root).toBe('~/.smithy/projects/default/');
+  });
+
+  it('still scans the working directory when the project store is empty', () => {
+    // Without this fallback the result would depend on whether the user
+    // happens to have a project store — a plain directory of artifacts
+    // would silently report nothing.
+    writeTasksFixture(workdir);
+
+    statusAction({ format: 'json' });
+    const payload = JSON.parse(captured()) as StatusJsonPayload;
+    expect(payload.records[0]!.path).toBe('specs/sample/01-first.tasks.md');
+    expect(payload.scan_root).toBe(workdir);
   });
 });

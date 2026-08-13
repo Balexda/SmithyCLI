@@ -3,7 +3,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter, parseFrontmatterName } from '../templates.js';
 import { toCodexAgentToml } from '../agent-models.js';
-import { permissions } from '../permissions.js';
+import { permissions, STORE_GIT_ARGS } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 
 const SMITHY_CODEX_RULES_BEGIN = '# BEGIN SMITHY CODEX RULES';
@@ -104,7 +104,7 @@ export async function deploy(
   }
 
   if (initPermissions) {
-    writePermissions(targetDir);
+    writePermissions(targetDir, artifactsRoot);
   }
 
   return deployedFiles;
@@ -145,7 +145,7 @@ export function removeLegacy(targetDir: string): number {
   return removedCount;
 }
 
-function writePermissions(targetDir: string): void {
+function writePermissions(targetDir: string, artifactsRoot: string = ''): void {
   const codexDir = path.join(targetDir, '.codex');
   if (!fs.existsSync(codexDir)) fs.mkdirSync(codexDir, { recursive: true });
 
@@ -160,7 +160,7 @@ function writePermissions(targetDir: string): void {
   const rulesPath = path.join(rulesDir, 'default.rules');
   const rulesBlock = [
     SMITHY_CODEX_RULES_BEGIN,
-    ...buildCodexRules().map(formatPrefixRule),
+    ...buildCodexRules(artifactsRoot).map(formatPrefixRule),
     SMITHY_CODEX_RULES_END,
     '',
   ].join('\n');
@@ -173,7 +173,40 @@ function writePermissions(targetDir: string): void {
   console.log(picocolors.blue(`  Added default permissions to ${rulesPath}`));
 }
 
-function buildCodexRules(): string[][] {
+/**
+ * The `git` sub-key whose values encode an external artifact store path with
+ * a wildcard segment (`~/.smithy/repos/* add -A`). Skipped by the generic
+ * rule builder and handled by {@link buildStoreRules} instead — see there for
+ * why the generic path cannot represent it.
+ */
+const GIT_STORE_PERMISSION_KEY = '-C';
+
+/**
+ * Prefix rules for the external artifact store, built from the *resolved*
+ * store path rather than a wildcard.
+ *
+ * Codex rules have no wildcard segment: `buildPrefixPattern` strips a
+ * trailing `*` from each token and `prefix_rule` then matches tokens
+ * exactly, so the Claude-style `~/.smithy/repos/*` collapses to the literal
+ * token `~/.smithy/repos/` and never matches a real
+ * `~/.smithy/repos/widget/`. The result would be a rule that looks like it
+ * grants something and grants nothing.
+ *
+ * The deployer doesn't need a wildcard, though — it already knows which
+ * store this install uses. `artifactsRoot` is the tilde form
+ * (`~/.smithy/repos/widget/`, trailing slash included, exactly as the
+ * prompts emit it), so the token matches literally, and no absolute home
+ * directory is written into the committed rules file.
+ *
+ * Returns nothing in repo mode, where `artifactsRoot` is empty and there is
+ * no store to grant access to.
+ */
+function buildStoreRules(artifactsRoot: string): string[][] {
+  if (artifactsRoot.length === 0) return [];
+  return STORE_GIT_ARGS.map(arg => buildPrefixPattern('git', '-C', artifactsRoot, arg));
+}
+
+function buildCodexRules(artifactsRoot: string): string[][] {
   const patterns = SMITHY_SKILL_SCRIPT_RULES.map(script => [script]);
 
   for (const [cmd, value] of Object.entries(permissions)) {
@@ -182,11 +215,16 @@ function buildCodexRules(): string[][] {
       for (const arg of value) patterns.push(buildPrefixPattern(cmd, arg));
     } else {
       for (const [sub, args] of Object.entries(value)) {
+        // The store entries carry a wildcard path segment the prefix-rule
+        // format cannot express; `buildStoreRules` emits the resolved form.
+        if (cmd === 'git' && sub === GIT_STORE_PERMISSION_KEY) continue;
         if (args.length === 0) patterns.push(buildPrefixPattern(cmd, sub));
         for (const arg of args) patterns.push(buildPrefixPattern(cmd, sub, arg));
       }
     }
   }
+
+  patterns.push(...buildStoreRules(artifactsRoot));
 
   const seen = new Set<string>();
   return patterns.filter(pattern => {

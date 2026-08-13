@@ -262,6 +262,22 @@ export async function getComposedTemplates(
     return artifactsRoot;
   });
 
+  // Block helper gating content on external-artifacts mode. Needed as a
+  // helper for the same reason as `ifAgent`: dotprompt runs with
+  // `knownHelpersOnly`, so a plain `{{#if artifactsRoot}}` will not resolve.
+  //
+  // Some instructions only make sense when artifacts live in a separate
+  // git-backed store — telling an agent to commit the store is actively
+  // wrong in repo mode, where the same words would have it commit the code
+  // repo mid-plan. Rendering them unconditionally is not a harmless extra.
+  renderer.defineHelper('ifExternalArtifacts', function (this: unknown, ...args: unknown[]) {
+    const options = args[args.length - 1] as {
+      fn: (ctx: unknown) => string;
+      inverse: (ctx: unknown) => string;
+    };
+    return artifactsRoot.length > 0 ? options.fn(this) : options.inverse(this);
+  });
+
   const resolve = async (dir: string): Promise<Map<string, string>> => {
     const raw = readTemplateDir(dir, variant);
     const entries = await Promise.all(
