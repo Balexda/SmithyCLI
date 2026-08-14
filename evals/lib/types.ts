@@ -184,6 +184,7 @@ export interface EvalResult {
   scenario_name: string;
   status: 'pass' | 'fail' | 'timeout' | 'error';
   extracted_text: string;
+  tokens: TokenTotals;
   duration_ms: number;
   structural_checks: CheckResult[];
   sub_agent_checks?: CheckResult[] | undefined;
@@ -217,6 +218,8 @@ export interface EvalReport {
   overall_status: 'pass' | 'fail';
   /** Per-case results, in execution order. */
   results: EvalResult[];
+  /** Aggregate token totals across every included result. */
+  tokens: TokenTotals;
   /** Total wall-clock time for the entire run, in milliseconds. */
   total_duration_ms: number;
 }
