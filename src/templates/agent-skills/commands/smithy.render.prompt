@@ -13,14 +13,18 @@ together deliver the milestone's goals.
 
 ## Input
 
-The user's RFC path and optional milestone number: $ARGUMENTS
+The user's RFC path, optional milestone number, and optional `--bundle <path>`:
+$ARGUMENTS
 
 This may be:
 - An **RFC file path** (`.rfc.md`) — auto-selects the next unprocessed milestone.
 - An **RFC file path + milestone number** — targets that specific milestone.
-- An **RFC file path + milestone number + import bundle path** — targets that
-  milestone and treats the bundle as prototype-first UI context for any
-  `design: import` features the map emits.
+- **Either of the above plus `--bundle <path>`** — treats the named bundle as
+  prototype-first UI context for any `design: import` features the map emits.
+  `--bundle` is a named argument, so it never competes with the optional
+  milestone number: `<rfc> --bundle <path>` keeps auto-selection, while
+  `<rfc> 3 --bundle <path>` targets milestone 3. A bare path that is not
+  preceded by `--bundle` is never treated as a bundle.
 - An **existing `.features.md` path** — enters the review loop (Phase 0).
 - Empty — ask the user for a path.
 
@@ -191,8 +195,10 @@ Parse the input and prepare the target:
 
 ### Import Bundle Intake
 
-If the input includes an import bundle path, treat it as a boundary object
-available while drafting the feature map:
+If the input includes a `--bundle <path>` argument, treat that path as a
+boundary object available while drafting the feature map. Read the bundle path
+from `--bundle` only — never from a bare positional argument, so auto-selected
+and explicitly numbered milestone runs accept a bundle identically:
 
 - Record the exact repo-relative bundle path in every relevant `kind: ui`,
   `design: import` feature's metadata.
@@ -211,7 +217,7 @@ available while drafting the feature map:
 - Do not author `.design.md`, `.flow.md`, or executable test-body files during
   render. Those durable artifacts remain owned by downstream `smithy.mark`.
 
-If no import bundle path is supplied, keep the existing no-bundle path: omit
+If no `--bundle` argument is supplied, keep the existing no-bundle path: omit
 `bundle`, choose `design` from the milestone/RFC context, and derive only the
 screen/flow identifiers supported by the written milestone intent.
 
@@ -357,7 +363,7 @@ kind: ui
 phase: build
 design_system: <committed design skill, e.g. story-spider-design>
 design: <none|import|brief>
-bundle: <repo-relative path to supplied prototype bundle when design is import; omit when absent>
+bundle: <repo-relative path to a visual prototype boundary object — supplied via --bundle at render for `design: import`, or attached later for `design: brief`; omit the key when no bundle exists yet>
 flag: <feature-flag name gating this screen>
 screens: [<candidate ScreenId derived from milestone or import bundle>]
 flows: [<candidate FlowId derived from milestone or import bundle>]
@@ -549,7 +555,9 @@ here, by render.
   write its repo-relative path to `bundle` on relevant `kind: ui`,
   `design: import` features, keep `design_system` as the committed dialect
   source, and derive candidate `ScreenId`/`FlowId` metadata from the prototype
-  for human confirmation.
+  for human confirmation. `bundle` itself is not import-only — a `design: brief`
+  feature may gain one later, after the visual tool answers mark's brief — so
+  omit the key at render rather than treating its absence as a mode signal.
 - **DO** route ambiguous import derivation to specification debt. The feature
   map should say what is unclear rather than pretending the candidate screen or
   flow structure is authoritative.
