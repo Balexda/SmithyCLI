@@ -508,6 +508,11 @@ describe('runScenario', () => {
     expect(invocation).toContain('Issue fixture: issues/fix-from-issue-health-check.md');
     expect(invocation).toContain('CI log fixture: ci-logs/fix-from-issue-health-check.log');
     expect(invocation).toContain('using only the repository-local evidence');
+    // The scenario's own prompt is what guarantees the `## Diagnosis` heading
+    // that `structural_expectations.required_headings` matches on whole-line
+    // equality -- the smithy.fix template mandates no ATX heading.
+    expect(invocation).toContain('`## Diagnosis` heading');
+    expect(scenario.structural_expectations.required_headings).toContain('## Diagnosis');
     expect(invocation).not.toContain('{{issue_path}}');
     expect(invocation).not.toContain('{{ci_log_path}}');
     expect(invocation).not.toMatch(/\bGH_TOKEN\b|\bGITHUB_TOKEN\b|gh issue|gh run|GitHub Actions/i);
