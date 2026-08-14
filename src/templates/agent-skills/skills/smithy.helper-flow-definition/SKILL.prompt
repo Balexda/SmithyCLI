@@ -364,7 +364,10 @@ When auditing an existing flow pair, flag any of the following:
       reused across flows.
 - [ ] `screens:` is empty, not a list, contains non-string values, or
       references a `ScreenId` with no matching
-      `design/screens/<ScreenId>.design.md` annotation.
+      `design/screens/<ScreenId>.design.md` annotation. A direct review of
+      this pair checks only that each referenced annotation file **exists**;
+      whether that `ScreenId` is declared by some feature — and the rest of
+      the screen/flow/test graph — stays with `flow-lint` (#409).
 - [ ] `.flow.md` body contains a `## Steps`, `## Walkthrough`, `## Flow`,
       or `## Path` section.
 - [ ] `.flow.md` body contains click/tap sequences, selectors, assertions,

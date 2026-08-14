@@ -26,10 +26,11 @@ If no input is provided above, check whether you are on a **forge branch** (see 
 
 ### File Argument Mode
 
-When a file path is provided, detect the artifact type by its file extension:
+When a file path is provided, detect the artifact type by its file extension —
+and, for the durable UI artifacts, by the directory it sits in as well:
 
-| Extension | Artifact Type | Producing Command |
-|-----------|--------------|-------------------|
+| Target | Artifact Type | Producing Command |
+|--------|--------------|-------------------|
 | `.rfc.md` | RFC | smithy.ignite |
 | `.features.md` | Feature Map | smithy.render |
 | `.spec.md` | Feature Spec | smithy.mark |
@@ -39,11 +40,13 @@ When a file path is provided, detect the artifact type by its file extension:
 | `.flow.md` under `design/flows/` | Flow Definition | smithy.mark |
 
 1. Read the file at the given path.
-2. Identify its extension from the table above.
+2. Match it against the table above. The two UI rows match only when the file
+   also sits under the named directory — a `.design.md` or `.flow.md` elsewhere
+   in the repo is **not** a screen or flow artifact and falls through to step 5.
 3. **Gather context documents** — many checklists require cross-document checks. Before running the checklist, discover and read the related files for the artifact type:
 
-   | Target extension | Context to gather |
-   |-----------------|-------------------|
+   | Target | Context to gather |
+   |--------|-------------------|
    | `.rfc.md` | Any `.features.md` files in the same RFC folder (`{{artifactsRoot}}docs/rfcs/<YYYY-NNN-slug>/`) |
    | `.features.md` | The `.rfc.md` in the same RFC folder, to verify RFC alignment |
    | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`{{artifactsRoot}}specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
@@ -54,8 +57,8 @@ When a file path is provided, detect the artifact type by its file extension:
 
    If a context document is missing, note it as a finding rather than skipping the check.
 
-4. Use the matching **Extension-Specific Checklist** below, reviewing against both the target file and any context documents gathered.
-5. If the extension is not recognized, fall back to a general review using all checklists.
+4. Use the matching **Artifact-Type Checklist** below, reviewing against both the target file and any context documents gathered.
+5. If the target matches no row, fall back to a general review using all checklists.
 
 ### Forge-Branch Mode
 
@@ -85,9 +88,9 @@ When no file argument is provided and the current branch matches the forge branc
 
 ---
 
-## Extension-Specific Checklists
+## Artifact-Type Checklists
 
-Use the checklist matching the artifact's extension. Each checklist defines what "good" looks like for that artifact type.
+Use the checklist matching the artifact type resolved in **Mode Detection**. Each checklist defines what "good" looks like for that artifact type.
 
 {{>audit-checklist-rfc}}
 
