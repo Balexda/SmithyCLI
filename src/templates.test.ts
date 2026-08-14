@@ -549,6 +549,49 @@ describe('feature-kinds snippet', () => {
   });
 });
 
+describe('smithy.audit UI artifact routing', () => {
+  let composed: ComposedTemplates;
+  let audit: string;
+
+  beforeAll(async () => {
+    composed = await getComposedTemplates();
+    audit = composed.commands.get('smithy.audit.md')!;
+  });
+
+  it('recognizes screen and flow durable artifacts as file-argument targets', () => {
+    expect(audit).toContain('`.design.md` under `design/screens/`');
+    expect(audit).toContain('Screen Design Annotation');
+    expect(audit).toContain('`.flow.md` under `design/flows/`');
+    expect(audit).toContain('Flow Definition');
+  });
+
+  it('routes UI artifact audits to the helper-skill contracts', () => {
+    expect(audit).toContain('smithy.helper-screen-design');
+    expect(audit).toContain('smithy.helper-flow-definition');
+    expect(audit).toContain('review against its "Review checklist" section');
+  });
+
+  it('checks required screen contract fields and rationale-only body scope', () => {
+    expect(audit).toContain('`component-path`');
+    expect(audit).toContain('`design_system`');
+    expect(audit).toContain('state inventories');
+    expect(audit).toContain('do not judge visual fidelity');
+  });
+
+  it('checks required flow contract fields and excludes executable behavior', () => {
+    expect(audit).toContain('`screens`');
+    expect(audit).toContain('`test-body`');
+    expect(audit).toContain('no matching `design/screens/<ScreenId>.design.md` annotation');
+    expect(audit).toContain('ordered executable behavior');
+  });
+
+  it('keeps deployed audit guidance self-contained', () => {
+    expect(audit).not.toContain('src/templates/');
+    expect(audit).not.toContain('agent-skills/README.md');
+    expect(audit).not.toContain('snippets/README.md');
+  });
+});
+
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();

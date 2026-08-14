@@ -362,9 +362,14 @@ When auditing an existing flow pair, flag any of the following:
 - [ ] `test-body:` path does not resolve to an existing file in the repo.
 - [ ] `id` does not match the originating feature's `flows:` list, or is
       reused across flows.
-- [ ] `screens:` references a `ScreenId` that no feature declares.
+- [ ] `screens:` is empty, not a list, contains non-string values, or
+      references a `ScreenId` with no matching
+      `design/screens/<ScreenId>.design.md` annotation.
 - [ ] `.flow.md` body contains a `## Steps`, `## Walkthrough`, `## Flow`,
       or `## Path` section.
+- [ ] `.flow.md` body contains click/tap sequences, selectors, assertions,
+      driver-specific test code, or other executable behavior that belongs in
+      the paired test body.
 - [ ] `## Guards` lists invariants the test body does **not** assert.
 - [ ] `## Coverage Caveat` is missing on a flow whose screen touches an
       audio-service surface.

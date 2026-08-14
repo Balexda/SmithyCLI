@@ -520,6 +520,11 @@ template, a worked `Library.design.md` example, naming decisions, and a review c
 annotation; this README intentionally does not duplicate the schema so the two
 cannot drift.
 
+`smithy.audit` routes `design/screens/<ScreenId>.design.md` targets to that
+helper's review checklist. The audit is structural: it checks the front-matter
+contract, including `component-path` and `design_system`, and the rationale-only
+body rule. Visual fidelity stays out of scope for audit.
+
 ## Flow Definitions
 
 Each `FlowId` listed under a UI feature's `flows:` field resolves — in the
@@ -543,6 +548,11 @@ Maestro, naming decisions, the audio-service coverage caveat, and a review check
 via `Skill("smithy.helper-flow-definition")` when authoring or auditing a
 flow definition (typically at a UI feature's `wire` phase); this README
 intentionally does not duplicate the schema so the two cannot drift.
+
+`smithy.audit` routes `design/flows/<FlowId>.flow.md` targets to that helper's
+review checklist. The audit checks the `screens` references, `test-body` path,
+and intent-only body rule; executable path consistency across the full app tree
+remains the job of `flow-lint`.
 
 ## Sub-Agent Model Tiers
 
