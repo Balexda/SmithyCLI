@@ -53,8 +53,8 @@ fences. Four keys, three required:
 |-----|----------|-------|
 | `id` | Yes | Flat, stable `ScreenId`. Matches the `screens:` list of the originating UI feature in `.features.md`; never reused across screens. |
 | `component-path` | Yes | Repo-relative path to the owning UI component file in the project's framework (for example a Compose file such as `app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt`, or a React component such as `src/screens/LibraryScreen.tsx`). Paths survive package/module renames; the path is the contract, not a framework-specific symbol name. |
-| `design_system` | Yes | Reference to the committed design skill (e.g. `story-spider-design`). Source of truth even when a `bundle` is present — bundle wins on layout & visual intent, skill wins on implementation dialect. |
-| `bundle` | No | Repo-relative path to the originating Claude Design export (e.g. `design/bundles/library.zip`). A visual/structural reference, not a drop-in. Omit the key entirely when no bundle exists — do not set it to `null` or an empty string. |
+| `design_system` | Yes | Reference to the committed design skill (e.g. `story-spider-design`). Source of truth even when a `bundle` is present — bundle wins on layout & visual intent, skill wins on implementation dialect. A screen with a `bundle` is invalid without `design_system`. |
+| `bundle` | No | Repo-relative path to the originating visual prototype boundary object (for example a Figma export, Claude Design export, or equivalent visual-tool bundle). A visual/structural reference, not a drop-in. Omit the key entirely when no bundle exists — do not set it to `null` or an empty string. |
 
 No other keys. In particular, **no `flows:` field here** — flow membership is
 declared on the originating feature in `.features.md`; duplicating it on the
@@ -88,7 +88,7 @@ strings, no state-machine diagrams.
 id: <ScreenId>
 component-path: <repo-relative path to the owning UI component file>
 design_system: <committed design skill, e.g. story-spider-design>
-bundle: <repo-relative path to the Claude Design export, or omit the key>
+bundle: <repo-relative path to the visual prototype boundary object, or omit the key>
 ---
 
 # <ScreenId> — design context
