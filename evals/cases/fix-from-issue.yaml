@@ -1,0 +1,33 @@
+# smithy.fix end-to-end eval scenario -- exercises `/smithy.fix` against
+# committed offline issue and CI-log evidence.
+#
+# Spec:       specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/smithy-fix-end-to-end-eval-scenario.spec.md
+# Data model: specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/smithy-fix-end-to-end-eval-scenario.data-model.md
+# Contracts:  specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/smithy-fix-end-to-end-eval-scenario.contracts.md
+# Tasks:      specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/02-run-smithy-fix-against-local-failure-evidence.tasks.md
+#
+# This case intentionally stops at local fixture declaration and invocation.
+# Stable output marker and helper-evidence calibration belongs to the later
+# structural-validation story.
+
+name: fix-from-issue
+skill: /smithy.fix
+prompt: |
+  Diagnose and fix the failure using only the repository-local evidence below.
+  Issue fixture: {{issue_path}}
+  CI log fixture: {{ci_log_path}}
+
+  Read those files from this temp fixture copy, identify the root cause, make the smallest code change, and run the relevant local verification.
+local_fixtures:
+  issue: evals/fixture/issues/fix-from-issue-health-check.md
+  ci_log: evals/fixture/ci-logs/fix-from-issue-health-check.log
+structural_expectations:
+  required_headings:
+    - '## Diagnosis'
+  required_patterns:
+    - 'health'
+    - 'src/index\.ts|/health|verification'
+  forbidden_patterns:
+    - "I'd be happy to help"
+    - "Sure, here's"
+    - '^---\r?\n'

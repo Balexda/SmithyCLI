@@ -91,7 +91,7 @@
 
 ### Tasks
 
-- [ ] **Declare and exercise the smithy.fix fixture scenario**
+- [x] **Declare and exercise the smithy.fix fixture scenario**
 
   Add the `fix-from-issue` YAML case under `evals/cases/` using the issue and CI-log fixtures provided by US1. The prompt should reference the injected local fixture bindings and direct smithy.fix to diagnose from committed evidence, with focused coverage for loading, case selection, and invocation rendering while leaving structural marker refinement to US3.
 
