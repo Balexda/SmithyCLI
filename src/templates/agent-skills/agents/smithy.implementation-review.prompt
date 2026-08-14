@@ -75,10 +75,14 @@ confidence (High or Low) as documented in the shared review protocol above.
 Return a single `ReviewResult` to smithy-forge. The result has two fields:
 
 - **`findings`** — a list of `Finding` entries in the structure documented
-  in the shared review protocol (`category`, `severity`, `confidence`,
-  `description`, `artifact_path`, `proposed_fix`). Emit one finding per
-  distinct issue. Use the six categories listed above for the `category`
-  field.
+  in the shared review protocol (`category`, `kind`, `severity`,
+  `confidence`, `description`, `artifact_path`, `proposed_fix`). Emit one
+  finding per distinct issue. Use the six categories listed above for the
+  `category` field, and set `kind` per the **Kind gate** section of the
+  shared review protocol above, which carries the full steering test.
+  Code review findings are overwhelmingly `hygiene` (a defect with a
+  knowable correct fix); reserve `steering` for the rare case where the
+  implementation exposed a product choice nobody has made.
 - **`summary`** — a short, human-readable summary of what was reviewed and
   the overall assessment (e.g., counts per severity, whether any Critical
   items are present, whether the implementation appears to satisfy the
@@ -87,8 +91,9 @@ Return a single `ReviewResult` to smithy-forge. The result has two fields:
 If you find nothing, return an empty `findings` list and state that the
 implementation is clean in the `summary`.
 
-smithy-forge triages the returned findings using the severity × confidence
-table from the shared protocol: High-confidence findings are applied on disk
-and committed as `review: <description>`; Low-confidence findings are
-recorded as specification debt or escalated in the PR. You do not apply,
-commit, or escalate anything yourself.
+smithy-forge triages the returned findings using the kind × severity ×
+confidence table from the shared protocol: High-confidence findings are
+applied on disk and committed as `review: <description>`; Low-confidence
+findings are escalated in the PR, and reach specification debt only when
+`kind` is `steering`. You do not apply, commit, or escalate anything
+yourself.

@@ -226,8 +226,10 @@ both are structural:
   without the italic markers; that is a different surface.)
 - **Never put an unescaped `|` inside a table cell.** Pipes belong in detail
   prose. An unescaped pipe silently shifts every column to its right.
-- **`## Specification Debt` is the only home for unresolved uncertainty.** No
-  `## Open Questions` heading in RFCs — translate those into `SD-NNN` rows.
+- **`## Specification Debt` is the only home for an unresolved *decision*.** No
+  `## Open Questions` heading in RFCs — translate those into `SD-NNN` rows. An
+  unknown that needs no decision is a different thing and has a different home:
+  see **Open Implementation Questions** below.
 - **This README is the single source of truth.** Command templates compose
   `{{>spec-debt-section}}` and link back here rather than restating the
   schema inline, so the rules cannot drift between commands.
@@ -249,6 +251,64 @@ both are structural:
 - **Provenance as a field beats a text prefix.** The old
   `inherited from spec: …` convention buried structured data in prose, where it
   survived neither rewording nor machine checking.
+
+## Open Implementation Questions Format (`.tasks.md`)
+
+The debt table is a **decision queue for a human**. Most things a planning pass
+does not know are not decisions at all — which proto field carries a value,
+which producer serves a surface, which of two equivalent call sites to extend.
+Those have a right answer and the implementer uncovers it by building. Parking
+them in `## Specification Debt` buries the handful of real decisions among
+dozens of non-decisions and makes a ready artifact read as blocked.
+
+So `.tasks.md` — and only `.tasks.md`, because it is the artifact an
+implementer works from — carries a second section, positioned after
+`## Specification Debt` and before `## Dependency Order`:
+
+```markdown
+## Open Implementation Questions
+
+| ID | Question | Slice | Settled By | Origin |
+|----|----------|-------|------------|--------|
+| IQ-001 | Which proto field carries the badge copy? | S2 | reading code | local |
+| IQ-002 | Does the ramp gate apply per-market or globally? | — | testing | spec:SD-014 |
+```
+
+| Column | Rule |
+|--------|------|
+| **`ID`** | `IQ-` plus a zero-padded three-digit integer. Matches `^IQ-[0-9]{3}$`. Unique within the artifact, numbered from `IQ-001`, and **independent of the `SD-NNN` sequence** — the two never share a numbering space. |
+| **`Question`** | One sentence, 120 characters or fewer, phrased as a question. There are no detail sections here: a question needing a paragraph is either a slice-body concern or a misfiled steering decision. |
+| **`Slice`** | An `S<N>` ID from this file's `## Dependency Order` table, or `—` when the question spans slices. |
+| **`Settled By`** | Closed enum: `building` / `testing` / `reading code`. Names how the implementer closes the question — never who to ask. If the honest answer is "by asking someone", the row is specification debt, not an implementation question. |
+| **`Origin`** | `local` for questions found while authoring this file, or `<parent-kind>:SD-NNN` for one demoted out of a parent artifact's debt table during inheritance. The upstream number lives here, not in the `IQ-NNN`. |
+
+### The gate between the two sections
+
+A finding reaches `## Specification Debt` only if **a human must decide and the
+decision changes what gets built**. The canonical three-part steering test —
+open question, named alternatives, human-only — lives in the
+`review-protocol` snippet's Kind gate section, and `smithy-clarify` Step 3b holds the
+matching leak-kind routing table for clarification candidates. Everything the
+gate rejects has a home:
+
+| Kind | Home |
+|------|------|
+| `steering` — a human picks between named alternatives | `## Specification Debt` |
+| `implementation` — settled by building, testing, or reading source | `## Open Implementation Questions` |
+| `hygiene` — a knowable correction, a wrong table, a stale path | Applied as a write-back, or listed in the PR body. A wrong table is a fix, not a question |
+
+### No lifecycle, no write-back
+
+An `IQ-NNN` row has no `Resolved` subsection and no answer field. The merged
+code is the answer, and the row retires with its slice. This is the deliberate
+difference from `SD-NNN`, whose resolution is a decision worth recording.
+
+Inheritance classifies rather than copies. When `smithy.cut` carries a spec's
+debt into a tasks file, it applies the same gate to each upstream row:
+steering rows carry down as debt, implementation unknowns arrive here as
+`IQ-NNN` rows, and hygiene items are noted in the PR. The downstream artifact
+never writes back to the parent — reclassification changes what the child
+carries, not what the parent recorded.
 
 ## Implementation Repo Declaration (`.tasks.md`)
 

@@ -73,7 +73,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-refine** — Artifact review and refinement findings (used by mark, cut, ignite, render in Phase 0)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
 - **smithy-implementation-review** — Read-only code review; returns findings for forge to apply (used by forge)
-- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Returns findings; parent commands apply fixes. (used by strike, ignite, mark, render, cut after artifact generation)
+- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, mark, render, cut after artifact generation)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 - **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; used by spark for the PRD Problem Statement; designed for reuse by other commands)
@@ -133,6 +133,26 @@ Every `## Dependency Order` section at every level uses the same 4-column Markdo
 **Do not use checkboxes in `## Dependency Order` sections.** The legacy `- [x] ... → path` format is removed because it caused merge conflicts and forced LLM inference for the dependency graph. Any new or edited artifact must use the table format above. Task-completion checkboxes inside `## Slice N:` bodies of tasks files are unaffected — those are implementation progress, not dependency ordering.
 
 The canonical schema and rules live in `src/templates/agent-skills/README.md`. When adding, refactoring, or documenting any smithy command template, link to that README rather than redefining the format — the goal is one source of truth.
+
+### Specification Debt vs. Open Implementation Questions
+
+`## Specification Debt` is a **decision queue for a human**: a row belongs there
+only when a person must pick between named alternatives and the pick changes
+what gets built. Everything else the planning pass does not know has a
+different home, decided by the kind gate that `smithy-clarify` (Step 3b) and
+`smithy-plan-review` (Kind Gate) apply before any severity × confidence triage:
+
+| Kind | Home |
+|------|------|
+| `steering` | `## Specification Debt` |
+| `implementation` — settled by building, testing, or reading source | `## Open Implementation Questions`, a `.tasks.md`-only section of `IQ-NNN` rows sitting between `## Specification Debt` and `## Dependency Order` |
+| `hygiene` — a knowable correction, a wrong table, a stale path | Applied as a write-back, or listed in the PR body |
+
+`IQ-NNN` numbering is independent of `SD-NNN`, and the section carries no
+lifecycle — the merged code is the answer. `smithy.cut` applies the same gate
+when inheriting a spec's debt, so a legacy spec's implementation unknowns are
+demoted to `IQ` rows rather than re-inherited as debt into every tasks file.
+Full schema in `src/templates/agent-skills/README.md`.
 
 ### Implementation Repo Declaration
 

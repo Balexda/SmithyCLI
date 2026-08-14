@@ -20,7 +20,8 @@ its contents. The snippet file itself is never deployed.
 | `audit-checklist-features.md` | Audit checklist for feature map artifacts | smithy.audit |
 | `audit-checklist-tasks.md` | Audit checklist for task plan artifacts | smithy.audit |
 | `feature-kinds.md` | Feature kind (`backend`/`ui`) + build/wire phase field schema and the two-feature seam; the single source of the kind/phase fields | smithy.render, smithy.audit |
-| `review-protocol.md` | Read-only findings protocol shared by review agents (Finding structure, severity × confidence triage, no file edits) | smithy.plan-review, smithy.implementation-review |
+| `review-protocol.md` | Read-only findings protocol shared by review agents (Finding structure, the `kind` gate, kind × severity × confidence triage, no file edits) | smithy.plan-review, smithy.implementation-review |
+| `open-implementation-questions.md` | The whole `## Open Implementation Questions` artifact section for tasks files: the `IQ-NNN` table (`ID`, `Question`, `Slice`, `Settled By`, `Origin`) and its empty-state line. Holds unknowns the implementer settles by building, so they stay out of the `## Specification Debt` decision queue. Carries its own voice tag. Must never contain a fenced code block: the host embeds it inside a markdown fence, and an inner fence would close the host early | smithy.cut |
 | `guidance-shell.md` | Shell environment guidance | smithy.guidance |
 | `tdd-protocol.md` | TDD workflow protocol | smithy.implement |
 | `competing-lenses-decomposition.md` | Competing slice lenses for decomposition planning | smithy.cut |

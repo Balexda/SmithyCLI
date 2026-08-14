@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(22);
+    expect(snippets.size).toBe(23);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -129,6 +129,7 @@ describe('loadSnippets', () => {
       'engraved-recall-advisory.md',
       'engraved-recall-degraded.md',
       'spec-debt-section.md',
+      'open-implementation-questions.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -154,6 +155,9 @@ describe('loadSnippets', () => {
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
     expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
     expect(snippets.get('spec-debt-section.md')).toContain('## Specification Debt');
+    expect(snippets.get('open-implementation-questions.md')).toContain(
+      '## Open Implementation Questions',
+    );
   });
 });
 
@@ -303,6 +307,7 @@ describe('review-protocol snippet', () => {
     // The shared Finding shape from the contracts must be present so both
     // review agents can emit findings in the same structure.
     expect(content).toContain('`category`');
+    expect(content).toContain('`kind`');
     expect(content).toContain('`severity`');
     expect(content).toContain('`confidence`');
     expect(content).toContain('`description`');
@@ -310,20 +315,81 @@ describe('review-protocol snippet', () => {
     expect(content).toContain('`proposed_fix`');
   });
 
-  it('snippet contains the severity × confidence triage table', () => {
+  it('snippet contains the kind × severity × confidence triage table', () => {
     const snippets = loadSnippets();
     const content = snippets.get('review-protocol.md')!;
     // Every row of the contracts triage table must be present so the parent
     // command has an unambiguous rulebook for processing returned findings.
-    expect(content).toMatch(/Critical\s*\|\s*High/);
-    expect(content).toMatch(/Critical\s*\|\s*Low/);
-    expect(content).toMatch(/Important\s*\|\s*High/);
-    expect(content).toMatch(/Important\s*\|\s*Low/);
+    expect(content).toMatch(/`steering`\s*\|\s*Critical\s*\|\s*Any/);
+    expect(content).toMatch(/`steering`\s*\|\s*Important\s*\|\s*Any/);
+    expect(content).toMatch(/`implementation`\s*\|/);
+    expect(content).toMatch(/`hygiene`\s*\|/);
     expect(content).toMatch(/Minor\s*\|\s*Any/);
     // Parent-action column content is what makes this a triage table rather
     // than just a grid of severities.
     expect(content).toContain('specification debt');
     expect(content).toContain('Apply proposed fix');
+  });
+
+  it('snippet never lets a steering finding be auto-applied', () => {
+    // `steering` means a human has to pick. Applying a proposed fix makes the
+    // pick for them and buries a product decision in a planning commit, so
+    // confidence cannot unlock it — the steering rows carry `Any` confidence
+    // and route to debt. A High-confidence steering finding is a
+    // contradiction, and the snippet says so rather than defining a cell for it.
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    expect(content).toContain(
+      '**A `steering` finding is never auto-applied, at any confidence.**',
+    );
+    expect(content).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
+    expect(content).not.toMatch(/`steering`\s*\|\s*Important\s*\|\s*High/);
+    // The escape hatch is reclassification, not an override.
+    expect(content).toMatch(/finding is `hygiene`/);
+    expect(content).toMatch(/confidence is Low by\s+construction/);
+  });
+
+  it('snippet carries the whole kind gate, not a pointer to an agent prompt', () => {
+    // Gemini deploys no sub-agents and forge has a degraded inline review
+    // branch; both compose this snippet and never see `smithy-plan-review`'s
+    // body. `smithy-implementation-review` composes it without plan-review
+    // too. Per the snippets README, rules shared by a sub-agent and an
+    // inline/degraded path live in one snippet — so the full test must be here.
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    expect(content).toContain('**Open question**');
+    expect(content).toContain('**Named alternatives**');
+    expect(content).toContain('**Human-only**');
+    expect(content).toContain('**Positive test:**');
+    expect(content).toContain('#### Calibration');
+    // No deferral to a file this snippet's consumers may never load.
+    expect(content).not.toMatch(/live in `smithy-plan-review`/);
+    expect(content).not.toMatch(/consult that section/);
+  });
+
+  it('snippet gates the debt table on kind, not on confidence alone', () => {
+    // The bug this closes: routing on severity × confidence alone sent every
+    // Low-confidence finding to `## Specification Debt`, so implementation
+    // unknowns and wrong-table corrections outnumbered the real decisions and
+    // buried them. `kind` is the axis that says who resolves a finding, and
+    // only a human-resolvable one belongs in a decision queue.
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    expect(content).toContain('Kind gate');
+    // The three kinds and their resolvers.
+    expect(content).toContain('`steering`');
+    expect(content).toContain('`implementation`');
+    expect(content).toContain('`hygiene`');
+    // The load-bearing rule.
+    expect(content).toContain('Only `steering` findings may become specification debt.');
+    // Non-steering findings must be routed, not dropped.
+    expect(content).toContain('## Open Implementation Questions');
+    // The kind gate precedes severity × confidence triage in the document,
+    // matching the order the parent command applies them.
+    const gateIdx = content.indexOf('### 4. Kind gate');
+    const triageIdx = content.indexOf('### 5. Triage rules');
+    expect(gateIdx).toBeGreaterThan(-1);
+    expect(triageIdx).toBeGreaterThan(gateIdx);
   });
 
   it('snippet no longer contains auto-fix language', () => {
@@ -494,6 +560,79 @@ describe('spec-debt-section snippet', () => {
     expect(result).toContain('## Specification Debt');
     expect(result).toContain('| ID | Title | Source Category | Impact | Confidence | Origin |');
     expect(result).not.toContain('{{>spec-debt-section}}');
+  });
+});
+
+describe('open-implementation-questions snippet', () => {
+  // The second destination the kind gate needs. `## Specification Debt` is a
+  // decision queue for a human; an unknown the implementer settles by building
+  // is not a decision, and parking it in the debt table is what buries the few
+  // real ones. `specs/2026-05-03-005-expand-evals-coverage-planning-and-audit`
+  // is the in-repo example: 12 debt rows on the spec, of which one was a
+  // steering question. This section gives the rest a home so the gate can
+  // reject them without losing them.
+
+  it('snippet has no YAML frontmatter (raw Markdown per snippets README)', () => {
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+  });
+
+  it('snippet carries the IQ index table and its empty state', () => {
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).toContain('| ID | Question | Slice | Settled By | Origin |');
+    expect(content).toContain('IQ-001');
+    // `Settled By` names how the question closes — never who to ask. Those
+    // three values are the whole point: each one is a non-human resolver.
+    expect(content).toContain('`building`');
+    expect(content).toContain('`testing`');
+    expect(content).toContain('`reading code`');
+    expect(content).toContain('None — no open implementation questions.');
+  });
+
+  it('snippet keeps IQ numbering independent of the SD sequence', () => {
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).toContain('independently of the `SD-NNN` sequence');
+    // Provenance for a row demoted out of a parent's debt table lives in
+    // Origin, so inheritance can reclassify without renumbering.
+    expect(content).toContain('spec:SD-014');
+  });
+
+  it('snippet carries no lifecycle — the code is the answer', () => {
+    // The deliberate difference from spec-debt-section: no Resolved
+    // subsection, no answer column. A resolution ledger here would recreate
+    // the bookkeeping the section exists to avoid.
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).not.toContain('### Resolved');
+    expect(content).not.toContain('**Answer:**');
+  });
+
+  it('snippet carries its own well-formed voice tag', () => {
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).toMatch(
+      /## Open Implementation Questions\n<!-- audience: builder; mode: reference; length: [^;]+; diagram: optional; examples: discouraged -->/,
+    );
+  });
+
+  it('snippet contains no fenced code block', () => {
+    // Same hazard as spec-debt-section: the host embeds this inside a
+    // ```markdown artifact fence, so an inner fence would close it early.
+    const content = loadSnippets().get('open-implementation-questions.md')!;
+    expect(content).not.toContain('```');
+    expect(content).not.toContain('{{');
+  });
+
+  it('snippet composes via the {{>open-implementation-questions}} partial', async () => {
+    const snippets = loadSnippets();
+    const partials: Record<string, string> = {};
+    for (const [filename, content] of snippets) {
+      partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+    }
+    const renderer = new Dotprompt({ partials });
+    const host = '# Host Template\n\n{{>open-implementation-questions}}\n';
+    const result = await resolveSnippets(host, renderer);
+    expect(result).toContain('## Open Implementation Questions');
+    expect(result).toContain('| ID | Question | Slice | Settled By | Origin |');
+    expect(result).not.toContain('{{>open-implementation-questions}}');
   });
 });
 
@@ -2115,6 +2254,92 @@ describe('getComposedTemplates', () => {
     expect(debtIdx).toBeLessThan(dependencyIdx);
   });
 
+  it('cut template contains ## Open Implementation Questions between debt and dependency order', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toBeDefined();
+
+    // Scope to the tasks-file template fence. Bare `indexOf` over the whole
+    // command measures whichever mention comes first in the prose, which is
+    // not the artifact's section order — cut discusses `## Dependency Order`
+    // in Phase 0 long before the template block.
+    const fence = extractFenceByAnchor(cut, '# Tasks: <User Story Title>');
+    const debtIdx = fence.indexOf('## Specification Debt');
+    const questionsIdx = fence.indexOf('## Open Implementation Questions');
+    const dependencyIdx = fence.indexOf('## Dependency Order');
+
+    expect(questionsIdx).toBeGreaterThan(-1);
+    expect(questionsIdx).toBeGreaterThan(debtIdx);
+    expect(questionsIdx).toBeLessThan(dependencyIdx);
+
+    // The partial must have been resolved, and the section must arrive with
+    // its table shape intact.
+    expect(cut).not.toContain('{{>open-implementation-questions}}');
+    expect(cut).toContain('| ID | Question | Slice | Settled By | Origin |');
+  });
+
+  it('cut routes plan-review findings by kind, not by confidence alone', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    // Both plan-review dispatch sites (Phase 0c and Phase 5) triage by kind.
+    const kindTables = cut.match(/kind × severity × confidence/g) ?? [];
+    expect(kindTables.length).toBe(2);
+    expect(cut).toContain('| `implementation` | Critical or Important | Low');
+    expect(cut).toContain('| `hygiene`        | Critical or Important | Low');
+    // Steering rows take `Any` confidence and never auto-apply: a High
+    // confidence score must not let the command pick for the human.
+    expect(cut).toContain('| `steering`       | Critical              | Any');
+    expect(cut).toContain('a steering finding is never auto-applied');
+    expect(cut).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
+    // Debt rows come only from steering findings now.
+    const debtRoutes = cut.match(/For each `steering` finding routed to debt/g) ?? [];
+    expect(debtRoutes.length).toBe(2);
+  });
+
+  it('no command triage table lets a steering finding be auto-applied', () => {
+    // Every command that dispatches a review agent restates the triage table
+    // with its own destinations, so the "steering is never auto-applied" rule
+    // has to hold at each site independently. It did not: forge's table wrote
+    // its columns at a different width and kept an `Any` kind + High row,
+    // which auto-applied exactly the findings the shared protocol reserves
+    // for a human. This sweeps all six rather than trusting one edit.
+    for (const name of [
+      'smithy.cut.md',
+      'smithy.ignite.md',
+      'smithy.mark.md',
+      'smithy.render.md',
+      'smithy.strike.md',
+      'smithy.forge.md',
+    ]) {
+      const body = composed.commands.get(name)!;
+      expect(body, `${name} should be composed`).toBeDefined();
+      // No apply row may match every kind — that is how steering slipped
+      // through — and no steering row may carry High confidence.
+      const applyRows = body.match(/^\|\s*Any\s*\|[^|]*\|\s*High\s*\|/gm) ?? [];
+      expect(applyRows, `${name} has a kind-agnostic auto-apply row`).toEqual([]);
+      expect(body, `${name} lets a steering finding auto-apply`).not.toMatch(
+        /`steering`\s*\|[^|]*\|\s*High\s*\|/,
+      );
+    }
+  });
+
+  it('cut classifies inherited spec debt instead of copying it wholesale', () => {
+    // Without this, a per-story tasks file re-inherits every implementation
+    // unknown its spec recorded. `specs/2026-05-03-005-expand-evals-coverage-
+    // planning-and-audit` shows the cost: the spec's 12 rows are copied into
+    // all six of its tasks files — 72 rows carrying about one real decision.
+    const cut = composed.commands.get('smithy.cut.md')!;
+    const phase1Idx = cut.indexOf('## Phase 1: Intake');
+    const phase2Idx = cut.indexOf('## Phase 2: Analyze');
+    expect(phase1Idx).toBeGreaterThan(-1);
+    const phase1 = cut.slice(phase1Idx, phase2Idx);
+
+    expect(phase1).toContain('Classify each row before carrying it down');
+    // Demoted rows keep their provenance without taking the upstream number.
+    expect(phase1).toContain('`Origin` set to `spec:<the upstream SD-NNN>`');
+    expect(phase1).toContain('## Open Implementation Questions');
+    // Reclassification is one-directional: the child never edits the parent.
+    expect(phase1).toContain("Never write back to the parent spec's debt table");
+  });
+
   it('cut template carries the repo fields in the tasks file shape, marked conditional', () => {
     // The fields sit in the emitted template block so the shape is
     // visible, but each carries the condition inline: a single-repo or
@@ -2774,6 +2999,55 @@ describe('getComposedTemplates', () => {
     expect(planReview).toContain('ReviewResult');
     expect(planReview).toContain('findings');
     expect(planReview).toContain('summary');
+  });
+
+  it('plan-review agent applies a kind gate before severity × confidence triage', () => {
+    // Before this gate, plan-review routed purely on severity × confidence,
+    // so every Low-confidence finding became an SD-NNN row whether or not a
+    // human had anything to decide. The gate mirrors `smithy-clarify` Step 3b
+    // but routes by naming a different `kind` rather than into an assumption
+    // stream, which plan-review does not have.
+    const planReview = composed.agents.get('smithy.plan-review.md')!;
+    expect(planReview).toBeDefined();
+    expect(planReview).toContain('## Kind Gate');
+    expect(planReview).toContain('`steering`');
+    expect(planReview).toContain('`implementation`');
+    expect(planReview).toContain('`hygiene`');
+
+    // The three-part steering test reaches the agent through the composed
+    // review-protocol snippet, not by being restated here. Condition 3 is the
+    // one that separates a steering question from an implementation unknown.
+    expect(planReview).toContain('**Open question**');
+    expect(planReview).toContain('**Named alternatives**');
+    expect(planReview).toContain('**Human-only**');
+    // Single source: the agent points at the shared gate instead of copying
+    // it, so the Gemini/degraded paths that never load this file stay in sync.
+    expect(planReview).toContain('is defined');
+    expect(planReview).toContain('Do not restate it here');
+
+    // Non-steering findings have named destinations, so the gate filters
+    // without discarding.
+    expect(planReview).toContain('## Open Implementation Questions');
+    expect(planReview).toContain('A wrong table is a fix, not a question');
+
+    // The gate runs before grading, not after — a Low confidence score must
+    // not be able to promote a hygiene finding into the debt table.
+    const gateIdx = planReview.indexOf('## Kind Gate');
+    const returnShapeIdx = planReview.indexOf('## ReviewResult return shape');
+    expect(gateIdx).toBeGreaterThan(-1);
+    expect(returnShapeIdx).toBeGreaterThan(gateIdx);
+    expect(planReview).toContain('Kind is mandatory and precedes grading');
+  });
+
+  it('plan-review agent collapses same-root-cause findings into one', () => {
+    // In `specs/2026-05-03-005-expand-evals-coverage-planning-and-audit`, two
+    // pairs of debt rows say outright that they duplicate each other (SD-007
+    // "closely related to SD-001"; SD-010 "same constraint as SD-004").
+    // Emitting one finding per symptom is the second way a debt table inflates
+    // past the point of being scannable.
+    const planReview = composed.agents.get('smithy.plan-review.md')!;
+    expect(planReview).toContain('One finding per root cause');
+    expect(planReview).toContain('#### Calibration');
   });
 
   it('reconcile agent retains frontmatter with read-only tools', () => {
