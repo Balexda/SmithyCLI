@@ -21,12 +21,16 @@ prefix.
 - When `` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -49,6 +53,7 @@ When you scan for existing artifacts (e.g. "list folders in
 `docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+
 ## Input
 
 The target for review: $ARGUMENTS
@@ -132,7 +137,7 @@ Use the checklist matching the artifact's extension. Each checklist defines what
 | **Out of Scope Completeness** | Are explicit exclusions documented in the Out of Scope section, not merely implied elsewhere? Are the scope boundaries drawn tightly enough that adjacent concerns cannot creep in? Items phrased as "deferred to M-N" or "covered by a later milestone" are in scope for this RFC and MUST NOT appear here — they belong inside the relevant milestone description. An Out of Scope section that exists but only gestures at exclusions ("not a full rewrite") without naming the specific capabilities being excluded fails this check. |
 | **Decisions completeness** | Are items discussed and resolved during clarification captured under `## Decisions` with rationale? Unresolved uncertainty does NOT go here — it goes in the `## Specification Debt` table. |
 | **No Open Questions section** | The RFC must not contain a `## Open Questions` heading. Unresolved uncertainty belongs in the `## Specification Debt` table as `SD-NNN` rows, not as informal prose. Flag any `## Open Questions` heading as a finding to remove. |
-| **Specification Debt** | Does the RFC contain a `## Specification Debt` section? Are debt items structured with required metadata? Are genuinely unresolved questions surfaced here (rather than under a removed Open Questions heading)? |
+| **Specification Debt** | Does the RFC contain a `## Specification Debt` section? Is it an index table with columns `ID`, `Title`, `Source Category`, `Impact`, `Confidence`, `Origin`, with exactly one `### SD-NNN — <Title>` detail section per row whose `Origin` is `local` and none for rows carried down from a parent, and with resolved items under `### Resolved` rather than in the index? Are genuinely unresolved questions surfaced here (rather than under a removed Open Questions heading)? |
 | **Dependency Order** | Does a `## Dependency Order` section appear immediately after `## Milestones`? Is it a 4-column Markdown table with headers `ID | Title | Depends On | Artifact`? Does every row use an `M<N>` ID (no leading zeros) that is unique within the table? Does each `Depends On` cell list only IDs from the same table (or `—`)? Does every `Artifact` cell contain either `—` or a repo-relative path to an existing `.features.md` file (flag any path that does not resolve; `—` is valid when the feature map has not yet been created)? No `[ ]`/`[x]` checkbox syntax is valid here — flag any checkbox markup as a finding. |
 ## Audit Checklist (.features.md)
 
@@ -145,7 +150,7 @@ Use the checklist matching the artifact's extension. Each checklist defines what
 | **Feature Independence** | Are features that touch disjoint code areas or address functionally independent milestone goals marked as such, so they can be specced and cut in parallel? Is the implied ordering real (data flow / contract dependency), or merely conventional? Flag features whose `Depends On` overstates the actual prerequisite. |
 | **Dependency Order** | If the feature map contains a `## Dependency Order` section: is it a 4-column Markdown table with headers `ID | Title | Depends On | Artifact`? Does every row use an `F<N>` ID (no leading zeros) that is unique within the table? Does each `Depends On` cell list only IDs from the same table (or `—`)? Does every `Artifact` cell contain either `—` or a repo-relative path to an existing spec folder (flag any path that does not resolve)? Is the sequence logically justified? No `[ ]`/`[x]` checkbox syntax is valid here — flag any checkbox markup as a finding. |
 | **RFC Alignment** | Does the feature map align with the RFC's stated goals and success criteria for this milestone? |
-| **Specification Debt** | Does the feature map contain a `## Specification Debt` section? Are debt items structured with required metadata? |
+| **Specification Debt** | Does the feature map contain a `## Specification Debt` section? Is it an index table with columns `ID`, `Title`, `Source Category`, `Impact`, `Confidence`, `Origin`, with exactly one `### SD-NNN — <Title>` detail section per row whose `Origin` is `local` and none for rows carried down from a parent, and with resolved items under `### Resolved` rather than in the index? |
 | **Feature Kind** | Does every feature carry a `yaml` metadata block declaring `kind: backend` or `kind: ui`? Flag any feature missing the block/`kind` or with an invalid value. |
 | **UI Feature Fields** | For each `ui` feature, are `phase` (`build`\|`wire`), `design_system`, `screens`, and `flows` present? Flag ui features missing a required key, and `backend` features carrying ui-only keys (`phase`/`design_system`/`bundle`/`flag`/`screens`/`flows`). |
 | **Build/Wire Seam** | For each `build` feature carrying a `flag`, is there a `wire` feature sharing that exact `flag` value that lists the build feature in its `Depends On` cell? Flag a build flag with no matching wire, or a wire that does not depend on its build. |
@@ -161,10 +166,10 @@ truth.
 
 - **`backend`** — server/library functionality; the prose body is a behavioral delta.
 - **`ui`** — screen/flow work; `mark` authors the UI spec ledger and durable
-  screen/flow design artifacts, then downstream build steps render a
-  framework-appropriate screen component from a committed design skill and, in
-  the `wire` phase, emit/update the executable flow body for any flow the screen
-  joins.
+  screen/flow design artifacts plus placeholder flow test bodies, then
+  downstream build steps render a framework-appropriate screen component from a
+  committed design skill and, in the `wire` phase, fill/update the executable
+  flow body for any flow the screen joins.
 
 | Key | Kind | Required | Notes |
 |-----|------|----------|-------|
@@ -194,10 +199,10 @@ flows: [AddTitle]
 
 **Phase semantics.** `build` implements the screen component against a mock behind
 `flag` (rendering every brief state with design-system tokens only); `wire`
-connects real data, flips the flag, and emits/updates the executable test body for
-every flow in `flows` using the project's UI driver; the `.flow.md` design truth is
-authored by `mark`. Compose, Maestro, and `story-spider-design` are examples, not
-required stacks.
+connects real data, flips the flag, and fills/updates the mark-created
+executable test-body stub for every flow in `flows` using the project's UI
+driver; the `.flow.md` design truth is authored by `mark`. Compose, Maestro,
+and `story-spider-design` are examples, not required stacks.
 
 **The build/wire seam.** Flag-gated UI is two features sharing one `flag`: a `build`
 feature and a `wire` feature that lists the build feature in its `Depends On` cell.
@@ -218,7 +223,8 @@ worked example.`.
 | **Data Model Integrity** | Are relationships, state transitions, and validation rules internally consistent? Are there entities referenced but not defined, or defined but never referenced? |
 | **Contract Completeness** | Do all integration boundaries have defined inputs, outputs, and error conditions? Are there contracts implied by requirements but not documented? |
 | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
-| **Specification Debt** | Does the spec contain a `## Specification Debt` section between `## Assumptions` and `## Out of Scope`? Are debt items structured with ID, Description, Source Category, Impact, Confidence, Status, and Resolution columns? Are any previously-open items now resolvable? |
+| **Over-Specification** | Does any FR or acceptance scenario mandate behavior the agent already performs *inherently* (verbs like *detect / infer / adapt to / inspect* the project's stack, language, framework, or conventions) without adding a contract, gate, artifact, or observable output difference? Backend-parity signal: would the backend path need this step stated explicitly? If not, flag the mechanism mandate as cruft and recommend keeping the *outcome* while dropping the redundant *mechanism*. Do NOT flag enforced preconditions, real contracts, or surfaced failure modes — only mechanism mandates with no behavioral delta. |
+| **Specification Debt** | Does the spec contain a `## Specification Debt` section between `## Assumptions` and `## Out of Scope`? Is it an index table with columns `ID`, `Title`, `Source Category`, `Impact`, `Confidence`, `Origin`, with exactly one `### SD-NNN — <Title>` detail section per row whose `Origin` is `local` and none for rows carried down from a parent, and with resolved items under `### Resolved` rather than in the index? Is every `Title` cell 40 characters or fewer? Are any previously-open items now resolvable? |
 | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
 | **Dependency Order** | If the spec contains a `## Dependency Order` section: is it a 4-column Markdown table with headers `ID | Title | Depends On | Artifact`? Does every row use a `US<N>` ID (no leading zeros) that is unique within the table? Does each `Depends On` cell list only IDs from the same table (or `—`)? Does every `Artifact` cell contain either `—` or a repo-relative path to an existing `.tasks.md` file in the spec folder (flag any path that does not resolve)? Is the recommended sequence logically justified? No `[ ]`/`[x]` checkbox syntax is valid here — flag any checkbox markup as a finding. |
 ## Audit Checklist (.tasks.md)
@@ -226,12 +232,14 @@ worked example.`.
 | Category | What to check |
 |----------|---------------|
 | **Slice Scoping** | Is each slice PR-sized? Does each have a standalone goal that delivers a working increment — not disconnected scaffolding? |
+| **Repo Declaration** | Is every slice implementable in exactly one repository — flag any slice whose tasks reference files in more than one repo, since `smithy.forge` runs in one worktree and cannot implement it. Cross-repo planning only (a `~/.smithy/projects/…` store): does the header carry an `**Implementation repo**` field naming exactly one repo (never a list, never a filesystem path), does each per-slice `**Repo**:` line name exactly one repo, and are differing slices ordered producer-repo-before-consumer-repo in `## Dependency Order` with the contract recorded under `### Cross-Repo Notes`? A single-repo or monorepo tasks file has one possible answer and should carry no repo fields at all — flag them as noise if present. |
 | **Task Completeness** | Are tasks within each slice sufficient to achieve the slice goal? Are there missing steps (tests, docs, validation)? |
 | **Testability** | Is it clear how each slice should be tested? Are integration test concerns addressed? |
 | **Edge Case Coverage** | Are boundary conditions, error paths, and failure modes covered in the tasks? |
 | **Task Scoping** | Do tasks follow the structured format (bold title + behavioral description + acceptance criteria bullets)? Are any tasks over 150 words? Do tasks reference acceptance scenarios by ID rather than restating their content? Are test mechanics absent (no stub configs, mock patterns, assertion structures, exact error strings, exact function signatures)? Are there standalone test tasks (should be part of TDD), file-reading/research tasks (break fresh-context dispatch), verification tasks (handled by forge), or baked-in test expectations (pre-empt TDD)? |
 | **FR Traceability** | Does every slice trace to at least one FR or acceptance scenario? Are any FRs unaddressed? |
-| **Specification Debt** | Does the tasks file contain a `## Specification Debt` section before `## Dependency Order`? Are inherited items properly attributed to the source spec? Are any open items resolvable given the current codebase state? |
+| **Over-Specification** | Does any slice or task mandate behavior the agent already performs *inherently* (e.g. "detect the project's framework/test driver", "adapt to the project's conventions") without producing a new contract, gate, artifact, or observable output difference? Backend-parity signal: would the backend build path need this step stated explicitly? If not, flag it — the slice risks a plan→implement→revert round-trip for work that was never real. Recommend withdrawing the slice/task (and any FR/scenario it uniquely owns) while preserving any genuine outcome. Do NOT flag enforced preconditions or real contracts. |
+| **Specification Debt** | Does the tasks file contain a `## Specification Debt` section before `## Dependency Order`? Is it an index table with columns `ID`, `Title`, `Source Category`, `Impact`, `Confidence`, `Origin`, with exactly one `### SD-NNN — <Title>` detail section per row whose `Origin` is `local` and none for rows carried down from a parent, and with resolved items under `### Resolved` rather than in the index? Does every row carried down from the source spec carry an `Origin` of `spec:SD-NNN` matching its own ID, with no leftover `inherited from spec:` text prefix? Are any open items resolvable given the current codebase state? |
 | **Dependency Order** | If the tasks file contains a `## Dependency Order` section: is it a 4-column Markdown table with headers `ID | Title | Depends On | Artifact`? Does every row use an `S<N>` ID (no leading zeros) that is unique within the table? Does each `Depends On` cell list only IDs from the same table (or `—`)? Does every `S<N>` row's `Artifact` cell contain `—` (slices live inline in the tasks file, so they never link to a separate artifact — flag any path)? Is the recommended implementation sequence logical? Would reordering reduce risk or unblock parallel work? No `[ ]`/`[x]` checkbox syntax is valid here — flag any checkbox markup as a finding. |
 ## Audit Checklist (.strike.md)
 
@@ -242,7 +250,7 @@ worked example.`.
 | **Data Model Presence** | Is a Data Model section present? If data changes are needed, are entities and relationships defined? |
 | **Contracts Presence** | Is a Contracts section present? If interface changes are needed, are they specified? |
 | **Success Criteria** | Are success criteria numbered, testable, and aligned with the requirements? |
-| **Specification Debt** | Does the strike document contain a `## Specification Debt` section? Are debt items structured with required metadata? |
+| **Specification Debt** | Does the strike document contain a `## Specification Debt` section? Is it an index table with columns `ID`, `Title`, `Source Category`, `Impact`, `Confidence`, `Origin`, with exactly one `### SD-NNN — <Title>` detail section per row whose `Origin` is `local` and none for rows carried down from a parent, and with resolved items under `### Resolved` rather than in the index? |
 ---
 
 ## Voice & Audience Tag Lint (cross-cutting)

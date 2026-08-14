@@ -22,12 +22,16 @@ prefix.
 - When `` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
   `specs/strikes/...`.
-- When `` is `~/.smithy/repos/<repoKey>/`, artifacts live **outside
-  the repo, in the user's home directory**: `~/.smithy/repos/<repoKey>/docs/rfcs/...`,
-  `~/.smithy/repos/<repoKey>/docs/personas/...`, `~/.smithy/repos/<repoKey>/specs/...`, etc.
-  Treat the resolved path as authoritative — agents (Claude Code, Gemini CLI,
-  Codex) expand `~` at tool-call time, so the path is portable across team
-  members even when this prompt is committed to source control.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
 
 ### Scope of the policy
 
@@ -50,6 +54,7 @@ When you scan for existing artifacts (e.g. "list folders in
 `docs/rfcs/`"), use the prefixed path. The `smithy status`
 CLI already reads the manifest and looks in the right place, so its output
 will be consistent with the paths in this prompt.
+
 ## Input
 
 The user's RFC path and optional milestone number: $ARGUMENTS
@@ -180,12 +185,15 @@ table:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                      |
 
 For each Low-confidence finding routed to debt, append a new row to the
-feature map's `## Specification Debt` table with the next available `SD-NNN`
+feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever refine or prior clarify passes
-already wrote — do not reset). Use the finding's `description` for the
-Description column, set `Source Category` to `plan-review:<finding category>`
-(e.g., `plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+already wrote — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The Phase 0c commit below captures both the refine diff
@@ -241,6 +249,23 @@ Handle the scout report as follows:
   question, but do not force separate discussion of each warning.
 - **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
 
+### Engraved-Knowledge Consultation
+
+Consult engraved durable knowledge during this scan before defining feature
+boundaries.
+
+Dispatch the **smithy-recall** sub-agent with:
+
+- **Planning context**: feature map artifact
+- **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
+- **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
+- **Domain hint**: infer `system`, `design`, or `both` from the milestone and referenced files
+
+Use the returned recall result as advisory planning context. Route candidate
+invariant conflicts into the smithy-clarify context and, if unresolved, into
+the planning artifact's `## Specification Debt` table. Surface
+superseded/deprecated citation hazards before writing the artifact. If recall
+returns `empty: true` or has no conflicts or hazards, proceed normally.
 ---
 
 ## Phase 1.8: Approach Planning
@@ -322,6 +347,7 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
 - **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
 - **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
 
 Present the reconciled plan to the user as:
@@ -380,10 +406,10 @@ truth.
 
 - **`backend`** — server/library functionality; the prose body is a behavioral delta.
 - **`ui`** — screen/flow work; `mark` authors the UI spec ledger and durable
-  screen/flow design artifacts, then downstream build steps render a
-  framework-appropriate screen component from a committed design skill and, in
-  the `wire` phase, emit/update the executable flow body for any flow the screen
-  joins.
+  screen/flow design artifacts plus placeholder flow test bodies, then
+  downstream build steps render a framework-appropriate screen component from a
+  committed design skill and, in the `wire` phase, fill/update the executable
+  flow body for any flow the screen joins.
 
 | Key | Kind | Required | Notes |
 |-----|------|----------|-------|
@@ -413,10 +439,10 @@ flows: [AddTitle]
 
 **Phase semantics.** `build` implements the screen component against a mock behind
 `flag` (rendering every brief state with design-system tokens only); `wire`
-connects real data, flips the flag, and emits/updates the executable test body for
-every flow in `flows` using the project's UI driver; the `.flow.md` design truth is
-authored by `mark`. Compose, Maestro, and `story-spider-design` are examples, not
-required stacks.
+connects real data, flips the flag, and fills/updates the mark-created
+executable test-body stub for every flow in `flows` using the project's UI
+driver; the `.flow.md` design truth is authored by `mark`. Compose, Maestro,
+and `story-spider-design` are examples, not required stacks.
 
 **The build/wire seam.** Flag-gated UI is two features sharing one `flag`: a `build`
 feature and a `wire` feature that lists the build feature in its `Depends On` cell.
@@ -495,14 +521,39 @@ emitting/updating the Maestro flow + flow.md for each flow above.>
 
 <!-- Specification Debt appears here for templates without ## Assumptions sections -->
 ## Specification Debt
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
-| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
-|----|-------------|-----------------|--------|------------|--------|------------|
-| SD-001 | <what is unresolved> | <clarify scan category> | High | Medium | open | — |
+| ID | Title | Source Category | Impact | Confidence | Origin |
+|----|-------|-----------------|--------|------------|--------|
+| SD-001 | <slug naming the unresolved choice> | <clarify scan category> | High | Medium | local |
+| SD-002 | <slug of a carried-down item> | <clarify scan category> | Medium | Medium | spec:SD-002 |
 
-_If no debt items, write: "None — all ambiguities resolved."_
+### SD-001 — <Title>
 
+<The unresolved choice, stated as an open question or as "unresolved choice
+between X and Y". Name the alternatives and what each one would imply. 1-3
+sentences. Never a directive.>
+
+### Resolved
+
+#### SD-003 — <Title>
+
+**Question:** <the open question this item recorded>
+
+**Answer:** <what was decided, on what basis, and when.>
+
+_`Title` is a short slug (40 characters or fewer) — the full statement lives in
+the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
+detail section for every row whose `Origin` is `local`; rows carried down from a
+parent artifact get an index row only, because their prose lives in the parent.
+Resolving an item moves its row out of the index into `### Resolved`, which is
+why the resolved example above carries an ID the index no longer lists. Never
+put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the
+`### Resolved` subsection entirely when nothing has been resolved. If there are
+no debt items at all, replace this whole section body with this exact line,
+italics included and no surrounding quotation marks:_
+
+_None — no specification debt was recorded._
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
 
@@ -556,12 +607,15 @@ table from the contracts:
 | Minor     | Any        | Do not apply. Note in the PR body only.                                                                      |
 
 For each Low-confidence finding routed to debt, append a new row to the
-feature map's `## Specification Debt` table with the next available `SD-NNN`
+feature map's `## Specification Debt` index table with the next available `SD-NNN`
 identifier (continue numbering from whatever clarify already wrote in Phase 2
-— do not reset). Use the finding's `description` for the Description column,
-set `Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), copy severity into Impact and
-confidence into Confidence, set Status to `open`, and leave Resolution as `—`.
+— do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
+detail section, derive a `Title` slug of 40 characters or fewer from it, set
+`Source Category` to `plan-review:<finding category>` (e.g.,
+`plan-review:Internal contradiction`), map severity into Impact (`Critical`
+stays `Critical`; `Important` becomes `High` — `Important` is not a valid
+`Impact` value) and copy confidence into Confidence, and set `Origin` to
+`local`.
 
 For each High-confidence finding, edit the feature map file in place using
 the `proposed_fix`. The commit below captures both the original feature map
@@ -633,8 +687,8 @@ was unambiguous.`)
 
 <count> items deferred — see `## Specification Debt` in the artifact.
 
-- <debt item 1 description> [Impact: <level>]
-- <debt item 2 description> [Impact: <level>]
+- <debt item 1 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
+- <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
 (If clarify returned zero debt items, write: `None — no specification debt
@@ -663,8 +717,12 @@ was recorded.`)
   array. Preserve the `[Critical Assumption]` annotation on any item whose
   severity was Critical.
 - **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Impact level. The leading count MUST
-  match the number of bullets rendered. Each bullet's description must
+  `debt_items` array, including its Title, Impact level, and Origin. The
+  leading count MUST match the number of bullets rendered. `Origin` is
+  `local` for items discovered while authoring this artifact, or
+  `<parent-kind>:SD-NNN` for items carried down from a parent artifact
+  (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
+  was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
   between X and Y" — and must come straight from `debt_items` without
   rewording. Do not synthesize bullets here from requirements,

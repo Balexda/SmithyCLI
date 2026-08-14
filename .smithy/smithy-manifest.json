@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "smithyVersion": "0.5.13",
+  "smithyVersion": "0.5.14",
   "deployLocation": "repo",
   "agents": [
     "claude",
@@ -18,6 +18,7 @@
       ".claude/commands/smithy.ignite.md",
       ".claude/commands/smithy.mark.md",
       ".claude/commands/smithy.orders.md",
+      ".claude/commands/smithy.persona.md",
       ".claude/commands/smithy.render.md",
       ".claude/commands/smithy.spark.md",
       ".claude/commands/smithy.strike.md",
@@ -66,6 +67,7 @@
       ".agents/skills/smithy-ignite/SKILL.md",
       ".agents/skills/smithy-mark/SKILL.md",
       ".agents/skills/smithy-orders/SKILL.md",
+      ".agents/skills/smithy-persona/SKILL.md",
       ".agents/skills/smithy-render/SKILL.md",
       ".agents/skills/smithy-spark/SKILL.md",
       ".agents/skills/smithy-strike/SKILL.md",
