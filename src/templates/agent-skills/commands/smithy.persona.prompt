@@ -23,17 +23,48 @@ persona input** for the rest of this run.
   token), or otherwise does not contain a usable persona description or RFC
   path, ask the user what persona to generate. Replace the resolved persona
   input with the user's answer and use it as the effective command input for
-  the remainder of the run, then continue directly through free-text mode. This
-  is the only ask-fallback: do not add an approval STOP after the input is
+  the remainder of the run, then continue directly through the two
+  mode-selection rules below. Route the clarified answer by the same `.rfc.md`
+  suffix test as a directly supplied input: an answer ending in `.rfc.md`
+  selects RFC mode, and any other clear answer selects free-text mode. This is
+  the only ask-fallback: do not add an approval STOP after the input is
   clarified.
+- If the input ends in `.rfc.md`, select **RFC mode**.
 - If the input is non-empty and does **not** end in `.rfc.md`, select
   **free-text mode**.
-- If the input ends in `.rfc.md`, RFC extraction is not implemented yet
-  (reserved for a later user story). Stop and tell the user that RFC-mode
-  persona extraction is not available yet — do not fall through to free-text
-  mode or any undefined path.
 - Do not parse RFC `## Personas` sections in free-text mode. RFC extraction is
   a separate route from this writer.
+
+## RFC Mode
+
+Given a resolved input path ending in `.rfc.md`, identify the durable persona
+candidates that should seed `.persona.md` file creation.
+
+1. Read the input RFC file before drafting, writing, or checking any persona
+   artifact target paths.
+2. Locate the RFC's `## Personas` section. Treat the section body as the text
+   after that heading up to the next H2 heading or the end of the file.
+3. Extract one persona candidate for each clearly named persona in that section.
+   For this v1 pass, "clearly named" means the persona is named by an explicit
+   bullet/list item, bold lead-in, or subheading such as:
+   - `- Release Manager: ...`
+   - `- **Support Engineer** — ...`
+   - `### Compliance Reviewer`
+4. For each extracted candidate, preserve:
+   - the human-readable persona name or role;
+   - the source excerpt or bullet/paragraph that describes that persona;
+   - the RFC path the candidate came from.
+5. Keep the extracted candidate set as a structured list named **RFC persona
+   candidates**. Any persona-file creation in this mode must consume this list
+   as its source of truth rather than rereading unrelated input.
+6. This RFC mode completes after reporting the candidate set. Do not draft with
+   smithy-prose, derive target paths, check collisions, create directories,
+   write files, or overwrite artifacts in RFC mode.
+
+Keep this RFC-mode parser intentionally narrow. Do not infer personas from
+narrative-only prose, emit empty-section diagnostics, suppress placeholders
+beyond the explicit named extraction above, or apply richer parsing for
+ambiguous prose.
 
 ## Free-Text Mode
 
