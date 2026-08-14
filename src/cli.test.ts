@@ -194,6 +194,31 @@ test-body: ${testBodyPath}
     expect(result.stderr).toContain('design/flows/AddTitleCopy.flow.md');
   });
 
+  it('reports an unscannable artifact tree as a command input error, not a graph finding', () => {
+    // Malformed YAML front matter makes the scan itself fail. That must not
+    // escape as an unhandled exception, and must not use exit 1 — CI reads
+    // exit 1 as "the graph has findings", which this is not.
+    write(
+      'design/screens/Library.design.md',
+      `---
+id: Library
+  bad: [unclosed
+---
+
+## Why this screen exists
+`,
+    );
+
+    const result = spawnSync('node', [CLI, 'flow-lint', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('smithy flow-lint: failed to scan UI artifacts under');
+    expect(result.stderr).toContain(tmpDir);
+    expect(result.stderr).not.toContain('YAMLParseError:');
+  });
+
   it('reports nonexistent input paths as command input errors', () => {
     const missing = path.join(tmpDir, 'does-not-exist');
 

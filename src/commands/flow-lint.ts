@@ -47,7 +47,22 @@ export function flowLintAction(inputPath?: string, opts: FlowLintOptions = {}): 
 
   const lintOptions: { flowTestRoot?: string } = {};
   if (opts.flowTestRoot !== undefined) lintOptions.flowTestRoot = opts.flowTestRoot;
-  const { findings } = lintFlowGraph(resolvedRoot, lintOptions);
+
+  let findings: FlowLintFinding[];
+  try {
+    ({ findings } = lintFlowGraph(resolvedRoot, lintOptions));
+  } catch (error: unknown) {
+    // A malformed artifact or an unreadable directory means the scan could not
+    // run at all — that is a broken input tree, not a graph finding. Report it
+    // as a command input error so exit 1 stays unambiguously "graph findings"
+    // for CI and is never confused with "flow-lint could not read the repo".
+    const detail = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `smithy flow-lint: failed to scan UI artifacts under ${rawRoot}: ${detail}\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
 
   if (findings.length === 0) return;
 
