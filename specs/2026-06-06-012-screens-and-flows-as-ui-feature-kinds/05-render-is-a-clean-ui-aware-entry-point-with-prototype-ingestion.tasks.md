@@ -53,7 +53,7 @@
 
 ### Tasks
 
-- [ ] **Route supplied bundles through render**
+- [x] **Route supplied bundles through render**
 
   Update render intake and drafting guidance so a supplied import-mode bundle is treated as a boundary object available to the feature map. Render should record the bundle reference in the relevant UI feature metadata without implying that smithy calls the visual tool inline or that the bundle replaces the committed design skill.
 
@@ -64,7 +64,7 @@
   - Render does not describe inline visual-tool calls as part of the workflow
   - No-bundle render runs keep the existing non-import path
 
-- [ ] **Derive candidate screens and flows from the bundle**
+- [x] **Derive candidate screens and flows from the bundle**
 
   Add import-mode drafting instructions so render uses the supplied prototype to propose candidate `ScreenId` and `FlowId` entries for the feature metadata. The output should frame those candidates as confirmable structure that `mark` will later turn into the typed ledger and durable files, not as authoritative implementation detail.
 
