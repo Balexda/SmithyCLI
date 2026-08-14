@@ -57,9 +57,12 @@ This is:
      → tell the user the artifact predates the current schema and this command only
      handles new-style debt; stop.
 
-3. Compute the **unresolved** items — every row in the index table (i.e. everything
-   **not** under the `### Resolved` subsection). The index table order is the
-   authored order.
+3. Compute the **unresolved** items — exactly the rows in the `## Specification Debt`
+   **index table**, in their authored (top-to-bottom) order. Do not treat anything
+   else as an unresolved item: the `### SD-NNN — <Title>` detail sections are prose
+   belonging to those same index rows (not separate items), and the entries under
+   `### Resolved` are already resolved. An item is unresolved if and only if it has a
+   row in the index table.
 
 4. Select the target:
    - **With an id** — find that id. If it is already under `### Resolved`, quote its
@@ -91,11 +94,20 @@ user. Do not ask the user to fill a gap you can close by reading.
         a `.spec.md`, `**Source RFC**` on a `.features.md` — and `<kind>` in the
         `Origin` names the parent's kind. If the header back-link is missing, fall
         back to a co-located artifact of that kind in the same directory. If you still
-        cannot locate the parent, tell the user and ask them to supply the parent path
-        (or to proceed on local context alone) — their call; do not invent a path.
-     b. Read the parent's `## Specification Debt` section, find the row whose `ID`
-        equals the id named in `Origin`, and read its `### SD-NNN — <Title>` detail
-        prose. That is the open question.
+        cannot locate the parent, **ask the user to supply the parent path** — do not
+        invent one. An inherited item carries no local question prose, so you cannot
+        resolve it without the parent; if the user cannot supply the path, leave the
+        item unresolved and stop rather than proceeding on local context alone.
+     b. Read the parent's `## Specification Debt` section and recover the item whose
+        `ID` equals the id named in `Origin`:
+        - If it still has an **open index row**, read its `### SD-NNN — <Title>` detail
+          prose — that is the open question.
+        - If it is **absent from the parent's index** (the parent resolved it
+          independently), look under the parent's `### Resolved` subsection for the
+          matching `#### SD-NNN — <Title>` block and use its recorded `**Question:**`.
+          The question is still on record upstream even though the parent's row moved;
+          note to the user that the parent already resolved this item, and surface the
+          parent's `**Answer:**` as context for the decision here.
      c. If **that** parent row is itself inherited (its `Origin` is not `local`),
         recurse further up the lineage until you reach the `local` origin where the
         prose actually lives. `Origin` always names the *immediate* parent, so walk
@@ -121,8 +133,17 @@ real options and a recommendation, not an open-ended "what do you think?". Compo
 
 - **The open choice** — the unresolved question restated in one or two sentences, in
   the artifact's context.
-- **The alternatives** — the named options (X, Y, …) from the item's detail prose,
-  each with what choosing it would imply and its tradeoff.
+- **The alternatives** — the options to decide between, each with what choosing it
+  would imply and its tradeoff. A debt detail may state its question either as a
+  choice between named alternatives *or* as a bare open question (the schema permits
+  both), so:
+  - When the detail **names** alternatives (X, Y, …), carry them through as the options.
+  - When it is a **bare question** with no alternatives enumerated, derive 2–4
+    candidate answers yourself from the gathered context and prior art, and present
+    them as *proposed* options (clearly marked as your candidates, not choices the
+    artifact already recorded). Never fabricate alternatives that misrepresent the
+    item — if the question genuinely has no discrete options, pose it as an open
+    question and rely on the free-text answer path below.
 - **Context** — the salient facts you gathered (from the artifact, the parent, and
   the codebase) that bear on the decision.
 - **Recommendation** — your best answer and a one-line rationale, clearly marked as a
@@ -136,13 +157,15 @@ has the full picture. Then use the **AskUserQuestion** tool to capture the decis
 
 - Ask a **single** question whose text is the open choice. Use a short `header`
   (≤ 12 chars) — the `SD-NNN` id or the `Source Category` works well.
-- Provide **one option per named alternative**. Put your recommended alternative
-  **first** and append ` (Recommended)` to its label. Keep each option's label short
-  (the alternative's name); put what it implies / its tradeoff in the option's
+- Provide **one option per alternative** — the item's named alternatives, or, for a
+  bare-question item, the 2–4 candidate answers you derived in the composition step
+  above (the tool needs at least two options). Put your recommended option **first**
+  and append ` (Recommended)` to its label. Keep each option's label short (the
+  alternative's name); put what it implies / its tradeoff in the option's
   `description`.
 - Do **not** add your own "Other" / "Something else" option — the tool always offers
   a free-text **Other**, which is how the user supplies a resolution in their own
-  words.
+  words (and the escape hatch when no discrete option fits).
 - Leave the question single-select unless the choice is genuinely multi-part.
 {{else}}
 Present the open choice, the alternatives (each with its implication), the gathered
