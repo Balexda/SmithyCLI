@@ -2022,7 +2022,7 @@ describe('getComposedTemplates', () => {
     expect(phase5Idx).toBeGreaterThan(-1);
     const phase5 = cut.slice(phase5Idx);
     const writeIdx = phase5.indexOf(
-      'Write the file to `specs/<folder>/<NN>-<story-slug>.tasks.md`',
+      'Backend story table: `specs/<folder>/<NN>-<story-slug>.tasks.md`',
     );
     const prIdx = phase5.indexOf('gh pr create');
     expect(writeIdx).toBeGreaterThan(-1);
@@ -2038,6 +2038,51 @@ describe('getComposedTemplates', () => {
     // tasks file is written.
     expect(cut).not.toMatch(/STOP and ask/i);
     expect(cut).not.toMatch(/STOP after/i);
+  });
+
+  it('cut template routes typed UI ledger nodes by kind', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('Typed UI Ledger Node Slicing');
+    expect(cut).toContain('`ID | Kind | Title | Depends On | Design | Artifact`');
+    expect(cut).toContain('`FL<N>`, and `US<N>` rows');
+    expect(cut).toContain('Treat this as node-kind work, not as a');
+    expect(cut).toContain('backend-only user-story list');
+    expect(cut).toContain('`SC<N>` / `screen` rows');
+    expect(cut).toContain('screen-build task planning');
+    expect(cut).toContain('`FL<N>` / `flow` rows');
+    expect(cut).toContain('flow-wire task planning');
+    expect(cut).toContain('`US<N>` / `story` rows inside a typed UI ledger');
+    expect(cut).toContain('existing');
+    expect(cut).toContain('backend-story task planning');
+  });
+
+  it('cut template writes node-specific UI task artifacts', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('`<node-id-lower>-<node-slug>.tasks.md`');
+    expect(cut).toContain('`sc1-add-title-screen.tasks.md`');
+    expect(cut).toContain('`fl2-add-title-success.tasks.md`');
+    expect(cut).toContain('**Node ID**: <SC1|FL1|US1>');
+    expect(cut).toContain('**Node Kind**: <screen-build|flow-wire|backend-story>');
+    expect(cut).toContain('**Durable Artifact**: `<design/screens/...design.md>` | `<design/flows/...flow.md>` | —');
+    expect(cut).toContain('**Design Metadata**: <design_system/flag/bundle pointers available from the spec context, or —>');
+    expect(cut).toContain('**Test Body**: `<repo-relative test-body path>`');
+    expect(cut).toContain('they are not inherently atomic');
+  });
+
+  it('cut template preserves UI ledger dependency integrity and write-back', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('validate dependency integrity before any tasks file is');
+    expect(cut).toContain('Every `Depends On` entry must be `—` or a comma-separated list of IDs');
+    expect(cut).toContain('A mock-satisfiable flow');
+    expect(cut).toContain('real-data flow may depend on its');
+    expect(cut).toContain('screen node(s) plus backend `US` nodes');
+    expect(cut).toContain('abort before writing');
+    expect(cut).toContain('or modifying any artifact');
+    expect(cut).toContain('typed UI ledgers use');
+    expect(cut).toContain('`ID | Kind | Title | Depends On | Design | Artifact`');
+    expect(cut).toContain('Do not touch the `ID`, `Kind`, `Title`, `Depends On`, or `Design` cells');
+    expect(cut).toContain('cut may fill');
+    expect(cut).toContain('`Artifact` cells but must not invent new screen, flow, or story rows');
   });
 
   it('mark template contains ## Specification Debt between ## Assumptions and ## Out of Scope', () => {
@@ -2060,8 +2105,9 @@ describe('getComposedTemplates', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
 
-    const debtIdx = cut.indexOf('## Specification Debt');
-    const dependencyIdx = cut.indexOf('## Dependency Order');
+    const cutMarkdownBlock = extractFenceByAnchor(cut, '# Tasks: <User Story Title>');
+    const debtIdx = cutMarkdownBlock.indexOf('## Specification Debt');
+    const dependencyIdx = cutMarkdownBlock.indexOf('## Dependency Order');
 
     expect(debtIdx).toBeGreaterThan(-1);
     expect(dependencyIdx).toBeGreaterThan(-1);
@@ -3364,15 +3410,8 @@ describe('getComposedTemplates', () => {
     // Cut contains more than one ```markdown fence now: Phase 0c and Phase 5
     // render the shared one-shot-output snippet, which itself embeds a
     // markdown fence. Pick the fence that actually defines the tasks file
-    // structure — i.e. the one containing `## Dependency Order`.
-    const cutMarkdownBlocks = [
-      ...cut.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g),
-    ];
-    const cutMarkdownMatch = cutMarkdownBlocks.find((m) =>
-      m[1]!.includes('## Dependency Order'),
-    );
-    expect(cutMarkdownMatch).toBeDefined();
-    const cutMarkdownBlock = cutMarkdownMatch![1]!;
+    // structure.
+    const cutMarkdownBlock = extractFenceByAnchor(cut, '# Tasks: <User Story Title>');
     expect(cutMarkdownBlock).not.toContain('## Story Dependency Order');
     expect(cutMarkdownBlock).toContain('## Dependency Order');
     expect(cutMarkdownBlock).toContain('| ID | Title | Depends On | Artifact |');

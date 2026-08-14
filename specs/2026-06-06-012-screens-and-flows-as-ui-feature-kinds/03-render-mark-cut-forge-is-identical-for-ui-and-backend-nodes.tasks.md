@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Route cut by ledger node kind**
+- [x] **Route cut by ledger node kind**
 
   Update `src/templates/agent-skills/commands/smithy.cut.prompt` so a typed UI ledger is parsed as node work, not as a backend-only user-story list. `SC`, `FL`, and `US` rows should each be selectable by node ID or by the existing numbered input where applicable, while ordinary backend specs keep today's story slicing behavior for AS 3.6.
 
@@ -28,7 +28,7 @@
   - `US` rows route to the existing backend-story task planning behavior
   - Backend-only specs keep their current `US<N>` story slicing behavior
 
-- [ ] **Write per-node task artifacts**
+- [x] **Write per-node task artifacts**
 
   Extend cut output rules so each selected UI ledger node writes a node-specific `.tasks.md` file and records the file path back into that row's `Artifact` cell. Keep `SC` and `FL` slice counts PR-sized rather than inherently atomic, defaulting to a single slice only when the node can be built coherently in one PR.
 
@@ -39,7 +39,7 @@
   - Flow-wire tasks cite the `.flow.md` and paired `test-body`
   - `SC` and `FL` planning allows multiple slices when needed for PR size
 
-- [ ] **Guard ledger dependency integrity**
+- [x] **Guard ledger dependency integrity**
 
   Add cut validation for typed UI ledger dependencies so dangling `Depends On` IDs abort before tasks are written, and cross-node dependencies are represented in the generated tasks file's dependency notes. This keeps cut's output usable by forge without creating hidden manual ordering.
 
