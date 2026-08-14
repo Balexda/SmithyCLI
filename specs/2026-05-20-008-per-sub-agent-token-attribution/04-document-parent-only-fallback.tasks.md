@@ -33,16 +33,20 @@
   `parent_only`, so the guard on this fallback slice is false and the final
   acceptance criterion applies: the RFC fallback closure is not applied.
   `docs/rfcs/2026-001-token-savings/token-savings.rfc.md` is intentionally
-  unchanged and RFC SD-001 remains `open` — it is resolved on the attribution
-  path by US2/US3, not here.
+  unchanged and RFC SD-001 remains `open`. Closing RFC SD-001 is part of the
+  fallback closure this slice must not apply, so it is deliberately left
+  unclosed here — but no downstream task currently owns it either. That gap is
+  recorded as SD-001 below rather than assumed away.
 
-**PR Outcome**: The RFC explicitly closes the parent-only path when the evidence requires it, and downstream token-savings work consumes per-case totals plus committed baselines without treating per-sub-agent attribution as part of M1.
+**PR Outcome** *(describes the unrealized parent-only path — see Resolution above; the guard was false, so this outcome was not delivered)*: The RFC explicitly closes the parent-only path when the evidence requires it, and downstream token-savings work consumes per-case totals plus committed baselines without treating per-sub-agent attribution as part of M1.
 
 ---
 
 ## Specification Debt
 
-None — all ambiguities resolved.
+| ID | Description | Source Category | Impact | Confidence | Status | Resolution |
+|----|-------------|-----------------|--------|------------|--------|------------|
+| SD-001 | Discovered during implementation — no planned task owns the closure of **RFC** SD-001 on the attribution path. The RFC's SD-001 row asks whether the Claude CLI stream attributes sub-agent usage per-dispatch or parent-only, and directs implementers to confirm it against a capture before F1.3b. US1 did exactly that and committed `dispatch-usage-evidence.md` with `dispatch_attributable`, so the question is answered, but the RFC row still reads `open`. This slice cannot close it: closing RFC SD-001 is AS 4.2, whose `Given dispatch-level usage is unavailable` precondition does not hold, and this slice's final acceptance criterion forbids applying the fallback closure once the evidence is `dispatch_attributable`. No sibling owns it either — `02-attribute-token-totals-to-sub-agent-dispatches.tasks.md` contains no RFC or debt update, and US3 has no tasks artifact (`Artifact` is `—` in the spec's Dependency Order). Closure must be assigned explicitly on the attribution path before F1.3b lands, or the RFC row will remain stale through M1. | Integration | High | High | open | — |
 
 ---
 
