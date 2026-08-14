@@ -101,6 +101,79 @@ describe('loadBaseline', () => {
       expect(result).toEqual(payload);
     });
 
+    it('loads structural-only baselines without a token envelope', () => {
+      writeBaselineFile(tmp.dir, 'structural-only', {
+        scenario_name: 'structural-only',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## Summary'],
+        tables: [],
+      });
+
+      const result = loadBaseline('structural-only', tmp.dir);
+      expect(result).toEqual({
+        scenario_name: 'structural-only',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## Summary'],
+        tables: [],
+      });
+      expect(result as unknown as Record<string, unknown>).not.toHaveProperty(
+        'token_envelope',
+      );
+    });
+
+    it('loads a valid input-only token envelope', () => {
+      writeBaselineFile(tmp.dir, 'input-envelope', {
+        scenario_name: 'input-envelope',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+        tables: [],
+        token_envelope: {
+          input: { min: 10, max: 20 },
+        },
+      });
+
+      const result = loadBaseline('input-envelope', tmp.dir);
+      expect(result!.token_envelope).toEqual({
+        input: { min: 10, max: 20 },
+      });
+    });
+
+    it('loads a valid output-only token envelope', () => {
+      writeBaselineFile(tmp.dir, 'output-envelope', {
+        scenario_name: 'output-envelope',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+        tables: [],
+        token_envelope: {
+          output: { min: 5, max: 15 },
+        },
+      });
+
+      const result = loadBaseline('output-envelope', tmp.dir);
+      expect(result!.token_envelope).toEqual({
+        output: { min: 5, max: 15 },
+      });
+    });
+
+    it('loads a valid input-plus-output token envelope', () => {
+      writeBaselineFile(tmp.dir, 'full-envelope', {
+        scenario_name: 'full-envelope',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+        tables: [],
+        token_envelope: {
+          input: { min: 10, max: 20 },
+          output: { min: 5, max: 15 },
+        },
+      });
+
+      const result = loadBaseline('full-envelope', tmp.dir);
+      expect(result!.token_envelope).toEqual({
+        input: { min: 10, max: 20 },
+        output: { min: 5, max: 15 },
+      });
+    });
+
     it('defaults missing `tables` field to empty array', () => {
       writeBaselineFile(tmp.dir, 'no-tables', {
         scenario_name: 'no-tables',
@@ -134,6 +207,24 @@ describe('loadBaseline', () => {
       expect(result as unknown as Record<string, unknown>).not.toHaveProperty(
         'future_field',
       );
+    });
+
+    it('ignores unsupported token envelope fields', () => {
+      writeBaselineFile(tmp.dir, 'envelope-extras', {
+        scenario_name: 'envelope-extras',
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+        tables: [],
+        token_envelope: {
+          input: { min: 10, max: 20, midpoint: 15 },
+          cache: { min: 1, max: 2 },
+        },
+      });
+
+      const result = loadBaseline('envelope-extras', tmp.dir);
+      expect(result!.token_envelope).toEqual({
+        input: { min: 10, max: 20 },
+      });
     });
   });
 
@@ -235,6 +326,76 @@ describe('loadBaseline', () => {
 
       expect(() => loadBaseline('asked-for-this', tmp.dir)).toThrow(
         /scenario_name.*must match.*asked-for-this/,
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Token envelope validation
+  // -----------------------------------------------------------------------
+  describe('token envelope validation', () => {
+    function writeTokenEnvelope(
+      name: string,
+      tokenEnvelope: unknown,
+    ): void {
+      writeBaselineFile(tmp.dir, name, {
+        scenario_name: name,
+        captured_at: '2026-04-17T00:00:00Z',
+        headings: ['## A'],
+        tables: [],
+        token_envelope: tokenEnvelope,
+      });
+    }
+
+    it.each([
+      ['missing min', { input: { max: 10 } }],
+      ['missing max', { input: { min: 1 } }],
+      ['string min', { input: { min: '1', max: 10 } }],
+      ['fractional max', { input: { min: 1, max: 10.5 } }],
+      ['negative min', { input: { min: -1, max: 10 } }],
+      ['inverted bounds', { input: { min: 10, max: 1 } }],
+      ['output missing min', { output: { max: 10 } }],
+      ['output inverted bounds', { output: { min: 10, max: 1 } }],
+    ])('throws when token envelope has %s', (_label, tokenEnvelope) => {
+      writeTokenEnvelope('bad-token-envelope', tokenEnvelope);
+
+      expect(() => loadBaseline('bad-token-envelope', tmp.dir)).toThrow(
+        /token_envelope/,
+      );
+    });
+
+    it('throws when token envelope has a non-finite bound', () => {
+      writeBaselineFile(
+        tmp.dir,
+        'non-finite-token-envelope',
+        [
+          '{',
+          '  "scenario_name": "non-finite-token-envelope",',
+          '  "captured_at": "2026-04-17T00:00:00Z",',
+          '  "headings": ["## A"],',
+          '  "tables": [],',
+          '  "token_envelope": {',
+          '    "input": { "min": 1, "max": 1e309 }',
+          '  }',
+          '}',
+        ].join('\n'),
+      );
+
+      expect(() =>
+        loadBaseline('non-finite-token-envelope', tmp.dir),
+      ).toThrow(/token_envelope/);
+    });
+
+    it.each([
+      ['null envelope', null],
+      ['array envelope', []],
+      ['null input range', { input: null }],
+      ['array output range', { output: [] }],
+    ])('throws when token envelope has %s', (_label, tokenEnvelope) => {
+      writeTokenEnvelope('bad-token-shape', tokenEnvelope);
+
+      expect(() => loadBaseline('bad-token-shape', tmp.dir)).toThrow(
+        /token_envelope/,
       );
     });
   });

@@ -15,10 +15,76 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { Baseline, CheckResult } from './types.js';
+import type { Baseline, CheckResult, TokenEnvelope } from './types.js';
 
 /** Default directory (relative to cwd) where baselines are looked up. */
 const DEFAULT_BASELINES_DIR = 'evals/baselines';
+
+function validateTokenBound(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    Number.isInteger(value) &&
+    value >= 0
+  );
+}
+
+function validateTokenRange(
+  filePath: string,
+  rangeName: 'input' | 'output',
+  value: unknown,
+): { min: number; max: number } {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: token_envelope.${rangeName} must be an object with "min" and "max" bounds`,
+    );
+  }
+
+  const record = value as Record<string, unknown>;
+  const min = record['min'];
+  const max = record['max'];
+  if (!validateTokenBound(min)) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: token_envelope.${rangeName}.min must be a finite non-negative integer`,
+    );
+  }
+  if (!validateTokenBound(max)) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: token_envelope.${rangeName}.max must be a finite non-negative integer`,
+    );
+  }
+  if (max < min) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: token_envelope.${rangeName}.max must be greater than or equal to token_envelope.${rangeName}.min`,
+    );
+  }
+
+  return {
+    min,
+    max,
+  };
+}
+
+function validateTokenEnvelope(
+  filePath: string,
+  value: unknown,
+): TokenEnvelope {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(
+      `Invalid baseline file ${filePath}: field "token_envelope" must be an object when present`,
+    );
+  }
+
+  const record = value as Record<string, unknown>;
+  const envelope: TokenEnvelope = {};
+  if (record['input'] !== undefined) {
+    envelope.input = validateTokenRange(filePath, 'input', record['input']);
+  }
+  if (record['output'] !== undefined) {
+    envelope.output = validateTokenRange(filePath, 'output', record['output']);
+  }
+  return envelope;
+}
 
 /**
  * Load a baseline snapshot for the given scenario name.
@@ -146,14 +212,23 @@ export function loadBaseline(
     });
   }
 
+  const tokenEnvelope =
+    record['token_envelope'] === undefined
+      ? undefined
+      : validateTokenEnvelope(filePath, record['token_envelope']);
+
   // Construct the Baseline explicitly so unknown extra fields do not leak
   // through. This keeps the returned shape exactly matching the interface.
-  return {
+  const baseline: Baseline = {
     scenario_name: record['scenario_name'],
     captured_at: record['captured_at'],
     headings: (record['headings'] as string[]).slice(),
     tables,
   };
+  if (tokenEnvelope !== undefined) {
+    baseline.token_envelope = tokenEnvelope;
+  }
+  return baseline;
 }
 
 /**

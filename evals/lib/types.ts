@@ -121,6 +121,22 @@ export interface LocalFixtureSet {
 }
 
 /**
+ * Inclusive token bounds recorded in a committed baseline.
+ */
+export interface TokenRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * Optional accepted token ranges for a committed baseline.
+ */
+export interface TokenEnvelope {
+  input?: TokenRange | undefined;
+  output?: TokenRange | undefined;
+}
+
+/**
  * Persisted baseline snapshot of a known-good skill output.
  * Loaded from `evals/baselines/<scenario_name>.json`; used by
  * `compareToBaseline` to detect structural regressions.
@@ -130,6 +146,7 @@ export interface Baseline {
   captured_at: string;
   headings: string[];
   tables: { columns: string[] }[];
+  token_envelope?: TokenEnvelope | undefined;
 }
 
 /** A single eval scenario loaded from YAML. */
