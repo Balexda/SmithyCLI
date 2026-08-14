@@ -54,7 +54,7 @@
 
 ### Tasks
 
-- [ ] **Resolve fixtures in the temp copy**
+- [x] **Resolve fixtures in the temp copy**
 
   Update `evals/lib/runner.ts` so `runScenario` resolves declared local fixtures after copying `evals/fixture/` into the temp execution directory and before spawning the agent. Preserve the source fixture checksum invariant and fail before invocation when a declared file is unavailable in the execution context.
 
@@ -65,7 +65,7 @@
   - Scenarios without local fixtures retain current runner behavior.
   - Fixture resolution never exposes paths outside the allowed fixture area.
 
-- [ ] **Inject fixture paths into invocations**
+- [x] **Inject fixture paths into invocations**
 
   Extend the runner invocation path so local fixture bindings are rendered into the scenario prompt in a deterministic form for Claude, Gemini, and Codex. Keep the existing agent-specific command wrapping intact while satisfying the Local Fixture Prompt Injection contract.
 

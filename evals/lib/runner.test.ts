@@ -151,6 +151,21 @@ function createRealFixture(): { dir: string; cleanup: () => void } {
   };
 }
 
+function createFixtureWithLocalEvidence(): { dir: string; cleanup: () => void } {
+  const fixture = createRealFixture();
+  fs.mkdirSync(path.join(fixture.dir, 'issues'), { recursive: true });
+  fs.mkdirSync(path.join(fixture.dir, 'ci-logs'), { recursive: true });
+  fs.writeFileSync(
+    path.join(fixture.dir, 'issues', 'offline-issue.md'),
+    '# Offline issue\n',
+  );
+  fs.writeFileSync(
+    path.join(fixture.dir, 'ci-logs', 'offline-run.log'),
+    'FAIL offline run\n',
+  );
+  return fixture;
+}
+
 // ---------------------------------------------------------------------------
 // Test setup
 // ---------------------------------------------------------------------------
@@ -291,6 +306,110 @@ describe('runScenario', () => {
           cwd: expect.stringContaining('smithy-eval-'),
         }),
       );
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it.each([
+    {
+      agent: 'claude' as const,
+      command: 'claude',
+      invocationIndex: 6,
+      expectedPrefix: '/smithy.fix ',
+    },
+    {
+      agent: 'gemini' as const,
+      command: 'gemini',
+      invocationIndex: 6,
+      expectedPrefix: '/smithy.fix ',
+    },
+    {
+      agent: 'codex' as const,
+      command: 'codex',
+      invocationIndex: 6,
+      expectedPrefix: 'Use the smithy-fix skill.\n\nInput:\n',
+    },
+  ])(
+    'injects resolved local fixture paths into $agent invocations',
+    async ({ agent, command, invocationIndex, expectedPrefix }) => {
+      const stdout = ndjsonLines(resultEvent('output'));
+      const { child } = createMockChild(stdout, 0);
+      vi.mocked(spawn).mockReturnValue(child as never);
+
+      const fixture = createFixtureWithLocalEvidence();
+      try {
+        await runScenario(
+          makeScenario({
+            skill: '/smithy.fix',
+            prompt: 'Diagnose {{issue_path}} with {{ci_log_path}}.',
+            local_fixtures: {
+              issue: 'evals/fixture/issues/offline-issue.md',
+              ci_log: 'evals/fixture/ci-logs/offline-run.log',
+            },
+          }),
+          fixture.dir,
+          agent,
+        );
+
+        const call = vi.mocked(spawn).mock.calls[0]!;
+        const args = call[1] as string[];
+        const invocation = args[invocationIndex]!;
+
+        expect(call[0]).toBe(command);
+        expect(invocation.startsWith(expectedPrefix)).toBe(true);
+        expect(invocation).toContain('Use the repository-local fixture evidence below.');
+        expect(invocation).toContain('Do not fetch live GitHub issue, pull request, or Actions data');
+        expect(invocation).toContain('Issue fixture: issues/offline-issue.md');
+        expect(invocation).toContain('CI log fixture: ci-logs/offline-run.log');
+        expect(invocation).toContain(
+          'Diagnose issues/offline-issue.md with ci-logs/offline-run.log.',
+        );
+        expect(invocation).not.toContain('{{issue_path}}');
+        expect(invocation).not.toContain('{{ci_log_path}}');
+        expect(invocation).not.toContain(fixture.dir);
+      } finally {
+        fixture.cleanup();
+      }
+    },
+  );
+
+  it('keeps no-fixture scenarios on the existing invocation path', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    const fixture = createRealFixture();
+    try {
+      await runScenario(makeScenario(), fixture.dir);
+
+      const call = vi.mocked(spawn).mock.calls[0]!;
+      const args = call[1] as string[];
+      expect(args[6]).toBe('/smithy.strike do something');
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('fails before spawning when a declared local fixture is missing from the temp copy', async () => {
+    const fixture = createRealFixture();
+    try {
+      await expect(
+        runScenario(
+          makeScenario({
+            skill: '/smithy.fix',
+            local_fixtures: {
+              issue: 'evals/fixture/issues/missing.md',
+              ci_log: 'evals/fixture/ci-logs/missing.log',
+            },
+          }),
+          fixture.dir,
+        ),
+      ).rejects.toThrow(
+        'local_fixtures.issue is not readable in temp fixture copy: evals/fixture/issues/missing.md',
+      );
+
+      expect(spawn).not.toHaveBeenCalled();
     } finally {
       fixture.cleanup();
     }

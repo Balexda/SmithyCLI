@@ -18,6 +18,13 @@ import {
   extractCanonicalText,
   extractTokenTotals,
 } from './parse-stream.js';
+import {
+  LOCAL_FIXTURE_AREAS,
+  type LocalFixtureField,
+  normalizeRepositoryPath,
+  isPathUnderAllowedArea,
+  isContainedIn,
+} from './fixture-paths.js';
 
 /** Path to the built Smithy CLI, resolved relative to this module. */
 const CLI_PATH = path.resolve(
@@ -44,6 +51,11 @@ const CHECKSUM_EXCLUDE_DIRS = new Set([
   '.smithy',
   'dist',
 ]);
+
+interface LocalFixtureBindings {
+  issue_path: string;
+  ci_log_path: string;
+}
 
 // ---------------------------------------------------------------------------
 // Fixture checksum
@@ -392,9 +404,11 @@ export async function runScenario(
     // FR-011: Checksum the source fixture *before* execution.
     const checksumBefore = hashDirectory(fixtureDir);
 
+    const fixtureBindings = resolveLocalFixtureBindings(scenario, tmpDir);
+
     // Build the invocation string. Claude/Gemini scenarios use slash-command
     // form; Codex uses deployed skills, so name the matching skill directly.
-    const invocation = buildInvocation(scenario, agent);
+    const invocation = buildInvocation(scenario, agent, fixtureBindings);
 
     // Determine timeout: scenario-level override (in seconds) → default.
     const timeoutMs = scenario.timeout != null
@@ -466,10 +480,101 @@ function buildAgentArgs(agent: EvalAgent, invocation: string, tmpDir: string): s
   ];
 }
 
-function buildInvocation(scenario: EvalScenario, agent: EvalAgent): string {
-  const prompt = scenario.prompt.trim();
+function resolveLocalFixtureBindings(
+  scenario: EvalScenario,
+  tmpDir: string,
+): LocalFixtureBindings | undefined {
+  if (!scenario.local_fixtures) return undefined;
+
+  return {
+    issue_path: resolveLocalFixturePath(
+      scenario.local_fixtures.issue,
+      LOCAL_FIXTURE_AREAS.issue,
+      tmpDir,
+      'issue',
+    ),
+    ci_log_path: resolveLocalFixturePath(
+      scenario.local_fixtures.ci_log,
+      LOCAL_FIXTURE_AREAS.ci_log,
+      tmpDir,
+      'ci_log',
+    ),
+  };
+}
+
+function resolveLocalFixturePath(
+  declaredPath: string,
+  allowedArea: string,
+  tmpDir: string,
+  field: LocalFixtureField,
+): string {
+  const normalized = normalizeRepositoryPath(declaredPath);
+  if (!normalized || !isPathUnderAllowedArea(normalized, allowedArea)) {
+    throw new Error(
+      `local_fixtures.${field} must stay under ${allowedArea}/: ${declaredPath}`,
+    );
+  }
+
+  const tempRelativePath = fixtureTempRelativePath(normalized);
+  const tmpFixturePath = path.resolve(tmpDir, tempRelativePath);
+  const tmpAreaPath = path.resolve(tmpDir, fixtureTempRelativePath(allowedArea));
+
+  let stats: fs.Stats;
+  try {
+    stats = fs.statSync(tmpFixturePath);
+    fs.accessSync(tmpFixturePath, fs.constants.R_OK);
+  } catch {
+    // Deliberately omit the raw fs error text: it embeds absolute temp-dir
+    // paths (under os.tmpdir()), which leak the environment and make the
+    // offline eval's diagnostics non-deterministic. The normalized
+    // repository-relative path already identifies the offending fixture.
+    throw new Error(
+      `local_fixtures.${field} is not readable in temp fixture copy: ${normalized}`,
+    );
+  }
+
+  if (!stats.isFile()) {
+    throw new Error(
+      `local_fixtures.${field} must resolve to a readable file in temp fixture copy: ${normalized}`,
+    );
+  }
+
+  let realFixturePath: string;
+  let realAreaPath: string;
+  try {
+    realFixturePath = fs.realpathSync(tmpFixturePath);
+    realAreaPath = fs.realpathSync(tmpAreaPath);
+  } catch {
+    // As above, omit the raw fs error text to avoid leaking absolute temp-dir
+    // paths into the thrown message.
+    throw new Error(
+      `local_fixtures.${field} could not be resolved in temp fixture copy: ${normalized}`,
+    );
+  }
+
+  if (!isContainedIn(realFixturePath, realAreaPath)) {
+    throw new Error(
+      `local_fixtures.${field} resolves outside ${allowedArea}/ in temp fixture copy: ${normalized}`,
+    );
+  }
+
+  return tempRelativePath;
+}
+
+function buildInvocation(
+  scenario: EvalScenario,
+  agent: EvalAgent,
+  fixtureBindings?: LocalFixtureBindings,
+): string {
+  if (scenario.local_fixtures && !fixtureBindings) {
+    throw new Error(
+      `Scenario '${scenario.name}' declares local_fixtures but no fixture bindings were provided`,
+    );
+  }
+
+  const prompt = renderPromptWithLocalFixtures(scenario.prompt, fixtureBindings);
   if (agent !== 'codex') {
-    return `${scenario.skill} ${scenario.prompt}`;
+    return `${scenario.skill} ${prompt}`;
   }
 
   const skillName = codexSkillName(scenario.skill);
@@ -478,7 +583,30 @@ function buildInvocation(scenario: EvalScenario, agent: EvalAgent): string {
   return `Use the ${skillName} skill.\n\nInput:\n${prompt}`;
 }
 
+function renderPromptWithLocalFixtures(
+  prompt: string,
+  fixtureBindings: LocalFixtureBindings | undefined,
+): string {
+  const trimmedPrompt = prompt.trim();
+  if (!fixtureBindings) return trimmedPrompt;
+  const renderedPrompt = trimmedPrompt
+    .replaceAll('{{issue_path}}', fixtureBindings.issue_path)
+    .replaceAll('{{ci_log_path}}', fixtureBindings.ci_log_path);
+
+  return [
+    'Use the repository-local fixture evidence below. Do not fetch live GitHub issue, pull request, or Actions data for this evidence.',
+    `Issue fixture: ${fixtureBindings.issue_path}`,
+    `CI log fixture: ${fixtureBindings.ci_log_path}`,
+    '',
+    renderedPrompt,
+  ].join('\n');
+}
+
 function codexSkillName(skill: string): string {
   const normalized = skill.trim().replace(/^\//, '').replace(/\./g, '-');
   return normalized;
+}
+
+function fixtureTempRelativePath(repoFixturePath: string): string {
+  return repoFixturePath.replace(/^evals\/fixture\//, '');
 }
