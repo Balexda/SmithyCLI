@@ -59,6 +59,42 @@ list; anything outside it is out of scope for plan-review.
 
 ---
 
+## Kind Gate
+
+The gate itself — the three-part steering test, the positive test, the
+routing table for non-steering findings, and the calibration — is defined
+in the **Kind gate** section of the shared review protocol above. It lives
+there because the same rules bind every review surface, including ones
+that never load this file. Do not restate it here; apply it as written.
+
+Two things are specific to plan-review:
+
+**When to apply it.** Before you assign `severity` and `confidence` to a
+finding, decide who resolves it and set `kind` from that answer. Apply the
+gate to **every** finding, not just the ones you expect to be Low
+confidence. Severity and confidence are graded after the kind is set,
+never before.
+
+**How it relates to clarify.** This gate is the plan-review sibling of
+`smithy-clarify` Step 3b: the same question ("must a human decide, and
+does the decision change what gets built?"), applied to review findings
+instead of clarification candidates. Where clarify reroutes a failing
+candidate into its assumption stream, you have no assumption stream — you
+reroute by naming a different `kind`, and the parent command sends it
+somewhere other than the debt table.
+
+### Kind-gate examples
+
+| Finding | Kind gate | `kind` |
+|---------|-----------|--------|
+| "Whether scenarios that create a PR assert against the failure branch, stub credentials, or accept either outcome by regex alternation" | passes all three — no prior art, three named paths, and the pick changes what the scenario asserts | `steering` |
+| "Whether the runner's temp fixture copy carries a `.git` directory or initializes one" | fails **human-only** — reading the runner and running it once answers it | `implementation` |
+| "The `## Dependency Order` table lists S3 before S2, though S3's tasks consume S2's output" | fails **open question** — the correct order is knowable and the table is simply wrong | `hygiene` |
+| "Slices 2 and 4 both edit the same module; the second to land rebases" | fails **open question** — a dependency/coordination note per `smithy-clarify` Step 3b | `hygiene` |
+| "Is the parent spec corrected too, or only this tasks file?" | fails **human-only** — reading the spec answers it | `hygiene` |
+
+---
+
 ## ReviewResult return shape
 
 When your audit is complete, return a structured `ReviewResult` to the
@@ -66,8 +102,8 @@ parent planning command with the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `findings` | Finding[] | Issues found, each using the shared Finding structure from the review-protocol section above (`category`, `severity`, `confidence`, `description`, `artifact_path`, `proposed_fix`). Emit one entry per distinct issue. |
-| `summary` | string | Human-readable summary of what was reviewed, which categories surfaced issues, and the overall self-consistency assessment of the artifact set. |
+| `findings` | Finding[] | Issues found, each using the shared Finding structure from the review-protocol section above (`category`, `kind`, `severity`, `confidence`, `description`, `artifact_path`, `proposed_fix`). Emit one entry per distinct issue. |
+| `summary` | string | Human-readable summary of what was reviewed, which categories surfaced issues, and the overall self-consistency assessment of the artifact set. State the finding count broken down by `kind`, so the parent can see at a glance how many decisions it is actually being handed. |
 
 If no issues are found across every category, return an empty `findings`
 list and a `summary` that explicitly states the artifact set is
@@ -99,5 +135,14 @@ self-consistent. Do not fabricate findings to pad the report.
 - **Confidence discipline.** Mark a finding as `High` only when the
   `proposed_fix` is concrete enough for the parent command to apply
   verbatim with no further analysis. When in doubt, mark it `Low` so the
-  parent records it as specification debt rather than auto-applying an
-  uncertain change.
+  parent defers rather than auto-applying an uncertain change.
+- **Kind is mandatory and precedes grading.** Every finding carries a
+  `kind`. Set it before you grade severity and confidence — a Low
+  confidence score does not make a finding steering, and only `steering`
+  findings can reach the debt table. Omitting `kind` leaves the parent
+  no way to route the finding, so it is never optional.
+- **One finding per root cause.** When several observations reduce to a
+  single underlying defect — one wrong table, one stale path repeated
+  across sections — emit one finding naming the root cause, not one per
+  symptom. Six rows that all trace to the same wrong table are one
+  `hygiene` finding.
