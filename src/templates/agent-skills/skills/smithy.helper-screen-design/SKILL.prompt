@@ -195,6 +195,8 @@ following:
       skill is invalid — skill is source of truth).
 - [ ] Body contains a `## Layout`, `## States`, `## Flow`, `## Steps`, or
       `## Walkthrough` section.
+- [ ] Body contains a state inventory or visual-fidelity critique instead of
+      rationale-only intent.
 - [ ] "Deliberate choices" describes what the screen looks like instead of
       why the choice was made.
 - [ ] "Deferred" lists items that belong to a different screen or

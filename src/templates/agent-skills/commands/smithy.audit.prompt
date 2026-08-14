@@ -26,32 +26,39 @@ If no input is provided above, check whether you are on a **forge branch** (see 
 
 ### File Argument Mode
 
-When a file path is provided, detect the artifact type by its file extension:
+When a file path is provided, detect the artifact type by its file extension —
+and, for the durable UI artifacts, by the directory it sits in as well:
 
-| Extension | Artifact Type | Producing Command |
-|-----------|--------------|-------------------|
+| Target | Artifact Type | Producing Command |
+|--------|--------------|-------------------|
 | `.rfc.md` | RFC | smithy.ignite |
 | `.features.md` | Feature Map | smithy.render |
 | `.spec.md` | Feature Spec | smithy.mark |
 | `.tasks.md` | Tasks / Slices | smithy.cut |
 | `.strike.md` | Strike Plan | smithy.strike |
+| `.design.md` under `design/screens/` | Screen Design Annotation | smithy.mark |
+| `.flow.md` under `design/flows/` | Flow Definition | smithy.mark |
 
 1. Read the file at the given path.
-2. Identify its extension from the table above.
+2. Match it against the table above. The two UI rows match only when the file
+   also sits under the named directory — a `.design.md` or `.flow.md` elsewhere
+   in the repo is **not** a screen or flow artifact and falls through to step 5.
 3. **Gather context documents** — many checklists require cross-document checks. Before running the checklist, discover and read the related files for the artifact type:
 
-   | Target extension | Context to gather |
-   |-----------------|-------------------|
+   | Target | Context to gather |
+   |--------|-------------------|
    | `.rfc.md` | Any `.features.md` files in the same RFC folder (`{{artifactsRoot}}docs/rfcs/<YYYY-NNN-slug>/`) |
    | `.features.md` | The `.rfc.md` in the same RFC folder, to verify RFC alignment |
    | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`{{artifactsRoot}}specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
    | `.tasks.md` | The `.spec.md`, `.data-model.md`, and `.contracts.md` in the same spec folder, to verify FR traceability and slice-to-requirement mapping |
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
+   | `.design.md` under `design/screens/` | The component named by front-matter `component-path`, when present, to verify the path contract resolves; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `SC<N>` row |
+   | `.flow.md` under `design/flows/` | The screen annotations named by front-matter `screens` and the executable body named by `test-body`, when present, to verify flow references resolve; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `FL<N>` row |
 
-   If a context document is missing, note it as a finding rather than skipping the check.
+   If a context document is missing, note it as a finding rather than skipping the check. The one exception is a context entry marked "when it is discoverable" — a durable UI artifact carries no back-pointer to its owning spec, so an unreachable ledger is not itself a finding.
 
-4. Use the matching **Extension-Specific Checklist** below, reviewing against both the target file and any context documents gathered.
-5. If the extension is not recognized, fall back to a general review using all checklists.
+4. Use the matching **Artifact-Type Checklist** below, reviewing against both the target file and any context documents gathered.
+5. If the target matches no row, fall back to a general review using all checklists.
 
 ### Forge-Branch Mode
 
@@ -81,9 +88,9 @@ When no file argument is provided and the current branch matches the forge branc
 
 ---
 
-## Extension-Specific Checklists
+## Artifact-Type Checklists
 
-Use the checklist matching the artifact's extension. Each checklist defines what "good" looks like for that artifact type.
+Use the checklist matching the artifact type resolved in **Mode Detection**. Each checklist defines what "good" looks like for that artifact type.
 
 {{>audit-checklist-rfc}}
 
@@ -94,6 +101,67 @@ Use the checklist matching the artifact's extension. Each checklist defines what
 {{>audit-checklist-tasks}}
 
 {{>audit-checklist-strike}}
+
+### Audit Checklist (.design.md screen artifacts)
+
+Use this checklist when the target is a `design/screens/<ScreenId>.design.md`
+artifact. The owning contract is `smithy.helper-screen-design`; load that skill
+and review against its "Review checklist" section. The audit is structural and
+contractual only: do not judge visual fidelity, pixel polish, layout quality, or
+whether the eventual component visually matches a mockup.
+
+**One carve-out from that checklist.** Its `id` bullet checks membership against
+a feature-level `screens:` list. Features no longer carry one — screens are
+first-class `SC<N>` rows in the owning spec's typed `## Dependency Order`
+ledger. Resolve `id` against that ledger row instead, and only when the owning
+spec is reachable from the target. When it is not, skip the membership check —
+do **not** report a finding for a missing `screens:` list.
+
+Flag at least the following:
+
+- Missing or malformed YAML front-matter.
+- Missing required front-matter keys: `id`, `component-path`, and
+  `design_system`.
+- `component-path` is empty, absolute, escapes the repo, names a framework
+  symbol instead of a repo-relative path, or does not resolve to a file.
+- `design_system` is empty or names a bundle/prototype rather than the
+  committed design-system skill.
+- `bundle` is present without a `design_system`, or names a path that does not
+  resolve when a concrete bundle path is provided.
+- Body sections or prose that move beyond rationale-only intent, especially
+  `## Layout`, `## States`, `## Flow`, `## Steps`, `## Walkthrough`, visual
+  fidelity critique, state inventories, or implementation instructions.
+
+### Audit Checklist (.flow.md flow artifacts)
+
+Use this checklist when the target is a `design/flows/<FlowId>.flow.md`
+artifact. The owning contract is `smithy.helper-flow-definition`; load that
+skill and review against its "Review checklist" section. The audit checks the
+intent annotation and its declared executable test-body pair. Graph-level
+screen/flow/test consistency remains appropriate for `flow-lint`, but direct
+audit should still report unresolved references visible from this file.
+
+**One carve-out from that checklist.** Its `id` bullet checks membership against
+a feature-level `flows:` list. Features no longer carry one — flows are
+first-class `FL<N>` rows in the owning spec's typed `## Dependency Order`
+ledger. Resolve `id` against that ledger row instead, and only when the owning
+spec is reachable from the target. When it is not, skip the membership check —
+do **not** report a finding for a missing `flows:` list.
+
+Flag at least the following:
+
+- Missing or malformed YAML front-matter.
+- Missing required front-matter keys: `id`, `screens`, and `test-body`.
+- `screens` is empty, not a list, contains non-string values, or names a
+  `ScreenId` with no matching `design/screens/<ScreenId>.design.md` annotation.
+- `test-body` is empty, absolute, escapes the repo, or does not resolve to the
+  paired executable test body.
+- Body sections or prose that move beyond rationale-only intent, especially
+  `## Steps`, `## Walkthrough`, `## Flow`, `## Path`, click/tap sequences,
+  ordered executable behavior, selectors, assertions, or driver-specific test
+  code inside the `.flow.md` itself.
+- Executable behavior that belongs in the test body is duplicated in the
+  `.flow.md`; the `.flow.md` owns why, guards, entry/exit, and coverage caveats.
 
 ---
 
