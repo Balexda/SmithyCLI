@@ -18,9 +18,9 @@ durable design truth.
 |-----|------|----------|-------|
 | `kind` | both | Yes (new) | `backend` or `ui`. Missing on legacy maps → `backend`. |
 | `phase` | ui | Yes | `build` or `wire` (feature-level). |
-| `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. |
+| `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. A screen with a `bundle` still requires `design_system`. |
 | `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render must set this explicitly; downstream `mark` copies it into the `Design` cell of each of the feature's `SC<N>` ledger rows instead of inferring from the title. Screens needing distinct modes go in separate features. |
-| `bundle` | ui | No | Path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
+| `bundle` | ui | No | Repo-relative path to a visual prototype boundary object (for example a Figma export, Claude Design export, or equivalent visual-tool bundle) — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
 | `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. Build features may list mock-satisfiable candidate flows; wire features must list the flows they connect to real data. |
@@ -42,14 +42,19 @@ screens: [AddTitle]
 flows: [AddTitle]
 ```
 
-**Design mode semantics.** `none` means no visual loop; `import` means a
-prototype bundle is supplied at render and rides forward; `brief` means mark will
-author durable intent that can be handed to a visual tool. The mode is carried in
-metadata so readers and downstream commands do not infer it from feature titles.
-It is **feature-level**: every `ScreenId` in the feature's `screens` list shares
-the one `design` value, so a feature that would need two different modes for two
+**Design mode semantics.** The mode is carried in metadata so readers and
+downstream commands do not infer it from feature titles. It is
+**feature-level**: every `ScreenId` in the feature's `screens` list shares the
+one `design` value, so a feature that would need two different modes for two
 screens must be split into separate features (one per mode) — which the
-one-screen-per-build model already favors.
+one-screen-per-build model already favors. `mark` copies the value into the
+`Design` cell of each `SC<N>` ledger row; flow and story rows use `—`.
+
+| Mode | Meaning | Bundle behavior |
+|------|---------|-----------------|
+| `none` | No visual loop. Build from the committed design skill with no bundle ceremony. | Omit `bundle`. |
+| `import` | Prototype-first: a visual prototype already exists. `render` may carry the supplied bundle forward for downstream honoring. | Bundle enters at `render` and rides to `forge` as visual source context; downstream prompts do not derive detailed prototype-to-screen/flow structure. |
+| `brief` | Mark-authored intent for a visual tool: the `.design.md`/`.flow.md` artifacts are the brief. | Bundle may be attached later; if present, downstream build honors it under the conflict rule. |
 
 **Phase semantics.** `build` implements the screen component against a mock
 behind `flag` (rendering every brief state with design-system tokens only);
