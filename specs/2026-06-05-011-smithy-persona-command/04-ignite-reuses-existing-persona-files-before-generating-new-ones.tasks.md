@@ -51,7 +51,7 @@
 
 ### Tasks
 
-- [ ] **Project covered personas into the RFC**
+- [x] **Project covered personas into the RFC**
 
   Update Sub-phase 3b instructions so each covered persona file is read and projected into the RFC `## Personas` section as how this RFC benefits that durable persona. The projection should preserve the durable persona's role, context, and friction while tailoring the final benefit language to the current RFC.
 
@@ -61,7 +61,7 @@
   - Projection keeps durable persona content as the source context while allowing RFC-specific benefit framing.
   - The resulting section still passes ignite's existing non-empty Personas verification.
 
-- [ ] **Cold-draft only uncovered persona gaps**
+- [x] **Cold-draft only uncovered persona gaps**
 
   Amend the `smithy-prose` dispatch in Sub-phase 3b so cold drafting is limited to personas not covered by existing files, then combine any cold-drafted gap content with the file-sourced projections into one valid `## Personas` section.
 
@@ -71,7 +71,7 @@
   - The final RFC contains one `## Personas` section that includes both reused and newly drafted personas when both are present.
   - If all needed personas are covered by files, Sub-phase 3b does not perform an unnecessary cold Personas dispatch.
 
-- [ ] **Protect reuse behavior with template tests**
+- [x] **Protect reuse behavior with template tests**
 
   Update template coverage around `smithy.ignite.prompt` so the reuse-before-generate behavior is protected without regenerating deployed snapshots. Focus the checks on discovery-before-dispatch, slug-based coverage, projection from files, and gap-only cold drafting.
 
