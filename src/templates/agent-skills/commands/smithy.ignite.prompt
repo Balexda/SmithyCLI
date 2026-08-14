@@ -662,7 +662,10 @@ dispatched in 3g.
      3b. Read the **Persona Artifact Convention** above as the canonical
      storage, filename-slug identity, and matching contract; resolve the
      persona directory from the active `{{artifactsRoot}}` for this ignite run;
-     list only `.persona.md` files under that active artifacts root; and derive
+     list existing `.persona.md` files in that resolved persona directory,
+     keeping discovery scoped to the active artifacts root exactly as
+     sub-phase 3b does so in-repo and external-artifacts modes never
+     cross-contaminate persona stores; and derive
      deterministic kebab-case slugs from persona names or roles surfaced in
      Phase 2 clarification and from the current on-disk `## Personas` section.
      Compare those derived slugs to discovered filenames using exact

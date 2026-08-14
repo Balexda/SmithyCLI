@@ -830,6 +830,9 @@ describe('getComposedTemplates', () => {
     expect(subphase3gBlock).toMatch(/re-run the same\s+durable persona discovery and slug coverage procedure used by sub-phase\s+3b/);
     expect(subphase3gBlock).toContain('Read the **Persona Artifact Convention** above as the canonical');
     expect(subphase3gBlock).toContain('active artifacts root');
+    expect(subphase3gBlock).toMatch(
+      /list existing `\.persona\.md` files in that resolved persona\s+directory/,
+    );
     expect(subphase3gBlock).toMatch(/derive\s+deterministic kebab-case slugs/);
     expect(subphase3gBlock).toMatch(/exact\s+filename-slug identity/);
     expect(subphase3gBlock).toContain('`<slug>.persona.md`');
