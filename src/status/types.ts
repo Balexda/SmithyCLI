@@ -317,6 +317,9 @@ export type FeatureKind = 'backend' | 'ui';
 /** Build/wire phase declared by a `**Phase**` field on a `ui` feature. */
 export type FeaturePhase = 'build' | 'wire';
 
+/** Screen-node design mode declared by a `ui` feature. */
+export type FeatureDesignMode = 'none' | 'import' | 'brief';
+
 /**
  * Per-feature summary captured from a feature map's `### Feature N:` H3
  * sections. Mirrors {@link SliceSummary} for tasks files: the scanner
@@ -336,7 +339,9 @@ export interface FeatureSummary {
   phase?: FeaturePhase;
   /** Reference to the committed design skill; `ui` features only. */
   design_system?: string;
-  /** Optional path to a Claude Design export; `ui` features only. */
+  /** Screen-node design mode; `ui` features only. */
+  design?: FeatureDesignMode;
+  /** Optional path to a visual prototype bundle/export; `ui` features only. */
   bundle?: string;
   /** Feature-flag name; the shared build/wire contract. `ui` features only. */
   flag?: string;

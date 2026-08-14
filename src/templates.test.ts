@@ -526,6 +526,7 @@ describe('feature-kinds snippet', () => {
       'wire',
       'kind',
       'phase',
+      'design',
       'flag',
       'screens',
       'flows',
@@ -3507,6 +3508,7 @@ describe('getComposedTemplates', () => {
     expect(render).toContain('## Feature Kinds');
     expect(render).toContain('kind: ui');
     expect(render).toContain('phase: build');
+    expect(render).toContain('design: <none|import|brief>');
     expect(render).toMatch(/build\/wire/i);
     expect(render).not.toContain('{{>feature-kinds}}');
     expect(render).not.toContain('{{>');

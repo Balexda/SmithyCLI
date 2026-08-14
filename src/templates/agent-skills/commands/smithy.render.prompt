@@ -326,7 +326,8 @@ kind: backend
 kind: ui
 phase: build
 design_system: <committed design skill, e.g. story-spider-design>
-bundle: <optional Claude Design export path, or omit the key>
+design: <none|import|brief>
+bundle: <optional visual prototype bundle path, or omit the key>
 flag: <feature-flag name gating this screen>
 screens: [<ScreenId>]
 flows: [<FlowId>]
@@ -346,13 +347,14 @@ flows: [<FlowId>]
 kind: ui
 phase: wire
 design_system: <same skill as the build feature>
+design: <same screen-node design mode as the build feature>
 flag: <same flag as the build feature — the shared contract>
 screens: [<ScreenId>]
 flows: [<FlowId>]
 ```
 
 **Description**: <Connect the screen to real data and flip the flag; done includes
-emitting/updating the Maestro flow + flow.md for each flow above.>
+emitting/updating the executable test body for each flow above.>
 
 **User-Facing Value**: <Why a user cares about this feature.>
 
@@ -505,6 +507,22 @@ here, by render.
 - **DO** type every feature with a `yaml` metadata block per the `feature-kinds`
   schema in Phase 3 (every feature has a `kind`; flag-gated UI splits into a
   `build` + `wire` pair sharing one `flag`).
+- **DO** make UI fan-out evident from metadata: `kind: ui` means mark will fan
+  out to screens/flows, `phase` says whether this is build or wire work,
+  `design` is the explicit screen-node mode (`none`, `import`, or `brief`), and
+  `screens`/`flows` name the candidate identifiers that downstream `mark` will
+  turn into the typed ledger and durable artifacts. Do not rely on feature
+  titles to communicate any of those facts.
+- **DO** keep backend features visibly backend: emit only `kind: backend` in the
+  metadata block, and do not add `phase`, `design_system`, `design`, `bundle`,
+  `flag`, `screens`, or `flows` to backend feature metadata. Missing `kind` on
+  legacy feature maps is still interpreted as backend during review, but new
+  render output should write `kind: backend` explicitly.
+- **DO** express flag-gated UI as a build + wire pair sharing exactly one
+  `flag` value. The build feature may be ordered before backend prerequisites;
+  attach backend prerequisites only to the wire feature's `## Dependency Order`
+  row, alongside the build feature dependency. The seam must be visible from
+  `phase`, the shared `flag`, and `Depends On`, not from naming convention alone.
 
 ---
 

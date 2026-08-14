@@ -17,6 +17,7 @@ describe('status type surface — FeatureSummary', () => {
       kind: 'ui',
       phase: 'build',
       design_system: 'story-spider-design',
+      design: 'import',
       bundle: 'design/bundles/add-title.zip',
       flag: 'add_title_v1',
       screens: ['AddTitle'],
@@ -24,7 +25,12 @@ describe('status type surface — FeatureSummary', () => {
     };
     expect(backend.kind).toBe('backend');
     expect(backend.phase).toBeUndefined();
-    expect(ui).toMatchObject({ kind: 'ui', phase: 'build', flag: 'add_title_v1' });
+    expect(ui).toMatchObject({
+      kind: 'ui',
+      phase: 'build',
+      design: 'import',
+      flag: 'add_title_v1',
+    });
     expect(ui.screens).toEqual(['AddTitle']);
   });
 });

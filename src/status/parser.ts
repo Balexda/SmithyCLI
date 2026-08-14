@@ -553,9 +553,9 @@ function countSlices(content: string): {
  * into a list of {@link FeatureSummary}. Each feature's typed metadata is
  * read from a fenced ` ```yaml ` block placed right after the heading,
  * carrying flat keys (`kind`, and for `ui` features `phase`,
- * `design_system`, `bundle`, `flag`, `screens`, `flows`). The block is a
- * flat scalar/inline-list map — nested YAML is not expected. The 4-column
- * `## Dependency Order` table is left untouched: kind/phase live in the
+ * `design_system`, `design`, `bundle`, `flag`, `screens`, `flows`). The block
+ * is a flat scalar/inline-list map — nested YAML is not expected. The 4-column
+ * `## Dependency Order` table is left untouched: kind/phase/design live in the
  * feature body, not the table.
  *
  * Best-effort and side-effect free: a missing block or invalid value is
@@ -650,6 +650,9 @@ export function parseFeatures(content: string): {
     if (phase === 'build' || phase === 'wire') feature.phase = phase;
     const designSystem = scalar('design_system');
     if (designSystem !== undefined) feature.design_system = designSystem;
+    const design = scalar('design');
+    if (design === 'none' || design === 'import' || design === 'brief')
+      feature.design = design;
     const bundle = scalar('bundle');
     if (bundle !== undefined) feature.bundle = bundle;
     const flag = scalar('flag');
@@ -663,25 +666,29 @@ export function parseFeatures(content: string): {
       const missing: string[] = [];
       if (feature.phase === undefined) missing.push('phase');
       if (feature.design_system === undefined) missing.push('design_system');
+      if (feature.design === undefined) missing.push('design');
       if (feature.screens === undefined || feature.screens.length === 0)
         missing.push('screens');
-      if (feature.flows === undefined) missing.push('flows');
+      // `flows` is optional for `build` (mock-satisfiable candidates) and
+      // required only for `wire`, which connects flows to real data.
+      if (feature.phase === 'wire' && feature.flows === undefined)
+        missing.push('flows');
       for (const key of missing) {
         warnings.push(
           `feature_ui_fields: ui ${feature.id} missing required ${key}`,
         );
       }
     } else if (feature.kind === 'backend') {
-      const uiOnly: Array<[string, unknown]> = [
-        ['phase', feature.phase],
-        ['design_system', feature.design_system],
-        ['bundle', feature.bundle],
-        ['flag', feature.flag],
-        ['screens', feature.screens],
-        ['flows', feature.flows],
-      ];
-      for (const [key, val] of uiOnly) {
-        if (val !== undefined) {
+      for (const key of [
+        'phase',
+        'design_system',
+        'design',
+        'bundle',
+        'flag',
+        'screens',
+        'flows',
+      ]) {
+        if (meta.has(key)) {
           warnings.push(
             `feature_ui_fields: backend ${feature.id} carries ui-only key ${key}`,
           );

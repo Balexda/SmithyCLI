@@ -2,10 +2,10 @@
 
 Every feature in a `.features.md` map is **typed**. Each `### Feature N:` carries a
 fenced `yaml` metadata block — placed right after the heading, before the prose —
-declaring its kind and, for UI work, its design and phase fields. The kind selects
-the `smithy.mark` authoring path: `backend` keeps the existing spec-triad flow,
-while `ui` enters the UI authoring path for the typed ledger and durable design
-truth.
+declaring its kind and, for UI work, its design mode and phase fields. The kind
+selects the `smithy.mark` authoring path: `backend` keeps the existing
+spec-triad flow, while `ui` enters the UI authoring path for the typed ledger and
+durable design truth.
 
 - **`backend`** — server/library functionality; the prose body is a behavioral delta.
 - **`ui`** — screen/flow work; `mark` authors the UI spec ledger and durable
@@ -19,10 +19,11 @@ truth.
 | `kind` | both | Yes (new) | `backend` or `ui`. Missing on legacy maps → `backend`. |
 | `phase` | ui | Yes | `build` or `wire` (feature-level). |
 | `design_system` | ui | Yes | Committed design-skill ref (for example `story-spider-design`); source of truth even when a bundle is present. |
-| `bundle` | ui | No | Path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
+| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render must set this explicitly; downstream `mark` copies it into the `Design` cell of each of the feature's `SC<N>` ledger rows instead of inferring from the title. Screens needing distinct modes go in separate features. |
+| `bundle` | ui | No | Path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout/visual intent; the skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
-| `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. |
+| `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. Build features may list mock-satisfiable candidate flows; wire features must list the flows they connect to real data. |
 
 ```yaml
 # backend feature
@@ -34,15 +35,25 @@ kind: backend
 kind: ui
 phase: build
 design_system: story-spider-design
+design: import
 bundle: design/bundles/add-title.zip   # optional
 flag: add_title_v1
 screens: [AddTitle]
 flows: [AddTitle]
 ```
 
-**Phase semantics.** `build` implements the screen component against a mock behind
-`flag` (rendering every brief state with design-system tokens only); `wire`
-connects real data, flips the flag, and fills/updates the mark-created
+**Design mode semantics.** `none` means no visual loop; `import` means a
+prototype bundle is supplied at render and rides forward; `brief` means mark will
+author durable intent that can be handed to a visual tool. The mode is carried in
+metadata so readers and downstream commands do not infer it from feature titles.
+It is **feature-level**: every `ScreenId` in the feature's `screens` list shares
+the one `design` value, so a feature that would need two different modes for two
+screens must be split into separate features (one per mode) — which the
+one-screen-per-build model already favors.
+
+**Phase semantics.** `build` implements the screen component against a mock
+behind `flag` (rendering every brief state with design-system tokens only);
+`wire` connects real data, flips the flag, and fills/updates the mark-created
 executable test-body stub for every flow in `flows` using the project's UI
 driver; the `.flow.md` design truth is authored by `mark`. Compose, Maestro,
 and `story-spider-design` are examples, not required stacks.
@@ -50,6 +61,5 @@ and `story-spider-design` are examples, not required stacks.
 **The build/wire seam.** Flag-gated UI is two features sharing one `flag`: a `build`
 feature and a `wire` feature that lists the build feature in its `Depends On` cell.
 Build-ahead-of-backend is legal — only the `wire` feature depends on the backend
-feature. The shared `flag`, not a naming convention, is the contract of record. See
-the "Feature Kinds and the Build/Wire Seam" section of the agent-skills README for a
-worked example.
+feature. The shared `flag`, the `phase` metadata, and the dependency row are the
+contract of record; naming conventions are only descriptive.

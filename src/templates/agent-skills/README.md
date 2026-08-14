@@ -372,8 +372,8 @@ for the prose-level pass.
 Features in a `.features.md` map are **typed**. Each `### Feature N:` carries a
 fenced `yaml` metadata block — right after the heading, before the prose
 (`**Description**:` etc.) — declaring its **kind** (`backend` or `ui`) and, for
-UI work, its design and phase fields. This README is the source of truth for the
-schema; the same field set is captured once in the `feature-kinds` snippet
+UI work, its design mode and phase fields. This README is the source of truth
+for the schema; the same field set is captured once in the `feature-kinds` snippet
 (`snippets/feature-kinds.md`) and pulled into `smithy.render` (authoring) and
 `smithy.audit` (validation) via `{{>feature-kinds}}` so the surfaces never drift.
 When `smithy.mark` consumes a `.features.md` file, it branches on the selected
@@ -390,13 +390,22 @@ artifacts that downstream commands consume.
 | `kind` | both | Yes (new) | `backend` or `ui`. Selects the `smithy.mark` authoring path. A missing `kind` on legacy feature maps defaults to `backend`. |
 | `phase` | ui | Yes | `build` or `wire` — a **feature-level** attribute. |
 | `design_system` | ui | Yes | Reference to the committed design skill (for example `story-spider-design`); source of truth even when a bundle is present. |
-| `bundle` | ui | No | Repo-relative path to a Claude Design export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
+| `design` | ui | Yes | Screen-node design mode: `none`, `import`, or `brief`, shared by every `ScreenId` the feature lists. Render sets this explicitly; mark copies it into the `Design` cell of each `SC<N>` row. Screens needing distinct modes go in separate features. |
+| `bundle` | ui | No | Repo-relative path to a visual prototype bundle/export — a visual/structural reference, not a drop-in. Bundle wins on layout & visual intent; the design skill wins on implementation dialect. |
 | `flag` | ui | Yes (flag-gated) | Feature-flag name; the shared contract joining a `build` feature to its `wire` feature. |
 | `screens` | ui | Yes | List of `ScreenId`, e.g. `[AddTitle]`. |
 | `flows` | ui | No (build) / Yes (wire) | List of `FlowId` the screen participates in. |
 
 `backend` features carry none of the ui-only keys; their body is the behavioral
 spec (prose delta).
+
+### Design mode semantics
+
+| `design` | Means |
+|----------|-------|
+| `none` | No visual loop; build from the committed design skill. |
+| `import` | Prototype-first; a bundle is supplied at render and rides forward. |
+| `brief` | Mark-authored durable intent can be handed to a visual tool. |
 
 ### Phase semantics
 
@@ -447,6 +456,7 @@ no-op; `all()` returns `[]` (never null) before any add.
 kind: ui
 phase: build
 design_system: story-spider-design
+design: import
 bundle: design/bundles/add-title.zip
 flag: add_title_v1
 screens: [AddTitle]
@@ -463,6 +473,7 @@ Library FAB, behind `add_title_v1` against an in-memory mock. Render all brief s
 kind: ui
 phase: wire
 design_system: story-spider-design
+design: import
 flag: add_title_v1
 screens: [AddTitle]
 flows: [AddTitle]
