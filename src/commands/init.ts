@@ -25,7 +25,6 @@ import {
 } from '../manifest.js';
 import { ORDERS_TEMPLATE_TYPES, provisionOrdersTemplates } from '../orders-templates.js';
 import { ensureArtifactStore, type EnsureArtifactStoreResult } from '../artifact-store.js';
-import { ensureUserEngravedStore } from '../engraved/index.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
 import * as codex from '../agents/codex.js';
@@ -84,25 +83,6 @@ function reportArtifactStore(result: EnsureArtifactStoreResult | null): void {
     console.log(
       picocolors.dim(`  Artifact store: ${result.root} (git repository initialized)`),
     );
-  }
-}
-
-/**
- * Report the user-level engraved store, and only when there is news: the run
- * created it, or could not. A store that already existed is the normal case on
- * every re-run and says nothing worth a line.
- */
-function reportUserEngravedStore(result: { root: string; created: boolean; warning?: string }): void {
-  if (result.warning !== undefined) {
-    console.log(
-      picocolors.yellow(
-        `  Engraved store: could not create ${result.root} — ${result.warning}`,
-      ),
-    );
-    return;
-  }
-  if (result.created) {
-    console.log(picocolors.dim(`  Engraved store: ${result.root} (user-level knowledge)`));
   }
 }
 
@@ -192,14 +172,6 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
   // clobbers an artifact leaves something to restore from. No-op in repo
   // mode, where artifacts already ride the repo's own history.
   reportArtifactStore(ensureArtifactStore(targetDir, artifactsLocation));
-
-  // Create the user-level engraved store so global decisions, invariants, and
-  // principles have somewhere to land on a fresh machine. Deliberately NOT
-  // added to `deployedFiles`: the manifest's file list is what `uninit`
-  // deletes and `update` rewrites, and knowledge the user authored themselves
-  // must survive both. Creating the directory is the whole of Smithy's
-  // involvement — nothing is written into it, ever.
-  reportUserEngravedStore(ensureUserEngravedStore());
 
   // 5d. Orders templates — write canonical default bodies to
   // <manifestDir>/templates/orders/. Provisioning runs BEFORE the manifest-write

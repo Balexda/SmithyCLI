@@ -211,15 +211,15 @@ describe('engraved-recall-rules snippet', () => {
     for (const level of ['user', 'repo', 'project']) {
       expect(content).toContain(`\`${level}\``);
     }
-    expect(content).toContain('~/.smithy/engraved/decisions/');
-    expect(content).toContain('~/.smithy/engraved/invariants/');
-    expect(content).toContain('~/.smithy/engraved/constitution/');
+    expect(content).toContain('~/.smithy/decisions/');
+    expect(content).toContain('~/.smithy/invariants/');
+    expect(content).toContain('~/.smithy/constitution/');
     expect(content).toContain('{{artifactsRoot}}docs/decisions/');
     expect(content).toContain('{{artifactsRoot}}docs/invariants/');
     expect(content).toContain('{{artifactsRoot}}docs/constitution/');
-    expect(content).toContain('~/.smithy/projects/<project>/docs/decisions/');
-    expect(content).toContain('~/.smithy/projects/<project>/docs/invariants/');
-    expect(content).toContain('~/.smithy/projects/<project>/docs/constitution/');
+    expect(content).toContain('~/.smithy/projects/<project>/decisions/');
+    expect(content).toContain('~/.smithy/projects/<project>/invariants/');
+    expect(content).toContain('~/.smithy/projects/<project>/constitution/');
     expect(content).toContain('design/');
     expect(content).not.toContain('{{#ifAgent}}');
   });
@@ -1943,8 +1943,8 @@ describe('getComposedTemplates', () => {
       ]) {
         const command = templates.commands.get(commandName)!;
         expect(command, commandName).toContain('**Scan roots**');
-        expect(command, commandName).toContain('~/.smithy/engraved/decisions/');
-        expect(command, commandName).toContain('~/.smithy/projects/<project>/docs/decisions/');
+        expect(command, commandName).toContain('~/.smithy/decisions/');
+        expect(command, commandName).toContain('~/.smithy/projects/<project>/decisions/');
         // Precedence is stated for the parent, not left to the model.
         expect(command, commandName).toContain('project > repo > user');
         // Severity escalation is deterministic, keyed on the ledger row.
@@ -3983,24 +3983,24 @@ describe('getComposedTemplates', () => {
     // so projection output is byte-identical across runs. Assert the numbered
     // discovery list keeps them in the canonical sequence.
     const order = [
-      '| 1 | user | `~/.smithy/engraved/decisions/` |',
-      '| 2 | user | `~/.smithy/engraved/invariants/` |',
-      '| 3 | user | `~/.smithy/engraved/constitution/` |',
-      '| 4 | user | `~/.smithy/engraved/design/decisions/` |',
-      '| 5 | user | `~/.smithy/engraved/design/invariants/` |',
-      '| 6 | user | `~/.smithy/engraved/design/constitution/` |',
+      '| 1 | user | `~/.smithy/decisions/` |',
+      '| 2 | user | `~/.smithy/invariants/` |',
+      '| 3 | user | `~/.smithy/constitution/` |',
+      '| 4 | user | `~/.smithy/design/decisions/` |',
+      '| 5 | user | `~/.smithy/design/invariants/` |',
+      '| 6 | user | `~/.smithy/design/constitution/` |',
       '| 7 | repo | `docs/decisions/` |',
       '| 8 | repo | `docs/invariants/` |',
       '| 9 | repo | `docs/constitution/` |',
       '| 10 | repo | `docs/design/decisions/` |',
       '| 11 | repo | `docs/design/invariants/` |',
       '| 12 | repo | `docs/design/constitution/` |',
-      '| 13 | project | `~/.smithy/projects/<project>/docs/decisions/` |',
-      '| 14 | project | `~/.smithy/projects/<project>/docs/invariants/` |',
-      '| 15 | project | `~/.smithy/projects/<project>/docs/constitution/` |',
-      '| 16 | project | `~/.smithy/projects/<project>/docs/design/decisions/` |',
-      '| 17 | project | `~/.smithy/projects/<project>/docs/design/invariants/` |',
-      '| 18 | project | `~/.smithy/projects/<project>/docs/design/constitution/` |',
+      '| 13 | project | `~/.smithy/projects/<project>/decisions/` |',
+      '| 14 | project | `~/.smithy/projects/<project>/invariants/` |',
+      '| 15 | project | `~/.smithy/projects/<project>/constitution/` |',
+      '| 16 | project | `~/.smithy/projects/<project>/design/decisions/` |',
+      '| 17 | project | `~/.smithy/projects/<project>/design/invariants/` |',
+      '| 18 | project | `~/.smithy/projects/<project>/design/constitution/` |',
     ];
     let prev = -1;
     for (const entry of order) {

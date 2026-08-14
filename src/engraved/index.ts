@@ -21,7 +21,6 @@ export {
 
 export {
   displayPath,
-  ensureUserEngravedStore,
   listProjectSlugs,
   projectRoot,
   resolveEngravedRoots,

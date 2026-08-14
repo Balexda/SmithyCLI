@@ -33,7 +33,7 @@ describe('user-level engraved store isolation', () => {
       env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
     });
 
-  const engravedRoot = (): string => path.join(fakeHome, '.smithy', 'engraved');
+  const engravedRoot = (): string => path.join(fakeHome, '.smithy');
 
   beforeEach(() => {
     repoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-engraved-repo-'));
@@ -56,18 +56,19 @@ describe('user-level engraved store isolation', () => {
     return file;
   }
 
-  it('init creates the store and never lists it in the manifest', () => {
+  it('init never lists a record directory in the manifest', () => {
     run(['init', '-y']);
-
-    expect(fs.existsSync(engravedRoot())).toBe(true);
 
     const manifest = JSON.parse(
       fs.readFileSync(path.join(repoDir, '.smithy', 'smithy-manifest.json'), 'utf8'),
     ) as ManifestShape;
     const files = Object.values(manifest.files).flat();
     expect(files.length).toBeGreaterThan(0);
+    // The manifest's file list is what `uninit` deletes. With the user store
+    // rooted at `~/.smithy/` itself, its record directories are siblings of
+    // the manifest, so this is the guarantee that keeps them out of reach.
     for (const file of files) {
-      expect(file).not.toContain('engraved');
+      expect(file).not.toMatch(/(^|\/)(decisions|invariants|constitution)\//);
     }
   });
 

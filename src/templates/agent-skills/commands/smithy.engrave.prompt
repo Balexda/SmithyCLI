@@ -632,24 +632,24 @@ and within a level, `system` roots precede `design` roots:
 
 | # | Level | Root |
 |---|-------|------|
-| 1 | user | `~/.smithy/engraved/decisions/` |
-| 2 | user | `~/.smithy/engraved/invariants/` |
-| 3 | user | `~/.smithy/engraved/constitution/` |
-| 4 | user | `~/.smithy/engraved/design/decisions/` |
-| 5 | user | `~/.smithy/engraved/design/invariants/` |
-| 6 | user | `~/.smithy/engraved/design/constitution/` |
+| 1 | user | `~/.smithy/decisions/` |
+| 2 | user | `~/.smithy/invariants/` |
+| 3 | user | `~/.smithy/constitution/` |
+| 4 | user | `~/.smithy/design/decisions/` |
+| 5 | user | `~/.smithy/design/invariants/` |
+| 6 | user | `~/.smithy/design/constitution/` |
 | 7 | repo | `{{artifactsRoot}}docs/decisions/` |
 | 8 | repo | `{{artifactsRoot}}docs/invariants/` |
 | 9 | repo | `{{artifactsRoot}}docs/constitution/` |
 | 10 | repo | `{{artifactsRoot}}docs/design/decisions/` |
 | 11 | repo | `{{artifactsRoot}}docs/design/invariants/` |
 | 12 | repo | `{{artifactsRoot}}docs/design/constitution/` |
-| 13 | project | `~/.smithy/projects/<project>/docs/decisions/` |
-| 14 | project | `~/.smithy/projects/<project>/docs/invariants/` |
-| 15 | project | `~/.smithy/projects/<project>/docs/constitution/` |
-| 16 | project | `~/.smithy/projects/<project>/docs/design/decisions/` |
-| 17 | project | `~/.smithy/projects/<project>/docs/design/invariants/` |
-| 18 | project | `~/.smithy/projects/<project>/docs/design/constitution/` |
+| 13 | project | `~/.smithy/projects/<project>/decisions/` |
+| 14 | project | `~/.smithy/projects/<project>/invariants/` |
+| 15 | project | `~/.smithy/projects/<project>/constitution/` |
+| 16 | project | `~/.smithy/projects/<project>/design/decisions/` |
+| 17 | project | `~/.smithy/projects/<project>/design/invariants/` |
+| 18 | project | `~/.smithy/projects/<project>/design/constitution/` |
 
 Include project rows only when a project slug resolved; a context file that is
 committed to the repo must not name a workstream store that other readers of
@@ -672,8 +672,8 @@ the work at hand.
 
 **user** — true in every repo and project
 
-- ~/.smithy/engraved/decisions/
-- ~/.smithy/engraved/invariants/
+- ~/.smithy/decisions/
+- ~/.smithy/invariants/
 
 **repo** — true for this repo and every workstream in it
 

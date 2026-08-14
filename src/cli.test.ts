@@ -1194,7 +1194,7 @@ describe('CLI status', () => {
      */
     function seedThreeLevels(): void {
       writeHome(
-        '.smithy/engraved/decisions/compute.decision.md',
+        '.smithy/decisions/compute.decision.md',
         `---\nid: U-D-1\nkind: decision\ndomain: system\ntitle: "Compute, do not prompt"\nstatus: accepted\n---\n# Compute, do not prompt\n`,
       );
       write(
@@ -1202,7 +1202,7 @@ describe('CLI status', () => {
         `---\nid: INV-1\nkind: invariant\ndomain: system\ntitle: "Value hierarchies stay single-layer"\nstatus: aligned\nestablished_by: [D-1]\n---\n# Value hierarchies stay single-layer\n\n## Rule\nOne layer.\n\n## Known Exceptions\n\n| Where | What diverges | Disposition + Why | Tracking Issue | Severity |\n|-------|---------------|-------------------|----------------|----------|\n| — | — | — | — | — |\n`,
       );
       writeHome(
-        '.smithy/projects/discount-engine/docs/decisions/three-layer.decision.md',
+        '.smithy/projects/discount-engine/decisions/three-layer.decision.md',
         `---\nid: PJ-D-1\nkind: decision\ndomain: system\ntitle: "Discount engine stays three-layer"\nstatus: accepted\nexcepts: [INV-1]\n---\n# Discount engine stays three-layer\n`,
       );
     }

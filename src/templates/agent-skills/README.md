@@ -69,9 +69,9 @@ filename slug (no registry or identity key), and they sit outside the
 > separate, root-level artifact family — they have **no** `## Dependency
 > Order` row and are not part of the lineage below. They participate in the
 > graph through citation edges only. They are also scoped by **level** rather
-> than by lineage: `user` (`~/.smithy/engraved/`), `repo`
-> (`{{artifactsRoot}}docs/…`), and `project`
-> (`~/.smithy/projects/<project>/docs/…`), with precedence running
+> than by lineage: `user` (`~/.smithy/decisions/`, …), `repo`
+> (`{{artifactsRoot}}docs/decisions/`, …), and `project`
+> (`~/.smithy/projects/<project>/decisions/`, …), with precedence running
 > project > repo > user. The level model — stores, level-prefixed ids,
 > precedence and the `excepts` declared-exception rule, `scope` semantics,
 > cross-level edge legality, citation forms — lives in

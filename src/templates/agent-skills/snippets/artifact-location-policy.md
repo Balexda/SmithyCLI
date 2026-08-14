@@ -29,8 +29,10 @@ Engraved durable knowledge is partitioned by level, and only its **repo** level
 rides `{{artifactsRoot}}`. The other two levels have fixed homes that this
 policy does not move:
 
-- **user** — `~/.smithy/engraved/`, the same in every repo.
-- **project** — `~/.smithy/projects/<project>/docs/...`, keyed by workstream.
+- **user** — `~/.smithy/decisions/`, `~/.smithy/invariants/`,
+  `~/.smithy/constitution/`, the same in every repo.
+- **project** — `~/.smithy/projects/<project>/decisions/` and its siblings,
+  keyed by workstream.
 
 So `{{artifactsRoot}}docs/decisions/` is the repo's decisions and nothing else.
 Reading the other levels means reading their own roots directly.

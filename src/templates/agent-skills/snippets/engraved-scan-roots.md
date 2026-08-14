@@ -7,7 +7,7 @@ govern the same code paths.
 
 | Level | Holds | Store root |
 |-------|-------|------------|
-| `user` | True in every repo and every project you work in | `~/.smithy/engraved/` |
+| `user` | True in every repo and every project you work in | `~/.smithy/` |
 | `repo` | True for this repo and every workstream inside it | {{#ifExternalArtifacts}}`{{artifactsRoot}}`{{else}}the repo root{{/ifExternalArtifacts}} |
 | `project` | True for one named workstream inside a repo | `~/.smithy/projects/<project>/` |
 
@@ -20,15 +20,18 @@ For `system` work, the roots are:
 
 | Level | Decisions | Invariants | Principles |
 |-------|-----------|------------|------------|
-| `user` | `~/.smithy/engraved/decisions/` | `~/.smithy/engraved/invariants/` | `~/.smithy/engraved/constitution/` |
+| `user` | `~/.smithy/decisions/` | `~/.smithy/invariants/` | `~/.smithy/constitution/` |
 | `repo` | `{{artifactsRoot}}docs/decisions/` | `{{artifactsRoot}}docs/invariants/` | `{{artifactsRoot}}docs/constitution/` |
-| `project` | `~/.smithy/projects/<project>/docs/decisions/` | `~/.smithy/projects/<project>/docs/invariants/` | `~/.smithy/projects/<project>/docs/constitution/` |
+| `project` | `~/.smithy/projects/<project>/decisions/` | `~/.smithy/projects/<project>/invariants/` | `~/.smithy/projects/<project>/constitution/` |
 
 For `design` work, insert a `design/` segment before the leaf directory at
-every level — `~/.smithy/engraved/design/decisions/`,
+every level — `~/.smithy/design/decisions/`,
 `{{artifactsRoot}}docs/design/decisions/`,
-`~/.smithy/projects/<project>/docs/design/decisions/`, and so on for
+`~/.smithy/projects/<project>/design/decisions/`, and so on for
 `invariants/` and `constitution/`.
+
+Only the repo level carries a `docs/` segment. That is where in-repo records
+already live, and moving them would break every citation that names one.
 
 Missing roots are normal at every level. A level with no store on disk is
 scanned-and-empty, never an error.

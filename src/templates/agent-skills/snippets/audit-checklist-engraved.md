@@ -12,7 +12,7 @@ re-deriving either by hand.
 
 | Category | What to check |
 |----------|---------------|
-| **Level Placement** | Does the record's `id` prefix agree with the store it sits in — `U-` under `~/.smithy/engraved/`, no prefix under the repo store, `PJ-` under `~/.smithy/projects/<project>/`? The store is authoritative; a mismatch is an id to repair, never a file to move. The JSON reports it as `id_level_mismatch`. |
+| **Level Placement** | Does the record's `id` prefix agree with the store it sits in — `U-` under `~/.smithy/`, no prefix under the repo store, `PJ-` under `~/.smithy/projects/<project>/`? The store is authoritative; a mismatch is an id to repair, never a file to move. The JSON reports it as `id_level_mismatch`. |
 | **Level Fit** | Does the record pass the inclusion test for the level it sits in? A `user`-level record that names a repo, codebase, or product surface to state its rule belongs at `repo`. A `repo`-level record that would not hold for a sibling workstream belongs at `project`. A `project`-level record that would be just as true for a sibling project belongs at `repo`. |
 | **Alignment Derivation** | For invariants: does the declared `status` match what the ledger derives — `drifting` with at least one `Temporary:` row, `aligned` otherwise? `Accepted:` rows alone never flip the status. The JSON reports disagreement as `ledger.status_drift`. |
 | **Ledger Shape** | Is the Known-Exceptions table exactly `Where \| What diverges \| Disposition + Why \| Tracking Issue \| Severity`, in that order? Does every disposition start with the capitalized `Accepted:` or `Temporary:` token? Does an empty ledger carry the single em-dash placeholder row rather than being deleted? |

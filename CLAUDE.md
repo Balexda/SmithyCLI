@@ -173,9 +173,9 @@ planning command can answer *which rules apply to the work in front of me*:
 
 | Level | Store | Holds |
 |-------|-------|-------|
-| `user` | `~/.smithy/engraved/` | True in every repo and project |
+| `user` | `~/.smithy/` (records in `decisions/`, `invariants/`, `constitution/`) | True in every repo and project |
 | `repo` | `{{artifactsRoot}}` (the repo, or its external store) | True for this repo and every workstream in it |
-| `project` | `~/.smithy/projects/<project>/` | True for one named workstream |
+| `project` | `~/.smithy/projects/<project>/` (same three children) | True for one named workstream |
 
 Ids carry the level (`U-D-1`, `D-1`, `PJ-D-1`), so a bare citation names
 exactly one record within a resolution scope. Precedence is
@@ -187,12 +187,18 @@ Supersession never crosses levels. The level model — stores, ids, precedence,
 and is nested by both `smithy.engrave` and the recall rules so the authoring
 and reading sides cannot drift.
 
-**The user store is never managed.** `~/.smithy/engraved/` sits beside
-Smithy's own entries under `~/.smithy/`, but nothing ever adds it to a
+Only the `repo` level carries a `docs/` segment (`{{artifactsRoot}}docs/decisions/`),
+because that is where in-repo records already live and moving them would break
+every citation naming one. The two home-anchored stores sit their records
+directly under the store root.
+
+**The user store is never managed.** Its record directories are siblings of
+Smithy's own entries under `~/.smithy/`, but nothing ever adds one to a
 manifest's `files` array — which is what `uninit` deletes and `update`
-rewrites. `smithy init` creates the directory and stops there.
-`src/engraved/engraved-store.test.ts` drives the real CLI through
-init/update/uninit to lock that.
+rewrites. Nothing provisions them either: `smithy.engrave` creates the leaf it
+writes into, so a level with no records reports itself absent instead of
+looking present forever. `src/engraved/engraved-store.test.ts` drives the real
+CLI through init/update/uninit to lock the isolation guarantee.
 
 **Reading them.** `smithy status --engraved` inventories all three levels
 (`--project <slug>` to name a workstream, `--format json` for the machine

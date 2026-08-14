@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
-  ensureUserEngravedStore,
   hasStatusDrift,
   levelFromId,
   listProjectSlugs,
@@ -88,11 +87,11 @@ describe('engraved level roots', () => {
     fs.rmSync(fakeHome, { recursive: true, force: true });
   });
 
-  it('puts the user store beside — never inside — the managed entries', () => {
-    // `~/.smithy/` also holds `smithy-manifest.json` and `templates/`, both of
-    // which `uninit` clears. The user's own knowledge gets its own segment so
-    // no manifest path can ever name it.
-    expect(userEngravedRoot()).toBe(path.join(fakeHome, '.smithy', 'engraved'));
+  it('roots the user store at ~/.smithy itself', () => {
+    // Record directories are siblings of `smithy-manifest.json` and
+    // `templates/`, both of which `uninit` clears. Safety comes from nothing
+    // ever listing a record in the manifest, not from a separate segment.
+    expect(userEngravedRoot()).toBe(path.join(fakeHome, '.smithy'));
   });
 
   it('rides the artifacts root for the repo level so planning and knowledge stay together', () => {
@@ -115,6 +114,24 @@ describe('engraved level roots', () => {
     ]);
   });
 
+  it('gives only the repo level a docs/ segment', () => {
+    // `docs/decisions/` is where in-repo records already live, so the repo
+    // level keeps it; the two home-anchored stores sit records directly under
+    // their own root.
+    const levels = resolveEngravedRoots(workdir, { project: 'discount-engine' });
+    const relPathsFor = (level: string): string[] =>
+      levels.find((l) => l.level === level)!.dirs.map((d) => d.relPath);
+
+    expect(relPathsFor('user')[0]).toBe('decisions');
+    expect(relPathsFor('repo')[0]).toBe('docs/decisions');
+    expect(relPathsFor('project')[0]).toBe('decisions');
+
+    const project = levels.find((l) => l.level === 'project')!;
+    expect(project.dirs[0]!.path).toBe(
+      path.join(fakeHome, '.smithy', 'projects', 'discount-engine', 'decisions'),
+    );
+  });
+
   it('omits the project level entirely when no project resolves', () => {
     expect(resolveEngravedRoots(workdir).map((l) => l.level)).toEqual(['user', 'repo']);
   });
@@ -132,13 +149,6 @@ describe('engraved level roots', () => {
     // Guessing wrong here would plan a workstream against a sibling's rules,
     // which is worse than planning with no project level at all.
     expect(resolveProject('pedregal')).toBe('pedregal');
-  });
-
-  it('creates the user store idempotently and never throws', () => {
-    const first = ensureUserEngravedStore();
-    expect(first.created).toBe(true);
-    expect(fs.existsSync(first.root)).toBe(true);
-    expect(ensureUserEngravedStore().created).toBe(false);
   });
 });
 
@@ -206,7 +216,7 @@ describe('scanEngraved', () => {
    */
   function seedDrivingCase(): void {
     write(
-      path.join(fakeHome, '.smithy', 'engraved', 'decisions', 'compute.decision.md'),
+      path.join(fakeHome, '.smithy', 'decisions', 'compute.decision.md'),
       decision('U-D-1', 'Compute, do not prompt'),
     );
     write(
@@ -214,7 +224,7 @@ describe('scanEngraved', () => {
       invariant('INV-1', 'Value hierarchies stay single-layer', '| — | — | — | — | — |'),
     );
     write(
-      path.join(fakeHome, '.smithy', 'projects', 'discount-engine', 'docs', 'decisions', 'three-layer.decision.md'),
+      path.join(fakeHome, '.smithy', 'projects', 'discount-engine', 'decisions', 'three-layer.decision.md'),
       decision('PJ-D-1', 'Discount engine stays three-layer', 'excepts: [INV-1]\n'),
     );
   }

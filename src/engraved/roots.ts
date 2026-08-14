@@ -15,34 +15,41 @@ import type {
  *
  * Three stores, one per level:
  *
- *   user    → `~/.smithy/engraved/`
+ *   user    → `~/.smithy/`, with records in its `decisions/` / `invariants/` /
+ *             `constitution/` children
  *   repo    → the install's artifacts root — the repo itself in the default
  *             in-repo mode, or `~/.smithy/repos/<repoKey>/` when the install
- *             chose an external store
- *   project → `~/.smithy/projects/<slug>/`
+ *             chose an external store — with records under its `docs/`
+ *   project → `~/.smithy/projects/<slug>/`, records in its `decisions/` /
+ *             `invariants/` / `constitution/` children
  *
  * The repo level rides the same `artifactsRoot` seam as every other planning
  * artifact, so an install that moved its planning out of the repo does not end
- * up with its decisions in one place and its specs in another.
+ * up with its decisions in one place and its specs in another. It keeps the
+ * `docs/` segment the other two drop, because `docs/decisions/` is where
+ * in-repo records already live and moving them would break every existing
+ * citation.
  *
  * ## The user store is never managed
  *
- * `~/.smithy/engraved/` sits beside Smithy's own managed entries under
- * `~/.smithy/` (`smithy-manifest.json`, `templates/`, `repos/`, `projects/`),
- * and the difference matters: everything in the manifest's `files` array is
- * deployed by `init` / `update` and **deleted** by `uninit`. Records the user
- * authored themselves must never take that path.
+ * The user store *is* `~/.smithy/`, so its record directories are siblings of
+ * Smithy's own managed entries (`smithy-manifest.json`, `templates/`,
+ * `repos/`, `projects/`), and the difference matters: everything in the
+ * manifest's `files` array is deployed by `init` / `update` and **deleted** by
+ * `uninit`. Records the user authored themselves must never take that path.
  *
  * The guarantee is structural, not a convention: nothing in this module or in
  * `init` ever adds an engraved path to a manifest, `uninit` removes only
  * manifest-listed files plus a closed list of legacy filenames (none of which
- * is under `engraved/`), and `removeStaleFiles` iterates the old manifest
+ * is a record directory), and `removeStaleFiles` iterates the old manifest
  * rather than the directory. `smithy uninit` therefore cannot reach the user's
  * global knowledge, on any code path. `engraved-store.test.ts` locks that.
+ *
+ * Nothing provisions these directories ahead of time. `smithy.engrave` creates
+ * the leaf it is writing into, and until then the level reports itself absent
+ * — which is the honest answer, and one the inventory would lose if `init`
+ * created empty directories that made every level look present forever.
  */
-
-/** Reserved segment under `~/.smithy/` holding user-level engraved records. */
-const ENGRAVED_DIR = 'engraved';
 
 const PROJECTS_DIR = 'projects';
 
@@ -84,9 +91,12 @@ export interface EngravedLevelRoots {
   project?: string;
 }
 
-/** Absolute path to the user-level engraved store. */
+/**
+ * Absolute path to the user-level engraved store — `~/.smithy/` itself, whose
+ * `decisions/` / `invariants/` / `constitution/` children hold the records.
+ */
 export function userEngravedRoot(): string {
-  return path.join(os.homedir(), '.smithy', ENGRAVED_DIR);
+  return path.join(os.homedir(), '.smithy');
 }
 
 /** Absolute path to a named project's store. */
@@ -137,8 +147,9 @@ export function resolveProject(explicit?: string | undefined): string | null {
  * The record directories under `storeRoot`, in deterministic order:
  * system decisions / invariants / constitution, then the same three under
  * `design/`. `subtree` is the path between the store root and the record
- * directories — `docs` for the repo and project stores, empty for the user
- * store, which is already an engraved-only directory.
+ * directories — `docs` for the repo store, where in-repo records already live,
+ * and empty for the user and project stores, which sit them directly under the
+ * store root.
  */
 function dirsUnder(storeRoot: string, subtree: string[]): EngravedDir[] {
   const dirs: EngravedDir[] = [];
@@ -205,29 +216,10 @@ export function resolveEngravedRoots(
       level: 'project',
       root,
       displayRoot: displayPath(root),
-      dirs: dirsUnder(root, ['docs']),
+      dirs: dirsUnder(root, []),
       project,
     });
   }
 
   return levels;
-}
-
-/**
- * Create the user-level engraved store if it is missing. Called by `init` so
- * the store exists to write into on a fresh machine.
- *
- * Never registers anything in a manifest — see the module header. Never
- * throws: a home directory that cannot be written is a reason to skip the
- * store, not to fail an install that has nothing else to do with it.
- */
-export function ensureUserEngravedStore(): { root: string; created: boolean; warning?: string } {
-  const root = userEngravedRoot();
-  try {
-    const created = !fs.existsSync(root);
-    fs.mkdirSync(root, { recursive: true });
-    return { root, created };
-  } catch (err) {
-    return { root, created: false, warning: (err as Error).message };
-  }
 }
