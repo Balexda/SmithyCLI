@@ -6,10 +6,14 @@ import type {
   ToolUse,
 } from './types.js';
 
-interface UsageObservation {
-  dispatchId?: string | undefined;
-  input?: number | undefined;
-  output?: number | undefined;
+interface TokenPair {
+  input: number;
+  output: number;
+}
+
+interface DispatchUsage {
+  dispatchId: string;
+  usage: TokenPair;
 }
 
 const DISPATCH_TOOL_NAMES = new Set(['Agent', 'invoke_agent']);
@@ -17,27 +21,58 @@ const DISPATCH_TOOL_NAMES = new Set(['Agent', 'invoke_agent']);
 /**
  * Extract normalized token usage records that are reliably tied to a known
  * sub-agent dispatch by stable dispatch identifier.
+ *
+ * A dispatch reports usage in one of two shapes, and they are not additive:
+ *
+ * 1. On completion, the `tool_result` event carries `tool_use_result.usage`,
+ *    which is the authoritative total for the whole dispatch (its token fields
+ *    sum to the sibling `totalTokens`). This is preferred whenever present.
+ * 2. While in flight, the sub-agent's own assistant turns carry message-level
+ *    usage. These are only a partial view, so they are used solely as a
+ *    fallback for dispatches that never produced a completion record.
  */
 export function extractDispatchUsageRecords(
   events: StreamEvent[],
 ): DispatchUsageRecord[] {
-  const dispatches = new Map(
-    extractToolUses(events)
-      .filter(isSubAgentDispatch)
-      .filter((toolUse) => typeof toolUse.id === 'string' && toolUse.id.length > 0)
-      .map((toolUse) => [toolUse.id, displayNameForDispatch(toolUse)]),
-  );
+  const dispatches = indexDispatches(events);
+  const completed = new Map<string, TokenPair>();
+  const inFlight = new Map<string, TokenPair>();
+  const seenSnapshots = new Set<string>();
 
-  return events.flatMap((event) => {
-    const observation = observeDispatchUsage(event, dispatches);
-    if (!observation?.dispatchId) return [];
+  events.forEach((event, index) => {
+    const completion = observeCompletedUsage(event, dispatches);
+    if (completion) {
+      completed.set(completion.dispatchId, completion.usage);
+      return;
+    }
+
+    const snapshot = observeInFlightUsage(event, dispatches);
+    if (!snapshot) return;
+
+    // One assistant message is re-emitted once per content block and repeats
+    // the same message-level usage on every copy, so count each message once.
+    const messageKey = messageId(event) ?? `event-${index}`;
+    const snapshotKey = `${snapshot.dispatchId}:${messageKey}`;
+    if (seenSnapshots.has(snapshotKey)) return;
+    seenSnapshots.add(snapshotKey);
+
+    const running = inFlight.get(snapshot.dispatchId) ?? { input: 0, output: 0 };
+    inFlight.set(snapshot.dispatchId, {
+      input: running.input + snapshot.usage.input,
+      output: running.output + snapshot.usage.output,
+    });
+  });
+
+  return [...dispatches.entries()].flatMap(([dispatchId, agent]) => {
+    const usage = completed.get(dispatchId) ?? inFlight.get(dispatchId);
+    if (!usage) return [];
 
     return [
       {
-        dispatch_id: observation.dispatchId,
-        agent: dispatches.get(observation.dispatchId) ?? fallbackDisplayName(observation.dispatchId),
-        input: observation.input ?? 0,
-        output: observation.output ?? 0,
+        dispatch_id: dispatchId,
+        agent,
+        input: usage.input,
+        output: usage.output,
       },
     ];
   });
@@ -75,21 +110,62 @@ export function extractSubAgentTokenTotals(
     }));
 }
 
-function observeDispatchUsage(
+/** Map every observed sub-agent dispatch id to its stable display name. */
+function indexDispatches(events: StreamEvent[]): Map<string, string> {
+  return new Map(
+    extractToolUses(events)
+      .filter(isSubAgentDispatch)
+      .filter((toolUse) => typeof toolUse.id === 'string' && toolUse.id.length > 0)
+      .map((toolUse) => [toolUse.id, displayNameForDispatch(toolUse)]),
+  );
+}
+
+/**
+ * Read the authoritative usage a finished dispatch reports on its tool_result
+ * event. The dispatch id lives on the `tool_result` content block rather than
+ * at the top level of the event.
+ */
+function observeCompletedUsage(
   event: StreamEvent,
   dispatches: Map<string, string>,
-): UsageObservation | null {
-  const usage = getUsageObject(event);
+): DispatchUsage | null {
+  const result = event['tool_use_result'];
+  if (!isRecord(result)) return null;
+
+  const usage = normalizeTokens(result['usage']);
+  if (!usage) return null;
+
+  const dispatchId = completedDispatchId(event, dispatches);
+  if (!dispatchId) return null;
+
+  return { dispatchId, usage };
+}
+
+function observeInFlightUsage(
+  event: StreamEvent,
+  dispatches: Map<string, string>,
+): DispatchUsage | null {
+  const usage = normalizeTokens(getUsageObject(event));
   if (!usage) return null;
 
   const dispatchId = getDispatchId(event, dispatches);
   if (!dispatchId) return null;
 
-  const input = normalizeTokenCount(usage['input_tokens']);
-  const output = normalizeTokenCount(usage['output_tokens']);
-  if (input === undefined && output === undefined) return null;
+  return { dispatchId, usage };
+}
 
-  return { dispatchId, input, output };
+function completedDispatchId(
+  event: StreamEvent,
+  dispatches: Map<string, string>,
+): string | undefined {
+  for (const block of contentBlocks(event)) {
+    const toolUseId = block['tool_use_id'];
+    if (typeof toolUseId === 'string' && dispatches.has(toolUseId)) {
+      return toolUseId;
+    }
+  }
+
+  return getDispatchId(event, dispatches);
 }
 
 function getDispatchId(
@@ -107,6 +183,17 @@ function getDispatchId(
   }
 
   return undefined;
+}
+
+function contentBlocks(event: StreamEvent): Record<string, unknown>[] {
+  if (!isRecord(event.message)) return [];
+  const content = event.message['content'];
+  return Array.isArray(content) ? content.filter(isRecord) : [];
+}
+
+function messageId(event: StreamEvent): string | undefined {
+  if (!isRecord(event.message)) return undefined;
+  return stringField(event.message['id']);
 }
 
 function getUsageObject(event: StreamEvent): Record<string, unknown> | null {
@@ -127,12 +214,17 @@ function isSubAgentDispatch(toolUse: ToolUse): boolean {
   return DISPATCH_TOOL_NAMES.has(toolUse.name);
 }
 
+/**
+ * Prefer the stable sub-agent type over the per-dispatch task label so
+ * repeated dispatches of one sub-agent aggregate into a single row.
+ */
 function displayNameForDispatch(toolUse: ToolUse): string {
-  const configuredName =
-    toolUse.name === 'invoke_agent'
-      ? stringField(toolUse.input['agent_name'])
-      : stringField(toolUse.input['description']);
-  return configuredName ?? fallbackDisplayName(toolUse.id);
+  return (
+    stringField(toolUse.input['subagent_type']) ??
+    stringField(toolUse.input['agent_name']) ??
+    stringField(toolUse.input['description']) ??
+    fallbackDisplayName(toolUse.id)
+  );
 }
 
 function fallbackDisplayName(dispatchId: string): string {
@@ -143,6 +235,17 @@ function stringField(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/** Malformed token fields are dropped rather than coerced. */
+function normalizeTokens(usage: unknown): TokenPair | null {
+  if (!isRecord(usage)) return null;
+
+  const input = normalizeTokenCount(usage['input_tokens']);
+  const output = normalizeTokenCount(usage['output_tokens']);
+  if (input === undefined && output === undefined) return null;
+
+  return { input: input ?? 0, output: output ?? 0 };
 }
 
 function normalizeTokenCount(value: unknown): number | undefined {

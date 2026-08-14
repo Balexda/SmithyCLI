@@ -1,9 +1,22 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { parseStreamString } from './parse-stream.js';
 import {
   extractDispatchUsageRecords,
   extractSubAgentTokenTotals,
 } from './sub-agent-token-attribution.js';
 import type { StreamEvent } from './types.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const capturesDir = path.resolve(here, '..', 'captures');
+
+function loadCapture(name: string): StreamEvent[] {
+  return parseStreamString(
+    fs.readFileSync(path.resolve(capturesDir, `${name}.events.jsonl`), 'utf8'),
+  );
+}
 
 function dispatchEvent(
   id: string,
@@ -35,6 +48,36 @@ function usageEvent(
     [relationship]: dispatchId,
     message: {
       content: [{ type: 'text', text: 'sub-agent output' }],
+      usage,
+    },
+  };
+}
+
+/**
+ * The completion shape a finished Claude Agent dispatch emits: a user
+ * `tool_result` event carrying the dispatch id on the content block and the
+ * authoritative usage under `tool_use_result.usage`.
+ */
+function completionEvent(
+  dispatchId: string,
+  usage: Record<string, unknown>,
+): StreamEvent {
+  return {
+    type: 'user',
+    parent_tool_use_id: null,
+    message: {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: dispatchId,
+          content: [{ type: 'text', text: 'sub-agent report' }],
+        },
+      ],
+    },
+    tool_use_result: {
+      status: 'completed',
+      agentType: 'smithy-scout',
       usage,
     },
   };
@@ -133,6 +176,101 @@ describe('extractDispatchUsageRecords', () => {
       },
     ]);
   });
+
+  it('reads the authoritative usage a completed dispatch reports on tool_use_result', () => {
+    const events: StreamEvent[] = [
+      dispatchEvent('toolu_agent_1', {
+        subagent_type: 'smithy-scout',
+        description: 'Scout repo',
+      }),
+      completionEvent('toolu_agent_1', {
+        input_tokens: 1,
+        output_tokens: 435,
+        cache_read_input_tokens: 4467,
+      }),
+    ];
+
+    expect(extractDispatchUsageRecords(events)).toEqual([
+      {
+        dispatch_id: 'toolu_agent_1',
+        agent: 'smithy-scout',
+        input: 1,
+        output: 435,
+      },
+    ]);
+  });
+
+  it('prefers completion usage over in-flight snapshots instead of summing both', () => {
+    const events: StreamEvent[] = [
+      dispatchEvent('toolu_agent_1', { subagent_type: 'smithy-scout' }),
+      usageEvent('toolu_agent_1', { input_tokens: 3, output_tokens: 1 }),
+      completionEvent('toolu_agent_1', { input_tokens: 1, output_tokens: 435 }),
+    ];
+
+    expect(extractDispatchUsageRecords(events)).toEqual([
+      {
+        dispatch_id: 'toolu_agent_1',
+        agent: 'smithy-scout',
+        input: 1,
+        output: 435,
+      },
+    ]);
+  });
+
+  it('counts a repeated message-level usage snapshot only once', () => {
+    const repeated = (): StreamEvent => ({
+      type: 'assistant',
+      parent_tool_use_id: 'toolu_agent_1',
+      message: {
+        id: 'msg_shared',
+        content: [{ type: 'tool_use', name: 'Read', id: 'toolu_read', input: {} }],
+        usage: { input_tokens: 6, output_tokens: 1 },
+      },
+    });
+
+    const events: StreamEvent[] = [
+      dispatchEvent('toolu_agent_1', { subagent_type: 'smithy-plan' }),
+      repeated(),
+      repeated(),
+      repeated(),
+    ];
+
+    expect(extractDispatchUsageRecords(events)).toEqual([
+      {
+        dispatch_id: 'toolu_agent_1',
+        agent: 'smithy-plan',
+        input: 6,
+        output: 1,
+      },
+    ]);
+  });
+
+  it('still sums distinct in-flight messages for one dispatch', () => {
+    const turn = (id: string, input: number, output: number): StreamEvent => ({
+      type: 'assistant',
+      parent_tool_use_id: 'toolu_agent_1',
+      message: {
+        id,
+        content: [{ type: 'text', text: 'work' }],
+        usage: { input_tokens: input, output_tokens: output },
+      },
+    });
+
+    const events: StreamEvent[] = [
+      dispatchEvent('toolu_agent_1', { subagent_type: 'smithy-plan' }),
+      turn('msg_a', 6, 1),
+      turn('msg_b', 4, 2),
+    ];
+
+    expect(extractDispatchUsageRecords(events)).toEqual([
+      {
+        dispatch_id: 'toolu_agent_1',
+        agent: 'smithy-plan',
+        input: 10,
+        output: 3,
+      },
+    ]);
+  });
 });
 
 describe('extractSubAgentTokenTotals', () => {
@@ -166,6 +304,30 @@ describe('extractSubAgentTokenTotals', () => {
         agent: 'Scout repo',
         input: 17,
         output: 5,
+        dispatch_count: 2,
+      },
+    ]);
+  });
+
+  it('groups repeated dispatches by stable subagent_type, not the per-dispatch label', () => {
+    const events: StreamEvent[] = [
+      dispatchEvent('toolu_agent_1', {
+        subagent_type: 'smithy-plan',
+        description: 'Simplification lens plan',
+      }),
+      dispatchEvent('toolu_agent_2', {
+        subagent_type: 'smithy-plan',
+        description: 'Robustness lens plan',
+      }),
+      completionEvent('toolu_agent_1', { input_tokens: 1, output_tokens: 1834 }),
+      completionEvent('toolu_agent_2', { input_tokens: 1, output_tokens: 3181 }),
+    ];
+
+    expect(extractSubAgentTokenTotals(events)).toEqual([
+      {
+        agent: 'smithy-plan',
+        input: 2,
+        output: 5015,
         dispatch_count: 2,
       },
     ]);
@@ -233,6 +395,32 @@ describe('extractSubAgentTokenTotals', () => {
         output: 0,
         dispatch_count: 1,
       },
+    ]);
+  });
+});
+
+describe('committed captures', () => {
+  it('attributes the scout capture to its completed dispatch total', () => {
+    // scout-fixture-shallow.events.jsonl:19 reports the dispatch's own
+    // authoritative usage under tool_use_result.usage.
+    expect(extractSubAgentTokenTotals(loadCapture('scout-fixture-shallow'))).toEqual([
+      {
+        agent: 'smithy-scout',
+        input: 1,
+        output: 435,
+        dispatch_count: 1,
+      },
+    ]);
+  });
+
+  it('aggregates the strike capture by sub-agent type', () => {
+    // Three smithy-plan dispatches carry distinct per-dispatch descriptions and
+    // must still collapse into one row.
+    expect(extractSubAgentTokenTotals(loadCapture('strike-health-check'))).toEqual([
+      { agent: 'smithy-clarify', input: 1, output: 1981, dispatch_count: 1 },
+      { agent: 'smithy-plan', input: 3, output: 8626, dispatch_count: 3 },
+      { agent: 'smithy-plan-review', input: 1, output: 3570, dispatch_count: 1 },
+      { agent: 'smithy-reconcile', input: 1, output: 4930, dispatch_count: 1 },
     ]);
   });
 });
