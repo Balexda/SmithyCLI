@@ -115,7 +115,7 @@
 
 ### Tasks
 
-- [ ] **Add flow-lint usage documentation**
+- [x] **Add flow-lint usage documentation**
 
   Update source documentation for Smithy commands or agent skills to describe `flow-lint` as the deterministic check for UI screen/flow/test graph integrity. The documentation should state what artifacts it scans, what failures it catches, and how it fits into app CI.
 
@@ -126,7 +126,7 @@
   - Documentation frames the command as suitable for app CI
   - Documentation does not require forge to run first
 
-- [ ] **Align helper-skill validation references**
+- [x] **Align helper-skill validation references**
 
   Refresh the screen and flow helper source templates only where needed so their audit/checklist text points to `flow-lint` as the cross-reference validator. Keep helper bodies self-contained and avoid source-tree-only path references in deployable text.
 
@@ -137,7 +137,7 @@
   - No source-only README path is referenced from deployable templates
   - `.claude/` snapshots and `.smithy/` manifests are not regenerated
 
-- [ ] **Provide CI wiring examples without owning app configuration**
+- [x] **Provide CI wiring examples without owning app configuration**
 
   Add a minimal CI invocation example or command note in source documentation so app maintainers can adopt the check in their own pipeline. Keep the example generic enough for different CI providers and avoid adding generated workflow files to target apps.
 

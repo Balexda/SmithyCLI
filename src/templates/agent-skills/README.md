@@ -729,6 +729,49 @@ review checklist. The audit checks the `screens` references, `test-body` path,
 and intent-only body rule; executable path consistency across the full app tree
 remains the job of `flow-lint`.
 
+## Flow-Lint
+
+`smithy flow-lint` is the deterministic app-repo check for durable UI graph
+integrity. It scans `design/screens/*.design.md` screen annotations,
+`design/flows/*.flow.md` flow definitions, and the paired executable test bodies
+named by each flow's `test-body:` field. The command runs from a repo root or
+subpath, does not require `smithy.forge` or any Smithy runtime state to run
+first, and performs no agent work.
+
+Use it locally before shipping UI graph changes, and wire the same command into
+app CI so broken product paths fail with a clear diagnostic:
+
+```bash
+smithy flow-lint
+```
+
+For CI jobs that run from a parent directory or monorepo root, pass the app
+path explicitly:
+
+```bash
+smithy flow-lint path/to/app
+```
+
+`flow-lint` fails on dangling `screens:` references, missing paired
+`test-body:` files, orphan test bodies within the configured flow-test scope,
+duplicate `ScreenId` values, duplicate `FlowId` values, and duplicate
+test-body ownership. Smithy documents the command and exposes it through the
+CLI; it does not generate app workflow files or own a particular CI provider's
+configuration.
+
+Orphan detection — an executable test body whose `.flow.md` was removed or
+renamed — is the one check that needs a scope, because `test-body:` paths are
+driver-neutral and blind-scanning a project's test tree would flag unrelated
+tests. Point `--flow-test-root` at the directory holding the flow test bodies
+when the project does not use the conventional `maestro/flows` location:
+
+```bash
+smithy flow-lint --flow-test-root tests/e2e
+```
+
+Without a resolvable flow-test root the orphan scan reports as not-run; every
+other check still runs.
+
 ## Sub-Agent Model Tiers
 
 Sub-agents declare how much model horsepower they need with a provider-neutral
