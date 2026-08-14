@@ -176,40 +176,7 @@ Store this value for later.
 
 ### Typed UI Node Build Profiles
 
-When the target `.tasks.md` file carries a `**Node Kind**:` metadata line from
-a typed UI ledger, select the build profile before executing the slice tasks.
-This routing changes the implementation profile only; branch handling, review,
-documentation, validation, and PR creation stay the same as ordinary forge work.
-
-- **`SC<N>` / `screen-build` tasks** select the screen-build forge profile.
-  Read the referenced `design/screens/<ScreenId>.design.md` before editing any
-  implementation files and treat it as mark-owned durable screen intent. Preload
-  the committed design skill named by the screen artifact's `design_system`
-  metadata as implementation dialect context. If the screen artifact is missing
-  or does not name a design skill, stop instead of inventing downstream design
-  truth.
-- Build the screen component at the artifact's `component-path`, or the
-  project-equivalent path named by the task plan, using the target project's
-  existing UI framework and component conventions. Gate generated screen work
-  behind the feature `flag` carried by the task plan or design metadata.
-- Use mock data for screen-build work. Backend story implementation is not
-  required for a screen-build slice, even when later flow-wire work will connect
-  real data.
-- Represent every brief state named by the screen intent. Use design-system
-  tokens and reusable project components for styling; do not introduce hardcoded
-  colors or one-off style constants when a project token or component convention
-  exists.
-- Honor an attached `bundle` for layout and visual intent under the conflict
-  rule: bundle wins layout/visual intent, while the design skill remains
-  authoritative for implementation dialect and project conventions. `brief`
-  mode without a bundle and `none` mode are non-blocking; build from the design
-  skill and the `.design.md` intent without waiting for a prototype.
-- Refuse to author a new `.design.md` from scratch, and do not modify
-  `.design.md` or `.flow.md` files as part of screen-build work. Those durable
-  artifacts originate at `mark`; `forge` consumes them.
-
-For non-screen node kinds, follow the selected task plan and existing forge
-mechanics; do not apply screen-build rules to `FL<N>` or `US<N>` work.
+{{>typed-ui-build-profiles}}
 
 Execute each task from the slice's checklist **in order**:
 
@@ -223,6 +190,10 @@ For each task, use the **smithy-implement** sub-agent. Pass it:
 - **Slice goal**: The slice's stated goal
 - **File paths**: The spec, contracts, data-model, and tasks/strike file paths
 - **Branch**: The current branch name
+
+The sub-agent carries the same typed UI build profiles as this prompt and reads
+the node metadata from the tasks file you pass it, so a dispatched screen-build
+task applies the profile itself — you do not need to restate it in the task text.
 
 After the sub-agent returns:
 
