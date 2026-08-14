@@ -100,6 +100,21 @@ describe('loadScenarios', () => {
       ]);
     });
 
+    it('loads and can select the offline smithy.fix fixture scenario by name', () => {
+      const scenarios = loadScenarios(realCasesDir);
+      const matches = scenarios.filter((s) => s.name === 'fix-from-issue');
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0]!.skill).toBe('/smithy.fix');
+      expect(matches[0]!.local_fixtures).toEqual({
+        issue: validIssueFixture,
+        ci_log: validCiLogFixture,
+      });
+      expect(matches[0]!.prompt).toContain('{{issue_path}}');
+      expect(matches[0]!.prompt).toContain('{{ci_log_path}}');
+      expect(matches[0]!.prompt).not.toMatch(/fetch live|gh issue|gh run|GitHub Actions/i);
+    });
+
     it('preserves a boolean requires_git flag when present', () => {
       const dir = mkdir();
       const content = [

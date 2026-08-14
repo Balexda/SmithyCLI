@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+import { fileURLToPath } from 'node:url';
 
 import type { EvalScenario, StreamEvent } from './types.js';
 
@@ -23,6 +24,7 @@ vi.mock('node:child_process', () => ({
 // Import after mock is declared so the module picks up the mocked version.
 const { spawn, execFileSync } = await import('node:child_process');
 const { runScenario, preflight, hashDirectory } = await import('./runner.js');
+const { loadScenarioFromFile } = await import('./scenario-loader.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -165,6 +167,9 @@ function createFixtureWithLocalEvidence(): { dir: string; cleanup: () => void } 
   );
   return fixture;
 }
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..');
 
 // ---------------------------------------------------------------------------
 // Test setup
@@ -477,6 +482,40 @@ describe('runScenario', () => {
     } finally {
       fixture.cleanup();
     }
+  });
+
+  it('renders the real fix-from-issue scenario from local evidence without credential requirements', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+    vi.mocked(spawn).mockReturnValue(child as never);
+
+    const scenario = loadScenarioFromFile(
+      path.join(repoRoot, 'evals/cases/fix-from-issue.yaml'),
+    );
+
+    await runScenario(
+      scenario,
+      path.join(repoRoot, 'evals/fixture'),
+      'claude',
+      path.join(repoRoot, 'evals/fixture'),
+    );
+
+    const call = vi.mocked(spawn).mock.calls[0]!;
+    const args = call[1] as string[];
+    const invocation = args[6]!;
+
+    expect(invocation).toContain('/smithy.fix ');
+    expect(invocation).toContain('Issue fixture: issues/fix-from-issue-health-check.md');
+    expect(invocation).toContain('CI log fixture: ci-logs/fix-from-issue-health-check.log');
+    expect(invocation).toContain('using only the repository-local evidence');
+    // The scenario's own prompt is what guarantees the `## Diagnosis` heading
+    // that `structural_expectations.required_headings` matches on whole-line
+    // equality -- the smithy.fix template mandates no ATX heading.
+    expect(invocation).toContain('`## Diagnosis` heading');
+    expect(scenario.structural_expectations.required_headings).toContain('## Diagnosis');
+    expect(invocation).not.toContain('{{issue_path}}');
+    expect(invocation).not.toContain('{{ci_log_path}}');
+    expect(invocation).not.toMatch(/\bGH_TOKEN\b|\bGITHUB_TOKEN\b|gh issue|gh run|GitHub Actions/i);
   });
 
   it('fails before spawning when a declared local fixture is missing from the temp copy', async () => {
