@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Declare token envelope baseline types**
+- [x] **Declare token envelope baseline types**
 
   Extend the eval baseline model in `evals/lib/types.ts` with the optional token envelope shape from the data model. Reuse the existing token-total terminology so live results and committed bounds describe the same input and output dimensions.
 
@@ -28,7 +28,7 @@
   - `Baseline` accepts an optional token envelope without requiring it.
   - Existing type exports remain import-compatible for current eval modules.
 
-- [ ] **Validate token envelopes during baseline loading**
+- [x] **Validate token envelopes during baseline loading**
 
   Update `loadBaseline` in `evals/lib/baseline.ts` so structural-only baselines still load, valid token envelopes are preserved, and malformed token bounds reject the baseline instead of producing misleading drift checks.
 
