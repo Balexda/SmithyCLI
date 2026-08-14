@@ -233,21 +233,23 @@ Use the **smithy-implementation-review** sub-agent. Pass it:
 - **Raw diff**: The full diff output
 
 `smithy-implementation-review` is **read-only**. It returns a `ReviewResult`
-containing a list of `Finding` entries (`category`, `severity`, `confidence`,
-`description`, `artifact_path`, `proposed_fix`) and a summary. It does not
-modify files, run commands, or create commits — forge owns every on-disk
-change and commit resulting from a finding.
+containing a list of `Finding` entries (`category`, `kind`, `severity`,
+`confidence`, `description`, `artifact_path`, `proposed_fix`) and a summary.
+It does not modify files, run commands, or create commits — forge owns every
+on-disk change and commit resulting from a finding.
 
-Process each returned finding using the severity × confidence triage table
-from the shared review protocol:
+Process each returned finding using the kind × severity × confidence triage
+table from the shared review protocol. Read `kind` first: only a `steering`
+finding — one where a human must choose between named alternatives and the
+choice changes what gets built — can become specification debt.
 
-| Severity | Confidence | Forge action |
-|----------|------------|--------------|
-| Critical | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
-| Critical | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section. |
-| Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
-| Important | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section. |
-| Minor | Any | Do not apply and do not record as debt. Note in forge's terminal-output **Review Summary** deliverable so the user sees it; do not add to the PR body. |
+| Kind | Severity | Confidence | Forge action |
+|------|----------|------------|--------------|
+| Any | Critical or Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
+| `steering` | Critical or Important | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section. |
+| `implementation` | Critical or Important | Low | Do not apply and do not record as debt. Append an `IQ-NNN` row to the tasks file's `## Open Implementation Questions` section when the slice came from a `.tasks.md`; otherwise note it in the **Review Summary**. |
+| `hygiene` | Critical or Important | Low | Do not apply and do not record as debt. Note in the **Review Summary** so the user can settle the correction directly. |
+| Any | Minor | Any | Do not apply and do not record as debt. Note in forge's terminal-output **Review Summary** deliverable so the user sees it; do not add to the PR body. |
 
 "Slice planning artifact" above means the `.tasks.md`, `.strike.md`,
 `.spec.md`, or equivalent planning file associated with the slice you were
@@ -264,8 +266,9 @@ When applying a High-confidence fix:
 3. If tests still pass, stage and commit with the message
    `review: <brief description of fix>`.
 4. If tests fail, revert the edit, reclassify the finding as **Low
-   confidence**, and handle it via the Low-confidence row of the table
-   above (debt for Critical/Important, terminal-output note for Minor).
+   confidence**, and handle it via the Low-confidence row matching its
+   `kind` in the table above. Reclassifying confidence never changes the
+   `kind`: a failed `hygiene` fix becomes a Review Summary note, not debt.
    Do not commit a failing fix.
 
 After all findings have been processed, summarize the outcome in forge's
@@ -273,11 +276,14 @@ terminal-output **Review Summary** deliverable (not in the PR body):
 
 1. **Applied fixes** — the list of `review:` commits created by forge with
    the corresponding findings they resolved.
-2. **Recorded debt** — any Low-confidence Critical or Important findings
-   appended to the artifact's `## Specification Debt` section, so future
-   readers see them without scanning the agent transcript.
-3. **Minor notes** — Minor findings that did not warrant a fix or a debt
-   row; surface them once in the terminal output for the user, then drop.
+2. **Recorded debt** — any Low-confidence Critical or Important `steering`
+   findings appended to the artifact's `## Specification Debt` section, so
+   future readers see them without scanning the agent transcript.
+3. **Implementation questions** — Low-confidence `implementation` findings
+   recorded as `IQ-NNN` rows, so the next slice's implementer inherits them.
+4. **Minor and hygiene notes** — Minor findings, plus Low-confidence
+   `hygiene` findings that did not warrant a fix or a debt row; surface them
+   once in the terminal output for the user, then drop.
 
 Forge's existing error-handling STOP gates (test failure mid-slice, blocked
 task, complex-fix escalation) are unchanged by the review phase.

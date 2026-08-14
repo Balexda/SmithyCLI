@@ -31,30 +31,58 @@ following shape. Emit one finding per distinct issue.
 | Field | Type | Description |
 |-------|------|-------------|
 | `category` | enum | What kind of issue (per-agent category list) |
+| `kind` | enum | `steering`, `implementation`, or `hygiene` — what kind of *resolution* the finding needs (see the kind gate below) |
 | `severity` | enum | Critical, Important, Minor |
 | `confidence` | enum | High or Low — whether the finding can be auto-resolved by the parent |
 | `description` | string | What the issue is and where it appears |
 | `artifact_path` | string | Path to the file containing the issue |
 | `proposed_fix` | string | Suggested resolution (for High-confidence findings) |
 
-### 4. Triage rules (applied by the parent command, not by the review agent)
+### 4. Kind gate (set by the review agent, applied before triage)
 
-The parent command decides what to do with each finding using the
-severity × confidence triage table below. The review agent only reports;
+Severity and confidence say how much a finding matters and how sure you
+are. They say nothing about **who resolves it**, and that is the axis
+that decides whether a finding belongs in the artifact's decision queue.
+Every finding therefore carries a `kind`:
+
+| `kind` | The finding is… | Who resolves it |
+|--------|-----------------|-----------------|
+| `steering` | an open question naming two or more meaningfully different paths, where the choice changes what gets built | a human, by choosing |
+| `implementation` | an unknown the implementer settles by writing the code, running a test, or reading the source — there is a right answer and the work reveals it | the implementer, by building |
+| `hygiene` | a factual error, stale table, or artifact-consistency defect with a knowable correct answer, including anything the `smithy-clarify` Step 3b routing table names as a leak (requirement, acceptance test, dependency/coordination note, deferral, resolution record) | the parent command, by applying a fix |
+
+**Only `steering` findings may become specification debt.** The debt
+table is a decision queue for a human; an implementation unknown or a
+wrong table parked there buries the real decisions and inflates apparent
+readiness risk. The three-part steering test and the calibration for it
+live in `smithy-plan-review`'s Kind Gate section — consult that section
+rather than re-deriving the criteria here.
+
+### 5. Triage rules (applied by the parent command, not by the review agent)
+
+The parent command decides what to do with each finding by reading
+`kind` first, then severity × confidence. The review agent only reports;
 it never takes the action itself.
 
-| Severity | Confidence | Parent Action |
-|----------|------------|---------------|
-| Critical | High | Apply proposed fix, note in PR |
-| Critical | Low | Record as specification debt **if it passes the kind gate** (see `smithy-clarify` Step 3b for the canonical definition and routing table), otherwise route via the gate's routing table and flag in PR for reviewer |
-| Important | High | Apply proposed fix |
-| Important | Low | Record as specification debt **if it passes the kind gate**, otherwise route via the gate's routing table (`smithy-clarify` Step 3b) to the artifact's proper section (FR, acceptance scenarios, governance, out-of-scope) |
-| Minor | Any | Note in PR only |
+| `kind` | Severity | Confidence | Parent Action |
+|--------|----------|------------|---------------|
+| `steering` | Critical | High | Apply proposed fix, note in PR |
+| `steering` | Critical | Low | Record as specification debt, flag in PR for reviewer |
+| `steering` | Important | High | Apply proposed fix |
+| `steering` | Important | Low | Record as specification debt |
+| `steering` | Minor | Any | Note in PR only |
+| `implementation` | Critical or Important | Any | Record in the tasks file's `## Open Implementation Questions` section. When the work is not tracked by a tasks file, note in the PR body instead — never in the debt table |
+| `implementation` | Minor | Any | Note in PR only |
+| `hygiene` | Critical or Important | High | Apply proposed fix, note in PR |
+| `hygiene` | Critical or Important | Low | Do not apply. List in the PR body for the reviewer to correct — never in the debt table |
+| `hygiene` | Minor | Any | Note in PR only |
 
-The canonical kind-gate criteria and the leak-kind → proper-home
-routing table live in `smithy-clarify` Step 3b. This snippet
-deliberately does not restate them; consult that section directly
-when triaging a Critical-Low or Important-Low finding.
+A wrong table is a fix, not a question: a `hygiene` finding never
+becomes debt at any severity or confidence, and neither does an
+`implementation` finding. A Low-confidence `hygiene` finding means the
+correction is knowable but you could not pin it down — the PR body is
+where it goes, so a reviewer can settle it in one pass instead of
+carrying it as open uncertainty.
 
 ### Read-only invariant
 

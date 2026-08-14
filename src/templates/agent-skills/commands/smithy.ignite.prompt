@@ -222,18 +222,21 @@ review of the refined artifact. Pass it:
 - **artifact_type** — `rfc`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared severity × confidence triage
-table:
+`summary`. Process the findings using the shared kind × severity × confidence triage
+table, reading each finding's `kind` first. Only a `steering` finding —
+where a human must pick between named alternatives and the pick changes what
+gets built — can reach the debt table.
 
-| Severity  | Confidence | Action                                                                                              |
-|-----------|------------|-----------------------------------------------------------------------------------------------------|
-| Critical  | High       | Apply the `proposed_fix` to the RFC on disk. Note the fix in the PR body.                           |
-| Critical  | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| Important | High       | Apply the `proposed_fix` to the RFC on disk.                                                        |
-| Important | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                  |
-| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+| Kind             | Severity              | Confidence | Action                                                                                              |
+|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
+| Any              | Critical or Important | High       | Apply the `proposed_fix` to the RFC on disk. Note Critical fixes in the PR body.                     |
+| `steering`       | Critical              | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.      |
+| `steering`       | Important             | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                   |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and it reaches the tasks file's `## Open Implementation Questions` section downstream. |
+| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.            |
+| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                             |
 
-For each Low-confidence finding routed to debt, append a new row to the RFC's
+For each Low-confidence `steering` finding routed to debt, append a new row to the RFC's
 `## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever refine or prior clarify passes already
 wrote — do not reset). Use the finding's `description` for the Description
@@ -808,18 +811,21 @@ review. Pass it:
 - **artifact_type** — `rfc`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared severity × confidence triage
-table from the contracts:
+`summary`. Process the findings using the shared kind × severity × confidence triage
+table from the contracts, reading each finding's `kind` first. Only a `steering` finding —
+where a human must pick between named alternatives and the pick changes what
+gets built — can reach the debt table.
 
-| Severity  | Confidence | Action                                                                                              |
-|-----------|------------|-----------------------------------------------------------------------------------------------------|
-| Critical  | High       | Apply the `proposed_fix` to the RFC on disk. Note the fix in the PR body.                           |
-| Critical  | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| Important | High       | Apply the `proposed_fix` to the RFC on disk.                                                        |
-| Important | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                  |
-| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+| Kind             | Severity              | Confidence | Action                                                                                              |
+|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
+| Any              | Critical or Important | High       | Apply the `proposed_fix` to the RFC on disk. Note Critical fixes in the PR body.                     |
+| `steering`       | Critical              | Low        | Do not apply. Append to the RFC's `## Specification Debt` section. Flag in PR for the reviewer.      |
+| `steering`       | Important             | Low        | Do not apply. Append to the RFC's `## Specification Debt` section.                                   |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and it reaches the tasks file's `## Open Implementation Questions` section downstream. |
+| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.            |
+| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                             |
 
-For each Low-confidence finding routed to debt, append a new row to the RFC's
+For each Low-confidence `steering` finding routed to debt, append a new row to the RFC's
 `## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever clarify / Phase 3 already wrote — do not
 reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`

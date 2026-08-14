@@ -714,18 +714,21 @@ it:
 - **artifact_type** — `spec`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared severity × confidence triage
-table from the contracts:
+`summary`. Process the findings using the shared kind × severity × confidence triage
+table from the contracts, reading each finding's `kind` first. Only a `steering` finding —
+where a human must pick between named alternatives and the pick changes what
+gets built — can reach the debt table.
 
-| Severity  | Confidence | Action                                                                                              |
-|-----------|------------|-----------------------------------------------------------------------------------------------------|
-| Critical  | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note the fix in the PR body.        |
-| Critical  | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.    |
-| Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk.                                     |
-| Important | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                 |
-| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+| Kind             | Severity              | Confidence | Action                                                                                              |
+|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
+| Any              | Critical or Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
+| `steering`       | Critical              | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| `steering`       | Important             | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and `smithy.cut` carries it into the tasks file's `## Open Implementation Questions` section. |
+| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
+| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
 
-For each Low-confidence finding routed to debt, append a new row to the
+For each Low-confidence `steering` finding routed to debt, append a new row to the
 `.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever clarify already wrote
 in Phase 2 — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
@@ -848,18 +851,21 @@ the spec artifact set. Pass it:
 - **artifact_type** — `spec`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared severity × confidence triage
-table:
+`summary`. Process the findings using the shared kind × severity × confidence triage
+table, reading each finding's `kind` first. Only a `steering` finding —
+where a human must pick between named alternatives and the pick changes what
+gets built — can reach the debt table.
 
-| Severity  | Confidence | Action                                                                                              |
-|-----------|------------|-----------------------------------------------------------------------------------------------------|
-| Critical  | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note the fix in the PR body.        |
-| Critical  | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.    |
-| Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk.                                     |
-| Important | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                 |
-| Minor     | Any        | Do not apply. Note in the PR body only.                                                             |
+| Kind             | Severity              | Confidence | Action                                                                                              |
+|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
+| Any              | Critical or Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
+| `steering`       | Critical              | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| `steering`       | Important             | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and `smithy.cut` carries it into the tasks file's `## Open Implementation Questions` section. |
+| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
+| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
 
-For each Low-confidence finding routed to debt, append a new row to the
+For each Low-confidence `steering` finding routed to debt, append a new row to the
 `.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever the spec already
 contains — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
