@@ -61,6 +61,18 @@ export interface DependencyRow {
    * scanner emits a virtual not-started record for the expected path.
    */
   artifact_path: string | null;
+  /**
+   * Optional typed UI ledger kind from a spec-level `Kind` column.
+   * Present only for UI dependency ledgers (`screen`, `flow`, `story`);
+   * backend-only dependency tables omit it.
+   */
+  kind?: 'screen' | 'flow' | 'story';
+  /**
+   * Optional screen design mode from a spec-level `Design` column.
+   * Present for screen rows when authored; omitted for backend-only
+   * rows and for `—` design cells.
+   */
+  design?: 'none' | 'import' | 'brief';
 }
 
 /**
@@ -232,6 +244,17 @@ export interface ArtifactRecord {
    * number so the tree mirrors the parent's dep-order numbering.
    */
   parent_row_id?: string;
+  /**
+   * Optional typed UI ledger kind copied from the parent dependency row
+   * that claimed this record. Lets JSON consumers distinguish screen,
+   * flow, and backend-story nodes without inferring from the title.
+   */
+  parent_row_kind?: DependencyRow['kind'];
+  /**
+   * Optional design mode copied from the parent dependency row that
+   * claimed this record.
+   */
+  parent_row_design?: DependencyRow['design'];
   /**
    * True for not-started records inferred from a parent's parsed
    * `## Dependency Order` table but not yet present on disk. `virtual`

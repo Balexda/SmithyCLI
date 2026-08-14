@@ -281,6 +281,103 @@ trailing content
     });
   });
 
+  it('accepts typed UI ledger columns and preserves screen, flow, and story row metadata', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title (→ mark's durable file) | Depends On | Design | Artifact |
+|----|------|-------------------------------|------------|--------|----------|
+| SC1 | screen | AddTitle | — | brief | specs/ui/sc-01-add-title.tasks.md |
+| FL1 | flow | AddTitle flow | SC1 | — | — |
+| US1 | story | Persist title | FL1 | — | specs/ui/01-persist-title.tasks.md |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toEqual([]);
+    expect(result.table.format).toBe('table');
+    expect(result.table.rows).toEqual([
+      {
+        id: 'SC1',
+        kind: 'screen',
+        title: 'AddTitle',
+        depends_on: [],
+        design: 'brief',
+        artifact_path: 'specs/ui/sc-01-add-title.tasks.md',
+      },
+      {
+        id: 'FL1',
+        kind: 'flow',
+        title: 'AddTitle flow',
+        depends_on: ['SC1'],
+        artifact_path: null,
+      },
+      {
+        id: 'US1',
+        kind: 'story',
+        title: 'Persist title',
+        depends_on: ['FL1'],
+        artifact_path: 'specs/ui/01-persist-title.tasks.md',
+      },
+    ]);
+  });
+
+  it('warns on unrecognized Kind and Design values instead of silently dropping them', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| SC1 | scren | AddTitle | — | breif | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toContain(
+      "dependency_order: row SC1 has unrecognized Kind 'scren' — expected screen, flow, or story; ignored",
+    );
+    expect(result.warnings).toContain(
+      "dependency_order: row SC1 has unrecognized Design 'breif' — expected none, import, or brief; ignored",
+    );
+    // The bad cells are dropped from the row, not carried through.
+    expect(result.table.rows[0]?.kind).toBeUndefined();
+    expect(result.table.rows[0]?.design).toBeUndefined();
+  });
+
+  it('names the full allowed prefix set when a typed UI ledger row prefix is wrong', () => {
+    const markdown = `# UI Spec
+
+## Dependency Order
+
+| ID | Kind | Title | Depends On | Design | Artifact |
+|----|------|-------|------------|--------|----------|
+| M1 | screen | Wrong prefix | — | — | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.warnings).toContain(
+      "dependency_order: row M1 has prefix 'M' but expected one of 'US', 'SC', 'FL' for artifact type 'spec'",
+    );
+  });
+
+  it('drops SC/FL IDs in a backend-only spec table as invalid, leaving parsing unchanged', () => {
+    // A backend spec keeps the canonical 4-column shape (no `Kind`
+    // column). `SC`/`FL` prefixes are UI-ledger-only, so an `SC1` typo
+    // here must be dropped as an invalid ID exactly as before typed UI
+    // ledgers existed — never scanned as a screen child.
+    const markdown = `# Backend Spec
+
+## Dependency Order
+
+| ID | Title | Depends On | Artifact |
+|----|-------|------------|----------|
+| US1 | Real story | — | — |
+| SC1 | Stray screen prefix | — | — |
+`;
+    const result = parseDependencyTable(markdown, 'spec');
+    expect(result.table.rows.map((row) => row.id)).toEqual(['US1']);
+    expect(result.warnings).toContain(
+      "dependency_order: row 2 has invalid ID 'SC1' — dropped",
+    );
+  });
+
   it('coerces backtick-wrapped absolute Artifact paths to null with a warning', () => {
     // Backtick unwrapping must happen before the absolute-path check so
     // a backticked absolute path is still rejected instead of being

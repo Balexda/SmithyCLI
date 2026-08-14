@@ -286,7 +286,7 @@ function formatLine(
   }
 
   const marker = formatStatusMarker(record, node, theme);
-  const titleWithNumber = applyStoryNumber(record.title, record.parent_row_id);
+  const titleWithNumber = formatRecordTitle(record);
   const isBroken =
     record.parent_missing === true &&
     typeof record.parent_path === 'string' &&
@@ -309,13 +309,20 @@ function formatLine(
  * line is noise. Returns the title unchanged (minus any `Tasks: `
  * prefix) when `rowId` is missing or has no trailing digits.
  */
+function formatRecordTitle(record: ArtifactRecord): string {
+  const stripped = record.title.replace(/^Tasks:\s+/, '');
+  if (record.parent_row_kind !== undefined && record.parent_row_id !== undefined) {
+    return `${record.parent_row_id} ${record.parent_row_kind} ${stripped}`;
+  }
+  return applyStoryNumber(stripped, record.parent_row_id);
+}
+
 function applyStoryNumber(title: string, rowId: string | undefined): string {
-  const stripped = title.replace(/^Tasks:\s+/, '');
-  if (rowId === undefined) return stripped;
+  if (rowId === undefined) return title;
   const digits = rowId.match(/[0-9]+$/)?.[0];
-  if (digits === undefined) return stripped;
+  if (digits === undefined) return title;
   const nn = digits.padStart(2, '0');
-  return `${nn} ${stripped}`;
+  return `${nn} ${title}`;
 }
 
 /**

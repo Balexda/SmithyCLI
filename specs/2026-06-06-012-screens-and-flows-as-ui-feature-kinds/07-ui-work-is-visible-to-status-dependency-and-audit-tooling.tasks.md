@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Parse typed UI ledger rows for status**
+- [x] **Parse typed UI ledger rows for status**
 
   Extend the status artifact scanner so a spec `## Dependency Order` table with `ID`, `Kind`, `Title`, `Depends On`, `Design`, and `Artifact` columns is accepted as a UI ledger. Each `SC<N>`, `FL<N>`, and `US<N>` row should produce a distinct status record whose progress derives from its own `Artifact` task file when present and remains visible when no artifact exists.
 
@@ -28,7 +28,7 @@
   - `US<N>` rows inside UI ledgers continue to produce distinct status records
   - Rows with `Artifact` set to `—` are reported as unstarted rather than hidden
 
-- [ ] **Resolve UI dependency edges**
+- [x] **Resolve UI dependency edges**
 
   Update dependency graph reconstruction so typed UI ledger `Depends On` cells resolve same-table `SC`, `FL`, and `US` IDs. Preserve existing backend graph behavior while ensuring screen, flow, and story nodes participate in ordering and blocked/unblocked calculations for AS 7.2.
 
@@ -39,7 +39,7 @@
   - Dangling UI dependency IDs surface as graph warnings or failures consistent with existing dependency behavior
   - Backend-only dependency parsing remains unchanged
 
-- [ ] **Render per-node UI progress**
+- [x] **Render per-node UI progress**
 
   Update status output rendering so UI node identity is visible without relying on title inference. The human and JSON status surfaces should expose enough node metadata for developers and automation to distinguish screen-build, flow-wire, and backend-story progress for AS 7.1.
 

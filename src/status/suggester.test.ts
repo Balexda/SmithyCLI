@@ -212,6 +212,28 @@ describe('suggestNextAction — tasks records', () => {
     expect(action!.arguments).toEqual(['specs/x', '3']);
   });
 
+  it('emits a folder-only cut hint for a virtual screen/flow node instead of targeting US<N>', () => {
+    // A screen (`SC<N>`) or flow (`FL<N>`) ledger node carries a numeric
+    // suffix, but `smithy.cut`'s digit argument selects a `US<N>` story.
+    // Passing the SC/FL digit would silently target the wrong row, so the
+    // hint must stay folder-only and name the actual ledger node.
+    const record = makeRecord({
+      type: 'tasks',
+      status: 'not-started',
+      virtual: true,
+      path: 'specs/ui/sc-01-add-title.tasks.md',
+      parent_path: 'specs/ui/ui.spec.md',
+      parent_row_id: 'SC1',
+      parent_row_kind: 'screen',
+    });
+    const action = suggestNextAction(record, [], false);
+    expect(action).not.toBeNull();
+    expect(action!.command).toBe('smithy.cut');
+    expect(action!.arguments).toEqual(['specs/ui']);
+    expect(action!.reason).toContain('ledger node SC1');
+    expect(action!.reason).not.toContain('user story');
+  });
+
   it('falls back to smithy.forge on a virtual tasks record missing parent fields', () => {
     // Defensive guard: if the scanner ever emits a virtual tasks
     // record without `parent_path`/`parent_row_id` (shouldn't happen
