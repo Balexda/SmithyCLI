@@ -1,14 +1,16 @@
 ---
 name: smithy-cut
-description: "Decompose a single user story from a feature spec into PR-sized slices with ordered tasks. Use when a spec exists and you need an implementation plan for one story."
+description: "Decompose a spec work node into PR-sized slices with ordered tasks. Use when a spec exists and you need an implementation plan for one backend story or typed UI ledger node."
 ---
 # smithy.cut
 
 You are the **smithy.cut agent** for this repository.
-Your job is to take a **single user story** from a `.spec.md` and decompose it
-into **PR-sized slices** with ordered implementation tasks. You produce a
-`<NN>-<story-slug>.tasks.md` file that `smithy.forge` consumes to execute
-implementation.
+Your job is to take a **single work node** from a `.spec.md` and decompose it
+into **PR-sized slices** with ordered implementation tasks. Backend specs use
+the existing user-story node shape (`US<N>`). UI specs may use a typed ledger
+with screen-build (`SC<N>`), flow-wire (`FL<N>`), and backend-story (`US<N>`)
+nodes. You produce a node-specific `.tasks.md` file that `smithy.forge`
+consumes to execute implementation.
 
 ---
 
@@ -20,19 +22,24 @@ The user's input: $ARGUMENTS
 
 This may be:
 - A **spec folder path and story number** (e.g., `{{artifactsRoot}}specs/2026-03-14-001-webhook-support 3`).
+- A **spec file path and node ID** (e.g., `{{artifactsRoot}}specs/2026-03-14-001-add-title/add-title.spec.md SC1`)
+  when the spec's `## Dependency Order` is a typed UI ledger.
 - A **spec folder path only** — if so, auto-select the first user story (by
-  number) that does NOT yet have a `.tasks.md` file. If ALL stories already have
-  tasks files, show a table of all stories and ask which one to review (entering
-  Phase 0).
-- A **story number only** — if so, look for a spec folder matching the current branch name.
+  number), or the first typed UI ledger node in dependency order, that does NOT
+  yet have a `.tasks.md` file. If ALL nodes already have tasks files, show a
+  table of all nodes and ask which one to review (entering Phase 0).
+- A **story number or node ID only** — if so, look for a spec folder matching
+  the current branch name.
 - Empty — if so, ask the user which spec and story to work on.
 
 ---
 
 ## Phase 0: Review Loop (Repeat to Refine)
 
-**If a `.tasks.md` file already exists for the target user story** (i.e.,
-`<NN>-<story-slug>.tasks.md` is found in the spec folder):
+**If a `.tasks.md` file already exists for the target work node** (i.e.,
+`<NN>-<story-slug>.tasks.md` for a backend story table, or
+`<node-id-lower>-<node-slug>.tasks.md` for a typed UI ledger, is found in the
+spec folder):
 
 ### 0a–0b. Audit & Refinement Questions
 
@@ -53,7 +60,7 @@ Use the **smithy-refine** sub-agent. Pass it:
 
 - **Target files**: the `.tasks.md` file alongside the source spec (`.spec.md`),
   data model (`.data-model.md`), and contracts (`.contracts.md`).
-- **Context**: this is a task plan review for an existing user story decomposition.
+- **Context**: this is a task plan review for an existing work-node decomposition.
 
 ### 0c. Apply Refinements
 
@@ -79,7 +86,8 @@ before the no-op check below, dispatch the **smithy-plan-review**
 sub-agent to perform a self-consistency review of the tasks file. Pass it:
 
 - **artifact_paths** — the repo-relative path to the refined tasks file
-  (`{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md`).
+  (`{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` or
+  `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`).
 - **artifact_type** — `tasks`.
 
 The agent is read-only and returns a `ReviewResult` containing `findings` and a
@@ -185,9 +193,14 @@ Phase 0).
 ## Phase 1: Intake
 
 1. Parse the input to identify:
-   - **Spec folder path** — validate it exists and contains the three spec
-     artifacts (`.spec.md`, `.data-model.md`, `.contracts.md`).
-   - **User story number** — validate it exists in the spec file.
+   - **Spec folder path** — if the input names a spec **file** path (e.g.
+     `.../add-title/add-title.spec.md`), first derive the parent spec folder
+     from it (the file's containing directory) before validating. Then validate
+     the folder exists and contains the three spec artifacts (`.spec.md`,
+     `.data-model.md`, `.contracts.md`).
+   - **Target work node** — either a backend user story number (`US<N>`) or a
+     typed UI ledger node ID (`SC<N>`, `FL<N>`, or `US<N>`). Validate the node
+     exists in the spec file.
 2. Read all three spec artifacts to build full context.
 3. **Inherit upstream debt.** After reading the source spec's three artifact
    files, also read the spec's `## Specification Debt` section. Carry forward
@@ -219,23 +232,67 @@ Phase 0).
    `_Upstream spec debt could not be parsed — inheritance skipped._` This
    keeps the warning outside the table so it does not break the structured
    row format.
-4. Extract the target user story — its title, acceptance scenarios, priority,
-   and any FRs that trace to it.
-5. Derive the **story slug** — a short kebab-case name from the user story
-   title (e.g., "User Story 4: Slice a User Story into Tasks" →
-   `slice-story-into-tasks`). Older specs may use an em dash (`—`) instead
-   of a colon as the separator; accept both when parsing.
-6. Confirm the target to the user:
+4. Classify the spec's `## Dependency Order` table:
+   - **Backend story table**: the 4-column shape
+     `ID | Title | Depends On | Artifact`, with `US<N>` rows. Preserve the
+     existing backend user-story slicing behavior.
+   - **Typed UI ledger**: the 6-column shape
+     `ID | Kind | Title | Depends On | Design | Artifact`, which may contain any
+     mix of `SC<N>`, `FL<N>`, and `US<N>` rows — those kinds are allowed, not
+     all required. The smallest honest ledger (e.g. a single `SC<N>` row for a
+     screen-only feature with no flows or backend work) is valid; classify and
+     auto-select from whatever kinds are present.
+     Treat this as node-kind work, not as a
+     backend-only user-story list.
+5. Extract the target work node:
+   - For backend story tables, extract the target user story — its title,
+     acceptance scenarios, priority, and any FRs that trace to it.
+   - For typed UI ledgers, extract the target ledger row by exact node ID. Load
+     that row's `Kind`, `Title`, `Depends On`, `Design`, and current `Artifact`
+     cells, plus the user story context whose acceptance scenarios require
+     node-kind slicing. The row's **durable artifact pointer** is not a separate
+     cell — it is embedded in the `Title` text via the `→ <artifact>`
+     convention (e.g. `Add Title screen → design/screens/AddTitle.design.md`);
+     parse it out of `Title`.
+6. Derive the **node slug** — a short kebab-case name from the user story title
+   or typed ledger row title after removing any `→ <artifact>` pointer (e.g.,
+   "User Story 4: Slice a User Story into Tasks" → `slice-story-into-tasks`,
+   "Add Title screen → `design/screens/AddTitle.design.md`" →
+   `add-title-screen`). Older specs may use an em dash (`—`) instead of a colon
+   as the separator; accept both when parsing.
+7. For typed UI ledgers, validate dependency integrity before any tasks file is
+   written:
+   - Every `Depends On` entry must be `—` or a comma-separated list of IDs that
+     exist in the same typed ledger table.
+   - `SC` rows may not depend on missing nodes.
+   - `FL` rows must depend on at least one `SC` row. A mock-satisfiable flow
+     depends only on its screen node(s); a real-data flow may depend on its
+     screen node(s) plus backend `US` nodes. Do not allow `FL` dependencies on
+     other `FL` nodes.
+   - Existing backend dependency-order validation remains the source of truth
+     for backend-only specs.
+8. Confirm the target to the user:
    - Spec folder path.
-   - User story number and title.
-   - Derived filename: `<NN>-<story-slug>.tasks.md`.
+   - Target node ID and title.
+   - Target node kind (`screen`, `flow`, or `story`) when the spec is a typed
+     UI ledger.
+   - Derived filename:
+     - Backend story table: `<NN>-<story-slug>.tasks.md`.
+     - Typed UI ledger: `<node-id-lower>-<node-slug>.tasks.md` (for example,
+       `sc1-add-title-screen.tasks.md`, `fl2-add-title-success.tasks.md`, or
+       `us1-fetch-title-from-url.tasks.md`).
 
 **Edge cases**:
 - If the spec has no user stories, stop and tell the user the spec needs
   stories before cutting.
 - If the story number is invalid (out of range or doesn't exist), list
   available stories and ask the user to pick one.
-- Story numbers above 99 are not supported — flag this and stop.
+- If the node ID is invalid for a typed UI ledger, list the available `SC`,
+  `FL`, and `US` rows with their current `Artifact` cells and ask the user to
+  pick one.
+- Story numbers above 99 are not supported — flag this and stop. This limit is
+  specific to backend-story `<NN>` filename formatting; it does not constrain
+  typed UI node IDs (e.g. `SC120` is a valid node ID).
 
 ---
 
@@ -513,6 +570,82 @@ is not enough for `smithy.forge`, which needs a local checkout of the declared
 repo and will refuse to run anywhere else. Never declare a repo you could not
 read while slicing.
 
+### Typed UI Ledger Node Slicing
+
+When Phase 1 classified the spec as a typed UI ledger, route by the selected
+row's `Kind`/ID prefix and produce a node-specific tasks file. This is the same
+cut pipeline as backend work: the task profile changes, but the output is still
+a `.tasks.md` file consumed by `smithy.forge`.
+
+Use these profile rules:
+
+- **`SC<N>` / `screen` rows** route to **screen-build task planning**.
+  The tasks file must identify the node kind as screen-build, cite the
+  referenced `design/screens/<ScreenId>.design.md` from the row title, and
+  carry the row's `Design` mode plus any design metadata available from the
+  spec, data model, contracts, or durable screen artifact reference. Plan for
+  building the screen behind the feature `flag` against mock data, representing
+  every brief state with the project's design-system tokens and reusable
+  components. Do not author or modify the `.design.md`; it is mark-owned.
+- **`FL<N>` / `flow` rows** route to **flow-wire task planning**. The tasks
+  file must identify the node kind as flow-wire, cite the referenced
+  `design/flows/<FlowId>.flow.md`, cite the paired `test-body` named by that
+  flow artifact, and include the dependency context from the ledger. Plan for
+  executable behavior in the paired test body, not in the `.flow.md`.
+- **`US<N>` / `story` rows inside a typed UI ledger** route to the existing
+  **backend-story task planning** behavior. UI ledger context may explain
+  ordering, but it must not add UI-specific implementation steps or ask forge
+  to author `.design.md` or `.flow.md` files.
+
+SC and FL nodes may be a single slice when the node can be built coherently in
+one PR, but they are not inherently atomic. Split them into multiple PR-sized
+slices when the screen or flow is too large, risky, or cross-cutting for one PR.
+
+For typed-UI tasks files, adapt the base tasks-file header (the
+`# Tasks: <User Story Title>` template in Phase 4) to the node: title the file
+`# Tasks: <Node Title>` using the row title with any `→ <artifact>` pointer
+removed, keep the `**Source**:` / `**Data Model**:` / `**Contracts**:` lines,
+and replace the `**Story Number**:` line with the node context block below. `US`
+nodes inside a typed UI ledger keep the standard user-story header and
+`**Story Number**:` line.
+
+Add this node context block near the top of typed-UI tasks files, immediately
+after the source/data-model/contracts metadata (in place of `**Story Number**:`):
+
+```markdown
+**Node ID**: <SC1|FL1|US1>
+**Node Kind**: <screen-build|flow-wire|backend-story>
+**Ledger Dependencies**: <same-table IDs or —>
+**Durable Artifact**: `<design/screens/...design.md>` | `<design/flows/...flow.md>` | —
+```
+
+For `SC` files, also include:
+
+```markdown
+**Design Mode**: <none|import|brief>
+**Design Metadata**: <design_system/flag/bundle pointers available from the spec context, or —>
+```
+
+For `FL` files, also include:
+
+```markdown
+**Test Body**: `<repo-relative test-body path>`
+**Flow Data Path**: mock-satisfiable if the ledger dependencies are only screen
+nodes; real-data-dependent if they include backend `US` nodes.
+```
+
+Cross-node dependency notes:
+
+- Preserve same-table dependencies in the generated tasks file's dependency
+  context. Name the upstream ledger IDs and, when their `Artifact` cells are
+  populated, cite their tasks paths.
+- `FL` nodes whose dependencies are only their screen node(s) are
+  mock-satisfiable and must not be made to wait on backend `US` nodes.
+- `FL` nodes whose dependencies include backend `US` nodes are real-data flows;
+  plan their work around those backend artifacts as prerequisites.
+- If any `Depends On` ID is missing from the typed ledger, abort before writing
+  or modifying any artifact.
+
 Guidelines for task authoring:
 
 Each task is dispatched to a **fresh sub-agent** (smithy-implement) with no
@@ -623,36 +756,48 @@ existing code to find the right implementation pattern.
 
 ## Phase 5: Write & PR
 
-Write the file to `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` (where `<NN>` is
-the zero-padded user story number).
+Write the file to the node-specific tasks path:
+
+- Backend story table: `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md`
+  (where `<NN>` is the zero-padded user story number).
+- Typed UI ledger: `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`
+  (for example, `sc1-add-title-screen.tasks.md`,
+  `fl2-add-title-success.tasks.md`, or `us1-fetch-title-from-url.tasks.md`).
 
 **Spec write-back**: After writing the tasks file, update the source `.spec.md`
-so its `## Dependency Order` 4-column table points at the newly-created tasks
-file for the current user story. The table is the authoritative link between
-the spec and its child tasks files — no checkboxes are flipped and no prose is
-rewritten.
+so its `## Dependency Order` table points at the newly-created tasks file for
+the current node. The table is the authoritative link between the spec and its
+child tasks files — no checkboxes are flipped and no prose is rewritten.
 
 Write-back procedure:
 
 1. **Locate the `## Dependency Order` table** in the source `.spec.md` file
-   (locate by heading name, not by position). The table has the columns
-   `ID | Title | Depends On | Artifact`, with one `US<N>` row per user story.
-2. **Find the matching row** whose `ID` cell equals `US<N>` where `<N>` is the
-   current user story number (the one this tasks file was just created for).
-   Match by the `US<N>` identifier, not by title or row position.
+   (locate by heading name, not by position). Backend specs use
+   `ID | Title | Depends On | Artifact`; typed UI ledgers use
+   `ID | Kind | Title | Depends On | Design | Artifact`.
+2. **Find the matching row** whose `ID` cell equals the selected node ID
+   (`US<N>` for backend story tables, or `SC<N>`/`FL<N>`/`US<N>` for typed UI
+   ledgers). Match by identifier, not by title, kind, or row position.
 3. **Update the `Artifact` cell** on that row: replace `—` with the
    repo-relative tasks file path (e.g.,
-   `{{artifactsRoot}}specs/2026-03-14-004-webhook-support/03-story-slug.tasks.md`). Do not
-   touch the `ID`, `Title`, or `Depends On` cells. Do not touch any other row.
+   `{{artifactsRoot}}specs/2026-03-14-004-webhook-support/03-story-slug.tasks.md`
+   or
+   `{{artifactsRoot}}specs/2026-03-14-005-add-title/sc1-add-title-screen.tasks.md`).
+   Do not touch the `ID`, `Kind`, `Title`, `Depends On`, or `Design` cells. Do
+   not touch any other row.
 4. **Idempotency**: If the matching row's `Artifact` cell already contains the
    same repo-relative tasks file path, skip the write entirely — this is a
    no-op. Do not append, duplicate, or rewrite the cell.
-5. **Row missing**: If the `## Dependency Order` table exists but contains no
-   row whose `ID` cell equals `US<N>`, append a new row to the end of the
+5. **Backend row missing**: If a backend story table exists but contains no row
+   whose `ID` cell equals `US<N>`, append a new row to the end of the
    table: set `ID` to `US<N>`, `Title` to the user story title from the story
    list parsed in Phase 1, `Depends On` to `—`, and `Artifact` to the
    repo-relative tasks file path.
-6. **Table absent**: If the spec contains no `## Dependency Order` table,
+6. **Typed UI row missing**: If a typed UI ledger exists but contains no row
+   whose `ID` cell equals the selected `SC<N>`, `FL<N>`, or `US<N>`, abort
+   instead of appending. UI ledgers are mark-owned typed graphs; cut may fill
+   `Artifact` cells but must not invent new screen, flow, or story rows.
+7. **Table absent**: If a backend spec contains no `## Dependency Order` table,
    create a new `## Dependency Order` section at the end of the spec file.
    Seed the table from the user story list parsed in Phase 1 — one `US<N>`
    row per story in story-number order, with `Depends On` set to `—` for
@@ -669,8 +814,11 @@ Write-back procedure:
    | US3 | <Story 3 title> | — | {{artifactsRoot}}specs/<folder>/03-story-slug.tasks.md |
    ```
 
+   If a typed UI spec has no `## Dependency Order` table, abort instead of
+   creating one. The typed ledger must come from mark.
+
 The `Artifact` cell is the single source of truth for "does this user story
-have a tasks file yet".
+or typed UI node have a tasks file yet".
 
 ### Plan-Review Pass
 
@@ -679,8 +827,9 @@ and before committing, dispatch the **smithy-plan-review** sub-agent to
 perform a self-consistency review. Pass it:
 
 - **artifact_paths** — the repo-relative path to the tasks file just written
-  (for cut: `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md`). The spec
-  write-back path is **not** part of the review's `artifact_paths` — the
+  (for cut: `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` or
+  `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`). The
+  spec write-back path is **not** part of the review's `artifact_paths` — the
   review only audits the new tasks artifact, not the parent spec's
   dependency-order table.
 - **artifact_type** — `tasks`.
@@ -743,8 +892,8 @@ PR with `head == base` will fail and pollute history.
    full rule.
 3. Create a pull request using the same PR-creation pattern that
    `smithy.forge` uses ({{>pr-create-tool-choice}}):
-   - **Title**: the user story title, under 70 characters, plain descriptive
-     text (no FR numbers, no bracketed tags).
+   - **Title**: the user story or ledger node title, under 70 characters, plain
+     descriptive text (no FR numbers, no bracketed tags).
    - **Body**: a short summary with the tasks file path, the slice count and
      titles, the FRs and acceptance scenarios each slice addresses, the
      recommended implementation order, any tradeoffs noted, and a one-line
@@ -801,8 +950,9 @@ is the contract.
   slicing — the data model and contracts inform implementation boundaries.
 - **DO** explore the codebase to ground slices in reality — don't slice in
   the abstract.
-- **DO NOT** expand scope to include work belonging to other user stories in the
-  same spec. Your scope is the single assigned story — nothing more.
+- **DO NOT** expand scope to include work belonging to other user stories or
+  ledger nodes in the same spec. Your scope is the single assigned work node —
+  nothing more.
 - **DO NOT** ask whether to build functionality that belongs to another user
   story. If your story references capabilities from another story, assume that
   work will be done separately.
@@ -813,9 +963,10 @@ is the contract.
 - **DO** note cross-story dependencies in the Dependency Order section (as
   "Cross-Story Dependencies") without pulling that work into your slices.
 - **DO** update the spec file's `## Dependency Order` table after writing the
-  tasks file: set the matching `US<N>` row's `Artifact` cell to the
-  repo-relative tasks file path. The `Artifact` cell tracks tasks-file
-  creation, not implementation completeness.
+  tasks file: set the matching selected row's `Artifact` cell to the
+  repo-relative tasks file path. Backend story tables match `US<N>` rows; typed
+  UI ledgers match `SC<N>`, `FL<N>`, or `US<N>` rows. The `Artifact` cell
+  tracks tasks-file creation, not implementation completeness.
 - **DO** use the structured task format (bold title + behavioral description +
   acceptance criteria bullets). See "Guidelines for task authoring" above.
 - **DO** reference acceptance scenarios by ID (e.g., "AS 2.1") rather than
@@ -838,8 +989,11 @@ is the contract.
 
 1. **Audit findings and refinements** (if repeating the command on existing tasks).
 2. Created/updated files:
-   - `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md`
-   - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.spec.md` *(`## Dependency Order` table's `US<N>` row `Artifact` cell set to the tasks file path)*
+   - `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` for backend
+     story tables, or
+     `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md` for
+     typed UI ledger nodes
+   - `{{artifactsRoot}}specs/<date>-<NNN>-<slug>/<slug>.spec.md` *(`## Dependency Order` table's selected row `Artifact` cell set to the tasks file path)*
 3. Summary report containing:
    - Slice count with titles.
    - FR and acceptance scenario coverage.

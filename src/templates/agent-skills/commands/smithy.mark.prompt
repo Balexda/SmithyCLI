@@ -405,6 +405,13 @@ UI ledger rules:
   is the only place intra-feature ordering and parallelism are expressed.
 - `Design` is required for `screen` rows and is one of `none`, `import`, or
   `brief`; use `—` for `flow` and `story` rows.
+  - `none` means no visual loop; no bundle or prototype recommendation is
+    required for a simple pass-through screen.
+  - `import` means prototype-first; a visual prototype boundary object may
+    have entered at `render` and rides forward as downstream visual source
+    context. Do not derive detailed prototype structure here.
+  - `brief` means mark-authored intent for a visual tool; the durable
+    `.design.md` and `.flow.md` artifacts are self-sufficient briefs.
 - `Artifact` is `—` for every row in mark's output. It holds the
   `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
   pre-fills a tasks path in this column.
@@ -448,6 +455,11 @@ it cannot be satisfied (per contracts C1):
   with a message naming the node.
 - The UI feature must name a non-empty `design_system`. If it is missing, abort
   before writing the spec or any durable UI artifact.
+- If a `bundle` is present, treat it as an optional visual prototype boundary
+  object from a visual tool such as Figma, Claude Design, or an equivalent
+  export. The bundle wins layout and visual intent, while the committed
+  design skill wins implementation dialect; a screen with a bundle still
+  requires `design_system`.
 
 Then write, matching the ledger pointers:
 - One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per

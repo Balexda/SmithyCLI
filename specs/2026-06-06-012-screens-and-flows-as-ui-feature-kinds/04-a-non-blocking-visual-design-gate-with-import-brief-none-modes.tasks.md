@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Document per-screen design modes**
+- [x] **Document per-screen design modes**
 
   Update `src/templates/agent-skills/snippets/feature-kinds.md`, `src/templates/agent-skills/commands/smithy.mark.prompt`, and directly related source-template documentation so `Design` mode is described as a screen-node field with exactly `none`, `import`, and `brief`. Keep backend feature behavior and backend spec output unchanged.
 
@@ -28,7 +28,7 @@
   - `brief` is described as mark-authored intent for a visual tool
   - Backend feature and backend spec-triad behavior remains unchanged
 
-- [ ] **Generalize bundle boundary language**
+- [x] **Generalize bundle boundary language**
 
   Update the screen helper, feature-kind snippet, and command templates that describe `bundle` so it is a tool-neutral prototype reference rather than a Claude Design-only export. Preserve the existing conflict rule: the bundle wins layout and visual intent, while the committed design skill wins implementation dialect.
 
@@ -39,7 +39,7 @@
   - A screen with a bundle still requires `design_system`
   - The conflict rule is stated consistently where bundle handling is described
 
-- [ ] **Keep import structure derivation scoped to render**
+- [x] **Keep import structure derivation scoped to render**
 
   Align the shared design-gate text with `smithy.render` ownership so `import` mode may carry a bundle from render for downstream honoring, while detailed prototype-to-screen/flow derivation remains owned by User Story 5. This story should make the boundary clear without implementing render's full import ingestion.
 
