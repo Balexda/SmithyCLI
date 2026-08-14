@@ -23,7 +23,7 @@ vi.mock('node:child_process', () => ({
 
 // Import after mock is declared so the module picks up the mocked version.
 const { spawn, execFileSync } = await import('node:child_process');
-const { runScenario, preflight, hashDirectory } = await import('./runner.js');
+const { runScenario, preflight, hashDirectory, resolveFixtureDir } = await import('./runner.js');
 const { loadScenarioFromFile } = await import('./scenario-loader.js');
 
 // ---------------------------------------------------------------------------
@@ -186,6 +186,101 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// fixture resolver tests
+// ---------------------------------------------------------------------------
+
+describe('resolveFixtureDir', () => {
+  it('uses the global fixture directory when scenario fixture metadata is omitted', () => {
+    const fixture = createRealFixture();
+    try {
+      expect(resolveFixtureDir(makeScenario(), fixture.dir, '/unused/root')).toBe(fixture.dir);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('preserves default fixture behavior when the global fixture is the repository root', () => {
+    const fixture = createRealFixture();
+    try {
+      expect(resolveFixtureDir(makeScenario(), fixture.dir, fixture.dir)).toBe(fixture.dir);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('resolves scenario fixture selectors under the repository fixture root', () => {
+    const global = createRealFixture();
+    const fixtureRoot = createRealFixture();
+    fs.mkdirSync(path.join(fixtureRoot.dir, 'jvm'));
+    try {
+      expect(resolveFixtureDir(makeScenario({ fixture: 'jvm' }), global.dir, fixtureRoot.dir)).toBe(
+        path.join(fixtureRoot.dir, 'jvm'),
+      );
+    } finally {
+      global.cleanup();
+      fixtureRoot.cleanup();
+    }
+  });
+
+  it('lets a scenario fixture selector override the global fixture directory', () => {
+    const global = createRealFixture();
+    const fixtureRoot = createRealFixture();
+    fs.mkdirSync(path.join(global.dir, 'jvm'));
+    fs.mkdirSync(path.join(fixtureRoot.dir, 'jvm'));
+    try {
+      expect(resolveFixtureDir(makeScenario({ fixture: 'jvm' }), global.dir, fixtureRoot.dir)).toBe(
+        path.join(fixtureRoot.dir, 'jvm'),
+      );
+    } finally {
+      global.cleanup();
+      fixtureRoot.cleanup();
+    }
+  });
+
+  it('fails clearly when the effective fixture directory is missing', () => {
+    const fixture = createRealFixture();
+    try {
+      expect(() =>
+        resolveFixtureDir(
+          makeScenario({ name: 'forge-tdd-slice-jvm', fixture: 'jvm' }),
+          fixture.dir,
+          fixture.dir,
+        ),
+      ).toThrow(/forge-tdd-slice-jvm.*fixture "jvm".*not found/);
+      // Resolution fails before any agent spawn (AS 2.4).
+      expect(spawn).not.toHaveBeenCalled();
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('fails clearly when the effective fixture is not a directory', () => {
+    const fixture = createRealFixture();
+    fs.writeFileSync(path.join(fixture.dir, 'jvm'), 'not a directory');
+    try {
+      expect(() =>
+        resolveFixtureDir(makeScenario({ fixture: 'jvm' }), fixture.dir, fixture.dir),
+      ).toThrow(/fixture "jvm".*not a directory/);
+      // Resolution fails before any agent spawn (AS 2.4).
+      expect(spawn).not.toHaveBeenCalled();
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('rejects scenario selectors that escape the repository fixture root', () => {
+    const fixture = createRealFixture();
+    try {
+      expect(() =>
+        resolveFixtureDir(makeScenario({ fixture: '../outside' }), fixture.dir, fixture.dir),
+      ).toThrow(/outside fixture root/);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // runScenario tests
 // ---------------------------------------------------------------------------
 
@@ -239,7 +334,7 @@ describe('runScenario', () => {
     }
   });
 
-  it('uses scenario fixture metadata to select the JVM fixture directory', async () => {
+  it('copies the resolved effective fixture directory before spawning', async () => {
     const stdout = ndjsonLines(resultEvent('jvm output'));
     const { child } = createMockChild(stdout, 0);
 
@@ -261,67 +356,17 @@ describe('runScenario', () => {
     fs.writeFileSync(path.join(fixture.dir, 'jvm', 'jvm-only.txt'), 'jvm');
 
     try {
-      await runScenario(makeScenario({ fixture: 'jvm' }), fixture.dir);
+      const effectiveFixtureDir = resolveFixtureDir(
+        makeScenario({ fixture: 'jvm' }),
+        fixture.dir,
+        fixture.dir,
+      );
+
+      await runScenario(makeScenario({ fixture: 'jvm' }), effectiveFixtureDir);
 
       expect(spawnObservedCwd).toContain('smithy-eval-');
       expect(sawJvmFixtureFile).toBe(true);
       expect(sawRootFixtureFile).toBe(false);
-    } finally {
-      fixture.cleanup();
-    }
-  });
-
-  it('resolves an explicit fixture selector from the canonical root, not the --fixture override', async () => {
-    const stdout = ndjsonLines(resultEvent('jvm output'));
-    const { child } = createMockChild(stdout, 0);
-
-    let sawCanonicalJvmFile = false;
-    let sawOverrideJvmFile = false;
-    vi.mocked(spawn).mockImplementation(
-      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
-        const cwd = opts.cwd ?? '';
-        sawCanonicalJvmFile = fs.existsSync(path.join(cwd, 'canonical-jvm.txt'));
-        sawOverrideJvmFile = fs.existsSync(path.join(cwd, 'override-jvm.txt'));
-        return child as never;
-      }) as never,
-    );
-
-    // The `--fixture` override points at a different directory than the
-    // canonical fixture root; a `jvm/` exists under both. The explicit selector
-    // must win and resolve under the canonical root (F1.6 contract).
-    const override = createRealFixture();
-    fs.mkdirSync(path.join(override.dir, 'jvm'));
-    fs.writeFileSync(path.join(override.dir, 'jvm', 'override-jvm.txt'), 'override');
-
-    const canonical = createRealFixture();
-    fs.mkdirSync(path.join(canonical.dir, 'jvm'));
-    fs.writeFileSync(path.join(canonical.dir, 'jvm', 'canonical-jvm.txt'), 'canonical');
-
-    try {
-      await runScenario(
-        makeScenario({ fixture: 'jvm' }),
-        override.dir,
-        'claude',
-        canonical.dir,
-      );
-
-      expect(sawCanonicalJvmFile).toBe(true);
-      expect(sawOverrideJvmFile).toBe(false);
-    } finally {
-      override.cleanup();
-      canonical.cleanup();
-    }
-  });
-
-  it('fails clearly when the requested JVM fixture directory is missing', async () => {
-    const fixture = createRealFixture();
-    try {
-      await expect(
-        runScenario(makeScenario({ name: 'forge-tdd-slice-jvm', fixture: 'jvm' }), fixture.dir),
-      ).rejects.toThrow(
-        /forge-tdd-slice-jvm.*fixture "jvm".*not found/,
-      );
-      expect(spawn).not.toHaveBeenCalled();
     } finally {
       fixture.cleanup();
     }
@@ -605,6 +650,36 @@ describe('runScenario', () => {
 
       const hashAfter = hashDirectory(fixture.dir);
       expect(hashAfter).toBe(hashBefore);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('detects mutation of the selected source fixture directory', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+
+    const fixture = createRealFixture();
+    fs.mkdirSync(path.join(fixture.dir, 'jvm'));
+    fs.writeFileSync(path.join(fixture.dir, 'jvm', 'selected.txt'), 'before');
+
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], _opts: { cwd?: string }) => {
+        fs.writeFileSync(path.join(fixture.dir, 'jvm', 'selected.txt'), 'after');
+        return child as never;
+      }) as never,
+    );
+
+    try {
+      const effectiveFixtureDir = resolveFixtureDir(
+        makeScenario({ fixture: 'jvm' }),
+        fixture.dir,
+        fixture.dir,
+      );
+
+      await expect(
+        runScenario(makeScenario({ fixture: 'jvm' }), effectiveFixtureDir),
+      ).rejects.toThrow(/Source fixture directory was modified/);
     } finally {
       fixture.cleanup();
     }

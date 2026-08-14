@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Add effective fixture resolution**
+- [x] **Add effective fixture resolution**
 
   Add a separately testable fixture resolver in the runner path, using `evals/lib/runner.ts` or a runner-adjacent module consistent with the existing eval library layout. It should consume scenario metadata, the global fixture directory, and the repository fixture root to satisfy AS 2.1-2.4.
 
@@ -29,7 +29,7 @@
   - Missing or non-directory effective fixtures fail before agent spawn.
   - Resolver coverage exercises default, global override, scenario override, and invalid effective fixture cases.
 
-- [ ] **Wire resolution into eval execution**
+- [x] **Wire resolution into eval execution**
 
   Update `evals/run-evals.ts` and the runner call path so each selected scenario is executed against its resolved effective fixture directory. Keep the existing preflight, scenario loading, timeout override, structural validation, sub-agent validation, baseline comparison, and dump behavior unchanged except for using the selected fixture path.
 
@@ -40,7 +40,7 @@
   - Scenarios without fixture metadata keep the current `--fixture` behavior for AS 2.1 and AS 2.2.
   - Runner integration coverage proves resolution happens before agent spawning.
 
-- [ ] **Preserve selected-fixture checksum behavior**
+- [x] **Preserve selected-fixture checksum behavior**
 
   Ensure `runScenario` hashes and verifies the same source fixture directory it copies into the temp run. This task keeps fixture mutation detection aligned with the effective fixture selected for AS 2.1-2.3 and prepares US4's default-behavior regression checks.
 

@@ -369,13 +369,7 @@ export async function runScenario(
   scenario: EvalScenario,
   fixtureDir: string,
   agent: EvalAgent = 'claude',
-  canonicalFixtureRoot: string = fixtureDir,
 ): Promise<RunOutput> {
-  const selectedFixtureDir = resolveScenarioFixtureDir(
-    scenario,
-    fixtureDir,
-    canonicalFixtureRoot,
-  );
   const requiresGit = scenario.requires_git ?? true;
 
   // Create a unique temp directory and copy the fixture into it.
@@ -385,7 +379,7 @@ export async function runScenario(
 
   try {
     // FR-002: Copy fixture to temp directory.
-    fs.cpSync(selectedFixtureDir, tmpDir, { recursive: true });
+    fs.cpSync(fixtureDir, tmpDir, { recursive: true });
 
     if (requiresGit) {
       // Initialize the temp copy as a git repository with a baseline commit
@@ -414,7 +408,7 @@ export async function runScenario(
     }
 
     // FR-011: Checksum the source fixture *before* execution.
-    const checksumBefore = hashDirectory(selectedFixtureDir);
+    const checksumBefore = hashDirectory(fixtureDir);
 
     const fixtureBindings = resolveLocalFixtureBindings(scenario, tmpDir);
 
@@ -450,7 +444,7 @@ export async function runScenario(
     }
 
     // FR-011: Re-verify the source fixture after execution.
-    const checksumAfter = hashDirectory(selectedFixtureDir);
+    const checksumAfter = hashDirectory(fixtureDir);
     if (checksumAfter !== checksumBefore) {
       throw new Error(
         'Source fixture directory was modified during eval execution. ' +
@@ -472,29 +466,47 @@ export async function runScenario(
   }
 }
 
-function resolveScenarioFixtureDir(
+export function resolveFixtureDir(
   scenario: EvalScenario,
-  fixtureDir: string,
-  canonicalFixtureRoot: string,
+  globalFixtureDir: string,
+  repoFixtureRoot: string,
 ): string {
   const fixture = scenario.fixture;
-
-  // No selector: use the default fixture root, which honors the `--fixture`
-  // override. An explicit selector overrides that default per the F1.6 fixture
-  // contract and always resolves to its committed location under the canonical
-  // fixture root, so a `--fixture` override aimed at other cases never redirects
-  // (or hides) it. The loader has already validated any selector as a safe
-  // relative path under the fixture root (no absolute roots, no '..').
   const selectedDir = fixture === undefined
-    ? fixtureDir
-    : path.join(canonicalFixtureRoot, fixture);
+    ? path.resolve(globalFixtureDir)
+    : path.resolve(repoFixtureRoot, fixture);
+
+  if (fixture !== undefined) {
+    const fixtureRoot = path.resolve(repoFixtureRoot);
+    const relativeToRoot = path.relative(fixtureRoot, selectedDir);
+    if (
+      relativeToRoot === '' ||
+      relativeToRoot.startsWith('..') ||
+      path.isAbsolute(relativeToRoot)
+    ) {
+      throw new Error(
+        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root: ${selectedDir}`,
+      );
+    }
+  }
+
   const stat = fs.statSync(selectedDir, { throwIfNoEntry: false });
   if (!stat) {
+    if (fixture === undefined) {
+      throw new Error(
+        `Scenario "${scenario.name}" effective fixture directory was not found: ${selectedDir}`,
+      );
+    }
     throw new Error(
       `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture directory was not found: ${selectedDir}`,
     );
   }
   if (!stat.isDirectory()) {
+    if (fixture === undefined) {
+      throw new Error(
+        `Scenario "${scenario.name}" effective fixture path is not a directory: ${selectedDir}`,
+      );
+    }
     throw new Error(
       `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path is not a directory: ${selectedDir}`,
     );
