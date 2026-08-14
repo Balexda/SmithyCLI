@@ -476,18 +476,18 @@ export function resolveFixtureDir(
     ? path.resolve(globalFixtureDir)
     : path.resolve(repoFixtureRoot, fixture);
 
-  if (fixture !== undefined) {
-    const fixtureRoot = path.resolve(repoFixtureRoot);
-    const relativeToRoot = path.relative(fixtureRoot, selectedDir);
-    if (
-      relativeToRoot === '' ||
-      relativeToRoot.startsWith('..') ||
-      path.isAbsolute(relativeToRoot)
-    ) {
-      throw new Error(
-        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root: ${selectedDir}`,
-      );
-    }
+  const fixtureRoot = path.resolve(repoFixtureRoot);
+
+  // Defense in depth beyond loader validation. The loader rejects `..` path
+  // *segments*, so containment is checked per segment here too: the fixture
+  // root itself (`fixture: .`, which selects the default fixture even under a
+  // `--fixture` override) and children whose names merely begin with dots
+  // (`..fixtures`) are legitimate selections the loader accepts — only a real
+  // parent traversal escapes the root.
+  if (fixture !== undefined && !isRootOrDescendant(selectedDir, fixtureRoot)) {
+    throw new Error(
+      `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root: ${selectedDir}`,
+    );
   }
 
   const stat = fs.statSync(selectedDir, { throwIfNoEntry: false });
@@ -512,7 +512,42 @@ export function resolveFixtureDir(
     );
   }
 
+  // The checks above only constrain the path *text*. Resolve the real paths and
+  // re-check containment so a symlink under the fixture root cannot redirect the
+  // copied fixture outside it — the same defense the scenario loader applies to
+  // `local_fixtures` declarations.
+  if (fixture !== undefined) {
+    let realSelectedDir: string;
+    let realFixtureRoot: string;
+    try {
+      realSelectedDir = fs.realpathSync(selectedDir);
+      realFixtureRoot = fs.realpathSync(fixtureRoot);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path could not be resolved: ${selectedDir} (${msg})`,
+      );
+    }
+    if (!isRootOrDescendant(realSelectedDir, realFixtureRoot)) {
+      throw new Error(
+        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root via symlink: ${selectedDir}`,
+      );
+    }
+  }
+
   return selectedDir;
+}
+
+/**
+ * True when `childAbs` is `parentAbs` itself or a descendant of it. Containment
+ * is checked per path segment rather than by string prefix, so a directory whose
+ * name merely begins with `..` is not mistaken for a parent traversal.
+ */
+function isRootOrDescendant(childAbs: string, parentAbs: string): boolean {
+  const relative = path.relative(parentAbs, childAbs);
+  if (relative === '') return true;
+  if (path.isAbsolute(relative)) return false;
+  return !relative.split(/[\\/]+/).includes('..');
 }
 
 function buildAgentArgs(agent: EvalAgent, invocation: string, tmpDir: string): string[] {

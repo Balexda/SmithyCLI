@@ -278,6 +278,49 @@ describe('resolveFixtureDir', () => {
       fixture.cleanup();
     }
   });
+
+  it('accepts a `.` selector as the fixture root itself', () => {
+    const global = createRealFixture();
+    const fixtureRoot = createRealFixture();
+    try {
+      // `fixture: .` selects the default fixture root even under a `--fixture`
+      // override; the loader accepts it, so resolution must too.
+      expect(resolveFixtureDir(makeScenario({ fixture: '.' }), global.dir, fixtureRoot.dir)).toBe(
+        path.resolve(fixtureRoot.dir),
+      );
+    } finally {
+      global.cleanup();
+      fixtureRoot.cleanup();
+    }
+  });
+
+  it('accepts a child selector whose name begins with dots', () => {
+    const fixture = createRealFixture();
+    fs.mkdirSync(path.join(fixture.dir, '..fixtures'));
+    try {
+      expect(
+        resolveFixtureDir(makeScenario({ fixture: '..fixtures' }), fixture.dir, fixture.dir),
+      ).toBe(path.join(fixture.dir, '..fixtures'));
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('rejects a scenario selector that escapes the fixture root through a symlink', () => {
+    const fixture = createRealFixture();
+    const outside = createRealFixture();
+    fs.symlinkSync(outside.dir, path.join(fixture.dir, 'jvm'), 'dir');
+    try {
+      expect(() =>
+        resolveFixtureDir(makeScenario({ fixture: 'jvm' }), fixture.dir, fixture.dir),
+      ).toThrow(/outside fixture root via symlink/);
+      // Resolution fails before any agent spawn (AS 2.4).
+      expect(spawn).not.toHaveBeenCalled();
+    } finally {
+      fixture.cleanup();
+      outside.cleanup();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -538,12 +581,8 @@ describe('runScenario', () => {
       path.join(repoRoot, 'evals/cases/fix-from-issue.yaml'),
     );
 
-    await runScenario(
-      scenario,
-      path.join(repoRoot, 'evals/fixture'),
-      'claude',
-      path.join(repoRoot, 'evals/fixture'),
-    );
+    const fixtureRoot = path.join(repoRoot, 'evals/fixture');
+    await runScenario(scenario, resolveFixtureDir(scenario, fixtureRoot, fixtureRoot), 'claude');
 
     const call = vi.mocked(spawn).mock.calls[0]!;
     const args = call[1] as string[];
