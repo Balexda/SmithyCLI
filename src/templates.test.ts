@@ -729,6 +729,7 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('what persona to generate');
     expect(persona).toContain('continue directly through free-text mode');
     expect(persona).toContain('do not add an approval STOP');
+    expect(persona).toContain('If the input ends in `.rfc.md`, select **RFC mode**');
     expect(persona).toContain('If the input is non-empty and does **not** end in `.rfc.md`, select');
     expect(persona).toContain('**free-text mode**');
     expect(persona).toContain('Dispatch **smithy-prose** with:');
@@ -742,6 +743,38 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('written from free text with no intermediate approval gates');
     expect(persona).toContain('target persona slug already exists');
     expect(persona).toContain('written and skipped persona paths as explicit result fields');
+  });
+
+  it('smithy.persona renders RFC-mode routing and named persona extraction', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    const routingIdx = persona.indexOf('If the input ends in `.rfc.md`, select **RFC mode**');
+    const freeTextRoutingIdx = persona.indexOf(
+      'If the input is non-empty and does **not** end in `.rfc.md`, select',
+    );
+    const rfcModeIdx = persona.indexOf('## RFC Mode');
+    const freeTextModeIdx = persona.indexOf('## Free-Text Mode');
+
+    expect(routingIdx).toBeGreaterThan(-1);
+    expect(freeTextRoutingIdx).toBeGreaterThan(routingIdx);
+    expect(rfcModeIdx).toBeGreaterThan(freeTextRoutingIdx);
+    expect(freeTextModeIdx).toBeGreaterThan(rfcModeIdx);
+
+    const rfcMode = persona.slice(rfcModeIdx, freeTextModeIdx);
+    expect(rfcMode).toContain('Read the input RFC file before drafting, writing');
+    expect(rfcMode).toContain("Locate the RFC's `## Personas` section");
+    expect(rfcMode).toContain('after that heading up to the next H2 heading');
+    expect(rfcMode).toContain('Extract one persona candidate for each clearly named persona');
+    expect(rfcMode).toContain('explicit');
+    expect(rfcMode).toContain('bullet/list item, bold lead-in, or subheading');
+    expect(rfcMode).toContain('Keep the extracted candidate set as a structured list');
+    expect(rfcMode).toContain('as its source of truth');
+    expect(rfcMode).toContain('completes after reporting the candidate set');
+    expect(rfcMode).toContain('Do not draft with');
+    expect(rfcMode).toContain('smithy-prose');
+    expect(rfcMode).toContain('write files, or overwrite artifacts');
+    expect(rfcMode).toContain('Do not infer personas from');
+    expect(rfcMode).toContain('narrative-only prose');
+    expect(rfcMode).toContain('emit empty-section diagnostics');
   });
 
   it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {
