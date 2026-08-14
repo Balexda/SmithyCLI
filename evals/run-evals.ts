@@ -99,6 +99,16 @@ if (dumpFlag !== undefined) {
 const fixtureDir = path.resolve(process.cwd(), values['fixture'] as string);
 const casesDir = path.resolve(process.cwd(), 'evals/cases');
 
+// Canonical committed fixture root, resolved relative to this source file (like
+// `baselinesDir`) so it is independent of both `process.cwd()` and the
+// `--fixture` override. `--fixture` only redirects the default (js) fixture; an
+// explicit scenario-level selector (e.g. `fixture: jvm`) always resolves to its
+// committed sibling under this root per the F1.6 fixture contract.
+const canonicalFixtureRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'fixture',
+);
+
 // Resolve the baselines directory relative to this source file so baseline
 // lookups work regardless of process cwd (matching the pattern used by
 // `strike-scenario.ts` for YAML loading). Without this, invoking the
@@ -261,7 +271,7 @@ for (const scenario of finalScenarios) {
 
   let output;
   try {
-    output = await runScenario(scenario, fixtureDir, agent);
+    output = await runScenario(scenario, fixtureDir, agent, canonicalFixtureRoot);
   } catch (err) {
     console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
