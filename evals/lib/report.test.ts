@@ -737,6 +737,101 @@ describe('formatReport', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Token rendering (US2)
+  // -----------------------------------------------------------------------
+  describe('token rendering', () => {
+    it('renders input and output token totals on a passing case line', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 123, output: 45 },
+          duration_ms: 111,
+        }),
+      ];
+      const report = buildReport(results, 111);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      const alphaLine = lines.find((l) => l.includes('alpha'));
+      expect(alphaLine).toBeDefined();
+      expect(alphaLine!).toBe(
+        '  [PASS] alpha (111ms) input: 123, output: 45',
+      );
+    });
+
+    it('renders token totals for fail, timeout, and error lines without changing status tokens', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'fail-case',
+          status: 'fail',
+          tokens: { input: 200, output: 20 },
+          duration_ms: 2000,
+        }),
+        makeResult({
+          scenario_name: 'timeout-case',
+          status: 'timeout',
+          tokens: { input: 300, output: 30 },
+          duration_ms: 3000,
+          error: 'timed out',
+        }),
+        makeResult({
+          scenario_name: 'error-case',
+          status: 'error',
+          tokens: { input: 400, output: 40 },
+          duration_ms: 4000,
+          error: 'exit 1',
+        }),
+      ];
+      const report = buildReport(results, 9000);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      expect(lines.find((l) => l.includes('fail-case'))).toBe(
+        '  [FAIL] fail-case (2000ms) input: 200, output: 20',
+      );
+      expect(lines.find((l) => l.includes('timeout-case'))).toBe(
+        '  [TIMEOUT] timeout-case (3000ms) input: 300, output: 30',
+      );
+      expect(lines.find((l) => l.includes('error-case'))).toBe(
+        '  [ERROR] error-case (4000ms) input: 400, output: 40',
+      );
+    });
+
+    it('keeps Total elapsed: and Result: summary lines unchanged when token totals are present', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 12, output: 3 },
+        }),
+      ];
+      const report = buildReport(results, 750);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      expect(lines.find((l) => l.startsWith('Total elapsed:'))).toBe(
+        'Total elapsed: 750ms',
+      );
+      expect(lines[lines.length - 1]).toBe(
+        'Result: PASS (1/1 passed, 1 total)',
+      );
+    });
+
+    it('keeps empty reports well formed without inventing case lines', () => {
+      const report = buildReport([], 0);
+      const out = formatReport(report);
+
+      expect(out).toBe(
+        [
+          'Eval Summary',
+          '',
+          'Total elapsed: 0ms',
+          'Result: PASS (0/0 passed, 0 total)',
+        ].join('\n'),
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Determinism
   // -----------------------------------------------------------------------
   describe('determinism', () => {
@@ -958,7 +1053,7 @@ describe('baseline checks wiring', () => {
   // formatReport: no baseline present anywhere
   // -----------------------------------------------------------------------
   describe('formatReport with no baseline_checks anywhere', () => {
-    it('renders per-case lines byte-identical to pre-slice behavior', () => {
+    it('renders per-case lines without baseline markers', () => {
       const results: EvalResult[] = [
         makeResult({ scenario_name: 'alpha', duration_ms: 111 }),
         makeResult({ scenario_name: 'beta', duration_ms: 222, status: 'fail' }),
@@ -975,9 +1070,8 @@ describe('baseline checks wiring', () => {
       expect(alphaLine!).not.toContain('baseline:');
       expect(betaLine!).not.toContain('baseline:');
 
-      // Exact line shape preserved from US9.
-      expect(alphaLine!).toBe('  [PASS] alpha (111ms)');
-      expect(betaLine!).toBe('  [FAIL] beta (222ms)');
+      expect(alphaLine!).toBe('  [PASS] alpha (111ms) input: 0, output: 0');
+      expect(betaLine!).toBe('  [FAIL] beta (222ms) input: 0, output: 0');
     });
   });
 
@@ -989,6 +1083,7 @@ describe('baseline checks wiring', () => {
       const results: EvalResult[] = [
         makeResult({
           scenario_name: 'alpha',
+          tokens: { input: 101, output: 11 },
           baseline_checks: [passingBaselineCheck],
         }),
       ];
@@ -998,6 +1093,7 @@ describe('baseline checks wiring', () => {
 
       const alphaLine = lines.find((l) => l.includes('alpha'));
       expect(alphaLine).toBeDefined();
+      expect(alphaLine!).toContain('input: 101, output: 11');
       expect(alphaLine!).toContain('baseline: PASS');
       expect(alphaLine!).not.toContain('baseline: FAIL');
       expect(alphaLine!).not.toContain('baseline: n/a');
@@ -1008,6 +1104,7 @@ describe('baseline checks wiring', () => {
         makeResult({
           scenario_name: 'alpha',
           status: 'fail',
+          tokens: { input: 202, output: 22 },
           baseline_checks: [passingBaselineCheck, failingBaselineCheck],
         }),
       ];
@@ -1017,6 +1114,7 @@ describe('baseline checks wiring', () => {
 
       const alphaLine = lines.find((l) => l.includes('alpha'));
       expect(alphaLine).toBeDefined();
+      expect(alphaLine!).toContain('input: 202, output: 22');
       expect(alphaLine!).toContain('baseline: FAIL');
       expect(alphaLine!).not.toContain('baseline: PASS');
     });
@@ -1025,9 +1123,13 @@ describe('baseline checks wiring', () => {
       const results: EvalResult[] = [
         makeResult({
           scenario_name: 'alpha',
+          tokens: { input: 303, output: 33 },
           baseline_checks: [passingBaselineCheck],
         }),
-        makeResult({ scenario_name: 'beta' }),
+        makeResult({
+          scenario_name: 'beta',
+          tokens: { input: 404, output: 44 },
+        }),
       ];
       const report = buildReport(results, 500);
       const out = formatReport(report);
@@ -1039,16 +1141,22 @@ describe('baseline checks wiring', () => {
       expect(betaLine).toBeDefined();
 
       expect(alphaLine!).toContain('baseline: PASS');
+      expect(alphaLine!).toContain('input: 303, output: 33');
       expect(betaLine!).toContain('baseline: n/a');
+      expect(betaLine!).toContain('input: 404, output: 44');
     });
 
     it('keeps Total elapsed: and Result: summary lines unchanged when baseline markers are present', () => {
       const results: EvalResult[] = [
         makeResult({
           scenario_name: 'alpha',
+          tokens: { input: 10, output: 1 },
           baseline_checks: [passingBaselineCheck],
         }),
-        makeResult({ scenario_name: 'beta' }),
+        makeResult({
+          scenario_name: 'beta',
+          tokens: { input: 20, output: 2 },
+        }),
       ];
       const report = buildReport(results, 750);
       const out = formatReport(report);
@@ -1066,14 +1174,19 @@ describe('baseline checks wiring', () => {
       const results: EvalResult[] = [
         makeResult({
           scenario_name: 'alpha',
+          tokens: { input: 10, output: 1 },
           baseline_checks: [passingBaselineCheck],
         }),
         makeResult({
           scenario_name: 'beta',
           status: 'fail',
+          tokens: { input: 20, output: 2 },
           baseline_checks: [failingBaselineCheck],
         }),
-        makeResult({ scenario_name: 'gamma' }),
+        makeResult({
+          scenario_name: 'gamma',
+          tokens: { input: 30, output: 3 },
+        }),
       ];
       const report = buildReport(results, 1000);
       const out = formatReport(report);
@@ -1087,8 +1200,11 @@ describe('baseline checks wiring', () => {
       expect(gammaLine).toBeDefined();
 
       expect(alphaLine!).toContain('baseline: PASS');
+      expect(alphaLine!).toContain('input: 10, output: 1');
       expect(betaLine!).toContain('baseline: FAIL');
+      expect(betaLine!).toContain('input: 20, output: 2');
       expect(gammaLine!).toContain('baseline: n/a');
+      expect(gammaLine!).toContain('input: 30, output: 3');
     });
   });
 });

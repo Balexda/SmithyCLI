@@ -131,16 +131,17 @@ Checks:
   [FAIL] smithy-reconcile evidence present — expected: dispatching.*smithy-reconcile, actual: no match found
 
 Eval Summary
-  [FAIL] strike-health-check (442502ms) baseline: FAIL
-  [FAIL] scout-fixture-shallow (27830ms) baseline: n/a
+  [FAIL] strike-health-check (442502ms) input: 14820, output: 3003 baseline: FAIL
+  [FAIL] scout-fixture-shallow (27830ms) input: 5201, output: 980 baseline: n/a
 
 Total elapsed: 471117ms
 Result: FAIL (0/2 passed, 2 total)
 ```
 
 Status tokens: `PASS`, `FAIL`, `TIMEOUT`, `ERROR` (FR-009, AS 9.3). The
-`baseline:` column appears only when at least one scenario has a baseline file
-(see [Baselines](#baselines)).
+per-case summary line also renders measured token totals as
+`input: <N>, output: <N>`. The `baseline:` marker appears only when at least
+one scenario has a baseline file (see [Baselines](#baselines)).
 
 ## Layout
 
