@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(27);
+    expect(snippets.size).toBe(28);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -132,6 +132,7 @@ describe('loadSnippets', () => {
       'engraved-recall-dispatch.md',
       'engraved-levels.md',
       'engraved-scan-roots.md',
+      'engraved-project-resolution.md',
       'spec-debt-section.md',
       'open-implementation-questions.md',
     ];
@@ -2058,9 +2059,11 @@ describe('getComposedTemplates', () => {
     }
   });
 
-  it('planning commands hand recall the three levels, not just a domain', () => {
-    // The `Scan roots` input existed in the recall contract from the start but
-    // nothing supplied it, so recall could only ever see one level.
+  it('hands recall the project and nothing it can resolve itself', () => {
+    // The parent's primary context pays for every line of this block, five
+    // times over. Recall resolves the store roots from its own canonical
+    // table, so the only input worth spending parent context on is the
+    // project slug — the one fact recall cannot see.
     const templatesDir = path.join(process.cwd(), 'src/templates/agent-skills/commands');
     for (const filename of [
       'smithy.strike.prompt',
@@ -2082,14 +2085,43 @@ describe('getComposedTemplates', () => {
         'smithy.cut.md',
       ]) {
         const command = templates.commands.get(commandName)!;
-        expect(command, commandName).toContain('**Scan roots**');
-        expect(command, commandName).toContain('~/.smithy/decisions/');
-        expect(command, commandName).toContain('~/.smithy/projects/<project>/decisions/');
-        // Precedence is stated for the parent, not left to the model.
+        // Measure the consultation block itself — the rest of the command
+        // includes the artifact-location policy, which legitimately names the
+        // engraved stores for the commands that author records.
+        const start = command.indexOf('### Engraved-Knowledge Consultation');
+        expect(start, commandName).toBeGreaterThan(-1);
+        // The dispatch half — everything before the result-handling heading.
+        const dispatch = command.slice(start, command.indexOf('### Handling the recall result'));
+
+        // What the parent genuinely owns on the dispatch side: resolving the
+        // project, which is the one input recall cannot see for itself.
+        expect(dispatch, commandName).toContain('**Project**');
+        expect(dispatch, commandName).toContain('--project <slug>');
+        // What it does not: the store-root tables. Those belong to recall (and
+        // to the degraded branch, which has no sub-agent to delegate to).
+        expect(dispatch, commandName).not.toContain('~/.smithy/decisions/');
+        expect(dispatch, commandName).not.toContain('docs/invariants/');
+        expect(dispatch, commandName).not.toContain('**Scan roots**');
+
+        // Result handling stays: precedence and severity escalation are the
+        // parent's job and cannot be delegated to the sub-agent.
         expect(command, commandName).toContain('project > repo > user');
-        // Severity escalation is deterministic, keyed on the ledger row.
         expect(command, commandName).toMatch(/`severity`/);
       }
+    }
+  });
+
+  it('keeps the scan roots in the degraded branch, which has no sub-agent', () => {
+    for (const commandName of [
+      'smithy.strike.md',
+      'smithy.ignite.md',
+      'smithy.render.md',
+      'smithy.mark.md',
+      'smithy.cut.md',
+    ]) {
+      const command = composed.commands.get(commandName)!;
+      expect(command, commandName).toContain('~/.smithy/decisions/');
+      expect(command, commandName).toContain('~/.smithy/projects/<project>/decisions/');
     }
   });
 

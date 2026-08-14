@@ -31,13 +31,14 @@ The parent agent passes you:
    language, or use `both` when the work spans both.
 3. **Relevance hints** - optional topics, scope paths/modules, and affected
    surfaces that should be compared with engraved frontmatter.
-4. **Scan roots** - the engraved locations to read, given per level as
-   `user`, `repo`, and `project` entries. A level the parent omits is one you
-   do not scan. If the parent supplies no scan roots at all, resolve the three
-   levels yourself from the canonical table below.
-5. **Project** - optional project slug naming the workstream in play. Used
-   only to resolve the `project` level when the parent did not pass its root
-   outright.
+4. **Project** - the project slug naming the workstream in play, or a
+   statement that no project level applies. Parents resolve this because only
+   they see the invoking arguments and the artifact frontmatter; you resolve
+   everything else.
+5. **Scan roots** - optional per-level override (`user`, `repo`, `project`).
+   Normally absent: resolve the three levels yourself from the canonical table
+   below. When the parent does supply roots, a level it omits is one you do
+   not scan.
 
 ---
 
@@ -46,9 +47,10 @@ The parent agent passes you:
 Use only `Glob`, `Grep`, and `Read`. Never edit files, run commands, create
 records, recompute a status index, or write derived state.
 
-Scan roots the parent supplies replace the canonical roots for the levels they
-name. Levels the parent names but leaves empty are scanned-and-empty; levels
-the parent omits entirely are out of scope for this run.
+Resolve the canonical roots below yourself. If the parent supplied scan-root
+overrides, they replace the canonical roots for the levels they name: levels
+the parent names but leaves empty are scanned-and-empty, and levels it omits
+entirely are out of scope for that run.
 
 For invariant records, also read:
 
