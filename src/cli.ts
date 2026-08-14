@@ -6,6 +6,7 @@ import { toolchains, type LanguageToolchain } from './permissions.js';
 import { uninitAction } from './commands/uninit.js';
 import { updateAction, type UpdateOptions } from './commands/update.js';
 import { statusAction, type StatusOptions } from './commands/status.js';
+import { flowLintAction, type FlowLintOptions } from './commands/flow-lint.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -107,6 +108,16 @@ program
   .action((opts: Record<string, unknown>) => {
     const statusOpts: StatusOptions = { ...opts } as StatusOptions;
     return statusAction(statusOpts);
+  });
+
+program
+  .command('flow-lint')
+  .description('Validate durable screen, flow, and paired test-body artifacts')
+  .argument('[path]', 'Directory or subpath to scan (defaults to current working directory)')
+  .option('--root <path>', 'Directory or subpath to scan (defaults to current working directory)')
+  .option('--flow-test-root <path>', 'Repo-relative root used for orphan test-body detection')
+  .action((inputPath: string | undefined, opts: Record<string, unknown>) => {
+    return flowLintAction(inputPath, opts as FlowLintOptions);
   });
 
 program.parse(process.argv);

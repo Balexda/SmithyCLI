@@ -39,6 +39,173 @@ describe('CLI init (interactive)', () => {
   }, 20_000);
 });
 
+describe('CLI flow-lint', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-flow-lint-cli-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function write(relPath: string, contents: string): void {
+    const abs = path.join(tmpDir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, contents);
+  }
+
+  function screen(id: string): string {
+    return `---
+id: ${id}
+component-path: src/${id}.tsx
+design_system: test-system
+---
+
+## Why this screen exists
+`;
+  }
+
+  function flow(id: string, screens: string[], testBodyPath: string): string {
+    return `---
+id: ${id}
+screens: [${screens.join(', ')}]
+test-body: ${testBodyPath}
+---
+
+## Intent
+`;
+  }
+
+  it('is available in CLI help output', () => {
+    const result = spawnSync('node', [CLI, '--help'], { encoding: 'utf-8' });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('flow-lint');
+    expect(result.stdout).toContain('Validate durable screen, flow, and paired');
+    expect(result.stdout).toContain('test-body artifacts');
+  });
+
+  it('runs against the current working directory by default and exits 0 for a resolved graph', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
+    write('maestro/flows/AddTitle.yaml', '# flow\n');
+
+    const result = spawnSync('node', [CLI, 'flow-lint'], {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout + result.stderr).toBe('');
+  });
+
+  it('scopes the check to a supplied path argument', () => {
+    write('app/design/screens/Library.design.md', screen('Library'));
+    write('app/design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
+    write('app/maestro/flows/AddTitle.yaml', '# flow\n');
+
+    const result = spawnSync('node', [CLI, 'flow-lint', path.join(tmpDir, 'app')], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout + result.stderr).toBe('');
+  });
+
+  it('scopes the check to --root', () => {
+    write('app/design/screens/Library.design.md', screen('Library'));
+    write('app/design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
+    write('app/maestro/flows/AddTitle.yaml', '# flow\n');
+
+    const result = spawnSync('node', [CLI, 'flow-lint', '--root', path.join(tmpDir, 'app')], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout + result.stderr).toBe('');
+  });
+
+  it('exits nonzero and names dangling screen references', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library', 'AddTitleScreen'], 'maestro/flows/AddTitle.yaml'));
+    write('maestro/flows/AddTitle.yaml', '# flow\n');
+
+    const result = spawnSync('node', [CLI, 'flow-lint', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('missing screen');
+    expect(result.stderr).toContain('flow AddTitle');
+    expect(result.stderr).toContain('ScreenId AddTitleScreen');
+  });
+
+  it('exits nonzero and names missing test bodies', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
+
+    const result = spawnSync('node', [CLI, 'flow-lint', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('missing test body');
+    expect(result.stderr).toContain('design/flows/AddTitle.flow.md');
+    expect(result.stderr).toContain('maestro/flows/AddTitle.yaml');
+  });
+
+  it('exits nonzero and names orphan test bodies in the scoped flow-test root', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'ui-flows/AddTitle.yaml'));
+    write('ui-flows/AddTitle.yaml', '# flow\n');
+    write('ui-flows/RemovedFlow.yaml', '# orphan\n');
+
+    const result = spawnSync(
+      'node',
+      [CLI, 'flow-lint', tmpDir, '--flow-test-root', 'ui-flows'],
+      { encoding: 'utf-8' },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('orphan test body');
+    expect(result.stderr).toContain('ui-flows/RemovedFlow.yaml');
+  });
+
+  it('exits nonzero and names duplicate screen and flow IDs', () => {
+    write('design/screens/Library.design.md', screen('Library'));
+    write('design/screens/LibraryCopy.design.md', screen('Library'));
+    write('design/flows/AddTitle.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitle.yaml'));
+    write('design/flows/AddTitleCopy.flow.md', flow('AddTitle', ['Library'], 'maestro/flows/AddTitleCopy.yaml'));
+    write('maestro/flows/AddTitle.yaml', '# flow\n');
+    write('maestro/flows/AddTitleCopy.yaml', '# flow\n');
+
+    const result = spawnSync('node', [CLI, 'flow-lint', tmpDir], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('duplicate ScreenId Library');
+    expect(result.stderr).toContain('design/screens/Library.design.md');
+    expect(result.stderr).toContain('design/screens/LibraryCopy.design.md');
+    expect(result.stderr).toContain('duplicate FlowId AddTitle');
+    expect(result.stderr).toContain('design/flows/AddTitle.flow.md');
+    expect(result.stderr).toContain('design/flows/AddTitleCopy.flow.md');
+  });
+
+  it('reports nonexistent input paths as command input errors', () => {
+    const missing = path.join(tmpDir, 'does-not-exist');
+
+    const result = spawnSync('node', [CLI, 'flow-lint', missing], {
+      encoding: 'utf-8',
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain(`smithy flow-lint: path does not exist: ${missing}`);
+  });
+});
+
 describe('CLI init --yes (non-interactive)', () => {
   let tmpDir: string;
 

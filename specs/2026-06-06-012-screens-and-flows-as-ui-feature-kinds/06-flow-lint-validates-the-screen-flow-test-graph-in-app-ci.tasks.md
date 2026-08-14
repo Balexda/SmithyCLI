@@ -68,7 +68,7 @@
 
 ### Tasks
 
-- [ ] **Register the flow-lint command**
+- [x] **Register the flow-lint command**
 
   Add `flow-lint` to the Smithy CLI alongside the existing subcommands. The command should accept an optional path argument or root option, default to the current working directory, and pass the resolved path to the validator without requiring a smithy manifest or forge run.
 
@@ -79,7 +79,7 @@
   - The command does not require initialized smithy artifacts
   - The command does not dispatch or mention agent work
 
-- [ ] **Return CI-friendly exit codes**
+- [x] **Return CI-friendly exit codes**
 
   Make the command return success only when the validator reports no graph findings, and failure when references, pairings, or uniqueness checks fail. Invalid input paths should use the CLI's existing invalid-argument failure pattern rather than being reported as graph findings.
 
@@ -90,7 +90,7 @@
   - Duplicate screen or flow IDs exit nonzero
   - Nonexistent input paths are reported as command input errors
 
-- [ ] **Print specific severed-reference diagnostics**
+- [x] **Print specific severed-reference diagnostics**
 
   Format validator findings so maintainers can identify exactly which artifact or path needs repair. Diagnostics should distinguish dangling screen references, missing paired test bodies, orphan test bodies, and duplicate IDs rather than collapsing all failures into a generic lint error.
 
