@@ -970,6 +970,28 @@ describe('baseline checks wiring', () => {
       expect(result.error).toBeUndefined();
     });
 
+    it('returns fail when a token envelope baseline check fails', () => {
+      const scenario = makeScenario();
+      const output = makeOutput({ tokens: { input: 25, output: 6 } });
+      const tokenBaselineCheck: CheckResult = {
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'input 10-20, output 4-8',
+        actual: 'input 25, output 6',
+      };
+
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        [tokenBaselineCheck],
+      );
+
+      expect(result.status).toBe('fail');
+      expect(result.baseline_checks).toEqual([tokenBaselineCheck]);
+    });
+
     it('returns pass when all baseline checks pass and structural checks pass', () => {
       const scenario = makeScenario();
       const output = makeOutput();

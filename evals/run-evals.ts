@@ -355,7 +355,11 @@ for (const scenario of finalScenarios) {
     // bug, not a runtime failure.
     const baseline = loadBaseline(scenario.name, baselinesDir);
     if (baseline !== null) {
-      baselineChecks = compareToBaseline(output.extracted_text, baseline);
+      baselineChecks = compareToBaseline(
+        output.extracted_text,
+        baseline,
+        output.tokens,
+      );
     }
   } catch (err) {
     console.error(`Validation error: ${err instanceof Error ? err.message : String(err)}`);
