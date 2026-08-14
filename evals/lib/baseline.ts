@@ -68,7 +68,7 @@ function validateTokenRange(
 function validateTokenEnvelope(
   filePath: string,
   value: unknown,
-): TokenEnvelope {
+): TokenEnvelope | undefined {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(
       `Invalid baseline file ${filePath}: field "token_envelope" must be an object when present`,
@@ -82,6 +82,13 @@ function validateTokenEnvelope(
   }
   if (record['output'] !== undefined) {
     envelope.output = validateTokenRange(filePath, 'output', record['output']);
+  }
+
+  // An envelope that declares no supported range carries no bounds at all.
+  // Report it as absent rather than as an empty object, so comparison code
+  // cannot read "envelope present" as "this baseline has token bounds".
+  if (envelope.input === undefined && envelope.output === undefined) {
+    return undefined;
   }
   return envelope;
 }

@@ -226,6 +226,28 @@ describe('loadBaseline', () => {
         input: { min: 10, max: 20 },
       });
     });
+
+    it.each([
+      ['is empty', {}],
+      ['declares only unsupported ranges', { cache: { min: 1, max: 2 } }],
+    ])(
+      'omits the token envelope when it %s',
+      (_label, tokenEnvelope) => {
+        writeBaselineFile(tmp.dir, 'no-supported-ranges', {
+          scenario_name: 'no-supported-ranges',
+          captured_at: '2026-04-17T00:00:00Z',
+          headings: ['## A'],
+          tables: [],
+          token_envelope: tokenEnvelope,
+        });
+
+        const result = loadBaseline('no-supported-ranges', tmp.dir);
+        expect(result!.token_envelope).toBeUndefined();
+        expect(result as unknown as Record<string, unknown>).not.toHaveProperty(
+          'token_envelope',
+        );
+      },
+    );
   });
 
   // -----------------------------------------------------------------------
