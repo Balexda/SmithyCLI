@@ -813,6 +813,53 @@ describe('getComposedTemplates', () => {
     expect(subphase3bBlock).toContain('exactly one `## Personas` section');
   });
 
+  it('smithy.ignite re-discovers file-sourced personas during harmonize repair checks', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    const provenanceIdx = subphase3gBlock.indexOf('Personas repair provenance pre-check');
+    const repairIdx = subphase3gBlock.indexOf('3. **Personas repair.**');
+    const dispatchIdx = subphase3gBlock.indexOf('re-dispatch **smithy-prose**');
+    expect(provenanceIdx).toBeGreaterThan(-1);
+    expect(repairIdx).toBeGreaterThan(provenanceIdx);
+    expect(dispatchIdx).toBeGreaterThan(provenanceIdx);
+    expect(subphase3gBlock).toMatch(/re-run the same\s+durable persona discovery and slug coverage procedure used by sub-phase\s+3b/);
+    expect(subphase3gBlock).toContain('Read the **Persona Artifact Convention** above as the canonical');
+    expect(subphase3gBlock).toContain('active artifacts root');
+    expect(subphase3gBlock).toMatch(/derive\s+deterministic kebab-case slugs/);
+    expect(subphase3gBlock).toMatch(/exact\s+filename-slug identity/);
+    expect(subphase3gBlock).toContain('`<slug>.persona.md`');
+    expect(subphase3gBlock).toContain('including resumes from an on-disk RFC');
+    expect(subphase3gBlock).toContain('do not rely on');
+    expect(subphase3gBlock).toContain('inline markers');
+    expect(subphase3gBlock).toContain('sidecar files');
+    expect(subphase3gBlock).toMatch(/interactive\s+selection/);
+  });
+
+  it('smithy.ignite classifies harmonize personas against durable file coverage', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    expect(subphase3gBlock).toContain('from persona names or roles surfaced in');
+    expect(subphase3gBlock).toContain('from the current on-disk `## Personas` section');
+    expect(subphase3gBlock).toContain('Record matching personas as');
+    expect(subphase3gBlock).toContain('file-sourced for harmonize/repair purposes');
+    expect(subphase3gBlock).toContain('treat the matching durable');
+    expect(subphase3gBlock).toContain('files as their source of truth');
+    expect(subphase3gBlock).toContain('Personas with no matching durable file');
+    expect(subphase3gBlock).toContain('remain eligible for the existing cold repair path');
+    expect(subphase3gBlock).toContain('is not a repair failure solely because');
+    expect(subphase3gBlock).toContain('projected from durable `.persona.md` files');
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {

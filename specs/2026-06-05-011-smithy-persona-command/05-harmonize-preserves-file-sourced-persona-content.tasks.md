@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Re-run durable persona discovery for repair provenance**
+- [x] **Re-run durable persona discovery for repair provenance**
 
   Update `src/templates/agent-skills/commands/smithy.ignite.prompt` so Sub-phase 3g, before any Personas repair dispatch, reuses the canonical persona convention to list durable persona files under the active `{{artifactsRoot}}` and derive the same slug-based coverage record used by Sub-phase 3b.
 
@@ -27,7 +27,7 @@
   - Coverage uses the same deterministic filename-slug identity established for Sub-phase 3b.
   - The prompt does not add inline provenance markers, sidecar state, or interactive selection.
 
-- [ ] **Classify file-sourced Personas in the on-disk RFC**
+- [x] **Classify file-sourced Personas in the on-disk RFC**
 
   Add Sub-phase 3g instructions that compare the current `## Personas` section and Phase 2 persona names or roles against the re-discovered coverage record, treating matching durable files as the source of truth for those personas.
 
