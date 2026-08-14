@@ -639,9 +639,9 @@ Append the returned content to the RFC file.
 
 This sub-phase is primarily orchestrator-inline. The only exception is the
 Personas repair branch in step 3 below, which may conditionally re-dispatch
-**smithy-prose** when the coherence pass detects that the `## Personas`
-section is missing, empty, or placeholder-only. No other sub-agents are
-dispatched in 3g.
+**smithy-prose** for uncovered persona gaps when the coherence pass detects
+that the `## Personas` section is missing, empty, or placeholder-only. No other
+sub-agents are dispatched in 3g.
 
 1. Read the complete `<slug>.rfc.md` from disk.
 2. Perform a coherence pass:
@@ -694,24 +694,49 @@ dispatched in 3g.
      it was projected from durable `.persona.md` files.
 3. **Personas repair.** If the Personas verification above fails for any
    reason (missing, empty, placeholder-only, or still misplaced after
-   reorder), re-dispatch **smithy-prose** with:
-   - `section_assignment` = "Personas"
-   - `idea_description` = the user's original idea description or PRD content
-     from intake (same value passed to sub-phase 3b; required by the
-     smithy-prose contract)
-   - `clarify_output` = the Phase 2 clarification Q&A and assumptions
-   - `rfc_file_path` = the path to the accumulating `<slug>.rfc.md`
-   - `tone_directives` = "Personas named or described during Phase 2
-     clarification are mandatory. Do not return placeholder or empty content."
+   reorder), repair by source class:
+   - For every persona recorded as file-sourced by the provenance pre-check,
+     read the matching `.persona.md` file again and rebuild that persona's RFC
+     entry from the durable file as source context. Preserve the durable
+     persona's role, context, and friction, while re-projecting the
+     RFC-specific benefit language for the current idea. This repaired entry
+     must remain a tailored RFC projection, not a byte-for-byte copy of the
+     durable persona file, and it must not be regenerated from clarify output
+     alone. Position or formatting normalization is allowed, but the source
+     basis stays the matching durable file.
+   - Build an uncovered-persona repair gaps list containing only personas from
+     Phase 2 clarification or the current on-disk `## Personas` section that
+     are not covered by matching durable files. Covered personas MUST be
+     excluded from any cold Personas repair dispatch.
+   - If the uncovered-persona repair gaps list is non-empty, re-dispatch **smithy-prose** for only those gaps with:
+     - `section_assignment` = "Personas"
+     - `idea_description` = the user's original idea description or PRD
+       content from intake (same value passed to sub-phase 3b; required by the
+       smithy-prose contract)
+     - `clarify_output` = the Phase 2 clarification Q&A and assumptions,
+       narrowed to the uncovered persona names or roles so file-sourced
+       personas are not regenerated cold
+     - `rfc_file_path` = the path to the accumulating `<slug>.rfc.md`
+     - `tone_directives` = "Draft only the uncovered Personas repair gaps
+       listed in clarify_output. Do not regenerate personas covered by
+       existing `.persona.md` files. Every uncovered persona is mandatory and
+       MUST appear with a role and a description of how this RFC benefits
+       them. Do not return placeholder or empty content."
+   - If every persona is file-sourced and the existing section is otherwise
+     well-formed apart from position or formatting, do not dispatch
+     smithy-prose for Personas repair. Re-project from the matching durable
+     files and normalize only what the coherence pass requires.
 
-   When smithy-prose returns, **replace** any existing `## Personas` section
-   in the RFC file with the returned content in place — do not append a
-   second Personas section. If no `## Personas` heading exists, splice the
-   returned section in at the canonical position (after `## Out of Scope`
-   and before `## Proposal`). Re-run the mandatory-section verification from
-   step 2 after repair; if Personas is still missing, empty, or misplaced,
-   halt the pipeline with a diagnostic pointing at the Phase 2 clarification
-   record.
+   Combine the file-sourced re-projections and any cold-repaired uncovered gap
+   content into exactly one valid `## Personas` section. **Replace** any
+   existing `## Personas` section in the RFC file with that combined section
+   in place — do not append a second Personas section. If no `## Personas`
+   heading exists, splice the combined section in at the canonical position
+   (after `## Out of Scope` and before `## Proposal`). Re-run the
+   mandatory-section verification from step 2 after repair; if Personas is
+   still missing, empty, or misplaced, halt the pipeline with a diagnostic
+   pointing at the Phase 2 clarification record and the durable persona
+   coverage record.
 4. Rewrite the file in place with the harmonized content.
 
 Confirm the harmonize step completed before proceeding to Phase 4.
