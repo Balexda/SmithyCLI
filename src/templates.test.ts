@@ -727,7 +727,8 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('command-argument placeholder');
     expect(persona).toContain('use it as the effective command input for');
     expect(persona).toContain('what persona to generate');
-    expect(persona).toContain('continue directly through free-text mode');
+    expect(persona).toContain('continue directly through the two');
+    expect(persona).toContain('mode-selection rules below');
     expect(persona).toContain('do not add an approval STOP');
     expect(persona).toContain('If the input ends in `.rfc.md`, select **RFC mode**');
     expect(persona).toContain('If the input is non-empty and does **not** end in `.rfc.md`, select');
@@ -756,6 +757,13 @@ describe('getComposedTemplates', () => {
 
     expect(routingIdx).toBeGreaterThan(-1);
     expect(freeTextRoutingIdx).toBeGreaterThan(routingIdx);
+
+    // The ask-fallback is the primary entry path on agents that leave
+    // $ARGUMENTS literal, so a clarified answer must reach RFC mode too.
+    expect(persona).toContain('Route the clarified answer by the same `.rfc.md`');
+    expect(persona).toContain('an answer ending in `.rfc.md`');
+    expect(persona).toContain('selects RFC mode, and any other clear answer selects free-text mode');
+
     expect(rfcModeIdx).toBeGreaterThan(freeTextRoutingIdx);
     expect(freeTextModeIdx).toBeGreaterThan(rfcModeIdx);
 

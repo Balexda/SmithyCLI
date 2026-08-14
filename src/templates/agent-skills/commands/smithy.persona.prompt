@@ -23,8 +23,11 @@ persona input** for the rest of this run.
   token), or otherwise does not contain a usable persona description or RFC
   path, ask the user what persona to generate. Replace the resolved persona
   input with the user's answer and use it as the effective command input for
-  the remainder of the run, then continue directly through free-text mode. This
-  is the only ask-fallback: do not add an approval STOP after the input is
+  the remainder of the run, then continue directly through the two
+  mode-selection rules below. Route the clarified answer by the same `.rfc.md`
+  suffix test as a directly supplied input: an answer ending in `.rfc.md`
+  selects RFC mode, and any other clear answer selects free-text mode. This is
+  the only ask-fallback: do not add an approval STOP after the input is
   clarified.
 - If the input ends in `.rfc.md`, select **RFC mode**.
 - If the input is non-empty and does **not** end in `.rfc.md`, select
