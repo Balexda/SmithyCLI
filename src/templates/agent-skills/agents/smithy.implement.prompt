@@ -55,6 +55,12 @@ implementation.
 
 ---
 
+## Typed UI Node Build Profiles
+
+{{>typed-ui-build-profiles}}
+
+---
+
 {{>tdd-protocol}}
 
 ---

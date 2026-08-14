@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Add the screen-build forge profile**
+- [x] **Add the screen-build forge profile**
 
   Update `src/templates/agent-skills/commands/smithy.forge.prompt` so tasks produced for an `SC` node preload the referenced `.design.md` and committed design skill, then build the component behind the feature `flag` against mock data. The profile must consume the mark-owned artifact and refuse to create durable `.design.md` truth downstream.
 
@@ -75,7 +75,7 @@
   - Generated screen work is gated behind the feature `flag`
   - Forge does not author a new `.design.md` from scratch
 
-- [ ] **Require token-only brief-state rendering**
+- [x] **Require token-only brief-state rendering**
 
   Strengthen the screen-build profile so every brief state named by the durable screen intent is represented in the implementation using the project's design-system tokens and reusable components. Keep data mocked at this stage so backend availability does not block screen construction.
 
@@ -86,7 +86,7 @@
   - Screen-build work can run with mock data
   - Backend story implementation is not required for the screen-build slice
 
-- [ ] **Honor bundles without blocking**
+- [x] **Honor bundles without blocking**
 
   Add bundle handling to the screen-build profile so an attached bundle is translated into the project framework under the conflict rule, while a bundle-less `brief` or `none` screen still builds from the design skill. Keep the design skill loaded as implementation dialect context in all modes.
 

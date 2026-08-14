@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(23);
+    expect(snippets.size).toBe(24);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -130,6 +130,7 @@ describe('loadSnippets', () => {
       'engraved-recall-degraded.md',
       'spec-debt-section.md',
       'open-implementation-questions.md',
+      'typed-ui-build-profiles.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -2416,6 +2417,40 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('**No declaration → nothing to check.**');
     expect(forge).toContain('git rev-parse --show-toplevel');
     expect(forge).toContain('Implementation repo mismatch');
+  });
+
+  it('forge template defines the screen-build profile for typed UI nodes', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('### Typed UI Node Build Profiles');
+    expect(forge).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
+    expect(forge).toContain('Read the referenced `design/screens/<ScreenId>.design.md` before editing');
+    expect(forge).toContain('the committed design skill named by the screen artifact');
+    expect(forge).toContain('behind the resolved feature `flag`');
+    expect(forge).toContain('Use mock data for screen-build work');
+    expect(forge).toContain('Represent every brief state named by the screen intent');
+    expect(forge).toContain('design-system');
+    expect(forge).toContain('tokens and reusable project components');
+    expect(forge).toContain('Honor an attached `bundle` for layout and visual intent');
+    expect(forge).toContain('`brief`');
+    expect(forge).toContain('mode without a bundle and `none` mode are non-blocking');
+    expect(forge).toContain('Refuse to author a new `.design.md` from scratch');
+  });
+
+  it('screen-build profile resolves the gating feature flag or stops', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('Resolve the gating feature `flag` before writing code');
+    expect(forge).toContain('`**Design Metadata**` line first');
+    expect(forge).toContain("`**Source Feature Map**` pointer");
+    expect(forge).toContain('never');
+    expect(forge).toContain('ship an ungated screen');
+  });
+
+  it('smithy-implement carries the same typed UI build profile as forge', () => {
+    const implement = composed.agents.get('smithy.implement.md')!;
+    expect(implement).toBeDefined();
+    expect(implement).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
+    expect(implement).toContain('Resolve the gating feature `flag` before writing code');
+    expect(implement).toContain('Refuse to author a new `.design.md` from scratch');
   });
 
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
