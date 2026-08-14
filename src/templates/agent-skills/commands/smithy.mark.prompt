@@ -411,9 +411,10 @@ UI ledger rules:
     have entered at `render` and rides forward as downstream visual source
     context. Do not derive detailed prototype structure here.
   - `brief` means mark-authored intent for a visual tool; the durable
-    `.design.md` and `.flow.md` artifacts are self-sufficient briefs. Mark the
-    screen row `brief` when the developer requested a mark-first prototype or
-    when you initiate that path for a complex bundle-less screen.
+    `.design.md` and `.flow.md` artifacts are self-sufficient briefs. A bundle
+    is not a precondition for writing them.
+  - Copy the feature's declared `design` value into this cell verbatim. Choose a
+    mode yourself only when the input declares none.
 - `Artifact` is `—` for every row in mark's output. It holds the
   `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
   pre-fills a tasks path in this column.
@@ -455,26 +456,41 @@ verbatim:
 - `smithy.helper-flow-definition` — `.flow.md` front-matter schema, the
   intent-only body rules, and the paired executable test-body contract.
 
-Before writing any UI artifact, validate the feature's UI metadata and abort if
-it cannot be satisfied (per contracts C1):
+Before writing any UI artifact, validate the feature's **required** UI metadata.
+Each check below is fatal — abort before writing the spec or any durable UI
+artifact if it cannot be satisfied (per contracts C1):
 - Every screen node must resolve to a flat `ScreenId`. If a node has none, abort
   with a message naming the node.
-- The UI feature must name a non-empty `design_system`. If it is missing, abort
-  before writing the spec or any durable UI artifact.
+- The UI feature must name a non-empty `design_system`. If it is missing, abort.
+
+Design-mode and bundle handling is **not** part of that fatal set. None of the
+rules below abort; every one of them ends with mark continuing:
+- The feature-level `design` value is declared metadata, not a mark inference.
+  When the input declares a mode, copy it verbatim into the `Design` cell of
+  each of the feature's `SC<N>` rows. Never overwrite a declared `none` or
+  `import` with `brief`, even for a screen you judge complex — the parent
+  feature and the generated spec must agree on the mode.
+- Mark selects a mode itself only when the input declares none — for example a
+  raw feature description or an untyped legacy map. In that case pick the
+  honest mode for the screen: `brief` when it is complex enough to benefit from
+  a visual prototype and no `bundle` is present, `none` when it is simple
+  pass-through work.
 - If a `bundle` is present, treat it as an optional visual prototype boundary
   object from a visual tool such as Figma, Claude Design, or an equivalent
   export. The bundle wins layout and visual intent, while the committed
   design skill wins implementation dialect; a screen with a bundle still
   requires `design_system`.
-- If no `bundle` is present and a screen is complex enough to benefit from a
-  visual prototype, choose `Design: brief`, write the self-sufficient durable
-  brief artifacts, and record a non-blocking design-gate recommendation for the
-  developer-facing summary. The recommendation must say the developer may
-  attach a bundle and re-run or pass through without one; it must not stop spec,
-  `.design.md`, `.flow.md`, or stub test-body generation.
-- If a screen is simple pass-through work, keep `Design: none` valid without a
-  bundle, prototype expectation, or recommendation. Author the same ordinary
-  durable screen intent and continue.
+- Whenever a screen ends up with no `bundle` and is complex enough to benefit
+  from a visual prototype, record a non-blocking design-gate recommendation for
+  the developer-facing summary — whether the mode is a declared `none` /
+  `import` or a mark-selected `brief`. The recommendation must say the developer
+  may attach a bundle and re-run or pass through without one; it must not stop
+  spec, `.design.md`, `.flow.md`, or stub test-body generation.
+- For `brief`, write the self-sufficient durable brief artifacts; a bundle is
+  never a precondition for them.
+- For simple pass-through work, `Design: none` stands without a bundle,
+  prototype expectation, or recommendation. Author the same ordinary durable
+  screen intent and continue.
 
 Then write, matching the ledger pointers:
 - One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per
@@ -496,10 +512,10 @@ The mark output set for `kind: ui` is:
   map.
 
 For `kind: ui`, include a short design-gate note in the developer-facing
-summary when you selected `brief` without a bundle. The note is informational:
-the durable artifacts are already usable as the prototyping brief and the
-pipeline has continued. Do not emit a design-gate note for `Design: none`
-pass-through screens.
+summary for any bundle-less screen that earned a gate recommendation above. The
+note is informational: the durable artifacts are already usable as the
+prototyping brief and the pipeline has continued. Do not emit a design-gate note
+for simple pass-through screens.
 
 ---
 
