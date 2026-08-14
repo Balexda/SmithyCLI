@@ -405,12 +405,15 @@ UI ledger rules:
 - `Design` is required for `screen` rows and is one of `none`, `import`, or
   `brief`; use `—` for `flow` and `story` rows.
   - `none` means no visual loop; no bundle or prototype recommendation is
-    required for a simple pass-through screen.
+    required for a simple pass-through screen. It still produces the ordinary
+    mark-owned `.design.md` intent, but no visual-tool ceremony is added.
   - `import` means prototype-first; a visual prototype boundary object may
     have entered at `render` and rides forward as downstream visual source
     context. Do not derive detailed prototype structure here.
   - `brief` means mark-authored intent for a visual tool; the durable
-    `.design.md` and `.flow.md` artifacts are self-sufficient briefs.
+    `.design.md` and `.flow.md` artifacts are self-sufficient briefs. Mark the
+    screen row `brief` when the developer requested a mark-first prototype or
+    when you initiate that path for a complex bundle-less screen.
 - `Artifact` is `—` for every row in mark's output. It holds the
   `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
   pre-fills a tasks path in this column.
@@ -425,6 +428,10 @@ UI ledger rules:
 - Direct all screen and flow intent into the durable artifacts described by the
   UI Spec Ledger and Screen/Flow node entities in the data model. Do not
   duplicate the screen or flow artifact body schemas in the spec ledger.
+- Keep the ledger pointer-only even for `brief`: the `Design` cell records that
+  the screen intends a prototype, while the durable `.design.md` and `.flow.md`
+  files carry the brief content. Do not add layout prose, visual-tool notes, or
+  gate recommendations to ledger cells.
 - If the feature has no internal ordering, emit the smallest honest typed graph.
   A single pass-through screen with no flows or backend work may be one `SC<N>`
   row, but it must still use the full UI ledger column set.
@@ -459,6 +466,15 @@ it cannot be satisfied (per contracts C1):
   export. The bundle wins layout and visual intent, while the committed
   design skill wins implementation dialect; a screen with a bundle still
   requires `design_system`.
+- If no `bundle` is present and a screen is complex enough to benefit from a
+  visual prototype, choose `Design: brief`, write the self-sufficient durable
+  brief artifacts, and record a non-blocking design-gate recommendation for the
+  developer-facing summary. The recommendation must say the developer may
+  attach a bundle and re-run or pass through without one; it must not stop spec,
+  `.design.md`, `.flow.md`, or stub test-body generation.
+- If a screen is simple pass-through work, keep `Design: none` valid without a
+  bundle, prototype expectation, or recommendation. Author the same ordinary
+  durable screen intent and continue.
 
 Then write, matching the ledger pointers:
 - One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per
@@ -478,6 +494,12 @@ The mark output set for `kind: ui` is:
 - one paired stub test body at each `.flow.md` `test-body` path;
 - the `.features.md` dependency-order write-back when the input was a feature
   map.
+
+For `kind: ui`, include a short design-gate note in the developer-facing
+summary when you selected `brief` without a bundle. The note is informational:
+the durable artifacts are already usable as the prototyping brief and the
+pipeline has continued. Do not emit a design-gate note for `Design: none`
+pass-through screens.
 
 ---
 

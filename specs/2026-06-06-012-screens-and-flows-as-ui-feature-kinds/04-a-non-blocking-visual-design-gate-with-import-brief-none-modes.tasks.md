@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Mark brief-mode intent explicitly**
+- [x] **Mark brief-mode intent explicitly**
 
   Extend the UI authoring path in `src/templates/agent-skills/commands/smithy.mark.prompt` so `brief` screen nodes are marked as intending a prototype while still writing self-sufficient `.design.md` and `.flow.md` intent. The durable artifacts should be usable as the prototyping brief without adding layout prose to the spec ledger.
 
@@ -75,7 +75,7 @@
   - `.design.md` and `.flow.md` remain mark-owned durable truth
   - Mark does not require a bundle before writing brief-mode artifacts
 
-- [ ] **Recommend gating for complex bundle-less screens**
+- [x] **Recommend gating for complex bundle-less screens**
 
   Add mark guidance for the mark-initiated `brief` case: when no bundle is supplied and the screen is complex enough to benefit from visual prototyping, mark authors the brief and recommends gating for a bundle. The recommendation should be visible to the developer but must not stop artifact generation.
 
@@ -86,7 +86,7 @@
   - The recommendation also leaves the developer free to pass through without a bundle
   - Artifact writing continues after the recommendation is recorded
 
-- [ ] **Preserve none-mode pass-through behavior**
+- [x] **Preserve none-mode pass-through behavior**
 
   Tighten mark guidance so `Design: none` remains valid for simple pass-through screens and does not trigger bundle, prototype, or brief ceremony. This keeps AS 4.1 from being implemented as a special case in forge only.
 
