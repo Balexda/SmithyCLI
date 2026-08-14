@@ -61,62 +61,27 @@ list; anything outside it is out of scope for plan-review.
 
 ## Kind Gate
 
-Before you assign `severity` and `confidence` to a finding, decide **who
-resolves it**. Set the finding's `kind` from that answer. This gate is the
-plan-review sibling of `smithy-clarify` Step 3b: the same question ("must a
-human decide, and does the decision change what gets built?"), applied to
-review findings instead of clarification candidates. Where clarify reroutes
-a failing candidate into its assumption stream, you have no assumption
-stream — you reroute by naming a different `kind`, and the parent command
-sends it somewhere other than the debt table.
+The gate itself — the three-part steering test, the positive test, the
+routing table for non-steering findings, and the calibration — is defined
+in the **Kind gate** section of the shared review protocol above. It lives
+there because the same rules bind every review surface, including ones
+that never load this file. Do not restate it here; apply it as written.
 
-Apply the gate to **every** finding, not just the ones you expect to be
-Low confidence. Severity and confidence are graded after the kind is set,
+Two things are specific to plan-review:
+
+**When to apply it.** Before you assign `severity` and `confidence` to a
+finding, decide who resolves it and set `kind` from that answer. Apply the
+gate to **every** finding, not just the ones you expect to be Low
+confidence. Severity and confidence are graded after the kind is set,
 never before.
 
-### The steering test
-
-A finding is `steering` only if **all three** are true:
-
-1. **Open question** — the artifacts, the codebase, the conventions, and
-   prior art cannot settle it. Reading more does not produce the answer.
-2. **Named alternatives** — two or more meaningfully different paths
-   exist, and picking between them changes what gets built.
-3. **Human-only** — a person must pick. The question cannot be closed by
-   writing the code, running a test, or reading a file.
-
-Condition 3 is the one that does the work here. Most findings that feel
-like open questions fail it: "whether the test runner's temp copy carries
-a `.git` directory or initializes one" names two alternatives, but the
-implementer settles it by reading the runner and running it once, not by
-asking anyone.
-
-### Kinds and where they go
-
-| If the finding is really… | `kind` | Where the parent puts it |
-|---------------------------|--------|--------------------------|
-| A steering question passing all three tests — a scope exclusion, a gating or rollout rule, whether one surface preempts another, accept-or-work-around on a known upstream defect | `steering` | The severity × confidence triage table: applied when High confidence, `## Specification Debt` when Low |
-| An unknown the implementer settles by building, testing, or reading source — which field carries a value, which producer serves a surface, which chokepoint owns an attribute, which of two equivalent call sites to extend | `implementation` | The tasks file's `## Open Implementation Questions` section, as an `IQ-NNN` row. Never the debt table |
-| A factual error in the artifact — a wrong `## Dependency Order` table, a stale path, a contradiction with a source the artifact itself cites, ordinary sequencing stated as if ownership were in doubt | `hygiene` | Applied as a write-back via your `proposed_fix`, or listed in the PR body when confidence is Low. A wrong table is a fix, not a question |
-| Artifact-hygiene housekeeping — "is the parent spec corrected, or only this plan?", "does this rename need to propagate upstream?" | `hygiene` | Same: applied or listed in the PR body. The answer is knowable now, so it is never open uncertainty |
-| A requirement, acceptance test, dependency/coordination note, deferral, or post-hoc resolution record — the leak kinds named in `smithy-clarify` Step 3b's routing table | `hygiene` | Point `proposed_fix` at the proper home from that table (`### Functional Requirements`, `### Acceptance Scenarios`, `## Out of Scope`, the RFC's Cross-Cutting Governance matrix, the PR body) so the parent writes it there |
-
-**Positive test for `steering`:** you must be able to phrase the finding
-as a question a named human could answer in one sitting, without opening
-an editor. If closing it requires writing code, running something, or
-reading another file, it is `implementation`. If it requires neither —
-because you already know the correct answer and are simply reporting that
-the artifact has it wrong — it is `hygiene`.
-
-### Calibration
-
-The debt table is a decision queue, and it stops working as one long
-before it stops rendering. If your findings would add more than a handful
-of debt rows to a single artifact, re-run the gate on each of them:
-implementation unknowns are the usual cause of an inflated table, and
-several rows that all reduce to one wrong table are the second. Collapse
-findings that share a single root cause into one `hygiene` finding naming
-that cause, rather than emitting one per symptom.
+**How it relates to clarify.** This gate is the plan-review sibling of
+`smithy-clarify` Step 3b: the same question ("must a human decide, and
+does the decision change what gets built?"), applied to review findings
+instead of clarification candidates. Where clarify reroutes a failing
+candidate into its assumption stream, you have no assumption stream — you
+reroute by naming a different `kind`, and the parent command sends it
+somewhere other than the debt table.
 
 ### Kind-gate examples
 

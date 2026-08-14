@@ -78,8 +78,8 @@ Return a single `ReviewResult` to smithy-forge. The result has two fields:
   in the shared review protocol (`category`, `kind`, `severity`,
   `confidence`, `description`, `artifact_path`, `proposed_fix`). Emit one
   finding per distinct issue. Use the six categories listed above for the
-  `category` field, and set `kind` per the shared protocol's kind gate —
-  the full steering test lives in `smithy-plan-review`'s Kind Gate section.
+  `category` field, and set `kind` per the **Kind gate** section of the
+  shared review protocol above, which carries the full steering test.
   Code review findings are overwhelmingly `hygiene` (a defect with a
   knowable correct fix); reserve `steering` for the rare case where the
   implementation exposed a product choice nobody has made.

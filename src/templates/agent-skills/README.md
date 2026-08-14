@@ -287,7 +287,7 @@ implementer works from — carries a second section, positioned after
 A finding reaches `## Specification Debt` only if **a human must decide and the
 decision changes what gets built**. The canonical three-part steering test —
 open question, named alternatives, human-only — lives in the
-`smithy-plan-review` Kind Gate section, and `smithy-clarify` Step 3b holds the
+`review-protocol` snippet's Kind gate section, and `smithy-clarify` Step 3b holds the
 matching leak-kind routing table for clarification candidates. Everything the
 gate rejects has a home:
 

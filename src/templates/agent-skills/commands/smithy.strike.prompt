@@ -242,13 +242,14 @@ pick changes what gets built — can reach the debt table.
 
 | Kind             | Severity              | Confidence | Action                                                                                                |
 |------------------|-----------------------|------------|-------------------------------------------------------------------------------------------------------|
-| Any              | Critical or Important | High       | Apply the `proposed_fix` to the strike document on disk.                                               |
-| `steering`       | Critical or Important | Low        | Do not apply. Append to the strike's `## Specification Debt` section.                                   |
+| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the strike document on disk.                                               |
+| `steering`       | Critical or Important | Any        | Do not apply — a steering finding is never auto-applied. Append to the strike's `## Specification Debt` section.                                   |
 | `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Surface once in the terminal output — the unknown is settled while building this slice, so it needs no decision queue. |
 | `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. Surface once in the terminal output so the user can settle the correction.  |
 | Any              | Minor                 | Any        | Do not apply. Surface once in the terminal output for the user; do not add to the PR body.             |
 
-For each Low-confidence `steering` finding routed to debt, append a new row to the
+For each `steering` finding routed to debt — confidence does not matter, since
+steering is never auto-applied — append a new row to the
 `## Specification Debt` index table with the next available `SD-NNN` identifier
 (continue numbering from whatever clarify already wrote during Phase 2 — do
 not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
@@ -259,7 +260,7 @@ stays `Critical`; `Important` becomes `High` — `Important` is not a valid
 `Impact` value) and copy confidence into Confidence, and set `Origin` to
 `local`.
 
-For each High-confidence finding routed to auto-fix, edit the strike document
+For each High-confidence `implementation` or `hygiene` finding routed to auto-fix, edit the strike document
 in place using the `proposed_fix`. The commit immediately below will capture
 both the original artifact and the applied fixes in the same diff.
 

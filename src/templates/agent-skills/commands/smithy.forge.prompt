@@ -271,6 +271,17 @@ When applying a High-confidence fix:
    `kind`: a failed `hygiene` fix becomes a Review Summary note, not debt.
    Do not commit a failing fix.
 
+**Commit the artifact-side records too.** A row appended to
+`## Specification Debt` or `## Open Implementation Questions` is an edit to
+a tracked file, and nothing else in forge stages it: only applied fixes get
+a `review:` commit, and every later gate (Slice Completion Check, validation,
+push) reads **HEAD**. An uncommitted row is therefore invisible to the PR
+and cannot be inherited by the next slice. After processing all findings,
+if you wrote any `SD-NNN` or `IQ-NNN` row, stage the planning artifact and
+commit it as `review: record <SD-NNN|IQ-NNN> …` before the Slice Completion
+Check. No test run is needed — the edit touches a planning artifact, not
+code.
+
 After all findings have been processed, summarize the outcome in forge's
 terminal-output **Review Summary** deliverable (not in the PR body):
 

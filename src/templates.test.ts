@@ -320,8 +320,8 @@ describe('review-protocol snippet', () => {
     const content = snippets.get('review-protocol.md')!;
     // Every row of the contracts triage table must be present so the parent
     // command has an unambiguous rulebook for processing returned findings.
-    expect(content).toMatch(/`steering`\s*\|\s*Critical\s*\|\s*Low/);
-    expect(content).toMatch(/`steering`\s*\|\s*Important\s*\|\s*Low/);
+    expect(content).toMatch(/`steering`\s*\|\s*Critical\s*\|\s*Any/);
+    expect(content).toMatch(/`steering`\s*\|\s*Important\s*\|\s*Any/);
     expect(content).toMatch(/`implementation`\s*\|/);
     expect(content).toMatch(/`hygiene`\s*\|/);
     expect(content).toMatch(/Minor\s*\|\s*Any/);
@@ -329,6 +329,42 @@ describe('review-protocol snippet', () => {
     // than just a grid of severities.
     expect(content).toContain('specification debt');
     expect(content).toContain('Apply proposed fix');
+  });
+
+  it('snippet never lets a steering finding be auto-applied', () => {
+    // `steering` means a human has to pick. Applying a proposed fix makes the
+    // pick for them and buries a product decision in a planning commit, so
+    // confidence cannot unlock it — the steering rows carry `Any` confidence
+    // and route to debt. A High-confidence steering finding is a
+    // contradiction, and the snippet says so rather than defining a cell for it.
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    expect(content).toContain(
+      '**A `steering` finding is never auto-applied, at any confidence.**',
+    );
+    expect(content).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
+    expect(content).not.toMatch(/`steering`\s*\|\s*Important\s*\|\s*High/);
+    // The escape hatch is reclassification, not an override.
+    expect(content).toMatch(/finding is `hygiene`/);
+    expect(content).toMatch(/confidence is Low by\s+construction/);
+  });
+
+  it('snippet carries the whole kind gate, not a pointer to an agent prompt', () => {
+    // Gemini deploys no sub-agents and forge has a degraded inline review
+    // branch; both compose this snippet and never see `smithy-plan-review`'s
+    // body. `smithy-implementation-review` composes it without plan-review
+    // too. Per the snippets README, rules shared by a sub-agent and an
+    // inline/degraded path live in one snippet — so the full test must be here.
+    const snippets = loadSnippets();
+    const content = snippets.get('review-protocol.md')!;
+    expect(content).toContain('**Open question**');
+    expect(content).toContain('**Named alternatives**');
+    expect(content).toContain('**Human-only**');
+    expect(content).toContain('**Positive test:**');
+    expect(content).toContain('#### Calibration');
+    // No deferral to a file this snippet's consumers may never load.
+    expect(content).not.toMatch(/live in `smithy-plan-review`/);
+    expect(content).not.toMatch(/consult that section/);
   });
 
   it('snippet gates the debt table on kind, not on confidence alone', () => {
@@ -2222,9 +2258,14 @@ describe('getComposedTemplates', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toBeDefined();
 
-    const debtIdx = cut.indexOf('## Specification Debt');
-    const questionsIdx = cut.indexOf('## Open Implementation Questions');
-    const dependencyIdx = cut.indexOf('## Dependency Order');
+    // Scope to the tasks-file template fence. Bare `indexOf` over the whole
+    // command measures whichever mention comes first in the prose, which is
+    // not the artifact's section order — cut discusses `## Dependency Order`
+    // in Phase 0 long before the template block.
+    const fence = extractFenceByAnchor(cut, '# Tasks: <User Story Title>');
+    const debtIdx = fence.indexOf('## Specification Debt');
+    const questionsIdx = fence.indexOf('## Open Implementation Questions');
+    const dependencyIdx = fence.indexOf('## Dependency Order');
 
     expect(questionsIdx).toBeGreaterThan(-1);
     expect(questionsIdx).toBeGreaterThan(debtIdx);
@@ -2243,8 +2284,13 @@ describe('getComposedTemplates', () => {
     expect(kindTables.length).toBe(2);
     expect(cut).toContain('| `implementation` | Critical or Important | Low');
     expect(cut).toContain('| `hygiene`        | Critical or Important | Low');
+    // Steering rows take `Any` confidence and never auto-apply: a High
+    // confidence score must not let the command pick for the human.
+    expect(cut).toContain('| `steering`       | Critical              | Any');
+    expect(cut).toContain('a steering finding is never auto-applied');
+    expect(cut).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
     // Debt rows come only from steering findings now.
-    const debtRoutes = cut.match(/Low-confidence `steering` finding routed to debt/g) ?? [];
+    const debtRoutes = cut.match(/For each `steering` finding routed to debt/g) ?? [];
     expect(debtRoutes.length).toBe(2);
   });
 
@@ -2941,11 +2987,16 @@ describe('getComposedTemplates', () => {
     expect(planReview).toContain('`implementation`');
     expect(planReview).toContain('`hygiene`');
 
-    // The three-part steering test. Condition 3 is the one that separates a
-    // steering question from an implementation unknown.
+    // The three-part steering test reaches the agent through the composed
+    // review-protocol snippet, not by being restated here. Condition 3 is the
+    // one that separates a steering question from an implementation unknown.
     expect(planReview).toContain('**Open question**');
     expect(planReview).toContain('**Named alternatives**');
     expect(planReview).toContain('**Human-only**');
+    // Single source: the agent points at the shared gate instead of copying
+    // it, so the Gemini/degraded paths that never load this file stay in sync.
+    expect(planReview).toContain('is defined');
+    expect(planReview).toContain('Do not restate it here');
 
     // Non-steering findings have named destinations, so the gate filters
     // without discarding.
@@ -2962,12 +3013,14 @@ describe('getComposedTemplates', () => {
   });
 
   it('plan-review agent collapses same-root-cause findings into one', () => {
-    // Six debt rows on one real spec all reduced to a single wrong
-    // Dependency Order table. Emitting one finding per symptom is the second
-    // way a debt table inflates past the point of being scannable.
+    // In `specs/2026-05-03-005-expand-evals-coverage-planning-and-audit`, two
+    // pairs of debt rows say outright that they duplicate each other (SD-007
+    // "closely related to SD-001"; SD-010 "same constraint as SD-004").
+    // Emitting one finding per symptom is the second way a debt table inflates
+    // past the point of being scannable.
     const planReview = composed.agents.get('smithy.plan-review.md')!;
     expect(planReview).toContain('One finding per root cause');
-    expect(planReview).toContain('### Calibration');
+    expect(planReview).toContain('#### Calibration');
   });
 
   it('reconcile agent retains frontmatter with read-only tools', () => {

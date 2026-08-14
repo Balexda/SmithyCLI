@@ -733,14 +733,15 @@ gets built — can reach the debt table.
 
 | Kind             | Severity              | Confidence | Action                                                                                              |
 |------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
-| Any              | Critical or Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
-| `steering`       | Critical              | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| `steering`       | Important             | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
-| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and `smithy.cut` carries it into the tasks file's `## Open Implementation Questions` section. |
+| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
+| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| `steering`       | Important             | Any        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note it in the PR body under an **Implementation questions** heading. This artifact has no `## Open Implementation Questions` section — that section is a tasks-file structure, and nothing reads a PR body, so the note is for the human reviewer. The unknown itself is settled while building, and `smithy.cut` re-derives it from its own plan-review pass when the tasks file is authored. |
 | `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
 | Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
 
-For each Low-confidence `steering` finding routed to debt, append a new row to the
+For each `steering` finding routed to debt — confidence does not matter, since
+steering is never auto-applied — append a new row to the
 `.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever clarify already wrote
 in Phase 2 — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
@@ -751,7 +752,7 @@ stays `Critical`; `Important` becomes `High` — `Important` is not a valid
 `Impact` value) and copy confidence into Confidence, and set `Origin` to
 `local`.
 
-For each High-confidence finding, edit the referenced spec artifact file in
+For each High-confidence `implementation` or `hygiene` finding, edit the referenced spec artifact file in
 place using the `proposed_fix`. The commit below captures both the original
 artifacts and the applied fixes in the same diff.
 
@@ -870,14 +871,15 @@ gets built — can reach the debt table.
 
 | Kind             | Severity              | Confidence | Action                                                                                              |
 |------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
-| Any              | Critical or Important | High       | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
-| `steering`       | Critical              | Low        | Do not apply. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| `steering`       | Important             | Low        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
-| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note in the PR body — the unknown is settled by building, and `smithy.cut` carries it into the tasks file's `## Open Implementation Questions` section. |
+| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
+| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
+| `steering`       | Important             | Any        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
+| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note it in the PR body under an **Implementation questions** heading. This artifact has no `## Open Implementation Questions` section — that section is a tasks-file structure, and nothing reads a PR body, so the note is for the human reviewer. The unknown itself is settled while building, and `smithy.cut` re-derives it from its own plan-review pass when the tasks file is authored. |
 | `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
 | Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
 
-For each Low-confidence `steering` finding routed to debt, append a new row to the
+For each `steering` finding routed to debt — confidence does not matter, since
+steering is never auto-applied — append a new row to the
 `.spec.md` file's `## Specification Debt` index table with the next available
 `SD-NNN` identifier (continue numbering from whatever the spec already
 contains — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
@@ -887,7 +889,7 @@ Impact (`Critical` stays `Critical`; `Important` becomes `High` —
 `Important` is not a valid `Impact` value) and copy confidence into
 Confidence, and set `Origin` to `local`.
 
-For each High-confidence finding, edit the referenced spec artifact file in
+For each High-confidence `implementation` or `hygiene` finding, edit the referenced spec artifact file in
 place using the `proposed_fix`. The Phase 0c commit below captures both the
 refine diff and the plan-review fixes in the same diff.
 
