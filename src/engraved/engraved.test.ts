@@ -5,6 +5,8 @@ import path from 'node:path';
 
 import {
   hasStatusDrift,
+  isValidProjectSlug,
+  parseEngravedRecord,
   levelFromId,
   listProjectSlugs,
   parseLedger,
@@ -136,6 +138,26 @@ describe('engraved level roots', () => {
     expect(resolveEngravedRoots(workdir).map((l) => l.level)).toEqual(['user', 'repo']);
   });
 
+  it('rejects a project slug that is not one safe path segment', () => {
+    // The slug is joined into a filesystem path: `../repos/foo` would resolve
+    // a store outside ~/.smithy/projects entirely, and `team/foo` would nest
+    // one where discovery could never find it.
+    for (const bad of ['../repos/foo', 'team/foo', '..', '.', '', 'a\\b']) {
+      expect(isValidProjectSlug(bad), bad).toBe(false);
+      expect(resolveProject(bad), bad).toBeNull();
+    }
+    for (const good of ['discount-engine', 'pedregal', 'a_b.c-1']) {
+      expect(isValidProjectSlug(good), good).toBe(true);
+      expect(resolveProject(good), good).toBe(good);
+    }
+  });
+
+  it('drops the project level entirely when the slug is unsafe', () => {
+    expect(
+      resolveEngravedRoots(workdir, { project: '../repos/elsewhere' }).map((l) => l.level),
+    ).toEqual(['user', 'repo']);
+  });
+
   it('resolves a lone named project store, and refuses to guess between several', () => {
     const projects = path.join(fakeHome, '.smithy', 'projects');
     fs.mkdirSync(path.join(projects, 'discount-engine'), { recursive: true });
@@ -191,6 +213,85 @@ describe('Known-Exceptions ledger parsing', () => {
 
   it('returns null when there is no ledger section at all', () => {
     expect(parseLedger('# Title\n\n## Rule\nOne layer.\n')).toBeNull();
+  });
+});
+
+describe('parseEngravedRecord', () => {
+  const ctx = {
+    level: 'repo',
+    storeRoot: '/repo',
+    domain: 'system',
+    kind: 'decision',
+  } as const;
+
+  it('parses a CRLF-authored record instead of silently dropping it', () => {
+    // The frontmatter pattern matches either line ending, but CRLF leaves a
+    // lone \r on the last frontmatter line, which the YAML parser rejects —
+    // and the parser's catch would turn that into a dropped record.
+    const lf = decision('D-1', 'Compute, do not prompt');
+    const crlf = lf.replace(/\n/g, '\r\n');
+
+    const record = parseEngravedRecord('/repo/docs/decisions/a.decision.md', crlf, ctx);
+    expect(record).not.toBeNull();
+    expect(record!.id).toBe('D-1');
+    expect(record!.title).toBe('Compute, do not prompt');
+    expect(record!.topics).toEqual(['experiment-platform']);
+  });
+
+  it('parses a CRLF invariant ledger', () => {
+    const lf = invariant(
+      'INV-1',
+      'Single layer',
+      '| src/a | nests | Temporary: migrating | #1 | high |',
+    );
+    const record = parseEngravedRecord('/repo/docs/invariants/a.invariant.md', lf.replace(/\n/g, '\r\n'), {
+      ...ctx,
+      kind: 'invariant',
+    });
+    expect(record!.ledger!.temporary).toBe(1);
+    expect(record!.ledger!.maxSeverity).toBe('high');
+  });
+
+  it('lets the store decide kind and domain, and flags frontmatter that disagrees', () => {
+    // Same rule as `level`: the directory (plus the filename suffix) is more
+    // reliable than a frontmatter field, so a disagreement is a defect to
+    // report rather than an override to honor.
+    const misdeclared = decision('D-1', 'Filed as a decision, declared an invariant').replace(
+      'kind: decision',
+      'kind: invariant',
+    );
+    const record = parseEngravedRecord('/repo/docs/decisions/a.decision.md', misdeclared, ctx);
+    expect(record!.kind).toBe('decision');
+    expect(record!.frontmatterMismatch).toBe(true);
+  });
+
+  it('flags a system-store record that declares itself design, and vice versa', () => {
+    const declaresDesign = decision('D-1', 'x').replace('domain: system', 'domain: design');
+    expect(
+      parseEngravedRecord('/repo/docs/decisions/a.decision.md', declaresDesign, ctx)!.domain,
+    ).toBe('system');
+    expect(
+      parseEngravedRecord('/repo/docs/decisions/a.decision.md', declaresDesign, ctx)!
+        .frontmatterMismatch,
+    ).toBe(true);
+
+    // The mirror case used to pass silently: `domain: system` in a design
+    // store was ignored in one direction only.
+    const inDesignStore = { ...ctx, domain: 'design' } as const;
+    const declaresSystem = decision('D-1', 'x');
+    expect(
+      parseEngravedRecord('/repo/docs/design/decisions/a.decision.md', declaresSystem, inDesignStore)!
+        .domain,
+    ).toBe('design');
+    expect(
+      parseEngravedRecord('/repo/docs/design/decisions/a.decision.md', declaresSystem, inDesignStore)!
+        .frontmatterMismatch,
+    ).toBe(true);
+  });
+
+  it('leaves frontmatterMismatch clear when the record agrees with its store', () => {
+    const record = parseEngravedRecord('/repo/docs/decisions/a.decision.md', decision('D-1', 'x'), ctx);
+    expect(record!.frontmatterMismatch).toBe(false);
   });
 });
 

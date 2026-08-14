@@ -68,6 +68,7 @@ import {
   templateArtifactsPrefix,
 } from '../manifest.js';
 import {
+  isValidProjectSlug,
   renderEngraved,
   scanEngraved,
   serializeEngravedForJson,
@@ -316,6 +317,18 @@ export function statusAction(opts: StatusOptions = {}): void {
   } else if (opts.project !== undefined) {
     process.stderr.write(
       `smithy status: --project requires --engraved (it selects which workstream's engraved store to include).\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+
+  // The slug is joined into a filesystem path, so it has to be one plain
+  // segment. Rejecting loudly beats dropping the project level silently — the
+  // user asked for a workstream and would otherwise get a user+repo answer
+  // that looks complete.
+  if (opts.project !== undefined && !isValidProjectSlug(opts.project)) {
+    process.stderr.write(
+      `smithy status: invalid --project value '${opts.project}'. Expected a single path segment (letters, digits, '.', '_', '-').\n`,
     );
     process.exitCode = 2;
     return;

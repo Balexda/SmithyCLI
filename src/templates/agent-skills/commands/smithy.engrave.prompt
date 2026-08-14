@@ -180,6 +180,43 @@ one — a project-level record has nowhere to go without it.
 
 ---
 
+## Where "commit" lands, per level
+
+Every create and update phase below ends with *commit and report*. Which
+repository that means depends on the level, and only the repo level is the one
+the artifact-location policy already covers:
+
+| Level | Store | What to commit |
+|-------|-------|----------------|
+| `repo` | the repo, or its external artifact store | Commit the record where that store's own rules say — in-repo records ride the working branch, external-store records follow the store-commit step in the artifact-location policy. |
+| `user` | `~/.smithy/` | Commit **only if the store is already a git repository**. |
+| `project` | `~/.smithy/projects/<project>/` | Commit **only if the store is already a git repository**. |
+
+For the two home-anchored stores, check first and act accordingly:
+
+```bash
+git -C <store-root> rev-parse --git-dir
+```
+
+- **It is a repository** — stage and commit just the record files you touched,
+  using the phase's commit message and `--no-gpg-sign`:
+  ```bash
+  git -C <store-root> add <record-paths>
+  git -C <store-root> commit --no-gpg-sign -m "<phase commit message>"
+  ```
+- **It is not** — do not run `git init`, and do not fall back to committing in
+  the code repo: `~/.smithy/...` is outside it, so `git add` there would either
+  fail or silently stage nothing while the run still reported success. Write
+  the record, skip the commit, and say so in the terminal summary:
+  `store: <store-root> (not versioned — record written, not committed)`.
+
+Never let a repo-level commit stand in for a user- or project-level one. The
+Phase 7 context-file projection is a repo edit and is committed with the repo,
+which means a successful-looking repo commit can accompany a record that was
+never versioned anywhere — the summary line above is what keeps that visible.
+
+---
+
 ## Phase 1: Inclusion test
 
 Engraved records capture **pivot-level commitments** — things that would
@@ -409,7 +446,14 @@ new principle is rare. Before scaffolding, confirm with the user:
 > "Principles are apex, cross-domain, and resistant to release-to-release
 > churn. Would a `decision` referencing a principle work instead?"
 
-If the user still wants a principle, write the file with this shape:
+If the user still wants a principle, first run the **broader-level comparison
+from Phase 3a step 1** against every resolved level: a principle that
+contradicts a broader-level record needs `excepts: [<broader-id>]` and a body
+passage saying why, exactly as a decision would. Skipping the check authors an
+undeclared cross-level conflict that every later recall will keep reporting as
+unresolved.
+
+Then write the file with this shape:
 
 ```markdown
 ---
@@ -421,6 +465,7 @@ status: active
 topics: [<comma-separated>]
 scope: [<comma-separated, omit at user level>]
 applies_to: [<comma-separated>]
+excepts: [<broader-level-ids-or-empty>]
 ---
 # <topic>
 
@@ -729,10 +774,14 @@ marker handling until a no-change projection re-run is byte-identical.
 - **One level per record, and the id agrees with the store.** Never write a
   record into a store whose level its `id` prefix does not name, and never
   move a record between levels to fix a mismatched id — fix the id.
-- **Never write outside the resolved level.** A run that resolved `project`
-  edits the project store; it does not patch the repo or user store on the
-  way past. The one exception is Phase 5's same-level patch of the decision
-  being superseded.
+- **Never write to another level's record store.** A run that resolved
+  `project` edits the project store; it does not patch the repo or user store
+  on the way past. Two carve-outs, both deliberate: Phase 5's same-level patch
+  of the decision being superseded, and Phase 7's context-file projection —
+  the pointer block lives in the repo's `CLAUDE.md` / `AGENTS.md` /
+  `.github/copilot-instructions.md` no matter which level the record landed
+  in, and it is refreshed on every successful run. This boundary governs
+  engraved record stores, not agent-context files.
 - **Supersession stays inside a level; contradiction across levels is an
   exception.** A narrower record never supersedes a broader one — declare
   `excepts: [<broader-id>]` instead, and say in the body what the broader rule
@@ -749,6 +798,7 @@ Engraved <kind> <id> <title> at <path>
   level: <user|repo|project>
   status: <status>
   citations: <comma-separated edge summary, or "none">
+  store: <store-root> (<committed|not versioned — record written, not committed>)
 ```
 
 When the record declares `excepts`, add a line naming what it carves out from:

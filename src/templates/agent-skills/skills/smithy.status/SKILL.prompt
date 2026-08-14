@@ -274,10 +274,13 @@ The JSON payload carries:
   roll-up (`accepted`, `temporary`, `max_severity`, `derived_status`,
   `status_drift`).
 
-Two fields report defects rather than state, and are worth surfacing unasked
+Three fields report defects rather than state, and are worth surfacing unasked
 when they are set: `ledger.status_drift` means the record's declared status
-disagrees with its own ledger, and `id_level_mismatch` means the record's `id`
-prefix names a level other than the store it sits in.
+disagrees with its own ledger, `id_level_mismatch` means the record's `id`
+prefix names a level other than the store it sits in, and
+`frontmatter_mismatch` means its declared `kind` or `domain` disagrees with
+that store. In all three the store is authoritative and the record needs
+repair.
 
 When answering "which rules apply here?", report the records with their level
 and say which one governs: precedence is **project > repo > user**, narrower

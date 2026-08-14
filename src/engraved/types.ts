@@ -82,6 +82,12 @@ export interface EngravedRecord {
    * relocating it.
    */
   idLevelMismatch: boolean;
+  /**
+   * Set when frontmatter declares a `kind` or `domain` that disagrees with the
+   * directory the record was read from. Same rule as {@link idLevelMismatch}:
+   * the store wins and the record is flagged for repair.
+   */
+  frontmatterMismatch: boolean;
 }
 
 /** One level's contribution to a scan, present or not. */

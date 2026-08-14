@@ -99,7 +99,23 @@ export function userEngravedRoot(): string {
   return path.join(os.homedir(), '.smithy');
 }
 
-/** Absolute path to a named project's store. */
+/**
+ * Whether `slug` is a safe single path segment.
+ *
+ * The slug reaches us from `--project` and from planning-artifact frontmatter,
+ * and it is joined into a filesystem path. `../repos/foo` would resolve a
+ * "project store" outside `~/.smithy/projects/` entirely, and `team/foo` would
+ * create a nested one that {@link listProjectSlugs} could never discover — so
+ * anything that is not one plain segment is rejected rather than normalized.
+ */
+export function isValidProjectSlug(slug: string): boolean {
+  return /^[A-Za-z0-9._-]+$/.test(slug) && slug !== '.' && slug !== '..';
+}
+
+/**
+ * Absolute path to a named project's store. Callers must pass a slug that
+ * satisfies {@link isValidProjectSlug}; {@link resolveProject} enforces that.
+ */
 export function projectRoot(slug: string): string {
   return path.join(os.homedir(), '.smithy', PROJECTS_DIR, slug);
 }
@@ -125,7 +141,12 @@ export function listProjectSlugs(): string[] {
     return [];
   }
   return entries
-    .filter((entry) => entry.isDirectory() && entry.name !== DEFAULT_PROJECT)
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== DEFAULT_PROJECT &&
+        isValidProjectSlug(entry.name),
+    )
     .map((entry) => entry.name)
     .sort();
 }
@@ -138,7 +159,9 @@ export function listProjectSlugs(): string[] {
  * than planning with no project level at all.
  */
 export function resolveProject(explicit?: string | undefined): string | null {
-  if (explicit !== undefined && explicit.length > 0) return explicit;
+  if (explicit !== undefined && explicit.length > 0) {
+    return isValidProjectSlug(explicit) ? explicit : null;
+  }
   const slugs = listProjectSlugs();
   return slugs.length === 1 ? (slugs[0] as string) : null;
 }

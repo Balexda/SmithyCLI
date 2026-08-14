@@ -46,6 +46,7 @@ export interface EngravedJsonRecord {
     status_drift: boolean;
   } | null;
   id_level_mismatch: boolean;
+  frontmatter_mismatch: boolean;
 }
 
 export interface EngravedJsonPayload {
@@ -126,6 +127,7 @@ export function serializeEngravedForJson(scan: EngravedScan): EngravedJsonPayloa
               status_drift: hasStatusDrift(record),
             },
       id_level_mismatch: record.idLevelMismatch,
+      frontmatter_mismatch: record.frontmatterMismatch,
     })),
   };
 }
@@ -192,6 +194,11 @@ export function renderEngraved(scan: EngravedScan, theme: Theme): string {
       if (record.idLevelMismatch) {
         lines.push(
           `      ${theme.paint.error(`id names a different level than the ${record.level} store it lives in`)}`,
+        );
+      }
+      if (record.frontmatterMismatch) {
+        lines.push(
+          `      ${theme.paint.error(`frontmatter kind/domain disagrees with the ${record.kind}/${record.domain} store it lives in`)}`,
         );
       }
     }

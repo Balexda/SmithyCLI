@@ -23,7 +23,6 @@ const LEVEL_PREFIXES: ReadonlyArray<{ level: EngravedLevel; prefix: string }> = 
   { level: 'project', prefix: 'PJ-' },
 ];
 
-const KIND_VALUES: readonly EngravedKind[] = ['decision', 'invariant', 'principle'];
 const SEVERITIES: readonly LedgerSeverity[] = ['low', 'medium', 'high'];
 const SEVERITY_RANK: Record<LedgerSeverity, number> = { low: 0, medium: 1, high: 2 };
 
@@ -143,13 +142,19 @@ export interface ParseContext {
  * Parse one engraved record file. Returns null when the file has no
  * frontmatter or no `id` — an unparseable file is reported by the scanner as a
  * malformed record rather than silently shaping a half-empty entry.
+ *
+ * CRLF input is normalized first. The frontmatter pattern matches either line
+ * ending, but a CRLF file leaves a lone `\r` on the last frontmatter line,
+ * which the YAML parser rejects — and the `catch` below would turn that into a
+ * silently dropped record. Normalizing once here also spares the ledger and
+ * body-section scanners from having to tolerate `\r` themselves.
  */
 export function parseEngravedRecord(
   absPath: string,
   content: string,
   ctx: ParseContext,
 ): EngravedRecord | null {
-  const match = content.match(FRONTMATTER_RE);
+  const match = content.replace(/\r\n/g, '\n').match(FRONTMATTER_RE);
   if (!match) return null;
 
   let data: Record<string, unknown>;
@@ -164,21 +169,25 @@ export function parseEngravedRecord(
   const id = typeof data.id === 'string' ? data.id.trim() : '';
   if (id.length === 0) return null;
 
+  // The store decides `kind` and `domain`, the same way it decides `level`.
+  // Both are doubly determined on disk — the directory, plus the filename
+  // suffix for decisions and invariants — so they are strictly more reliable
+  // than a frontmatter field, and letting frontmatter win here would
+  // contradict the store-is-authoritative rule the rest of the model runs on.
+  // A disagreement is reported for repair rather than silently honored.
   const declaredKind = typeof data.kind === 'string' ? data.kind.trim() : '';
-  const kind = KIND_VALUES.includes(declaredKind as EngravedKind)
-    ? (declaredKind as EngravedKind)
-    : ctx.kind;
-
   const declaredDomain = typeof data.domain === 'string' ? data.domain.trim() : '';
-  const domain: EngravedDomain = declaredDomain === 'design' ? 'design' : ctx.domain;
+  const frontmatterMismatch =
+    (declaredKind.length > 0 && declaredKind !== ctx.kind) ||
+    (declaredDomain.length > 0 && declaredDomain !== ctx.domain);
 
   const body = match[2] ?? '';
 
   return {
     id,
-    kind,
+    kind: ctx.kind,
     level: ctx.level,
-    domain,
+    domain: ctx.domain,
     title: typeof data.title === 'string' ? data.title : '',
     status: typeof data.status === 'string' ? data.status : '',
     path: path.relative(ctx.storeRoot, absPath).split(path.sep).join('/'),
@@ -191,7 +200,8 @@ export function parseEngravedRecord(
     establishedBy: asStringArray(data.established_by),
     supersedes: asStringArray(data.supersedes),
     supersededBy: asStringArray(data.superseded_by),
-    ledger: kind === 'invariant' ? parseLedger(body) : null,
+    ledger: ctx.kind === 'invariant' ? parseLedger(body) : null,
     idLevelMismatch: levelFromId(id) !== ctx.level,
+    frontmatterMismatch,
   };
 }

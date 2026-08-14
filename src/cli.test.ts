@@ -1257,6 +1257,19 @@ describe('CLI status', () => {
       }
     });
 
+    it('rejects an unsafe --project slug rather than silently dropping the level', () => {
+      // Dropping it would answer with user+repo only, which looks complete.
+      const { stderr, status } = runEngraved([
+        '--engraved',
+        '--project',
+        '../repos/elsewhere',
+        '--root',
+        tmpDir,
+      ]);
+      expect(status).toBe(2);
+      expect(stderr).toContain("invalid --project value");
+    });
+
     it('rejects --project without --engraved', () => {
       const { stderr, status } = runEngraved(['--project', 'discount-engine', '--root', tmpDir]);
       expect(status).toBe(2);
