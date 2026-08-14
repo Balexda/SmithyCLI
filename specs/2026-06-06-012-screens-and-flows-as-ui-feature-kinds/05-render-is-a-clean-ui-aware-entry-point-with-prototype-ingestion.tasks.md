@@ -89,7 +89,7 @@
 
 ### Tasks
 
-- [ ] **Update feature-map audit checks**
+- [x] **Update feature-map audit checks**
 
   Extend `src/templates/agent-skills/snippets/audit-checklist-features.md` so audits check UI design mode visibility, import bundle references when present, and build/wire seam consistency. Keep the checklist focused on feature-map structure rather than downstream screen or flow artifact bodies.
 
@@ -100,7 +100,7 @@
   - Audits continue to distinguish backend and UI features without title inference
   - Audits do not require `.design.md` or `.flow.md` files at render time
 
-- [ ] **Refresh source documentation for render entry behavior**
+- [x] **Refresh source documentation for render entry behavior**
 
   Update `src/templates/agent-skills/README.md` or adjacent source-template documentation so maintainers can see how render handles typed UI features, import-mode bundles, and the build/wire seam. Keep documentation source-only and avoid regenerating deployed snapshots.
 

@@ -468,8 +468,27 @@ the backend spec-triad path. The only valid values are:
 | `design` | Means | Bundle behavior |
 |----------|-------|-----------------|
 | `none` | No visual loop; simple pass-through screen work builds from the committed design skill. | No bundle required. |
-| `import` | Prototype-first; a prototype already exists before `mark`. | A bundle may enter at `render`, ride to `forge` as visual source context, and be honored under the conflict rule. Detailed prototype-to-screen/flow derivation belongs to the render import-ingestion story. |
+| `import` | Prototype-first; a prototype already exists before `mark`. | A bundle may enter at `render`, be recorded on the UI feature, ride to `forge` as visual source context, and be honored under the conflict rule. Render may derive candidate `ScreenId`/`FlowId` values from it for human confirmation. |
 | `brief` | Mark-authored intent for a visual tool; the `.design.md`/`.flow.md` artifacts are the brief. | A bundle may be attached later; if present, downstream build honors it under the conflict rule. |
+
+### Render as the UI feature-map entry point
+
+`smithy.render` is the typed entry point for UI feature maps. It emits the
+`feature-kinds` metadata that downstream commands consume: backend features are
+explicitly `kind: backend` and otherwise keep the existing backend feature-map
+behavior, while UI features are `kind: ui` and carry `phase`, `design_system`,
+`design`, `screens`, phase-appropriate `flows`, and any flag or bundle metadata.
+This keeps backend-to-spec fan-out and UI-to-screen/flow fan-out visible from
+metadata instead of feature titles.
+
+When render receives an import-mode bundle, it treats the bundle as feature-map
+context only. The exact repo-relative bundle path is recorded on relevant
+`design: import` UI features, `design_system` remains the committed
+implementation dialect source, and any derived `screens`/`flows` are candidate
+structure for a human to confirm during `smithy.mark`. Render does not author
+`design/screens/*.design.md`, `design/flows/*.flow.md`, or executable test-body
+files; those durable artifacts remain owned by `mark` and downstream build
+steps.
 
 ### Phase semantics
 
