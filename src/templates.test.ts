@@ -886,7 +886,7 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('written and skipped persona paths as explicit result fields');
   });
 
-  it('smithy.persona renders RFC-mode routing and named persona extraction', () => {
+  it('smithy.persona renders RFC-mode routing, extraction, and persona writes', () => {
     const persona = claudeComposed.commands.get('smithy.persona.md')!;
     const routingIdx = persona.indexOf('If the input ends in `.rfc.md`, select **RFC mode**');
     const freeTextRoutingIdx = persona.indexOf(
@@ -915,14 +915,41 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain('explicit');
     expect(rfcMode).toContain('bullet/list item, bold lead-in, or subheading');
     expect(rfcMode).toContain('Keep the extracted candidate set as a structured list');
-    expect(rfcMode).toContain('as its source of truth');
-    expect(rfcMode).toContain('completes after reporting the candidate set');
-    expect(rfcMode).toContain('Do not draft with');
-    expect(rfcMode).toContain('smithy-prose');
-    expect(rfcMode).toContain('write files, or overwrite artifacts');
+    expect(rfcMode).toContain('its source of truth rather than rereading unrelated input');
+    expect(rfcMode).toContain('For each RFC persona candidate, derive the filename slug');
+    expect(rfcMode).toContain('Resolve each target path using the Persona Artifact Convention section');
+    expect(rfcMode).toContain('Before drafting a candidate, check whether its target path already exists');
+    expect(rfcMode).toContain('Continue processing the remaining candidates after any collision skip');
+    expect(rfcMode).toContain('For each non-colliding candidate, dispatch **smithy-prose** with:');
+    expect(rfcMode).toContain('`idea_description`: the candidate');
+    expect(rfcMode).toContain('`rfc_file_path`: the resolved input RFC path');
+    expect(rfcMode).toContain('Write one file per non-colliding candidate');
+    expect(rfcMode).toContain('Each final file must contain exactly one persona');
     expect(rfcMode).toContain('Do not infer personas from');
     expect(rfcMode).toContain('narrative-only prose');
     expect(rfcMode).toContain('emit empty-section diagnostics');
+  });
+
+  it('smithy.persona renders RFC-mode collision reporting and summary fields', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    const rfcModeIdx = persona.indexOf('## RFC Mode');
+    const summaryIdx = persona.indexOf('## One-Shot Summary');
+
+    expect(rfcModeIdx).toBeGreaterThan(-1);
+    expect(summaryIdx).toBeGreaterThan(rfcModeIdx);
+
+    const rfcMode = persona.slice(rfcModeIdx, summaryIdx);
+    const summary = persona.slice(summaryIdx);
+
+    expect(rfcMode).toContain('add the candidate name, slug, and path to the skipped-collisions list');
+    expect(rfcMode).toContain('leave the existing file untouched');
+    expect(rfcMode).toContain('Continue processing the remaining candidates after any collision skip');
+    expect(summary).toContain('For RFC mode, report:');
+    expect(summary).toContain('Written persona paths');
+    expect(summary).toContain('name/role and slug');
+    expect(summary).toContain('Skipped collisions');
+    expect(summary).toContain('target slug');
+    expect(summary).toContain('Totals');
   });
 
   it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {

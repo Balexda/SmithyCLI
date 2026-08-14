@@ -61,7 +61,7 @@
 
 ### Tasks
 
-- [ ] **Draft and write extracted personas**
+- [x] **Draft and write extracted personas**
 
   Extend RFC mode so each extracted persona candidate is drafted through `smithy-prose` and written as a separate `.persona.md` file that follows the README-defined persona convention. Reuse the slug and file-format rules established by the free-text path.
 
@@ -71,7 +71,7 @@
   - Each filename slug is kebab-case and derived from the persona name or role.
   - The free-text writer remains available and unchanged for non-RFC inputs.
 
-- [ ] **Skip and report slug collisions**
+- [x] **Skip and report slug collisions**
 
   Add RFC-mode collision handling so an extracted persona whose target slug already exists is skipped without mutating the existing file, while the command continues writing the remaining non-colliding personas.
 
@@ -81,7 +81,7 @@
   - Non-colliding personas from the same RFC are still written.
   - The final summary distinguishes written persona files from skipped collisions.
 
-- [ ] **Protect RFC-mode write behavior**
+- [x] **Protect RFC-mode write behavior**
 
   Update template coverage around `smithy.persona.prompt` for multi-persona writes and collision reporting. Keep the checks focused on deployable template behavior and avoid snapshot regeneration.
 
