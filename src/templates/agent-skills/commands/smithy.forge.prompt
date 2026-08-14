@@ -238,15 +238,18 @@ containing a list of `Finding` entries (`category`, `kind`, `severity`,
 It does not modify files, run commands, or create commits — forge owns every
 on-disk change and commit resulting from a finding.
 
-Process each returned finding using the kind × severity × confidence triage
-table from the shared review protocol. Read `kind` first: only a `steering`
-finding — one where a human must choose between named alternatives and the
-choice changes what gets built — can become specification debt.
+Process each returned finding by the kind × severity × confidence policy of
+the shared review protocol, using the **forge-specific destinations** in the
+table below. The policy is the shared one — read `kind` first, and only a
+`steering` finding (a human must choose between named alternatives, and the
+choice changes what gets built) can become specification debt. The
+destinations differ: forge has a terminal-output **Review Summary** and puts
+notes there rather than in the PR body.
 
 | Kind | Severity | Confidence | Forge action |
 |------|----------|------------|--------------|
-| Any | Critical or Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
-| `steering` | Critical or Important | Low | Do not apply. Append the finding to the slice planning artifact's `## Specification Debt` section. |
+| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
+| `steering` | Critical or Important | Any | Do not apply — a steering finding is never auto-applied, at any confidence. Append the finding to the slice planning artifact's `## Specification Debt` section. |
 | `implementation` | Critical or Important | Low | Do not apply and do not record as debt. Append an `IQ-NNN` row to the tasks file's `## Open Implementation Questions` section when the slice came from a `.tasks.md`; otherwise note it in the **Review Summary**. |
 | `hygiene` | Critical or Important | Low | Do not apply and do not record as debt. Note in the **Review Summary** so the user can settle the correction directly. |
 | Any | Minor | Any | Do not apply and do not record as debt. Note in forge's terminal-output **Review Summary** deliverable so the user sees it; do not add to the PR body. |
@@ -259,7 +262,7 @@ source code or another non-planning file, do **not** create or edit a
 `## Specification Debt` section there — record the debt in the planning
 artifact only.
 
-When applying a High-confidence fix:
+When applying a High-confidence `implementation` or `hygiene` fix:
 
 1. Edit the files named in `artifact_path` using the `proposed_fix`.
 2. Run the test suite to confirm no regression.
@@ -287,8 +290,8 @@ terminal-output **Review Summary** deliverable (not in the PR body):
 
 1. **Applied fixes** — the list of `review:` commits created by forge with
    the corresponding findings they resolved.
-2. **Recorded debt** — any Low-confidence Critical or Important `steering`
-   findings appended to the artifact's `## Specification Debt` section, so
+2. **Recorded debt** — any Critical or Important `steering` findings
+   appended to the artifact's `## Specification Debt` section, so
    future readers see them without scanning the agent transcript.
 3. **Implementation questions** — Low-confidence `implementation` findings
    recorded as `IQ-NNN` rows, so the next slice's implementer inherits them.

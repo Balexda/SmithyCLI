@@ -2294,6 +2294,33 @@ describe('getComposedTemplates', () => {
     expect(debtRoutes.length).toBe(2);
   });
 
+  it('no command triage table lets a steering finding be auto-applied', () => {
+    // Every command that dispatches a review agent restates the triage table
+    // with its own destinations, so the "steering is never auto-applied" rule
+    // has to hold at each site independently. It did not: forge's table wrote
+    // its columns at a different width and kept an `Any` kind + High row,
+    // which auto-applied exactly the findings the shared protocol reserves
+    // for a human. This sweeps all six rather than trusting one edit.
+    for (const name of [
+      'smithy.cut.md',
+      'smithy.ignite.md',
+      'smithy.mark.md',
+      'smithy.render.md',
+      'smithy.strike.md',
+      'smithy.forge.md',
+    ]) {
+      const body = composed.commands.get(name)!;
+      expect(body, `${name} should be composed`).toBeDefined();
+      // No apply row may match every kind — that is how steering slipped
+      // through — and no steering row may carry High confidence.
+      const applyRows = body.match(/^\|\s*Any\s*\|[^|]*\|\s*High\s*\|/gm) ?? [];
+      expect(applyRows, `${name} has a kind-agnostic auto-apply row`).toEqual([]);
+      expect(body, `${name} lets a steering finding auto-apply`).not.toMatch(
+        /`steering`\s*\|[^|]*\|\s*High\s*\|/,
+      );
+    }
+  });
+
   it('cut classifies inherited spec debt instead of copying it wholesale', () => {
     // Without this, a per-story tasks file re-inherits every implementation
     // unknown its spec recorded. `specs/2026-05-03-005-expand-evals-coverage-

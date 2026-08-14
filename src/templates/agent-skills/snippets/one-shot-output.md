@@ -70,9 +70,10 @@ was recorded.`)
   acceptance tests, dependency/coordination notes, or deferred-work
   notices; if clarify's kind gate (see `smithy-clarify` Step 3) dropped
   those, they stay dropped. The same holds for review findings the kind
-  gate classified as `implementation` or `hygiene`: those live in the
-  artifact's `## Open Implementation Questions` section or the PR body,
-  and never appear as a debt bullet here.
+  gate classified as `implementation` or `hygiene`: their destination is
+  command-specific — the artifact's `## Open Implementation Questions`
+  section, the PR body, or this terminal output's own review notes — but
+  never a debt bullet here.
 - **PR**: the URL captured from the PR creation step (see the
   `pr-create-tool-choice` snippet for which tool ran).
 
