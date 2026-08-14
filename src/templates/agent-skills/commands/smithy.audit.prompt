@@ -35,6 +35,9 @@ When a file path is provided, detect the artifact type by its file extension:
 | `.spec.md` | Feature Spec | smithy.mark |
 | `.tasks.md` | Tasks / Slices | smithy.cut |
 | `.strike.md` | Strike Plan | smithy.strike |
+| `.decision.md` | Decision (engraved) | smithy.engrave |
+| `.invariant.md` | Invariant (engraved) | smithy.engrave |
+| *(no suffix, under a `constitution/` directory)* | Principle (engraved) | smithy.engrave |
 
 1. Read the file at the given path.
 2. Identify its extension from the table above.
@@ -47,6 +50,7 @@ When a file path is provided, detect the artifact type by its file extension:
    | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`{{artifactsRoot}}specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
    | `.tasks.md` | The `.spec.md`, `.data-model.md`, and `.contracts.md` in the same spec folder, to verify FR traceability and slice-to-requirement mapping |
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
+   | `.decision.md`, `.invariant.md`, principle | The engraved inventory across every level: run `smithy status --engraved --format json` (add `--project <slug>` for a project-level record). Its `records` array resolves the ids this record cites, so citation and edge checks do not need a directory walk |
 
    If a context document is missing, note it as a finding rather than skipping the check.
 
@@ -94,6 +98,8 @@ Use the checklist matching the artifact's extension. Each checklist defines what
 {{>audit-checklist-tasks}}
 
 {{>audit-checklist-strike}}
+
+{{>audit-checklist-engraved}}
 
 ---
 

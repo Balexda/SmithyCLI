@@ -4,9 +4,10 @@ This Smithy install was set up with an explicit policy for **where authored
 Smithy artifacts live**. Every path you see in the rest of this prompt that
 refers to an authored Smithy artifact — `.rfc.md`, `.features.md`, `.spec.md`,
 `.tasks.md`, `.strike.md`, `.prd.md`, `.persona.md`, `.data-model.md`,
-`.contracts.md` — is already prefixed with `{{artifactsRoot}}` so it points
-at the right root for this repo. Do not strip, override, or rewrite that
-prefix.
+`.contracts.md`, and the engraved records `.decision.md`, `.invariant.md`, and
+the principle files under `constitution/` — is already prefixed with
+`{{artifactsRoot}}` so it points at the right root for this repo. Do not
+strip, override, or rewrite that prefix.
 
 - When `{{artifactsRoot}}` is empty, artifacts live **in the repo**:
   `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
@@ -22,10 +23,23 @@ prefix.
   portable across team members even when this prompt is committed to source
   control.
 
+### Engraved records outside the repo level
+
+Engraved durable knowledge is partitioned by level, and only its **repo** level
+rides `{{artifactsRoot}}`. The other two levels have fixed homes that this
+policy does not move:
+
+- **user** — `~/.smithy/engraved/`, the same in every repo.
+- **project** — `~/.smithy/projects/<project>/docs/...`, keyed by workstream.
+
+So `{{artifactsRoot}}docs/decisions/` is the repo's decisions and nothing else.
+Reading the other levels means reading their own roots directly.
+
 ### Scope of the policy
 
 This policy applies **only to authored Smithy artifacts** such as planning
-artifacts and durable persona files. It does **not** apply to:
+artifacts, durable persona files, and engraved records. It does **not** apply
+to:
 
 - **Source code, tests, configuration, or any other repo file you edit as
   part of an implementation slice.** Those always live in the target repo

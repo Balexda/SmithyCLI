@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(22);
+    expect(snippets.size).toBe(26);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -113,6 +113,7 @@ describe('loadSnippets', () => {
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
       'audit-checklist-voice.md',
+      'audit-checklist-engraved.md',
       'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
       'competing-lenses-scoping.md',
@@ -128,6 +129,9 @@ describe('loadSnippets', () => {
       'engraved-recall-rules.md',
       'engraved-recall-advisory.md',
       'engraved-recall-degraded.md',
+      'engraved-recall-dispatch.md',
+      'engraved-levels.md',
+      'engraved-scan-roots.md',
       'spec-debt-section.md',
     ];
     for (const file of expectedFiles) {
@@ -178,12 +182,10 @@ describe('engraved-recall-rules snippet', () => {
 
   it('is the single, agent-agnostic source of the recall rules', () => {
     const content = loadSnippets().get(RULES)!;
-    expect(content).toContain('docs/decisions/');
-    expect(content).toContain('docs/invariants/');
-    expect(content).toContain('docs/constitution/');
-    expect(content).toContain('docs/design/decisions/');
-    expect(content).toContain('docs/design/invariants/');
-    expect(content).toContain('docs/design/constitution/');
+    // The scan roots themselves live in the nested level model, so the rules
+    // snippet names it rather than restating a root list that would then have
+    // two homes to drift between.
+    expect(content).toContain('{{>engraved-levels}}');
     for (const token of ['domain', 'topics', 'scope', 'applies_to']) {
       expect(content).toContain(token);
     }
@@ -194,9 +196,47 @@ describe('engraved-recall-rules snippet', () => {
     expect(content).toContain('deprecated');
     expect(content).toContain('"no_records"');
     expect(content).toContain('"no_match"');
+    // Multi-level recall: every finding is level-tagged and precedence is
+    // stated, not left to the model.
+    expect(content).toContain('cross_level_conflicts');
+    expect(content).toContain('levels_scanned');
+    expect(content).toContain('severity');
     // The shared rules are agent-agnostic — no conditionals, no sub-agent name.
-    expect(content).not.toContain('{{');
+    expect(content).not.toContain('{{#ifAgent}}');
     expect(content).not.toContain('smithy-recall');
+  });
+
+  it('the nested level model carries the three-level scan roots', () => {
+    const content = loadSnippets().get('engraved-scan-roots.md')!;
+    for (const level of ['user', 'repo', 'project']) {
+      expect(content).toContain(`\`${level}\``);
+    }
+    expect(content).toContain('~/.smithy/engraved/decisions/');
+    expect(content).toContain('~/.smithy/engraved/invariants/');
+    expect(content).toContain('~/.smithy/engraved/constitution/');
+    expect(content).toContain('{{artifactsRoot}}docs/decisions/');
+    expect(content).toContain('{{artifactsRoot}}docs/invariants/');
+    expect(content).toContain('{{artifactsRoot}}docs/constitution/');
+    expect(content).toContain('~/.smithy/projects/<project>/docs/decisions/');
+    expect(content).toContain('~/.smithy/projects/<project>/docs/invariants/');
+    expect(content).toContain('~/.smithy/projects/<project>/docs/constitution/');
+    expect(content).toContain('design/');
+    expect(content).not.toContain('{{#ifAgent}}');
+  });
+
+  it('the level model states identity, precedence, and cross-level edges', () => {
+    const content = loadSnippets().get('engraved-levels.md')!;
+    // Level-prefixed ids: a user-level INV-1 can no longer collide with a
+    // repo-level one, so a bare citation names exactly one record.
+    for (const id of ['U-D-<N>', 'U-INV-<N>', 'U-P-<N>', 'PJ-D-<N>', 'PJ-INV-<N>', 'PJ-P-<N>']) {
+      expect(content).toContain(id);
+    }
+    expect(content).toContain('project > repo > user');
+    expect(content).toContain('excepts');
+    // A narrower level never supersedes a broader one — that is the footgun
+    // the exception edge exists to replace.
+    expect(content).toMatch(/Same level only/);
+    expect(content).not.toContain('{{#ifAgent}}');
   });
 
   it('composes into any template via the {{>engraved-recall-rules}} partial', async () => {
@@ -1876,6 +1916,66 @@ describe('getComposedTemplates', () => {
         expect(command, commandName).not.toContain('{{>engraved-recall-rules}}');
       }
     }
+  });
+
+  it('planning commands hand recall the three levels, not just a domain', () => {
+    // The `Scan roots` input existed in the recall contract from the start but
+    // nothing supplied it, so recall could only ever see one level.
+    const templatesDir = path.join(process.cwd(), 'src/templates/agent-skills/commands');
+    for (const filename of [
+      'smithy.strike.prompt',
+      'smithy.ignite.prompt',
+      'smithy.render.prompt',
+      'smithy.mark.prompt',
+      'smithy.cut.prompt',
+    ]) {
+      const template = fs.readFileSync(path.join(templatesDir, filename), 'utf8');
+      expect(template, filename).toContain('{{>engraved-recall-dispatch}}');
+    }
+
+    for (const templates of [claudeComposed, codexComposed]) {
+      for (const commandName of [
+        'smithy.strike.md',
+        'smithy.ignite.md',
+        'smithy.render.md',
+        'smithy.mark.md',
+        'smithy.cut.md',
+      ]) {
+        const command = templates.commands.get(commandName)!;
+        expect(command, commandName).toContain('**Scan roots**');
+        expect(command, commandName).toContain('~/.smithy/engraved/decisions/');
+        expect(command, commandName).toContain('~/.smithy/projects/<project>/docs/decisions/');
+        // Precedence is stated for the parent, not left to the model.
+        expect(command, commandName).toContain('project > repo > user');
+        // Severity escalation is deterministic, keyed on the ledger row.
+        expect(command, commandName).toMatch(/`severity`/);
+      }
+    }
+  });
+
+  it('engrave resolves a level before anything else and keeps counters per level', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('## Phase 0: Resolve the level');
+    expect(engrave).toContain('--level user|repo|project');
+    // Level-prefixed ids: the collision that made a bare citation ambiguous.
+    expect(engrave).toContain('`U-D-1`');
+    expect(engrave).toContain('`PJ-INV-1`');
+    expect(engrave).toContain('Counters never cross');
+    // A narrower level carves out an exception; it never supersedes upward.
+    expect(engrave).toContain('excepts');
+    expect(engrave).toMatch(/Supersession is \*\*same-level only\*\*/);
+  });
+
+  it('audit covers engraved records, with the CLI inventory as its context', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toContain('`.decision.md`');
+    expect(audit).toContain('`.invariant.md`');
+    expect(audit).toContain('Audit Checklist (engraved records');
+    expect(audit).toContain('smithy status --engraved --format json');
+    // The machine-checkable claims the checklist exists to enforce.
+    expect(audit).toContain('id_level_mismatch');
+    expect(audit).toContain('ledger.status_drift');
+    expect(audit).toContain('Supersession Symmetry');
   });
 
   it('degraded planning commands retain direct engraved recall rules', () => {
@@ -3883,12 +3983,24 @@ describe('getComposedTemplates', () => {
     // so projection output is byte-identical across runs. Assert the numbered
     // discovery list keeps them in the canonical sequence.
     const order = [
-      '1. `docs/decisions/`',
-      '2. `docs/invariants/`',
-      '3. `docs/constitution/`',
-      '4. `docs/design/decisions/`',
-      '5. `docs/design/invariants/`',
-      '6. `docs/design/constitution/`',
+      '| 1 | user | `~/.smithy/engraved/decisions/` |',
+      '| 2 | user | `~/.smithy/engraved/invariants/` |',
+      '| 3 | user | `~/.smithy/engraved/constitution/` |',
+      '| 4 | user | `~/.smithy/engraved/design/decisions/` |',
+      '| 5 | user | `~/.smithy/engraved/design/invariants/` |',
+      '| 6 | user | `~/.smithy/engraved/design/constitution/` |',
+      '| 7 | repo | `docs/decisions/` |',
+      '| 8 | repo | `docs/invariants/` |',
+      '| 9 | repo | `docs/constitution/` |',
+      '| 10 | repo | `docs/design/decisions/` |',
+      '| 11 | repo | `docs/design/invariants/` |',
+      '| 12 | repo | `docs/design/constitution/` |',
+      '| 13 | project | `~/.smithy/projects/<project>/docs/decisions/` |',
+      '| 14 | project | `~/.smithy/projects/<project>/docs/invariants/` |',
+      '| 15 | project | `~/.smithy/projects/<project>/docs/constitution/` |',
+      '| 16 | project | `~/.smithy/projects/<project>/docs/design/decisions/` |',
+      '| 17 | project | `~/.smithy/projects/<project>/docs/design/invariants/` |',
+      '| 18 | project | `~/.smithy/projects/<project>/docs/design/constitution/` |',
     ];
     let prev = -1;
     for (const entry of order) {

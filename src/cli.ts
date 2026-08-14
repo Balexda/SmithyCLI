@@ -102,6 +102,11 @@ program
   .option('--layer <n>', 'Graph: show only the given topological layer (0 = ready to work)')
   .option('--ready', 'Graph: show only Layer 0 — the work awaiting dispatch (shorthand for --layer 0)')
   .option('--max-layer <n>', 'Graph: show layers 0..n (depth cutoff)')
+  // The engraved inventory is a separate view over decisions, invariants, and
+  // principles — records with no dependency lineage, so none of the filter or
+  // graph flags above apply to it. `statusAction` rejects the combinations.
+  .option('--engraved', 'Inventory engraved knowledge (decisions, invariants, principles) by level')
+  .option('--project <slug>', 'With --engraved: include the named project level')
   .option('--no-color', 'Suppress ANSI color output')
   .option('--ascii', 'Use ASCII tree connectors and icons (auto when terminal is not UTF-8)')
   .action((opts: Record<string, unknown>) => {

@@ -20,7 +20,7 @@ Deployed to:
 | `smithy.fix` | Minimal-diff bug fix from a GitHub issue | (none) |
 | `smithy.audit` | Audit a Smithy artifact against its checklist | (none) |
 | `smithy.orders` | Show available Smithy commands and their usage | (none) |
-| `smithy.engrave` | Author / update a durable-knowledge record (decision, invariant, principle) — see [`docs/engraved-knowledge-schema.md`](../../../../docs/engraved-knowledge-schema.md) | (none) |
+| `smithy.engrave` | Author / update a durable-knowledge record (decision, invariant, principle) at the `user`, `repo`, or `project` level — the prompt itself carries the full schema | (none) |
 
 `smithy.status` is deployed as a skill (see `../skills/smithy.status/`), not a
 slash command, so it can auto-activate on natural-language status questions.

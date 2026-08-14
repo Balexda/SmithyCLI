@@ -1153,7 +1153,115 @@ describe('CLI status', () => {
     expect(output).toContain('--type');
     expect(output).toContain('--all');
     expect(output).toContain('--graph');
+    expect(output).toContain('--engraved');
+    expect(output).toContain('--project');
     expect(output).toContain('--no-color');
+  });
+
+  describe('--engraved', () => {
+    let fakeHome: string;
+
+    const runEngraved = (args: string[]): { stdout: string; stderr: string; status: number } => {
+      const result = spawnSync('node', [CLI, 'status', ...args], {
+        encoding: 'utf-8',
+        env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
+      });
+      return {
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+        status: result.status ?? 0,
+      };
+    };
+
+    beforeEach(() => {
+      fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-engraved-cli-home-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(fakeHome, { recursive: true, force: true });
+    });
+
+    function writeHome(relPath: string, contents: string): void {
+      const abs = path.join(fakeHome, relPath);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, contents);
+    }
+
+    /**
+     * The driving case for multi-level scoping: a repo-level invariant that a
+     * single workstream deliberately contradicts, in a project store that
+     * shares the repo's code paths.
+     */
+    function seedThreeLevels(): void {
+      writeHome(
+        '.smithy/engraved/decisions/compute.decision.md',
+        `---\nid: U-D-1\nkind: decision\ndomain: system\ntitle: "Compute, do not prompt"\nstatus: accepted\n---\n# Compute, do not prompt\n`,
+      );
+      write(
+        'docs/invariants/one-layer.invariant.md',
+        `---\nid: INV-1\nkind: invariant\ndomain: system\ntitle: "Value hierarchies stay single-layer"\nstatus: aligned\nestablished_by: [D-1]\n---\n# Value hierarchies stay single-layer\n\n## Rule\nOne layer.\n\n## Known Exceptions\n\n| Where | What diverges | Disposition + Why | Tracking Issue | Severity |\n|-------|---------------|-------------------|----------------|----------|\n| — | — | — | — | — |\n`,
+      );
+      writeHome(
+        '.smithy/projects/discount-engine/docs/decisions/three-layer.decision.md',
+        `---\nid: PJ-D-1\nkind: decision\ndomain: system\ntitle: "Discount engine stays three-layer"\nstatus: accepted\nexcepts: [INV-1]\n---\n# Discount engine stays three-layer\n`,
+      );
+    }
+
+    it('lists records by level, narrowest-wins precedence stated', () => {
+      seedThreeLevels();
+      const { stdout, status } = runEngraved(['--engraved', '--root', tmpDir, '--no-color']);
+
+      expect(status).toBe(0);
+      expect(stdout).toContain('U-D-1');
+      expect(stdout).toContain('INV-1');
+      expect(stdout).toContain('PJ-D-1');
+      expect(stdout).toContain('excepts INV-1');
+      expect(stdout).toContain('project > repo > user (narrower wins)');
+    });
+
+    it('emits level-tagged JSON with a ledger roll-up per invariant', () => {
+      seedThreeLevels();
+      const { stdout } = runEngraved(['--engraved', '--root', tmpDir, '--format', 'json']);
+      const payload = JSON.parse(stdout) as {
+        project: string | null;
+        summary: { total: number; by_level: Record<string, number> };
+        records: Array<{ id: string; level: string; ledger: unknown; excepts: string[] }>;
+      };
+
+      expect(payload.project).toBe('discount-engine');
+      expect(payload.summary.total).toBe(3);
+      expect(payload.summary.by_level).toEqual({ user: 1, repo: 1, project: 1 });
+
+      const projectRecord = payload.records.find((r) => r.id === 'PJ-D-1')!;
+      expect(projectRecord.level).toBe('project');
+      expect(projectRecord.excepts).toEqual(['INV-1']);
+      expect(payload.records.find((r) => r.id === 'INV-1')!.ledger).toMatchObject({
+        temporary: 0,
+        derived_status: 'aligned',
+      });
+    });
+
+    it('reports an empty inventory without failing', () => {
+      const { stdout, status } = runEngraved(['--engraved', '--root', tmpDir, '--no-color']);
+      expect(status).toBe(0);
+      expect(stdout).toContain('No engraved records found');
+    });
+
+    it('rejects planning-view flags instead of silently ignoring them', () => {
+      // The flags shape a dependency lineage engraved records do not have, so
+      // honoring half the request would be worse than refusing it.
+      for (const flag of [['--graph'], ['--all'], ['--type', 'spec'], ['--pending']]) {
+        const { stderr, status } = runEngraved(['--engraved', '--root', tmpDir, ...flag]);
+        expect(status, flag.join(' ')).toBe(2);
+        expect(stderr, flag.join(' ')).toContain('cannot be combined with --engraved');
+      }
+    });
+
+    it('rejects --project without --engraved', () => {
+      const { stderr, status } = runEngraved(['--project', 'discount-engine', '--root', tmpDir]);
+      expect(status).toBe(2);
+      expect(stderr).toContain('--project requires --engraved');
+    });
   });
 
   it('emits contract-shaped JSON with records, summary, graph, and full per-type counts (AS 7.2)', () => {

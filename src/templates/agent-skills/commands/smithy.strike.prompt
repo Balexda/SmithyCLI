@@ -56,6 +56,7 @@ Dispatch the **smithy-recall** sub-agent with:
 - **Feature/problem description**: the user's feature description from the input
 - **Codebase file paths**: the relevant files you discovered during exploration
 - **Domain hint**: infer `system`, `design`, or `both` from the explored files and requested work
+{{>engraved-recall-dispatch}}
 
 {{>engraved-recall-advisory}}
 {{else}}

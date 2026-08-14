@@ -68,6 +68,11 @@ import {
   templateArtifactsPrefix,
 } from '../manifest.js';
 import {
+  renderEngraved,
+  scanEngraved,
+  serializeEngravedForJson,
+} from '../engraved/index.js';
+import {
   buildDependencyGraph,
   buildTree,
   collapseTree,
@@ -194,6 +199,24 @@ export interface StatusOptions {
    * mangle box-drawing characters.
    */
   ascii?: boolean;
+  /**
+   * Inventory engraved durable knowledge (decisions, invariants,
+   * principles) instead of planning artifacts, grouped by level.
+   *
+   * A separate view rather than a new `--type`: engraved records are graph
+   * roots with no `## Dependency Order` lineage, so every column the planning
+   * view exists to show — parent, status rollup, next action, layer — is
+   * empty for them. Mutually exclusive with the graph and filter flags, which
+   * all address the planning lineage.
+   */
+  engraved?: boolean;
+  /**
+   * Project slug naming the workstream whose engraved store to include.
+   * Without it, the project level is included only when exactly one named
+   * store exists — an ambiguous guess would silently apply another
+   * workstream's rules. Only meaningful with `--engraved`.
+   */
+  project?: string;
 }
 
 /**
@@ -268,6 +291,36 @@ const VALID_TYPES: readonly ArtifactType[] = [
 ];
 
 export function statusAction(opts: StatusOptions = {}): void {
+  // `--engraved` selects a different inventory, so the flags that shape the
+  // planning view have nothing to act on under it. Reject the combination
+  // rather than silently ignoring half of what the user asked for.
+  if (opts.engraved === true) {
+    const planningFlags: Array<[string, boolean]> = [
+      ['--status', opts.status !== undefined],
+      ['--pending', opts.pending === true],
+      ['--type', opts.type !== undefined],
+      ['--all', opts.all === true],
+      ['--graph', opts.graph === true],
+      ['--layer', opts.layer !== undefined],
+      ['--ready', opts.ready === true],
+      ['--max-layer', opts.maxLayer !== undefined],
+    ];
+    const offender = planningFlags.find(([, used]) => used);
+    if (offender !== undefined) {
+      process.stderr.write(
+        `smithy status: ${offender[0]} cannot be combined with --engraved (engraved records have no dependency lineage to filter or lay out).\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+  } else if (opts.project !== undefined) {
+    process.stderr.write(
+      `smithy status: --project requires --engraved (it selects which workstream's engraved store to include).\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+
   // Error condition: invalid `--status` or `--type` value.
   // Validated here (not via Commander `.choices()`) because the
   // contracts mandate exit code 2 for these errors, while Commander's
@@ -429,6 +482,32 @@ export function statusAction(opts: StatusOptions = {}): void {
       `smithy status: --root path is not a directory: ${rawRoot}\n`,
     );
     process.exitCode = 2;
+    return;
+  }
+
+  // `--engraved` is a different inventory, not a filter on this one: engraved
+  // records are graph roots, so the planning view's tree, layers, statuses and
+  // next-action hints have nothing to say about them. It short-circuits here,
+  // after `--root` validation so a bad root still fails the same way.
+  if (opts.engraved === true) {
+    const manifest =
+      readManifest(resolvedRoot, 'repo') ?? readManifest(resolvedRoot, 'user');
+    const scanResult = scanEngraved(resolvedRoot, {
+      artifactsLocation: manifest?.artifactsLocation ?? 'repo',
+      ...(opts.project !== undefined ? { project: opts.project } : {}),
+    });
+
+    if (opts.format === 'json') {
+      console.log(JSON.stringify(serializeEngravedForJson(scanResult), null, 2));
+      return;
+    }
+
+    console.log(
+      renderEngraved(
+        scanResult,
+        buildTheme({ noColor: opts.color === false, ascii: opts.ascii === true }),
+      ),
+    );
     return;
   }
 
