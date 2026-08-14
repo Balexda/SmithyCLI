@@ -52,10 +52,10 @@ and, for the durable UI artifacts, by the directory it sits in as well:
    | `.spec.md` | The `.data-model.md` and `.contracts.md` in the same spec folder (`{{artifactsRoot}}specs/<YYYY-MM-DD-NNN-slug>/`), to verify cross-document consistency |
    | `.tasks.md` | The `.spec.md`, `.data-model.md`, and `.contracts.md` in the same spec folder, to verify FR traceability and slice-to-requirement mapping |
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
-   | `.design.md` under `design/screens/` | The component named by front-matter `component-path`, when present, to verify the path contract resolves |
-   | `.flow.md` under `design/flows/` | The screen annotations named by front-matter `screens` and the executable body named by `test-body`, when present, to verify flow references resolve |
+   | `.design.md` under `design/screens/` | The component named by front-matter `component-path`, when present, to verify the path contract resolves; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `SC<N>` row |
+   | `.flow.md` under `design/flows/` | The screen annotations named by front-matter `screens` and the executable body named by `test-body`, when present, to verify flow references resolve; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `FL<N>` row |
 
-   If a context document is missing, note it as a finding rather than skipping the check.
+   If a context document is missing, note it as a finding rather than skipping the check. The one exception is a context entry marked "when it is discoverable" — a durable UI artifact carries no back-pointer to its owning spec, so an unreachable ledger is not itself a finding.
 
 4. Use the matching **Artifact-Type Checklist** below, reviewing against both the target file and any context documents gathered.
 5. If the target matches no row, fall back to a general review using all checklists.
@@ -110,6 +110,13 @@ and review against its "Review checklist" section. The audit is structural and
 contractual only: do not judge visual fidelity, pixel polish, layout quality, or
 whether the eventual component visually matches a mockup.
 
+**One carve-out from that checklist.** Its `id` bullet checks membership against
+a feature-level `screens:` list. Features no longer carry one — screens are
+first-class `SC<N>` rows in the owning spec's typed `## Dependency Order`
+ledger. Resolve `id` against that ledger row instead, and only when the owning
+spec is reachable from the target. When it is not, skip the membership check —
+do **not** report a finding for a missing `screens:` list.
+
 Flag at least the following:
 
 - Missing or malformed YAML front-matter.
@@ -133,6 +140,13 @@ skill and review against its "Review checklist" section. The audit checks the
 intent annotation and its declared executable test-body pair. Graph-level
 screen/flow/test consistency remains appropriate for `flow-lint`, but direct
 audit should still report unresolved references visible from this file.
+
+**One carve-out from that checklist.** Its `id` bullet checks membership against
+a feature-level `flows:` list. Features no longer carry one — flows are
+first-class `FL<N>` rows in the owning spec's typed `## Dependency Order`
+ledger. Resolve `id` against that ledger row instead, and only when the owning
+spec is reachable from the target. When it is not, skip the membership check —
+do **not** report a finding for a missing `flows:` list.
 
 Flag at least the following:
 
