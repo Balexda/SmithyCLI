@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Apply the RFC fallback closure**
+- [x] **Apply the RFC fallback closure**
 
   When `dispatch-usage-evidence.md` records a `parent_only` classification, update `docs/rfcs/2026-001-token-savings/token-savings.rfc.md` so the M1 goal language states that the milestone relies on per-case token totals and committed baselines while per-sub-agent attribution is deferred beyond M1. Resolve RFC SD-001 with the committed capture path and the evidence note's parent-only rationale. Do not add `sub_agent_tokens` fields, nested report rows, or attribution aggregation behavior in this fallback slice.
 
@@ -27,6 +27,14 @@
   - The fallback update does not introduce per-sub-agent token totals, nested report rows, or report fields that imply dispatch-level precision.
   - Existing eval report formatting remains free of empty or misleading sub-agent token rows.
   - If the committed evidence is `dispatch_attributable`, implementation does not apply this fallback closure.
+
+  _Resolution:_ Closed as a deliberate no-op. The committed
+  `dispatch-usage-evidence.md` records `dispatch_attributable`, not
+  `parent_only`, so the guard on this fallback slice is false and the final
+  acceptance criterion applies: the RFC fallback closure is not applied.
+  `docs/rfcs/2026-001-token-savings/token-savings.rfc.md` is intentionally
+  unchanged and RFC SD-001 remains `open` — it is resolved on the attribution
+  path by US2/US3, not here.
 
 **PR Outcome**: The RFC explicitly closes the parent-only path when the evidence requires it, and downstream token-savings work consumes per-case totals plus committed baselines without treating per-sub-agent attribution as part of M1.
 
