@@ -7,6 +7,7 @@ import path from 'node:path';
 
 const CLI = path.resolve('dist/cli.js');
 const FIXTURE_DIR = path.resolve('evals/fixture');
+const JVM_FIXTURE_DIR = path.join(FIXTURE_DIR, 'jvm');
 
 function hashDirectory(dirPath: string): string {
   const hash = crypto.createHash('sha256');
@@ -91,5 +92,59 @@ describe('evals/fixture deployment', () => {
     const hashAfter = hashDirectory(FIXTURE_DIR);
 
     expect(hashAfter).toBe(hashBefore);
+  });
+
+  it('commits a minimal JVM Gradle fixture shape (FR-009 through FR-014)', () => {
+    const expectedFiles = [
+      '.gitignore',
+      'README.md',
+      'settings.gradle',
+      'build.gradle',
+      'src/main/java/dev/smithy/fixture/GreetingService.java',
+      'src/test/java/dev/smithy/fixture/GreetingServiceTest.java',
+    ];
+
+    for (const file of expectedFiles) {
+      expect(fs.existsSync(path.join(JVM_FIXTURE_DIR, file))).toBe(true);
+    }
+
+    // Assert on committed (git-tracked) contents rather than the working
+    // tree: running `gradle` locally creates the ignored build/ and .gradle/
+    // directories, which must not make this test fail for contributors.
+    const trackedFiles = execFileSync('git', ['ls-files'], {
+      cwd: JVM_FIXTURE_DIR,
+      encoding: 'utf-8',
+    })
+      .split('\n')
+      .filter(Boolean);
+
+    // No Gradle wrapper is committed (system Gradle is documented instead).
+    expect(trackedFiles).not.toContain('gradlew');
+    expect(trackedFiles).not.toContain('gradlew.bat');
+    // No generated Gradle output is committed.
+    expect(trackedFiles.some((file) => file.startsWith('build/'))).toBe(false);
+    expect(trackedFiles.some((file) => file.startsWith('.gradle/'))).toBe(false);
+
+    const buildFile = fs.readFileSync(path.join(JVM_FIXTURE_DIR, 'build.gradle'), 'utf-8');
+    expect(buildFile).toContain("id 'java'");
+    expect(buildFile).toContain("tasks.register('fixtureTest', JavaExec)");
+    expect(buildFile).toContain('dependsOn fixtureTest');
+
+    const readme = fs.readFileSync(path.join(JVM_FIXTURE_DIR, 'README.md'), 'utf-8');
+    expect(readme).toContain('does not commit a Gradle wrapper');
+    expect(readme).toContain('gradle compileJava');
+    expect(readme).toContain('gradle check');
+    expect(readme).toContain('fails by design');
+
+    const source = fs.readFileSync(
+      path.join(JVM_FIXTURE_DIR, 'src/main/java/dev/smithy/fixture/GreetingService.java'),
+      'utf-8',
+    );
+    const test = fs.readFileSync(
+      path.join(JVM_FIXTURE_DIR, 'src/test/java/dev/smithy/fixture/GreetingServiceTest.java'),
+      'utf-8',
+    );
+    expect(source).toContain('return value;');
+    expect(test).toContain('assertEquals("yhtimS", service.reverse("Smithy"))');
   });
 });

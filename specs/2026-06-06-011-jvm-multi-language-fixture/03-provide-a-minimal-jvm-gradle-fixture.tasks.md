@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Add the minimal Gradle project**
+- [x] **Add the minimal Gradle project**
 
   Create the JVM fixture under `evals/fixture/jvm/` with Gradle settings, build configuration, Java source, and Java test source. Keep the project intentionally small and aligned with the JVM Fixture Layout contract so future eval agents can inspect it quickly.
 
@@ -29,7 +29,7 @@
   - Existing JavaScript fixture files remain unmoved and semantically unchanged.
   - Fixture presence coverage verifies the committed JVM project shape.
 
-- [ ] **Plant the deterministic forge failure**
+- [x] **Plant the deterministic forge failure**
 
   Add a simple source behavior and corresponding test in the JVM fixture so the test suite has one intentional, deterministic failure. The failure must be suitable for a future `smithy.forge` slice to repair without requiring runner or scenario changes in this story.
 
@@ -39,7 +39,7 @@
   - The fixture still compiles before the planted failing assertion runs.
   - No JVM scenario YAML or baseline file is added.
 
-- [ ] **Document fixture operation and boundaries**
+- [x] **Document fixture operation and boundaries**
 
   Add `evals/fixture/jvm/README.md` and any fixture-local ignore rules needed to match the committed Gradle approach. Document how maintainers run the build and tests, which failure is intentional, required local tooling or first-run dependency resolution, and which files are fixture-owned.
 
