@@ -2368,6 +2368,23 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('Implementation repo mismatch');
   });
 
+  it('forge template defines the screen-build profile for typed UI nodes', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('### Typed UI Node Build Profiles');
+    expect(forge).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build forge profile');
+    expect(forge).toContain('Read the referenced `design/screens/<ScreenId>.design.md` before editing');
+    expect(forge).toContain('the committed design skill named by the screen artifact');
+    expect(forge).toContain('behind the feature `flag`');
+    expect(forge).toContain('Use mock data for screen-build work');
+    expect(forge).toContain('Represent every brief state named by the screen intent');
+    expect(forge).toContain('design-system');
+    expect(forge).toContain('tokens and reusable project components');
+    expect(forge).toContain('Honor an attached `bundle` for layout and visual intent');
+    expect(forge).toContain('`brief`');
+    expect(forge).toContain('mode without a bundle and `none` mode are non-blocking');
+    expect(forge).toContain('Refuse to author a new `.design.md` from scratch');
+  });
+
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
