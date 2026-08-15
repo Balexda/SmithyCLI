@@ -40,3 +40,13 @@ When assigned via “Assign to Copilot,” the coding agent **must**:
 
 - Reference the relevant issue number in commits/PRs using `Fixes #<issue>` so GitHub auto-closes the ticket on merge.
 - Follow repository documentation (`README.md`, `package.json`) for project conventions.
+
+<!-- smithy:engraved:begin -->
+## Engraved Knowledge
+
+This repository maintains engraved durable knowledge: decisions, invariants,
+and principles. Before planning or making changes, read the applicable records
+under these locations and judge whether they apply to the work at hand.
+
+- docs/constitution/
+<!-- smithy:engraved:end -->
