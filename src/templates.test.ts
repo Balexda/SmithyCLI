@@ -5011,6 +5011,21 @@ describe('issue #554 — audit defects D1–D10', () => {
     expect(content).toContain('never add an item that did not come from `debt_items`');
   });
 
+  it('D1: the snippet owns SD numbering, and no consumer contradicts it', () => {
+    // Review feedback on #581: the snippet said "continue from whatever the
+    // section already carries" while three lead-ins said "starting numbering
+    // at SD-001", which would duplicate ids on a re-run over an existing
+    // artifact. The snippet states the whole rule; consumers state none of it.
+    const content = loadSnippets().get('debt-from-clarify.md')!;
+    expect(content).toContain('`SD-001` only when the section');
+    expect(content).toMatch(/never reused/);
+    for (const file of ['smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md']) {
+      const cmd = composed.commands.get(file)!;
+      expect(cmd).not.toMatch(/starting numbering at `SD-001`/);
+      expect(cmd).not.toMatch(/identifiers starting at SD-001/);
+    }
+  });
+
   it.each(['smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md'])(
     'D1: %s composes the draft-time debt population rule',
     file => {
@@ -5111,6 +5126,10 @@ describe('issue #554 — audit defects D1–D10', () => {
     const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     expect(skill.prompt).toContain('git config --get remote.origin.url');
     expect(skill.prompt).toMatch(/no `gh` involved|no `gh` needed|needs no `gh`/);
+    // Review feedback on #581: "no shell" over-promised, since that path
+    // still reads the git remote through a shell call.
+    expect(skill.prompt).not.toMatch(/No shell, no `gh` CLI dependency/);
+    expect(skill.prompt).toMatch(/Validate Environment is\s+the one exception/);
   });
 
   it('D4: Link Blocked-By states it has no MCP equivalent', () => {
@@ -5226,6 +5245,31 @@ describe('issue #554 — audit defects D1–D10', () => {
     expect(content).toMatch(/\*\*the artifact is the source, not the clarify\s+return\.\*\*/);
     expect(content).toMatch(/plan-review pass\s+appends its `steering` findings to the artifact after clarify returns/);
     expect(content).toMatch(/number of unresolved rows in the artifact/);
+    // Review feedback on #581: the empty-state condition still keyed on
+    // clarify, which reintroduces the very mismatch D10 removes.
+    expect(content).not.toMatch(/If clarify returned zero debt items/);
+    expect(content).toMatch(/The condition is\s+the artifact's row count, not clarify's/);
+  });
+
+  it('D10: an inherited debt row resolves its description from the parent', () => {
+    // Both reviewers on #581 flagged the same thing: a carried-down row has
+    // no local detail section, and on a refinement run there is no clarify
+    // return to fall back on either. Its prose lives in the parent.
+    const content = loadSnippets().get('one-shot-output.md')!;
+    expect(content).not.toMatch(/take the description from\s+the `debt_items` entry that produced it/);
+    expect(content).toMatch(/its prose lives in the parent/);
+    expect(content).toMatch(/reliable source on every kind of run/);
+  });
+
+  it('D4: the search_issues call is written against the host schema, not pinned', () => {
+    // Review feedback on #581: `search_issues` differs across GitHub MCP
+    // server versions — `query` is natural language on some and GitHub
+    // search syntax on others, and response-trimming params are not
+    // universal. Pinning either shape breaks the gh-less path on the other.
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toMatch(/Read the tool's own schema before composing the call/);
+    expect(skill.prompt).not.toMatch(/`in:title` and friends are not query syntax here/);
+    expect(skill.prompt).not.toMatch(/`fields` — `\["number", "title", "state", "body"\]`/);
   });
 
   it('D10: strike renders its debt summary from the committed artifact', () => {

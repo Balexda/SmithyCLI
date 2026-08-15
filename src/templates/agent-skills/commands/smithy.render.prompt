@@ -411,7 +411,7 @@ _If no cross-milestone dependencies exist, state "None — this milestone is sel
 ````
 
 Populate the drafted `## Specification Debt` section from clarify's returned
-`debt_items`, starting numbering at `SD-001`.
+`debt_items`.
 
 {{>debt-from-clarify}}
 

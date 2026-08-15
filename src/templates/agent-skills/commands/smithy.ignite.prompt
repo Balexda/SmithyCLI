@@ -810,7 +810,7 @@ Recommended implementation sequence:
 ```
 
 Populate the `## Specification Debt` section from clarify's returned
-`debt_items` at draft time, starting numbering at `SD-001`.
+`debt_items` at draft time.
 
 {{>debt-from-clarify}}
 

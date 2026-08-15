@@ -32,8 +32,11 @@ had no clarify pass at all — write: `None — no assumptions were recorded.`)
 - <debt item 2 title> — <description> [Impact: <level>] [Origin: <local|kind:SD-NNN>]
 - ...
 
-(If clarify returned zero debt items, write: `None — no specification debt
-was recorded.`)
+(If the artifact's `## Specification Debt` section holds zero unresolved
+rows, write: `None — no specification debt was recorded.` The condition is
+the artifact's row count, not clarify's — a run where clarify found nothing
+but plan-review later appended a `steering` finding has one row, and must
+render it.)
 
 ## PR
 
@@ -66,9 +69,12 @@ was recorded.`)
   return.** Read the target artifact's final `## Specification Debt` index
   table — every row not under `### Resolved` — and render one bullet per
   row, taking Title, Impact, and Origin from the row and the description
-  from that item's `### SD-NNN — <Title>` detail section. For a row carried
-  down from a parent (no local detail section), take the description from
-  the `debt_items` entry that produced it. Reading the table rather than
+  from that item's `### SD-NNN — <Title>` detail section. A row carried down
+  from a parent has no local detail section — its prose lives in the parent
+  artifact its `Origin` names (`spec:SD-004` → `SD-004`'s detail section in
+  the source spec), so read the description from there. That parent is the
+  reliable source on every kind of run, including a refinement pass where no
+  clarify return exists to fall back on. Reading the table rather than
   clarify's array is what keeps the count honest: the plan-review pass
   appends its `steering` findings to the artifact after clarify returns, so
   a clarify-only render would under-report the artifact's real debt. The

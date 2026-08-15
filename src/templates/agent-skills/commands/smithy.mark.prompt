@@ -373,7 +373,7 @@ Guidelines for the spec:
 - Do NOT include specific file paths, function names, or implementation details.
 - DO trace back to RFC sections when input is an RFC.
 - Populate the `## Specification Debt` section from clarify's returned
-  `debt_items`, starting numbering at `SD-001`.
+  `debt_items`.
   {{>debt-from-clarify}}
 
 - The `## Dependency Order` section lists all user stories in recommended

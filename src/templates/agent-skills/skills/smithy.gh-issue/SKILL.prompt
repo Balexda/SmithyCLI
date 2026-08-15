@@ -9,9 +9,12 @@ Provides GitHub issue operations through two interchangeable paths:
 
 1. **GitHub MCP server** (preferred when available) — calls
    `mcp__github__search_issues` and `mcp__github__issue_write` directly.
-   No shell, no `gh` CLI dependency, no per-command approval prompts.
-   This is the only path that works on hosts without `gh` installed, such
-   as Claude Code on the web.
+   No `gh` CLI dependency and no per-command approval prompts for the issue
+   operations themselves. This is the only path that works on hosts without
+   `gh` installed, such as Claude Code on the web. Validate Environment is
+   the one exception: even on this path it reads the git remote through a
+   single stable shell call, so a host with MCP tools but no shell at all
+   must be given `owner` / `repo` some other way.
 2. **Bundled `gh`-CLI shell scripts** (fallback) — four scripts in this
    skill's `scripts/` directory wrap `gh` invocations. Use these when the
    GitHub MCP server is not configured, and for Link Blocked-By, which has
@@ -42,8 +45,9 @@ instead of a long, ad-hoc `gh` invocation. This mirrors the
 For each operation:
 
 1. **Try MCP first.** If `mcp__github__<tool>` is in your available tool set,
-   use it. The MCP path is faster (no shell hop), avoids permission prompts,
-   and works regardless of whether `gh` is installed.
+   use it. The MCP path is faster (no shell hop for Search Issues or Create
+   Issue), avoids permission prompts, and works regardless of whether `gh` is
+   installed.
 2. **Fall back to the script** if MCP is unavailable, returns a "tool not
    found" / connection error, or the host clearly lacks the MCP server. The
    scripts assume `gh` is on `PATH` and authenticated.
@@ -101,17 +105,28 @@ locating parent tickets when stitching artifacts together.
 
 ### MCP path
 
-Call `mcp__github__search_issues` with:
+Call `mcp__github__search_issues` with `owner` and `repo` from Validate
+Environment, the ticket title as `query`, and a result cap of about 10.
 
-- `owner`, `repo` — resolved by Validate Environment
-- `query` — the search text. It is matched semantically, so pass the ticket
-  title plainly (e.g. `[Story] My Title`) rather than `gh` search operators;
-  `in:title` and friends are not query syntax here.
-- `perPage` — the result cap (the scripts default to 10)
-- `fields` — `["number", "title", "state", "body"]` keeps the response small
+**Read the tool's own schema before composing the call — do not assume the
+shape from this page.** `search_issues` differs across GitHub MCP server
+versions in two ways that change what a correct call looks like:
+
+- **`query` semantics.** Some versions match `query` semantically as natural
+  language; others parse it as GitHub issue-search syntax. Passing the plain
+  ticket title (e.g. `[Story] My Title`) is valid on both. Add a qualifier
+  such as `in:title` **only** when the schema documents GitHub search syntax
+  — on a natural-language version the qualifier is matched as literal words
+  and widens the search rather than narrowing it.
+- **Optional parameters.** Response-trimming parameters such as `fields` exist
+  on some versions and not others. Pass one only if the schema in your tool
+  set lists it; sending an unknown parameter can fail validation and push you
+  onto the `gh` fallback, which is exactly the path a gh-less host does not
+  have.
 
 Filter the results yourself for the state you want (`open`, `closed`, or
-both). Semantic matching returns near-misses by design, so compare each
+both) — do not assume a state filter was applied. Because a title query can
+return near-misses under either `query` semantics, always compare each
 result's title against the one you are about to create before treating it as
 a duplicate.
 
@@ -170,7 +185,7 @@ creation.
 ## Operation: Link Blocked-By
 
 Marks one issue as blocked by another via the GitHub `addBlockedBy` GraphQL
-mutation.  Use this after both the parent and child issues exist.
+mutation. Use this after both the parent and child issues exist.
 
 **There is no MCP path for this operation** — the GitHub MCP server exposes
 no `addBlockedBy` equivalent (`sub_issue_write` writes parent/child hierarchy,
