@@ -158,7 +158,7 @@
 
 ### Tasks
 
-- [ ] **Route UI slices to structural review**
+- [x] **Route UI slices to structural review**
 
   Update the forge review instructions and shared review protocol references so `SC` and `FL` slices request a UI structural review profile. The profile should stay read-only/plan-only in the same way as existing implementation review, and should focus on contract conformance rather than visual preference.
 
@@ -169,7 +169,7 @@
   - Visual fidelity and taste judgments are out of scope
   - Existing backend review routing remains unchanged
 
-- [ ] **Define structural UI review checks**
+- [x] **Define structural UI review checks**
 
   Add the review checklist for UI node work to the relevant source templates or snippets. The checklist should verify token-only styling, component reuse, project conventions, stable selector usage, touch-target and contrast roles where applicable, and representation of every brief state.
 
@@ -180,7 +180,7 @@
   - Flow review checks stable selector usage
   - Accessibility roles such as touch targets and contrast are checked structurally
 
-- [ ] **Keep reviewer output actionable**
+- [x] **Keep reviewer output actionable**
 
   Ensure UI structural findings route through forge's existing review triage so high-confidence fixes are applied by forge and lower-confidence concerns become debt only when they meet the existing debt criteria. The reviewer should not propose pixel-matching or visual-diff work.
 

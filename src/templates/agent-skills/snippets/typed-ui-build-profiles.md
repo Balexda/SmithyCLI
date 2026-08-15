@@ -49,9 +49,13 @@ documentation, validation, and PR creation stay the same as ordinary work.
     implementation dialect and project conventions. When no bundle is attached,
     fall back to the design skill and `.design.md` intent instead of stopping
     the slice.
-  - Do not ask reviewers to judge visual fidelity. Review remains structural:
-    project conventions, design-system tokens/components, accessible structure,
-    gated behavior, mock-data coverage, and every named brief state.
+  - Request forge's `ui-structural` implementation review profile after the
+    slice is built. Review remains read-only and structural: token-only
+    styling, reusable project components, project conventions, accessible
+    structure including touch-target roles and contrast-token usage, gated
+    behavior, mock-data coverage, and every named brief state. Do not ask
+    reviewers to judge visual fidelity, run visual diffs, or propose
+    pixel-matching work.
   - Refuse to author a new `.design.md` from scratch, and do not modify
     `.design.md` or `.flow.md` files as part of screen-build work. Those durable
     artifacts originate at `mark`; `forge` consumes them.
@@ -86,6 +90,12 @@ documentation, validation, and PR creation stay the same as ordinary work.
     the project's existing UI driver and stable test IDs, accessibility IDs, or
     semantic tags; never rely on visible text, layout position, or prose copied
     into the `.flow.md`.
+  - Request forge's `ui-structural` implementation review profile after the
+    slice is built. Review remains read-only and structural: stable selector
+    usage, guard/traversal coverage in the paired test body, accessible
+    structure where applicable, feature-flag correctness, and real-data versus
+    mock-data boundaries. Do not ask reviewers to judge visual fidelity, run
+    visual diffs, or propose pixel-matching work.
   - Run the paired flow test body as a validation gate when the repository has a
     supported command for that driver. If no targeted flow-test command exists,
     run the closest project test gate and report the validation limitation.

@@ -256,6 +256,19 @@ Use the **smithy-implementation-review** sub-agent. Pass it:
   section in it — those records go to the planning artifact only. **The
   review note surface** is forge's terminal-output **Review Summary**
   deliverable, never the PR body.
+- **Review profile**: If the tasks file's `**Node Kind**:` is
+  `screen-build` (`SC<N>`) or `flow-wire` (`FL<N>`), request the
+  `ui-structural` profile. Otherwise use the default backend implementation
+  review profile.
+
+The `ui-structural` profile is still the ordinary read-only implementation
+review agent and output contract. It narrows UI-node review to structural
+contract conformance: design-system tokens, reusable project components,
+project conventions, stable selectors, accessible structure, feature-flag and
+mock/real-data boundaries, and whether every brief state or flow guard named by
+the mark-owned artifacts is represented. Do not ask for pixel matching,
+visual-diff work, subjective taste changes, or visual fidelity judgments. The
+default backend review profile and backend-story routing remain unchanged.
 
 `smithy-implementation-review` is **read-only**. It returns a `ReviewResult`
 containing a list of `Finding` entries (`category`, `kind`, `severity`,

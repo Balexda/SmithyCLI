@@ -3427,6 +3427,84 @@ describe('getComposedTemplates', () => {
     );
   });
 
+  it('forge routes SC and FL slices to the ui-structural review profile', async () => {
+    // The sub-agent dispatch block is inside forge's {{#ifAgent}} branch, so
+    // the routing instruction only renders for an agent-capable variant.
+    const claudeComposed = await getComposedTemplates('claude');
+    const forge = claudeComposed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain("- **Review profile**: If the tasks file's `**Node Kind**:` is");
+    expect(forge).toMatch(
+      /`screen-build` \(`SC<N>`\) or `flow-wire` \(`FL<N>`\), request the\s+`ui-structural` profile/,
+    );
+    expect(forge).toContain('Otherwise use the default backend implementation');
+    // The profile narrows the review; it does not fork the agent or the
+    // output contract, and it never turns forge into a visual-fidelity judge.
+    expect(forge).toMatch(
+      /`ui-structural` profile is still the ordinary read-only implementation\s+review agent and output contract/,
+    );
+    expect(forge).toContain('Do not ask for pixel matching');
+    expect(forge).toContain('visual-diff work, subjective taste changes, or visual fidelity judgments');
+    expect(forge).toContain('default backend review profile and backend-story routing remain unchanged');
+  });
+
+  it('both typed UI build profiles request the ui-structural review, agent mode or not', () => {
+    // The snippet side of the routing rides the build profiles, so the
+    // degraded no-sub-agent variant still asks for a structural review.
+    const forge = composed.commands.get('smithy.forge.md')!;
+    const structuralRequests = forge.match(
+      /Request forge's `ui-structural` implementation review profile after the/g,
+    );
+    expect(structuralRequests).toHaveLength(2);
+    expect(forge).toMatch(
+      /token-only\s+styling, reusable project components, project conventions, accessible\s+structure including touch-target roles and contrast-token usage/,
+    );
+    expect(forge).toMatch(
+      /stable selector\s+usage, guard\/traversal coverage in the paired test body/,
+    );
+    expect(forge).toContain('Do not ask reviewers to judge visual fidelity, run');
+    expect(forge).toContain('visual diffs, or propose');
+  });
+
+  it('implementation-review agent defines the structural UI review checks', () => {
+    const review = composed.agents.get('smithy.implementation-review.md')!;
+    expect(review).toBeDefined();
+    expect(review).toContain('## UI Structural Profile');
+    expect(review).toMatch(/\*\*Review profile\*\* — optional\. `ui-structural` means the diff comes from an/);
+    expect(review).toMatch(/If omitted, use the default backend\s+implementation review behavior/);
+    // Screen checks: tokens, component reuse and conventions, every brief state.
+    expect(review).toContain('verify styling uses design-system tokens or existing');
+    expect(review).toContain('rather than hardcoded colors or one-off style constants');
+    expect(review).toMatch(/verify reusable components and local project\s+conventions are followed/);
+    expect(review).toMatch(/verify every brief state named by the referenced\s+`\.design\.md` or task plan is represented/);
+    // Flow checks: stable selectors, guard/traversal coverage in the test body.
+    expect(review).toMatch(
+      /verify executable behavior uses stable test IDs,\s+accessibility IDs, or semantic tags instead of visible text or layout\s+position/,
+    );
+    expect(review).toMatch(/guard\/traversal assertions from the `\.flow\.md` are\s+represented in the paired test body/);
+    // Accessibility roles are checked structurally, not visually.
+    expect(review).toMatch(
+      /touch-target roles, accessible roles\/names, and\s+contrast-token usage structurally/,
+    );
+    expect(review).toContain('feature-flag boundaries, mock-data versus');
+  });
+
+  it('ui-structural review findings stay on the existing triage and skip pixel work', () => {
+    const review = composed.agents.get('smithy.implementation-review.md')!;
+    expect(review).toMatch(
+      /When `Review profile` is `ui-structural`, keep the review read-only and use the\s+same `ReviewResult` shape and shared triage rules as every other implementation\s+review/,
+    );
+    expect(review).toContain('**UI structural conformance** — only when the `ui-structural` profile is');
+    expect(review).toContain(
+      'Do not emit findings for pixel matching, visual diffs, palette preference,',
+    );
+    expect(review).toMatch(/spacing taste, typography taste, or whether the result visually matches a\s+prototype/);
+    expect(review).toContain('do not ask forge to iterate visual');
+    // Triage itself is unchanged: severity x confidence still comes from the
+    // shared review protocol, and forge still owns applying or recording it.
+    expect(review).toContain('Each category combines with a severity (Critical, Important, Minor) and a');
+    expect(review).toContain('## Review Protocol');
+  });
+
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
