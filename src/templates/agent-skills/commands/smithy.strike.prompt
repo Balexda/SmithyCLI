@@ -283,8 +283,12 @@ assumption flagged without scanning the agent transcript.
    file, and substitute `User stories` / `Functional requirements`
    with the strike's requirement and task counts per the snippet's
    placeholder guidance. Populate the `## PR` section with the URL
-   captured in the previous step, and copy `assumptions` and
-   `debt_items` from clarify's return.
+   captured in the previous step, copy `assumptions` from clarify's
+   return, and source `## Specification Debt` from the committed strike
+   document's own debt table per the snippet's placeholder guidance —
+   the plan-review triage above may have appended `steering` findings
+   after clarify returned, and the terminal count must match what a
+   reader finds in the artifact.
 6. **Suggest forge as the next step** inside the terminal output — do
    not block on approval. A developer can invoke `smithy-forge` with
    the strike file path when they are ready.

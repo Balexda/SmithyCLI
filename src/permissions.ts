@@ -630,6 +630,7 @@ export const claudeToolPermissions: string[] = [
   "mcp__github__pull_request_read",
   "mcp__github__add_reply_to_pull_request_comment",
   "mcp__github__issue_write",
+  "mcp__github__search_issues",
 ];
 
 /**

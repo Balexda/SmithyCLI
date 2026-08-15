@@ -105,7 +105,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(33);
+    expect(snippets.size).toBe(34);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -140,6 +140,7 @@ describe('loadSnippets', () => {
       'kind-gate.md',
       'debt-row-shape.md',
       'debt-grading.md',
+      'debt-from-clarify.md',
       'plan-review-triage.md',
     ];
     for (const file of expectedFiles) {
@@ -398,7 +399,12 @@ describe('kind-gate snippet', () => {
     expect(content).toContain('### Acceptance Scenarios');
     expect(content).toContain('## Out of Scope');
     expect(content).toContain('## Assumptions');
-    expect(content).toContain('Cross-Cutting Governance');
+    // Issue #554 D2: the routing table used to send dependency/coordination
+    // notes to an "RFC Cross-Cutting Governance / touched-files matrix" that
+    // no template defines. Every home named here must be a section that
+    // actually exists in some artifact.
+    expect(content).toContain('## Dependency Order');
+    expect(content).not.toContain('Cross-Cutting Governance');
     expect(content).toContain('A wrong table is a fix, not a question');
     // No cross-file pointer to a prompt a consumer may never load.
     expect(content).not.toMatch(/smithy-clarify Step 3b's routing table/);
@@ -4979,5 +4985,252 @@ describe('command frontmatter reaches each agent', () => {
         expect(block!, `${variant}/${file}`).toMatch(/^description:/m);
       }
     }
+  });
+});
+
+describe('issue #554 — audit defects D1–D10', () => {
+  let composed: ComposedTemplates;
+  let claudeComposed: ComposedTemplates;
+
+  beforeAll(async () => {
+    composed = await getComposedTemplates();
+    claudeComposed = await getComposedTemplates('claude');
+  });
+
+  // D1 — ignite wrote `debt_items` into the RFC in the step *after* the commit
+  // and the PR, so the committed artifact and the PR body both shipped without
+  // the debt the run had already found. mark/cut populate debt at draft time;
+  // ignite and render now do too, through the shared `debt-from-clarify`
+  // snippet, and Phase 4 only reads what is already on disk.
+
+  it('D1: debt-from-clarify snippet is the shared draft-time population rule', () => {
+    const content = loadSnippets().get('debt-from-clarify.md')!;
+    expect(content).not.toMatch(/^---\s*\n/);
+    expect(content).toContain('SD-NNN');
+    expect(content).toContain('never reword a description into a directive');
+    expect(content).toContain('never add an item that did not come from `debt_items`');
+  });
+
+  it.each(['smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md'])(
+    'D1: %s composes the draft-time debt population rule',
+    file => {
+      const cmd = composed.commands.get(file)!;
+      expect(cmd).toBeDefined();
+      expect(cmd).toContain('never add an item that did not come from `debt_items`');
+    },
+  );
+
+  it('D1: ignite sub-phase 3e writes Specification Debt, matching the state map', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    // The state-detection map credits 3e with both sections; 3e must write both.
+    expect(ignite).toContain('| `## Decisions`, `## Specification Debt`           | 3e        |');
+    expect(ignite).toContain('### Sub-phase 3e: Decisions + Specification Debt');
+    const heading = ignite.indexOf('### Sub-phase 3e: Decisions + Specification Debt');
+    const next = ignite.indexOf('### Sub-phase 3f', heading);
+    const block = ignite.slice(heading, next);
+    expect(block).toContain('debt_items');
+    expect(block).toMatch(/never add an item that did not come from `debt_items`/);
+  });
+
+  it.each(['smithy.ignite.md', 'smithy.render.md'])(
+    'D1: %s verifies debt before the commit, not after the PR',
+    file => {
+      const cmd = claudeComposed.commands.get(file)!;
+      // The artifact is complete before the commit; the post-PR step only
+      // renders terminal output.
+      expect(cmd).toMatch(/nothing after this step writes/);
+      // The defect itself: a post-PR step that wrote debt into the artifact.
+      expect(cmd).not.toMatch(/Write `debt_items` into \*\*both\*\*/);
+    },
+  );
+
+  it.each(['smithy.ignite.md', 'smithy.render.md'])(
+    'D1: %s composes the PR body from already-rendered output',
+    file => {
+      const cmd = claudeComposed.commands.get(file)!;
+      expect(cmd).toMatch(/Leave the `## PR` section\s+unfilled for now|Leave the\s+`## PR` section unfilled for now/);
+      expect(cmd).toContain('the snippet content composed in the previous step');
+      // The old circular phrasing — the PR body being "the one-shot output
+      // snippet content (rendered below)", which was rendered after the PR.
+      expect(cmd).not.toContain('the one-shot output snippet content (rendered below) plus a');
+    },
+  );
+
+  // D2 — "Cross-Cutting Governance / touched-files matrix" was named as a
+  // routing destination in the kind gate and in refine, but no template ever
+  // defined such a section. Every home the routing names must exist.
+
+  it('D2: no template or snippet references the phantom governance matrix', () => {
+    for (const content of loadSnippets().values()) {
+      expect(content).not.toContain('Cross-Cutting Governance');
+    }
+    for (const cmd of composed.commands.values()) {
+      expect(cmd).not.toContain('Cross-Cutting Governance');
+    }
+    for (const agent of composed.agents.values()) {
+      expect(agent).not.toContain('Cross-Cutting Governance');
+    }
+  });
+
+  it('D2: refine requires the refinement Target to name a real section', () => {
+    const refine = composed.agents.get('smithy.refine.md')!;
+    expect(refine).toMatch(/must name a section the artifact actually has/);
+  });
+
+  // D3 — smithy-prose Step 3 mandates `Skill("smithy.helper-voice")` while the
+  // agent's grant was Read/Grep/Glob and its Rules forbade anything else.
+
+  it('D3: prose grants the Skill tool it is ordered to call', () => {
+    const prose = composed.agents.get('smithy.prose.md')!;
+    expect(prose).toContain('Skill("smithy.helper-voice")');
+    expect(prose).toMatch(/tools:\s*\n\s+-\s+Read\s*\n\s+-\s+Grep\s*\n\s+-\s+Glob\s*\n\s+-\s+Skill/);
+    // The read-only rule no longer contradicts the Step 3 directive, and a
+    // host without a Skill tool has a stated fallback rather than a dead end.
+    expect(prose).not.toMatch(/Use only `Read`, `Grep`, and `Glob` to gather context\. Do not\n\s+create/);
+    expect(prose).toMatch(/If the host exposes no `Skill` tool/);
+  });
+
+  // D4 — the gh-issue skill hard-required `gh`, so orders/engrave dead-ended on
+  // gh-less hosts even though the GitHub MCP tools were already allowlisted.
+  // The sibling pr-review skill is the MCP-first reference pattern.
+
+  it('D4: gh-issue is MCP-first with the scripts as fallback', () => {
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toContain('mcp__github__issue_write');
+    expect(skill.prompt).toContain('mcp__github__search_issues');
+    expect(skill.prompt).toContain('## Path Selection');
+    expect(skill.prompt).toMatch(/\*\*Try MCP first\.\*\*/);
+    expect(skill.prompt).toMatch(/\*\*Fall back to the script\*\*/);
+    // The script fallbacks survive — MCP is preferred, not exclusive.
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/create-issue.sh *)');
+    expect(skill.scripts.size).toBe(4);
+  });
+
+  it('D4: Validate Environment has a gh-free MCP path', () => {
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toContain('git config --get remote.origin.url');
+    expect(skill.prompt).toMatch(/no `gh` involved|no `gh` needed|needs no `gh`/);
+  });
+
+  it('D4: Link Blocked-By states it has no MCP equivalent', () => {
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toMatch(/no MCP path for this operation/i);
+    // sub_issue_write writes hierarchy, not blocked-by — do not substitute it.
+    expect(skill.prompt).toContain('sub_issue_write');
+  });
+
+  it('D4: gh-issue refuses to report success when neither path exists', () => {
+    const skill = claudeComposed.skills.get('smithy.gh-issue')!;
+    expect(skill.prompt).toMatch(/Do not silently skip issue creation and report success/);
+  });
+
+  // D5 — orders loaded shell guidance whose first rule is "prefer MCP for issue
+  // creation", then ruled that gh scripts were mandatory. Resolves with D4.
+
+  it('D5: orders no longer mandates the gh scripts over the MCP path', () => {
+    const orders = composed.commands.get('smithy.orders.md')!;
+    expect(orders).not.toMatch(/Do NOT\*\* call `gh` directly for issue creation, search, or linking — go\n\s+through the `smithy\.gh-issue` skill scripts/);
+    expect(orders).toMatch(/the skill owns the path choice/i);
+    expect(orders).toMatch(/script-fallback form/);
+    expect(orders).toMatch(/Do NOT\*\* treat a missing `gh` CLI as a dead end/);
+  });
+
+  it('D5: orders Phase 1 stops only when neither path resolves the repo', () => {
+    const orders = composed.commands.get('smithy.orders.md')!;
+    expect(orders).toMatch(/Stop only when\s+\*\*neither\*\* path resolves the repo/);
+  });
+
+  it('D5: engrave names both the MCP and script create paths', () => {
+    const engrave = composed.commands.get('smithy.engrave.md')!;
+    expect(engrave).toContain('mcp__github__issue_write');
+    expect(engrave).toContain('create-issue.sh');
+  });
+
+  // D6 — forge's shared slice-completion text cited "TDD protocol step 5", but
+  // the protocol snippet renders only in the Gemini/Codex `{{else}}` branch.
+
+  it('D6: forge cites the TDD protocol only where it is actually rendered', () => {
+    const claudeForge = claudeComposed.commands.get('smithy.forge.md')!;
+    const defaultForge = composed.commands.get('smithy.forge.md')!;
+    // Claude path: no inline protocol, so the citation points at the sub-agent.
+    expect(claudeForge).not.toContain('## TDD Protocol');
+    expect(claudeForge).not.toContain('(see TDD protocol step 5 above)');
+    expect(claudeForge).toMatch(/step 5 of the TDD protocol that sub-agent\s+carries/);
+    // Degraded path: the snippet is inline, so "above" resolves.
+    expect(defaultForge).toContain('## TDD Protocol');
+    expect(defaultForge).toContain('(see TDD protocol step 5 above)');
+  });
+
+  // D7 — mark scanned a bare `specs/` for existing spec folders, which is the
+  // wrong root whenever artifacts live outside the repo.
+
+  it('D7: mark honors an external artifactsRoot in both scan sites', async () => {
+    const external = await getComposedTemplates(undefined, '~/.smithy/repos/demo/');
+    const mark = external.commands.get('smithy.mark.md')!;
+    expect(mark).toContain('Scan `~/.smithy/repos/demo/specs/` for existing folders');
+    expect(mark).toContain('matching a `~/.smithy/repos/demo/specs/` folder');
+  });
+
+  // D8 — Phase 0 refinement runs sourced the one-shot `## Assumptions` section
+  // from refine, but `RefineResult` is refinements + debt_items + summary. It
+  // has no assumptions array to read.
+
+  it('D8: the one-shot snippet names the no-clarify assumptions source', () => {
+    const content = loadSnippets().get('one-shot-output.md')!;
+    expect(content).toMatch(/On a run with no clarify pass/);
+    expect(content).toContain('`RefineResult` carries `refinements`, `debt_items`, and `summary`');
+    expect(content).toMatch(/Never synthesize\s+assumptions out of review findings/);
+  });
+
+  it.each(['smithy.mark.md', 'smithy.cut.md'])(
+    'D8: %s Phase 0 no longer sources assumptions from refine',
+    file => {
+      const cmd = composed.commands.get(file)!;
+      expect(cmd).not.toContain('Assumptions (from refine');
+      expect(cmd).toContain('**no assumptions array**');
+    },
+  );
+
+  // D9 — ignite's crash-recovery map omitted `## Dependency Order`, which
+  // sub-phase 3f writes, so a file that died between the two sections
+  // classified as `complete`.
+
+  it('D9: the ignite state map credits 3f with Dependency Order', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    expect(ignite).toContain('| `## Milestones`, `## Dependency Order`            | 3f        |');
+    // Every mandatory section in the harmonize order appears in the map.
+    for (const section of [
+      '## Summary',
+      '## Motivation / Problem Statement',
+      '## Goals',
+      '## Out of Scope',
+      '## Personas',
+      '## Proposal',
+      '## Design Considerations',
+      '## Decisions',
+      '## Specification Debt',
+      '## Milestones',
+      '## Dependency Order',
+    ]) {
+      expect(ignite).toContain(`\`${section}\``);
+    }
+  });
+
+  // D10 — the terminal debt count came from clarify's return while the artifact
+  // also carried whatever the plan-review pass appended, so the two diverged by
+  // construction. The artifact is the source now.
+
+  it('D10: the one-shot snippet sources debt from the artifact, not clarify', () => {
+    const content = loadSnippets().get('one-shot-output.md')!;
+    expect(content).toMatch(/\*\*the artifact is the source, not the clarify\s+return\.\*\*/);
+    expect(content).toMatch(/plan-review pass\s+appends its `steering` findings to the artifact after clarify returns/);
+    expect(content).toMatch(/number of unresolved rows in the artifact/);
+  });
+
+  it('D10: strike renders its debt summary from the committed artifact', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    expect(strike).not.toMatch(/copy `assumptions` and\s+`debt_items` from clarify's return/);
+    expect(strike).toMatch(/source `## Specification Debt` from the committed strike/);
   });
 });

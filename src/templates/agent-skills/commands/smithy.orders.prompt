@@ -11,10 +11,19 @@ Your job is to take any smithy artifact file and create the appropriate GitHub
 tickets so that planning work is tracked without manual ticket creation.
 
 Before running any shell commands, read and follow the `smithy.guidance` prompt
-for shell best practices. All GitHub operations in this command go through the
-`smithy.gh-issue` skill — use its scripts (`check-env.sh`, `search-issues.sh`,
-`create-issue.sh`, `link-blocked-by.sh`) instead of inline `gh` invocations so
-permissions stay narrow and predictable.
+for shell best practices.
+
+All GitHub operations in this command go through the `smithy.gh-issue` skill,
+and **the skill owns the path choice**: it calls the GitHub MCP tools when the
+host exposes them and falls back to its bundled `gh` scripts otherwise. That
+is what makes orders work on a host without `gh` installed, such as Claude
+Code on the web.
+
+Every shell block below is the **script-fallback form** of an operation. When
+the MCP path is available, make the equivalent MCP call the skill documents
+for that operation instead of running the script — the block is there for the
+fallback, not as a requirement to shell out. Either way, never assemble an
+ad-hoc `gh` invocation of your own.
 
 ---
 
@@ -30,23 +39,32 @@ If no file path is provided, ask the user which artifact file to create tickets 
 
 ## Phase 1: Validate Environment
 
-**First, load the skill** so its scripts are available: invoke `Skill("smithy.gh-issue")`.
-{{#ifAgent 'claude'}}Every `${CLAUDE_SKILL_DIR}/scripts/...` block in this command
-(Phases 1, 4, 5, and 6) requires the skill to be loaded — without this step
-`CLAUDE_SKILL_DIR` is unset and the scripts cannot be located.{{/ifAgent}}
+**First, load the skill** so its operations and scripts are available: invoke
+`Skill("smithy.gh-issue")`. The loaded body is what tells you which MCP call
+each operation maps to, so this step matters on both paths.
+{{#ifAgent 'claude'}}It is also required by every `${CLAUDE_SKILL_DIR}/scripts/...`
+block in this command (Phases 1, 4, 5, and 6) — without it `CLAUDE_SKILL_DIR`
+is unset and the fallback scripts cannot be located.{{/ifAgent}}
 {{#ifAgent 'gemini'}}Running the scripts requires the `smithy.gh-issue` skill
 to be deployed in the `.gemini/skills/` directory.{{/ifAgent}}
 {{#ifAgent 'codex'}}Running the scripts requires the `smithy.gh-issue` skill
 to be deployed in the `.agents/skills/` directory.{{/ifAgent}}
 
-Then run the environment check:
+Then run the skill's **Validate Environment** operation to resolve
+`owner` / `repo` / `ownerRepo`.
+
+On the MCP path this is a single `git config --get remote.origin.url` read,
+parsed per the skill — no `gh` involved. On the fallback path it is:
 
 ```bash
 {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}
 ```
 
-If it fails, surface the message it printed and stop. On success, capture the
-returned `ownerRepo` for use in the summary.
+Capture the resolved `ownerRepo` for use in the summary. Stop only when
+**neither** path resolves the repo — a `check-env.sh` failure reporting that
+`gh` is missing is not a stop condition if the GitHub MCP tools are available;
+switch to the MCP path and carry on. When both paths are unavailable, surface
+the message and stop.
 
 ### Manifest Discovery and `<manifestDir>` Resolution
 
@@ -761,8 +779,12 @@ After creating all tickets, establish parent-child relationships:
 {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <child-number> <parent-number>
 ```
 
-Treat `link-blocked-by` failures as best-effort: print a brief note and continue
-rather than aborting the orders run.
+Link Blocked-By is the one operation with **no MCP path** — GitHub's MCP
+server exposes no `addBlockedBy` equivalent — so this script is the only way
+to make the link. Treat failures as best-effort: print a brief note and
+continue rather than aborting the orders run. A host without `gh` falls under
+the same rule — the issues themselves were already created through the MCP
+path, so report which pairs went unlinked and finish the run.
 
 ---
 
@@ -798,10 +820,16 @@ Present a summary table of all created tickets:
   with guidance to use the parent `.spec.md`.
 - **Do NOT** require flags or mode arguments — artifact type detection is
   entirely by file extension.
-- **Do NOT** call `gh` directly for issue creation, search, or linking — go
-  through the `smithy.gh-issue` skill scripts so permissions stay scoped.
-- **DO** write issue bodies to a temp file with a heredoc and pass the file path
-  to `create-issue.sh`, to avoid markdown quoting issues.
+- **Do NOT** call `gh` ad-hoc for issue creation, search, or linking — go
+  through the `smithy.gh-issue` skill's operations, which prefer the GitHub
+  MCP tools and fall back to the skill's own `gh` scripts, so permissions
+  stay scoped either way.
+- **Do NOT** treat a missing `gh` CLI as a dead end. Only Link Blocked-By
+  requires it; creation and search have MCP paths, and an unlinkable pair is
+  reported best-effort rather than aborting the run.
+- **DO**, on the script-fallback path, write issue bodies to a temp file with a
+  heredoc and pass the file path to `create-issue.sh`, to avoid markdown
+  quoting issues. On the MCP path pass the body string directly — no temp file.
 - **DO** link child tickets to parent tickets when parent tickets can be found.
 - **DO** include the next pipeline step in every ticket body.
 - **DO** present duplicate matches to the user before proceeding.

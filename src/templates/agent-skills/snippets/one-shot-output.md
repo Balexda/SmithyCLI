@@ -21,8 +21,8 @@ output the same way.
 - <assumption 2> [Critical Assumption]
 - ...
 
-(If clarify returned zero assumptions, write: `None — the feature description
-was unambiguous.`)
+(If there are no assumptions to report — clarify returned none, or this run
+had no clarify pass at all — write: `None — no assumptions were recorded.`)
 
 ## Specification Debt
 
@@ -56,16 +56,30 @@ was recorded.`)
   etc. — and relabel the bullet accordingly.
 - **Assumptions**: copy each item from the clarify return's `assumptions`
   array. Preserve the `[Critical Assumption]` annotation on any item whose
-  severity was Critical.
-- **Specification Debt**: copy each item from the clarify return's
-  `debt_items` array, including its Title, Impact level, and Origin. The
-  leading count MUST match the number of bullets rendered. `Origin` is
+  severity was Critical. On a run with no clarify pass — a Phase 0
+  refinement, for instance — there is no assumptions array to copy:
+  `RefineResult` carries `refinements`, `debt_items`, and `summary` and
+  nothing else. Read the artifact's own `## Assumptions` section if it has
+  one, and otherwise write the empty-state line. Never synthesize
+  assumptions out of review findings.
+- **Specification Debt**: **the artifact is the source, not the clarify
+  return.** Read the target artifact's final `## Specification Debt` index
+  table — every row not under `### Resolved` — and render one bullet per
+  row, taking Title, Impact, and Origin from the row and the description
+  from that item's `### SD-NNN — <Title>` detail section. For a row carried
+  down from a parent (no local detail section), take the description from
+  the `debt_items` entry that produced it. Reading the table rather than
+  clarify's array is what keeps the count honest: the plan-review pass
+  appends its `steering` findings to the artifact after clarify returns, so
+  a clarify-only render would under-report the artifact's real debt. The
+  leading count MUST match the number of bullets rendered, and therefore the
+  number of unresolved rows in the artifact. `Origin` is
   `local` for items discovered while authoring this artifact, or
   `<parent-kind>:SD-NNN` for items carried down from a parent artifact
   (e.g. `spec:SD-004`) — it is the terminal-visible signal that an item
   was inherited rather than newly found. Each bullet's description must
   read as a steering need — an open question or "unresolved choice
-  between X and Y" — and must come straight from `debt_items` without
+  between X and Y" — and must come straight from the artifact without
   rewording. Do not synthesize bullets here from requirements,
   acceptance tests, dependency/coordination notes, or deferred-work
   notices; if clarify's kind gate (see `smithy-clarify` Step 3) dropped
