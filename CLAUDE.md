@@ -273,5 +273,7 @@ This repository maintains engraved durable knowledge: decisions, invariants,
 and principles. Before planning or making changes, read the applicable records
 under these locations and judge whether they apply to the work at hand.
 
+- docs/decisions/
+- docs/invariants/
 - docs/constitution/
 <!-- smithy:engraved:end -->
