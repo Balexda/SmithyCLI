@@ -68,8 +68,17 @@ filename slug (no registry or identity key), and they sit outside the
 > **Engraved-knowledge records** (decisions, invariants, principles) are a
 > separate, root-level artifact family — they have **no** `## Dependency
 > Order` row and are not part of the lineage below. They participate in the
-> graph through citation edges only. The full schema lives inline in
+> graph through citation edges only. They are also scoped by **level** rather
+> than by lineage: `user` (`~/.smithy/decisions/`, …), `repo`
+> (`{{artifactsRoot}}docs/decisions/`, …), and `project`
+> (`~/.smithy/projects/<project>/decisions/`, …), with precedence running
+> project > repo > user. The level model — stores, level-prefixed ids,
+> precedence and the `excepts` declared-exception rule, `scope` semantics,
+> cross-level edge legality, citation forms — lives in
+> [`snippets/engraved-levels.md`](snippets/engraved-levels.md); the full
+> record schema lives inline in
 > [`commands/smithy.engrave.prompt`](commands/smithy.engrave.prompt).
+> `smithy status --engraved` inventories the three levels.
 
 Every planning artifact produced by Smithy fits into a single strict lineage:
 

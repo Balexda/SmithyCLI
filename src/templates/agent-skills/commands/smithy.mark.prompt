@@ -178,6 +178,7 @@ Dispatch the **smithy-recall** sub-agent with:
 - **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
 - **Codebase file paths**: the relevant codebase files explored during Phase 1
 - **Domain hint**: infer `system`, `design`, or `both` from the feature, RFC, metadata, and explored files
+{{>engraved-recall-dispatch}}
 
 {{>engraved-recall-advisory}}
 {{else}}

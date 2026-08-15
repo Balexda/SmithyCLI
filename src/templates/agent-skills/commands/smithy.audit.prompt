@@ -38,6 +38,9 @@ and, for the durable UI artifacts, by the directory it sits in as well:
 | `.strike.md` | Strike Plan | smithy.strike |
 | `.design.md` under `design/screens/` | Screen Design Annotation | smithy.mark |
 | `.flow.md` under `design/flows/` | Flow Definition | smithy.mark |
+| `.decision.md` | Decision (engraved) | smithy.engrave |
+| `.invariant.md` | Invariant (engraved) | smithy.engrave |
+| *(no suffix, under a `constitution/` directory)* | Principle (engraved) | smithy.engrave |
 
 1. Read the file at the given path.
 2. Match it against the table above. The two UI rows match only when the file
@@ -54,6 +57,7 @@ and, for the durable UI artifacts, by the directory it sits in as well:
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
    | `.design.md` under `design/screens/` | The component named by front-matter `component-path`, when present, to verify the path contract resolves; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `SC<N>` row |
    | `.flow.md` under `design/flows/` | The screen annotations named by front-matter `screens` and the executable body named by `test-body`, when present, to verify flow references resolve; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `FL<N>` row |
+   | `.decision.md`, `.invariant.md`, principle | The engraved inventory across every level: run `smithy status --engraved --format json` (add `--project <slug>` for a project-level record). Its `records` array resolves the ids this record cites, so citation and edge checks do not need a directory walk |
 
    If a context document is missing, note it as a finding rather than skipping the check. The one exception is a context entry marked "when it is discoverable" — a durable UI artifact carries no back-pointer to its owning spec, so an unreachable ledger is not itself a finding.
 
@@ -101,6 +105,8 @@ Use the checklist matching the artifact type resolved in **Mode Detection**. Eac
 {{>audit-checklist-tasks}}
 
 {{>audit-checklist-strike}}
+
+{{>audit-checklist-engraved}}
 
 ### Audit Checklist (.design.md screen artifacts)
 

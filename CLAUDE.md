@@ -27,6 +27,7 @@ Note the two sub-agent filename schemes: the Claude file derives from the source
 - **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
 - **Orders body templates**: `src/orders-templates.ts` — exports the four canonical default body strings (`rfc` / `features` / `spec` / `tasks`) plus the `provisionOrdersTemplates` function that `smithy init` calls to write them under `<manifestDir>/templates/orders/<type>.md`. The same defaults double as the built-in fallback bodies in `smithy.orders` (parity asserted in `src/templates.test.ts`).
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
+- **Engraved read path**: `src/engraved/` — level resolution, record/ledger parsing, scanner, and text/JSON rendering behind `smithy status --engraved`. Separate from `src/status/` because engraved records are graph roots with no `## Dependency Order` lineage.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
 ### Source vs. Deployed Artifacts — Don't Edit `.claude/` In Source PRs
@@ -60,10 +61,10 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy.forge** — Implementation executor that works from task specs
 - **smithy.mark** — Feature specification command. Produces `.spec.md`, `.data-model.md`, and `.contracts.md` from a feature description, RFC, or `.features.md` feature map (auto-selects the first unspecced feature).
 - **smithy.fix** — Minimal-diff bug fix from a GitHub issue
-- **smithy.audit** — Audit a Smithy artifact against its checklist
+- **smithy.audit** — Audit a Smithy artifact against its checklist. Also covers engraved records (`.decision.md`, `.invariant.md`, principles), checking level placement and fit, ledger shape and derived alignment, tracking issues on `Temporary:` rows, edge resolution/direction, supersession symmetry, and citation form.
 - **smithy.resolve** — Interactive specification-debt resolution. Given a planning artifact (and optionally a specific `SD-NNN` id), selects the first unresolved spec-debt item (or the named one), gathers context — walking **up** to the parent artifact for inherited items, since an inherited item's question prose lives in the parent — and poses the open choice to the operator as a guided, plan-mode-style exercise before recording the answer into the artifact's `### Resolved` subsection. The one Smithy command that deliberately stops for user input: on Claude it uses the `AskUserQuestion` tool (structured alternatives + recommendation), and falls back to a prose "ask and wait" gate on Gemini/Codex via an `{{#ifAgent 'claude'}}` branch. Resolution is recorded locally per the schema's inherited-debt rule (never written back to the parent).
 - **smithy.orders** — Create GitHub issues from any smithy artifact file (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`). Auto-detects artifact type by extension and creates structured issue bodies, using `<manifestDir>/templates/orders/<type>.md` when present and otherwise falling back to the built-in heredoc bodies defined inline in `src/templates/agent-skills/commands/smithy.orders.prompt` (kept in lockstep with the canonical defaults exported by `src/orders-templates.ts` via a parity assertion in `src/templates.test.ts`).
-- **smithy.status** — Show the current status of every Smithy planning artifact in the repo. Deployed as a Claude Code skill (auto-activates on natural-language questions like "what's next?" or "which user stories are left?") and still invocable explicitly via `/smithy.status …`. Pass-through mode shells out to `smithy status` with the user's flags and returns CLI output verbatim; question mode runs `smithy status --format json` and answers the user's question from the parsed payload (no LLM reconstruction of status, dependencies, or next actions).
+- **smithy.status** — Show the current status of every Smithy planning artifact in the repo. Deployed as a Claude Code skill (auto-activates on natural-language questions like "what's next?" or "which user stories are left?") and still invocable explicitly via `/smithy.status …`. Pass-through mode shells out to `smithy status` with the user's flags and returns CLI output verbatim; question mode runs `smithy status --format json` — or `smithy status --engraved --format json` for durable-knowledge questions like "which global rules am I subject to?" — and answers the user's question from the parsed payload (no LLM reconstruction of status, dependencies, or next actions).
 
 ### Sub-Agents (not user-invocable)
 
@@ -77,6 +78,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 - **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; used by spark for the PRD Problem Statement; designed for reuse by other commands)
+- **smithy-recall** — Read-only engraved-knowledge recall across the user / repo / project levels: ranks level-tagged records, flags candidate invariant exceptions with their ledger severity, reports declared vs. undeclared cross-level conflicts, and flags retired-decision citation hazards. Advisory only — parents escalate (used by strike, ignite, render, mark, cut in the scan phase)
 - **smithy-survey** — WebFetch/WebSearch-enabled landscape survey: finds off-the-shelf alternatives and returns a structured build-vs-buy rationale (used by spark during PRD drafting; first smithy sub-agent to use web-research tools)
 
 ### Operational Skills (lazy-loaded, body-on-demand)
@@ -177,15 +179,56 @@ A separate root-level artifact family captures **durable commitments** —
 decisions, invariants, and principles — authored with `smithy.engrave`
 (EPIC #412, in-flight). These records are **roots**: they have no
 `## Dependency Order` row and participate in the graph through citation
-edges (`establishes` / `established_by`, `supersedes` / `superseded_by`)
-declared in YAML frontmatter. Suffixes: `*.decision.md`, `*.invariant.md`;
-principles live as individual files in the constitution directory and have
-no dedicated suffix. The full schema (frontmatter fields, lifecycle,
-Known-Exceptions ledger column rules, scaffold shapes for each kind)
-lives inline in
+edges (`establishes` / `established_by`, `supersedes` / `superseded_by`,
+`excepts`) declared in YAML frontmatter. Suffixes: `*.decision.md`,
+`*.invariant.md`; principles live as individual files in the constitution
+directory and have no dedicated suffix. The full schema (frontmatter fields,
+lifecycle, Known-Exceptions ledger column rules, scaffold shapes for each
+kind) lives inline in
 [`src/templates/agent-skills/commands/smithy.engrave.prompt`](src/templates/agent-skills/commands/smithy.engrave.prompt)
 — that prompt is the single source of truth for the family, and gets
 deployed verbatim into every target repo's agent-skill tree.
+
+**Levels.** Engraved records are scoped by level, not by lineage, so a
+planning command can answer *which rules apply to the work in front of me*:
+
+| Level | Store | Holds |
+|-------|-------|-------|
+| `user` | `~/.smithy/` (records in `decisions/`, `invariants/`, `constitution/`) | True in every repo and project |
+| `repo` | `{{artifactsRoot}}` (the repo, or its external store) | True for this repo and every workstream in it |
+| `project` | `~/.smithy/projects/<project>/` (same three children) | True for one named workstream |
+
+Ids carry the level (`U-D-1`, `D-1`, `PJ-D-1`), so a bare citation names
+exactly one record within a resolution scope. Precedence is
+**project > repo > user**; a narrower record may add to or tighten a broader
+one freely, but contradicting one requires declaring `excepts: [<broader-id>]`.
+Supersession never crosses levels. The level model — stores, ids, precedence,
+`scope` semantics, edge legality, citation forms — lives in
+[`src/templates/agent-skills/snippets/engraved-levels.md`](src/templates/agent-skills/snippets/engraved-levels.md)
+and is nested by both `smithy.engrave` and the recall rules so the authoring
+and reading sides cannot drift.
+
+Only the `repo` level carries a `docs/` segment (`{{artifactsRoot}}docs/decisions/`),
+because that is where in-repo records already live and moving them would break
+every citation naming one. The two home-anchored stores sit their records
+directly under the store root.
+
+**The user store is never managed.** Its record directories are siblings of
+Smithy's own entries under `~/.smithy/`, but nothing ever adds one to a
+manifest's `files` array — which is what `uninit` deletes and `update`
+rewrites. Nothing provisions them either: `smithy.engrave` creates the leaf it
+writes into, so a level with no records reports itself absent instead of
+looking present forever. `src/engraved/engraved-store.test.ts` drives the real
+CLI through init/update/uninit to lock the isolation guarantee.
+
+**Reading them.** `smithy status --engraved` inventories all three levels
+(`--project <slug>` to name a workstream, `--format json` for the machine
+shape), backed by `src/engraved/`. The planning commands consult them through
+the `smithy-recall` sub-agent during their scan phase, which returns
+level-tagged records, invariant conflicts with their ledger `severity`, and
+declared vs. undeclared cross-level conflicts. Recall stays advisory —
+escalation is the parent command's job, and is keyed deterministically on
+`severity`.
 
 ## Development
 

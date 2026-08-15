@@ -31,8 +31,14 @@ The parent agent passes you:
    language, or use `both` when the work spans both.
 3. **Relevance hints** - optional topics, scope paths/modules, and affected
    surfaces that should be compared with engraved frontmatter.
-4. **Scan roots** - optional override for engraved locations. If absent, scan
-   the canonical roots below.
+4. **Project** - the project slug naming the workstream in play, or a
+   statement that no project level applies. Parents resolve this because only
+   they see the invoking arguments and the artifact frontmatter; you resolve
+   everything else.
+5. **Scan roots** - optional per-level override (`user`, `repo`, `project`).
+   Normally absent: resolve the three levels yourself from the canonical table
+   below. When the parent does supply roots, a level it omits is one you do
+   not scan.
 
 ---
 
@@ -41,8 +47,10 @@ The parent agent passes you:
 Use only `Glob`, `Grep`, and `Read`. Never edit files, run commands, create
 records, recompute a status index, or write derived state.
 
-When the parent supplies scan-root overrides, use them in place of the canonical
-roots below.
+Resolve the canonical roots below yourself. If the parent supplied scan-root
+overrides, they replace the canonical roots for the levels they name: levels
+the parent names but leaves empty are scanned-and-empty, and levels it omits
+entirely are out of scope for that run.
 
 For invariant records, also read:
 
@@ -52,7 +60,8 @@ For invariant records, also read:
 
 Include a one-line `basis` for each relevant record explaining the strongest
 overlap, such as `domain=system and topics include agent-router`, or
-`scope matches src/templates/agent-skills/commands`.
+`scope matches src/templates/agent-skills/commands`. Where level decided a
+tie, say so in the `basis`.
 
 ---
 
@@ -67,10 +76,13 @@ the contract the parent command consumes.
 
 ```json
 {
+  "levels_scanned": ["user", "repo", "project"],
+  "project": "discount-engine",
   "relevant": [
     {
       "id": "D-1",
       "kind": "decision",
+      "level": "repo",
       "title": "Decision title",
       "path": "docs/decisions/example.decision.md",
       "basis": "domain=system; topics overlap on planning-commands"
@@ -79,17 +91,31 @@ the contract the parent command consumes.
   "conflicts": [
     {
       "invariant_id": "INV-1",
+      "level": "repo",
       "title": "Invariant title",
       "path": "docs/invariants/example.invariant.md",
       "rule": "One-sentence summary of the rule",
       "candidate_exception": true,
+      "severity": "high",
       "basis": "Proposed work diverges from the rule; no covering Accepted: ledger row was found.",
       "accepted_exception_suppressed": false
+    }
+  ],
+  "cross_level_conflicts": [
+    {
+      "narrower_id": "PJ-D-2",
+      "narrower_level": "project",
+      "broader_id": "U-INV-1",
+      "broader_level": "user",
+      "declared": false,
+      "governing_id": "PJ-D-2",
+      "basis": "PJ-D-2 requires a three-layer value hierarchy; U-INV-1 forbids more than one layer. No excepts declaration on PJ-D-2."
     }
   ],
   "superseded_citations": [
     {
       "decision_id": "D-2",
+      "level": "repo",
       "title": "Old decision",
       "path": "docs/decisions/old.decision.md",
       "status": "superseded",
@@ -106,13 +132,31 @@ When there are no results:
 
 ```json
 {
+  "levels_scanned": ["user", "repo"],
+  "project": null,
   "relevant": [],
   "conflicts": [],
+  "cross_level_conflicts": [],
   "superseded_citations": [],
   "empty": true,
   "empty_reason": "no_records"
 }
 ```
+
+Field notes:
+
+- `levels_scanned` lists the levels actually read, in `user` → `repo` →
+  `project` order. Always present, even on an empty result.
+- `project` is the resolved project slug, or `null` when no project level was
+  in play.
+- `level` on every record, conflict, and citation hazard is the level its store
+  belongs to — `user`, `repo`, or `project`.
+- `path` is written relative to its own level's store root, so a reader knows
+  which store to open.
+- `severity` on a conflict is copied from the bearing Known-Exceptions ledger
+  row, or `null` when no row bears on the divergence.
+- `governing_id` on a cross-level conflict is the record that wins under
+  precedence — always the narrower one.
 
 When any relevant record, conflict, or citation hazard is returned, set
 `empty: false` and `empty_reason: null`.
@@ -126,9 +170,16 @@ When any relevant record, conflict, or citation hazard is returned, set
 - **Non-interactive.** Do not ask the user questions. Return the structured
   result to the parent.
 - **Frontmatter first.** Rank by `domain`, `topics`, `scope`, and `applies_to`
-  overlap before body-text matches.
+  overlap before body-text matches. Level breaks ties; it never promotes a weak
+  match over a strong one.
+- **Level is read, not inferred.** A record's level is the store it came from.
+  Report it on every record, conflict, and citation hazard.
 - **Soft conflict guidance.** Invariant conflicts are candidate new exceptions,
-  not hard blocks.
+  not hard blocks. The same holds for cross-level conflicts: report which record
+  governs under precedence, and leave escalation to the parent.
+- **Report severity, never act on it.** Copy `severity` from the bearing ledger
+  row and pass it up. Do not call it a hard block, and do not instruct the
+  parent to stop.
 - **Accepted exceptions matter.** Suppress duplicate conflict flags only when an
   existing `Accepted:` ledger row clearly covers the divergence.
 - **Temporary exceptions remain visible.** `Temporary:` rows do not suppress

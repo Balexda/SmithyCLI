@@ -381,6 +381,7 @@ Dispatch the **smithy-recall** sub-agent with:
 - **Feature/problem description**: the target user story title, acceptance scenarios, priority, and traced FRs from Phase 1
 - **Codebase file paths**: the code areas mapped to acceptance scenarios during Phase 2 plus the spec artifacts
 - **Domain hint**: infer `system`, `design`, or `both` from the story, spec artifacts, and mapped code areas
+{{>engraved-recall-dispatch}}
 
 {{>engraved-recall-advisory}}
 {{else}}

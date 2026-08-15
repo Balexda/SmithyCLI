@@ -257,6 +257,7 @@ Dispatch the **smithy-recall** sub-agent with:
 - **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
 - **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
 - **Domain hint**: infer `system`, `design`, or `both` from the milestone and referenced files
+{{>engraved-recall-dispatch}}
 
 {{>engraved-recall-advisory}}
 {{else}}
