@@ -111,7 +111,7 @@
 
 ### Tasks
 
-- [ ] **Add the flow-wire forge profile**
+- [x] **Add the flow-wire forge profile**
 
   Update `src/templates/agent-skills/commands/smithy.forge.prompt` so tasks produced for an `FL` node preload the referenced `.flow.md`, paired `test-body`, and dependent screen/backend context. The profile should connect the real data path represented by the flow's dependencies and honor or flip the feature `flag` as required by the task plan.
 
@@ -122,7 +122,7 @@
   - Real-data dependencies from the ledger are respected
   - The feature `flag` is honored or flipped as part of the flow-wire work
 
-- [ ] **Emit executable flow behavior only in test bodies**
+- [x] **Emit executable flow behavior only in test bodies**
 
   Constrain flow-wire implementation so the executable user actions and assertions are emitted or updated in the paired test body, not in the `.flow.md`. The generated behavior must run as the slice validation gate and remain keyed to the driver-neutral selector contract from User Story 2.
 
@@ -133,7 +133,7 @@
   - `.flow.md` remains mark-owned and intent-only
   - The flow test body is run as a validation gate when supported by the repo
 
-- [ ] **Preserve backend-story forge behavior**
+- [x] **Preserve backend-story forge behavior**
 
   Ensure `US` nodes that appear inside a UI ledger enter the same backend-story forge path as ordinary backend tasks. UI ledger context may explain ordering, but it must not change backend implementation mechanics or make forge author screen/flow durable artifacts.
 

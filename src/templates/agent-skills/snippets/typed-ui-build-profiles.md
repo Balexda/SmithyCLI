@@ -56,6 +56,46 @@ documentation, validation, and PR creation stay the same as ordinary work.
     `.design.md` or `.flow.md` files as part of screen-build work. Those durable
     artifacts originate at `mark`; `forge` consumes them.
 
-For non-screen node kinds, follow the selected task plan and the existing
-implementation mechanics; do not apply screen-build rules to `FL<N>` or `US<N>`
-work.
+- **`FL<N>` / `flow-wire` tasks** select the flow-wire profile. Every rule
+  below is scoped to that profile:
+  - Read the referenced `design/flows/<FlowId>.flow.md` before editing any
+    implementation files, and treat it as mark-owned durable flow intent.
+  - Read the paired executable test body named by the task plan's
+    `**Test Body**` line, or by the flow artifact's `test-body` front-matter
+    when the task plan omits it. Create behavior in that existing paired body
+    when it is still a stub; if the body is missing despite the `.flow.md`
+    contract naming it, stop instead of inventing a different path.
+  - Use the task plan's `**Ledger Dependencies**` and `**Flow Data Path**`
+    context to decide what must already be real. A mock-satisfiable flow depends
+    only on its screen node(s) and can wire against the flagged screen/mock
+    state; a real-data-dependent flow also depends on backend `US` nodes and
+    must connect to the behavior those backend artifacts provide rather than
+    bypassing the dependency.
+  - Read the dependent screen context named by the flow's `screens:` metadata
+    and any populated upstream task artifacts cited by the ledger dependency
+    notes. For backend dependencies, consume the existing spec, data model,
+    contracts, and completed backend artifact context exactly as ordinary forge
+    work would.
+  - Resolve the feature `flag` from the task plan's design metadata, source
+    feature map, or upstream screen-build context before writing code. Honor an
+    already-enabled flag when the task plan requires it, or flip/remove the gate
+    only when the flow-wire task explicitly makes that part of definition of
+    done. Do not leave the wired flow unreachable behind the wrong flag state.
+  - Put executable user actions and assertions in the paired test body only.
+    Represent every guard and traversal assertion named by the `.flow.md` using
+    the project's existing UI driver and stable test IDs, accessibility IDs, or
+    semantic tags; never rely on visible text, layout position, or prose copied
+    into the `.flow.md`.
+  - Run the paired flow test body as a validation gate when the repository has a
+    supported command for that driver. If no targeted flow-test command exists,
+    run the closest project test gate and report the validation limitation.
+  - Refuse to author a new `.flow.md` from scratch, and do not add executable
+    steps, actions, assertions, or driver syntax to `.flow.md`. That durable
+    artifact originates at `mark`; `forge` consumes it.
+
+- **`US<N>` / `backend-story` tasks inside a typed UI ledger** select the
+  existing backend-story forge path. UI ledger context may explain ordering and
+  prerequisite artifacts, but it must not change backend implementation
+  mechanics, skip the ordinary spec/data-model/contracts intake, or introduce
+  screen-build or flow-wire requirements. Backend-story work must not author
+  `.design.md` or `.flow.md` files.

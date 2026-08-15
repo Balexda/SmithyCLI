@@ -2669,12 +2669,53 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('ship an ungated screen');
   });
 
+  it('forge template defines the flow-wire profile for typed UI nodes', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('**`FL<N>` / `flow-wire` tasks** select the flow-wire profile');
+    expect(forge).toContain('Read the referenced `design/flows/<FlowId>.flow.md` before editing');
+    expect(forge).toContain('`**Test Body**` line');
+    expect(forge).toContain("the flow artifact's `test-body` front-matter");
+    expect(forge).toContain('`**Ledger Dependencies**` and `**Flow Data Path**`');
+    expect(forge).toContain('real-data-dependent flow also depends on backend `US` nodes');
+    expect(forge).toContain('Resolve the feature `flag`');
+    expect(forge).toContain('Refuse to author a new `.flow.md` from scratch');
+  });
+
+  it('flow-wire profile keeps executable behavior in the paired test body', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('Put executable user actions and assertions in the paired test body only');
+    expect(forge).toContain('every guard and traversal assertion named by the `.flow.md`');
+    expect(forge).toContain('stable test IDs, accessibility IDs, or');
+    expect(forge).toContain('never rely on visible text, layout position');
+    expect(forge).toContain('Run the paired flow test body as a validation gate');
+    expect(forge).toContain(
+      'do not add executable\n    steps, actions, assertions, or driver syntax to `.flow.md`',
+    );
+  });
+
+  it('forge template keeps backend-story nodes on the existing forge path', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain(
+      '**`US<N>` / `backend-story` tasks inside a typed UI ledger** select the',
+    );
+    expect(forge).toContain('existing backend-story forge path');
+    expect(forge).toContain('must not change backend implementation');
+    expect(forge).toContain('skip the ordinary spec/data-model/contracts intake');
+    expect(forge).toContain('Backend-story work must not author');
+  });
+
   it('smithy-implement carries the same typed UI build profile as forge', () => {
     const implement = composed.agents.get('smithy.implement.md')!;
     expect(implement).toBeDefined();
     expect(implement).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
     expect(implement).toContain('Resolve the gating feature `flag` before writing code');
     expect(implement).toContain('Refuse to author a new `.design.md` from scratch');
+    expect(implement).toContain('**`FL<N>` / `flow-wire` tasks** select the flow-wire profile');
+    expect(implement).toContain('Put executable user actions and assertions in the paired test body only');
+    expect(implement).toContain('Refuse to author a new `.flow.md` from scratch');
+    expect(implement).toContain(
+      '**`US<N>` / `backend-story` tasks inside a typed UI ledger** select the',
+    );
   });
 
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {
