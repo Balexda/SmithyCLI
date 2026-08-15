@@ -299,11 +299,13 @@ implementer works from — carries a second section, positioned after
 ### The gate between the two sections
 
 A finding reaches `## Specification Debt` only if **a human must decide and the
-decision changes what gets built**. The canonical three-part steering test —
-open question, named alternatives, human-only — lives in the
-`review-protocol` snippet's Kind gate section, and `smithy-clarify` Step 3b holds the
-matching leak-kind routing table for clarification candidates. Everything the
-gate rejects has a home:
+decision changes what gets built**. The canonical gate — the three-part
+steering test (open question, named alternatives, human-only), the positive
+test that rejects directives, and the leak-kind routing table — lives in the
+`kind-gate` snippet, which every producer of a debt row composes:
+`smithy-clarify`, `smithy-refine`, and both review agents by way of
+`review-protocol`. The parent commands compose the consequence table from
+`plan-review-triage`. Everything the gate rejects has a home:
 
 | Kind | Home |
 |------|------|

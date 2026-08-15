@@ -105,7 +105,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(29);
+    expect(snippets.size).toBe(33);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -137,6 +137,10 @@ describe('loadSnippets', () => {
       'spec-debt-section.md',
       'open-implementation-questions.md',
       'typed-ui-build-profiles.md',
+      'kind-gate.md',
+      'debt-row-shape.md',
+      'debt-grading.md',
+      'plan-review-triage.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -165,6 +169,9 @@ describe('loadSnippets', () => {
     expect(snippets.get('open-implementation-questions.md')).toContain(
       '## Open Implementation Questions',
     );
+    expect(snippets.get('kind-gate.md')).toContain('#### The steering test');
+    expect(snippets.get('debt-row-shape.md')).toContain('**Debt row fields.**');
+    expect(snippets.get('plan-review-triage.md')).toContain('the review note surface');
   });
 });
 
@@ -329,13 +336,181 @@ describe('engraved-recall consultation snippets', () => {
   });
 });
 
+/**
+ * Render a snippet through the same partial machinery the deploy path uses,
+ * so an assertion sees what a consumer actually receives — nested partials
+ * included. `loadSnippets()` returns raw files, which is the wrong surface
+ * for any rule that now lives one composition level down.
+ */
+async function composeSnippet(partialName: string): Promise<string> {
+  const partials: Record<string, string> = {};
+  for (const [filename, content] of loadSnippets()) {
+    partials[filename.replace(/\.md$/, '')] = content.trimEnd();
+  }
+  const renderer = new Dotprompt({ partials });
+  return resolveSnippets(`{{>${partialName}}}\n`, renderer);
+}
+
+describe('kind-gate snippet', () => {
+  // Issue #553: the kind gate had two non-identical "canonical" homes —
+  // `review-protocol` (third condition: human-only) and `smithy-clarify`
+  // Step 3b (third condition: no-prescription, and no implementation/hygiene
+  // kinds at all). This snippet is now the only definition; every consumer
+  // composes it, so the two can no longer disagree.
+
+  it('defines the three kinds and the three-part steering test', () => {
+    const content = loadSnippets().get('kind-gate.md')!;
+    expect(content).toContain('`steering`');
+    expect(content).toContain('`implementation`');
+    expect(content).toContain('`hygiene`');
+    expect(content).toContain('**Open question**');
+    expect(content).toContain('**Named alternatives**');
+    expect(content).toContain('**Human-only**');
+    expect(content).toContain('**Positive test:**');
+    expect(content).toContain('#### Calibration');
+    expect(content).toContain('Only `steering` findings may become specification debt.');
+  });
+
+  it('folds the no-prescription rule into the positive test rather than a fourth condition', () => {
+    // Clarify used to carry "no prescription" as a third gate condition, which
+    // made its gate structurally different from the review agents'. It is a
+    // test of how the finding is *phrased*, not of who resolves it, so it
+    // belongs with the positive test — one gate, same three conditions.
+    const content = loadSnippets().get('kind-gate.md')!;
+    const testIdx = content.indexOf('**Positive test:**');
+    const conditionsIdx = content.indexOf('**Human-only**');
+    expect(conditionsIdx).toBeGreaterThan(-1);
+    expect(content).not.toMatch(/\*\*No prescription\*\*/);
+    expect(content.slice(testIdx)).toMatch(/directive/);
+    // Exactly three numbered conditions, so no consumer can add a fourth.
+    const conditions = content.match(/^\d\. \*\*/gm) ?? [];
+    expect(conditions.length).toBe(3);
+    expect(testIdx).toBeGreaterThan(conditionsIdx);
+  });
+
+  it('routes every rejected kind to a named home, including the clarify leak kinds', () => {
+    // The routing table used to be split: review-protocol held four rows and
+    // pointed at clarify's six for the rest — a dead reference for Gemini,
+    // which deploys no sub-agent files at all. All of them live here now.
+    const content = loadSnippets().get('kind-gate.md')!;
+    expect(content).toContain('## Open Implementation Questions');
+    expect(content).toContain('### Functional Requirements');
+    expect(content).toContain('### Acceptance Scenarios');
+    expect(content).toContain('## Out of Scope');
+    expect(content).toContain('## Assumptions');
+    expect(content).toContain('Cross-Cutting Governance');
+    expect(content).toContain('A wrong table is a fix, not a question');
+    // No cross-file pointer to a prompt a consumer may never load.
+    expect(content).not.toMatch(/smithy-clarify Step 3b's routing table/);
+  });
+});
+
+describe('debt-row-shape snippet', () => {
+  // Issue #553: Confidence was High|Low in review-protocol, High|Medium|Low
+  // in clarify and in the debt section's own example rows, and "Medium/Low"
+  // in refine's prose; Impact's enum was never positively stated anywhere in
+  // the four authoring commands. One home now states both.
+
+  it('states the Impact and Confidence enums positively', () => {
+    const content = loadSnippets().get('debt-row-shape.md')!;
+    expect(content).toContain('`Critical` / `High` / `Medium` / `Low`');
+    expect(content).toContain('`High` / `Medium` / `Low`');
+  });
+
+  it('keeps the grading rubric out of the row shape the parents compose', async () => {
+    // P-1: the row shape ships to every plan-review site (eleven of them),
+    // but only clarify and refine ever pick a level from nothing — a parent
+    // maps severity and copies confidence. The rubric lives one level up, in
+    // `debt-grading`, which nests the shape so the enums are still stated once.
+    const shape = loadSnippets().get('debt-row-shape.md')!;
+    expect(shape).not.toMatch(/You would be surprised if the user disagreed/);
+    const grading = await composeSnippet('debt-grading');
+    expect(grading).toContain('You would be surprised if the user disagreed');
+    // Nesting, not restating: the shape's rules arrive with the rubric.
+    expect(grading.replace(/\s+/g, ' ')).toContain('`Important` becomes `High`');
+    expect(loadSnippets().get('debt-grading.md')!).toContain('{{>debt-row-shape}}');
+  });
+
+  it('maps review severity into Impact instead of copying it', () => {
+    const content = loadSnippets().get('debt-row-shape.md')!.replace(/\s+/g, ' ');
+    expect(content).toContain('`Important` is **not** a valid `Impact` value.');
+    expect(content).toContain('`Important` becomes `High`');
+  });
+
+  it('reconciles the binary review confidence with the three-level scale', () => {
+    // A review finding's High/Low is the same scale's endpoints, not a rival
+    // enum — which is what makes copying it into the Confidence column lossless.
+    const content = loadSnippets().get('debt-row-shape.md')!;
+    expect(content).toMatch(/endpoints of the same scale/);
+    expect(content.replace(/\s+/g, ' ')).toContain(
+      '`Medium` is produced only by clarification and refinement',
+    );
+  });
+});
+
+describe('plan-review-triage snippet', () => {
+  // Issue #553: the parent-side consequence table was hand-copied twice each
+  // into mark, cut, ignite and render and once each into strike and forge —
+  // about 500 source lines — while the canonical copy sat in a snippet only
+  // the child review agents composed. This is the parents' canonical home.
+
+  it('contains the kind × severity × confidence triage table', async () => {
+    const content = await composeSnippet('plan-review-triage');
+    expect(content).toContain('kind × severity ×');
+    expect(content).toMatch(/`steering`\s*\|\s*Critical or Important\s*\|\s*Any/);
+    expect(content).toMatch(/`implementation`\s*\|/);
+    expect(content).toMatch(/`hygiene`\s*\|/);
+    expect(content).toMatch(/Minor\s*\|\s*Any/);
+    expect(content).toContain('## Specification Debt');
+    expect(content).toContain('Apply the `proposed_fix`');
+  });
+
+  it('never lets a steering finding be auto-applied', () => {
+    const content = loadSnippets().get('plan-review-triage.md')!;
+    expect(content).toContain(
+      '**A `steering` finding is never auto-applied, at any confidence.**',
+    );
+    expect(content).not.toMatch(/`steering`\s*\|[^|]*\|\s*High\s*\|/);
+    // The escape hatch is reclassification, not an override.
+    expect(content).toMatch(/finding is `hygiene`/);
+    expect(content).toMatch(/confidence is Low by\s+construction/);
+  });
+
+  it('names its two per-command destinations instead of hard-coding one', () => {
+    // strike and forge route unapplied findings to terminal output, not the
+    // PR body (issue #385), so a canonical table cannot name a surface. Each
+    // command binds "the target artifact" and "the review note surface" just
+    // above the composition point.
+    const content = loadSnippets().get('plan-review-triage.md')!;
+    expect(content).toMatch(/\*\*[Tt]he target artifact\*\*/);
+    expect(content).toMatch(/\*\*[Tt]he review note surface\*\*/);
+    expect(content).not.toMatch(/PR body/);
+  });
+
+  it('carries one IQ row rule that covers tasks files and everything else', () => {
+    const content = loadSnippets().get('plan-review-triage.md')!;
+    expect(content).toContain('`## Open Implementation Questions`');
+    expect(content).toContain('.tasks.md');
+    expect(content).toContain('`IQ-NNN`');
+    expect(content).toContain('120 characters or fewer');
+  });
+
+  it('composes the debt row shape rather than restating the enums', async () => {
+    const raw = loadSnippets().get('plan-review-triage.md')!;
+    expect(raw).toContain('{{>debt-row-shape}}');
+    const content = await composeSnippet('plan-review-triage');
+    expect(content).not.toContain('{{>debt-row-shape}}');
+    expect(content.replace(/\s+/g, ' ')).toContain('`Important` becomes `High`');
+  });
+});
+
 describe('review-protocol snippet', () => {
   // Story 4 Slice 1: the shared review-protocol snippet is the single source
   // of truth for the read-only, findings-based review protocol that both
   // `smithy-plan-review` and `smithy-implementation-review` compose. These
   // assertions lock down the snippet's contract so any regression (deleted
-  // file, renamed file, dropped Finding structure section, dropped triage
-  // table, reintroduced auto-fix language) fails the test suite immediately.
+  // file, renamed file, dropped Finding structure section, dropped kind
+  // gate, reintroduced auto-fix language) fails the test suite immediately.
 
   it('snippet file is loadable as a partial via loadSnippets', () => {
     const snippets = loadSnippets();
@@ -358,48 +533,32 @@ describe('review-protocol snippet', () => {
     expect(content).toContain('`proposed_fix`');
   });
 
-  it('snippet contains the kind × severity × confidence triage table', () => {
-    const snippets = loadSnippets();
-    const content = snippets.get('review-protocol.md')!;
-    // Every row of the contracts triage table must be present so the parent
-    // command has an unambiguous rulebook for processing returned findings.
-    expect(content).toMatch(/`steering`\s*\|\s*Critical\s*\|\s*Any/);
-    expect(content).toMatch(/`steering`\s*\|\s*Important\s*\|\s*Any/);
-    expect(content).toMatch(/`implementation`\s*\|/);
-    expect(content).toMatch(/`hygiene`\s*\|/);
-    expect(content).toMatch(/Minor\s*\|\s*Any/);
-    // Parent-action column content is what makes this a triage table rather
-    // than just a grid of severities.
-    expect(content).toContain('specification debt');
-    expect(content).toContain('Apply proposed fix');
-  });
-
-  it('snippet never lets a steering finding be auto-applied', () => {
-    // `steering` means a human has to pick. Applying a proposed fix makes the
-    // pick for them and buries a product decision in a planning commit, so
-    // confidence cannot unlock it — the steering rows carry `Any` confidence
-    // and route to debt. A High-confidence steering finding is a
-    // contradiction, and the snippet says so rather than defining a cell for it.
-    const snippets = loadSnippets();
-    const content = snippets.get('review-protocol.md')!;
+  it('leaves the parent-side triage table to the parent, without dangling it', async () => {
+    // Issue #553: this snippet's old section 5 was titled "applied by the
+    // parent command, not by the review agent" and loaded nowhere a parent
+    // could see it, while all six parents hand-copied their own. The review
+    // agent needs to know its consequences exist, not to carry the table.
+    const content = await composeSnippet('review-protocol');
+    expect(content).toContain('### 5. Report; do not act');
+    expect(content).not.toMatch(/^\|\s*`?steering`?\s*\|.*Parent Action/m);
+    expect(content).toContain('The parent command owns the consequences');
+    // Two rules bind the agent because they are properties of what it emits.
     expect(content).toContain(
       '**A `steering` finding is never auto-applied, at any confidence.**',
     );
-    expect(content).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
-    expect(content).not.toMatch(/`steering`\s*\|\s*Important\s*\|\s*High/);
-    // The escape hatch is reclassification, not an override.
-    expect(content).toMatch(/finding is `hygiene`/);
-    expect(content).toMatch(/confidence is Low by\s+construction/);
+    expect(content).toContain('**A wrong table is a fix, not a question.**');
   });
 
-  it('snippet carries the whole kind gate, not a pointer to an agent prompt', () => {
+  it('snippet carries the whole kind gate, not a pointer to an agent prompt', async () => {
     // Gemini deploys no sub-agents and forge has a degraded inline review
     // branch; both compose this snippet and never see `smithy-plan-review`'s
     // body. `smithy-implementation-review` composes it without plan-review
-    // too. Per the snippets README, rules shared by a sub-agent and an
-    // inline/degraded path live in one snippet — so the full test must be here.
-    const snippets = loadSnippets();
-    const content = snippets.get('review-protocol.md')!;
+    // too. The gate reaches all of them through the nested `kind-gate`
+    // partial, so the full test must survive composition.
+    const raw = loadSnippets().get('review-protocol.md')!;
+    expect(raw).toContain('{{>kind-gate}}');
+    const content = await composeSnippet('review-protocol');
+    expect(content).not.toContain('{{>kind-gate}}');
     expect(content).toContain('**Open question**');
     expect(content).toContain('**Named alternatives**');
     expect(content).toContain('**Human-only**');
@@ -410,14 +569,13 @@ describe('review-protocol snippet', () => {
     expect(content).not.toMatch(/consult that section/);
   });
 
-  it('snippet gates the debt table on kind, not on confidence alone', () => {
+  it('snippet gates the debt table on kind, not on confidence alone', async () => {
     // The bug this closes: routing on severity × confidence alone sent every
     // Low-confidence finding to `## Specification Debt`, so implementation
     // unknowns and wrong-table corrections outnumbered the real decisions and
     // buried them. `kind` is the axis that says who resolves a finding, and
     // only a human-resolvable one belongs in a decision queue.
-    const snippets = loadSnippets();
-    const content = snippets.get('review-protocol.md')!;
+    const content = await composeSnippet('review-protocol');
     expect(content).toContain('Kind gate');
     // The three kinds and their resolvers.
     expect(content).toContain('`steering`');
@@ -427,17 +585,16 @@ describe('review-protocol snippet', () => {
     expect(content).toContain('Only `steering` findings may become specification debt.');
     // Non-steering findings must be routed, not dropped.
     expect(content).toContain('## Open Implementation Questions');
-    // The kind gate precedes severity × confidence triage in the document,
-    // matching the order the parent command applies them.
-    const gateIdx = content.indexOf('### 4. Kind gate');
-    const triageIdx = content.indexOf('### 5. Triage rules');
+    // The kind is set before severity × confidence are graded, matching the
+    // order the agent applies them.
+    const gateIdx = content.indexOf('### 4. Kind gate —');
+    const reportIdx = content.indexOf('### 5. Report; do not act');
     expect(gateIdx).toBeGreaterThan(-1);
-    expect(triageIdx).toBeGreaterThan(gateIdx);
+    expect(reportIdx).toBeGreaterThan(gateIdx);
   });
 
-  it('snippet no longer contains auto-fix language', () => {
-    const snippets = loadSnippets();
-    const content = snippets.get('review-protocol.md')!;
+  it('snippet no longer contains auto-fix language', async () => {
+    const content = await composeSnippet('review-protocol');
     // The rewritten protocol is read-only: review agents return findings,
     // they do not auto-fix, commit, or edit artifacts themselves. Guard
     // against a future edit that reintroduces the old auto-fix vocabulary.
@@ -2550,27 +2707,67 @@ describe('getComposedTemplates', () => {
   it('cut routes plan-review findings by kind, not by confidence alone', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     // Both plan-review dispatch sites (Phase 0c and Phase 5) triage by kind.
-    const kindTables = cut.match(/kind × severity × confidence/g) ?? [];
+    // Each composes the canonical table, so the count also proves neither
+    // site went back to hand-copying it.
+    const kindTables = cut.match(/kind × severity ×\s+confidence/g) ?? [];
     expect(kindTables.length).toBe(2);
-    expect(cut).toContain('| `implementation` | Critical or Important | Low');
-    expect(cut).toContain('| `hygiene`        | Critical or Important | Low');
+    expect(cut).toMatch(/\|\s*`implementation`\s*\|\s*Critical or Important\s*\|\s*Low/);
+    expect(cut).toMatch(/\|\s*`hygiene`\s*\|\s*Critical or Important\s*\|\s*Low/);
     // Steering rows take `Any` confidence and never auto-apply: a High
     // confidence score must not let the command pick for the human.
-    expect(cut).toContain('| `steering`       | Critical              | Any');
+    expect(cut).toMatch(/\|\s*`steering`\s*\|\s*Critical or Important\s*\|\s*Any/);
     expect(cut).toContain('a steering finding is never auto-applied');
-    expect(cut).not.toMatch(/`steering`\s*\|\s*Critical\s*\|\s*High/);
+    expect(cut).not.toMatch(/`steering`\s*\|[^|]*\|\s*High\s*\|/);
     // Debt rows come only from steering findings now.
     const debtRoutes = cut.match(/For each `steering` finding routed to debt/g) ?? [];
     expect(debtRoutes.length).toBe(2);
   });
 
+  it('every review-dispatching command composes the canonical triage table', () => {
+    // Issue #553: the parent-side table was hand-copied twice each into mark,
+    // cut, ignite and render and once each into strike and forge, and had
+    // already diverged — ignite's Phase 0c mandated a debt "Description
+    // column" the index has never had while its own second copy mandated the
+    // detail-section shape. Composition is what makes that unrepresentable,
+    // so assert on the source templates, not just the rendered output.
+    const sources: Array<[string, string]> = [
+      ['commands/smithy.mark.prompt', '2'],
+      ['commands/smithy.cut.prompt', '2'],
+      ['commands/smithy.ignite.prompt', '2'],
+      ['commands/smithy.render.prompt', '2'],
+      ['commands/smithy.strike.prompt', '1'],
+      // forge composes twice: the sub-agent branch and the degraded inline one.
+      ['commands/smithy.forge.prompt', '2'],
+    ];
+    for (const [file, expected] of sources) {
+      const src = fs.readFileSync(
+        path.join(__dirname, 'templates/agent-skills', file),
+        'utf8',
+      );
+      const uses = src.match(/\{\{>plan-review-triage\}\}/g) ?? [];
+      expect(uses.length, `${file} composition count`).toBe(Number(expected));
+      // Each composition site binds the two terms the snippet leaves open.
+      // These bindings wrap across lines, so collapse whitespace first.
+      const flat = src.replace(/\s+/g, ' ');
+      expect(flat, `${file} must bind the target artifact`).toMatch(
+        /\*\*[Tt]he target artifact\*\*/,
+      );
+      expect(flat, `${file} must bind the review note surface`).toMatch(
+        /\*\*[Tt]he review note surface\*\*/,
+      );
+      // No hand-written consequence table may survive beside the composed one.
+      expect(src, `${file} still hand-copies a triage row`).not.toMatch(
+        /^\|\s*`?(steering|implementation|hygiene)`?\s*\|/m,
+      );
+    }
+  });
+
   it('no command triage table lets a steering finding be auto-applied', () => {
-    // Every command that dispatches a review agent restates the triage table
-    // with its own destinations, so the "steering is never auto-applied" rule
-    // has to hold at each site independently. It did not: forge's table wrote
-    // its columns at a different width and kept an `Any` kind + High row,
-    // which auto-applied exactly the findings the shared protocol reserves
-    // for a human. This sweeps all six rather than trusting one edit.
+    // The "steering is never auto-applied" rule has to hold at every rendered
+    // site. It did not: forge's hand-copied table wrote its columns at a
+    // different width and kept an `Any` kind + High row, which auto-applied
+    // exactly the findings the shared protocol reserves for a human. The
+    // table is composed now, and this sweeps all six rather than trusting it.
     for (const name of [
       'smithy.cut.md',
       'smithy.ignite.md',
@@ -3878,9 +4075,13 @@ describe('getComposedTemplates', () => {
     // Review severities are Critical/Important/Minor (review-protocol), but
     // Impact admits only Critical/High/Medium/Low. Copying verbatim is how
     // `Important` ended up in 12 Impact cells across this repo's artifacts —
-    // values plan-review's own debt lint now treats as malformed.
-    expect(cmd).not.toContain('copy severity into Impact');
-    expect(cmd).toContain('`Important` becomes `High`');
+    // values plan-review's own debt lint now treats as malformed. Ignite's
+    // Phase 0c said "copy severity into Impact" for months without tripping
+    // this, because a line wrap fell between "copy" and "severity" — so
+    // collapse whitespace before matching.
+    const flat = cmd.replace(/\s+/g, ' ');
+    expect(flat).not.toContain('copy severity into Impact');
+    expect(flat).toContain('`Important` becomes `High`');
   });
 
   it.each([
@@ -3893,12 +4094,14 @@ describe('getComposedTemplates', () => {
     const cmd = composed.commands.get(file)!;
     expect(cmd).toBeDefined();
     // There is no Description column any more; a finding's prose belongs in
-    // the item's detail section, and the row needs a Title derived from it.
-    expect(cmd).not.toContain('Description column');
+    // the item's detail section, and the row carries a short Title slug.
     // Prose wraps across lines in these templates, so match on collapsed
-    // whitespace rather than a fixed line break.
-    expect(cmd.replace(/\s+/g, ' ')).toContain('`### SD-NNN — <Title>` detail section');
-    expect(cmd.replace(/\s+/g, ' ')).toContain('derive a `Title` slug of 40 characters or fewer');
+    // whitespace rather than a fixed line break — ignite's Phase 0c kept
+    // mandating a "Description column" behind exactly such a wrap.
+    const flat = cmd.replace(/\s+/g, ' ');
+    expect(flat).not.toContain('Description column');
+    expect(flat).toContain('`### SD-NNN — <Title>` detail section');
+    expect(flat).toContain('A slug of 40 characters or fewer naming the unresolved choice');
   });
 
   it('cut distinguishes a legitimately empty upstream debt section from a broken one', () => {

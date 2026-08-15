@@ -75,13 +75,12 @@ gate to **every** finding, not just the ones you expect to be Low
 confidence. Severity and confidence are graded after the kind is set,
 never before.
 
-**How it relates to clarify.** This gate is the plan-review sibling of
-`smithy-clarify` Step 3b: the same question ("must a human decide, and
-does the decision change what gets built?"), applied to review findings
-instead of clarification candidates. Where clarify reroutes a failing
-candidate into its assumption stream, you have no assumption stream — you
-reroute by naming a different `kind`, and the parent command sends it
-somewhere other than the debt table.
+**How it relates to clarify.** `smithy-clarify` Step 3b applies this same
+gate to clarification candidates — it is one definition, not a sibling
+rubric. Only the reroute differs: clarify sends a failing candidate into
+its assumption stream, and you have no assumption stream, so you reroute
+by naming a different `kind` and the parent command sends it somewhere
+other than the debt table.
 
 ### Kind-gate examples
 
@@ -90,7 +89,7 @@ somewhere other than the debt table.
 | "Whether scenarios that create a PR assert against the failure branch, stub credentials, or accept either outcome by regex alternation" | passes all three — no prior art, three named paths, and the pick changes what the scenario asserts | `steering` |
 | "Whether the runner's temp fixture copy carries a `.git` directory or initializes one" | fails **human-only** — reading the runner and running it once answers it | `implementation` |
 | "The `## Dependency Order` table lists S3 before S2, though S3's tasks consume S2's output" | fails **open question** — the correct order is knowable and the table is simply wrong | `hygiene` |
-| "Slices 2 and 4 both edit the same module; the second to land rebases" | fails **open question** — a dependency/coordination note per `smithy-clarify` Step 3b | `hygiene` |
+| "Slices 2 and 4 both edit the same module; the second to land rebases" | fails **open question** — a dependency/coordination note, which the routing table already homes | `hygiene` |
 | "Is the parent spec corrected too, or only this tasks file?" | fails **human-only** — reading the spec answers it | `hygiene` |
 
 ---

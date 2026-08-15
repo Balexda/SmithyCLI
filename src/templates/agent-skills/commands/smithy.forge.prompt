@@ -252,29 +252,18 @@ containing a list of `Finding` entries (`category`, `kind`, `severity`,
 It does not modify files, run commands, or create commits — forge owns every
 on-disk change and commit resulting from a finding.
 
-Process each returned finding by the kind × severity × confidence policy of
-the shared review protocol, using the **forge-specific destinations** in the
-table below. The policy is the shared one — read `kind` first, and only a
-`steering` finding (a human must choose between named alternatives, and the
-choice changes what gets built) can become specification debt. The
-destinations differ: forge has a terminal-output **Review Summary** and puts
-notes there rather than in the PR body.
+For the triage below, **the target artifact** is the slice planning artifact
+— the `.tasks.md`, `.strike.md`, `.spec.md`, or equivalent planning file
+associated with the slice you were asked to implement, derived from the
+intake file path. This is intentionally independent of the finding's
+`artifact_path`: when `artifact_path` points to source code or another
+non-planning file, apply the fix there but do **not** create or edit a
+`## Specification Debt` or `## Open Implementation Questions` section in it —
+those records go to the planning artifact only. **The review note surface**
+is forge's terminal-output **Review Summary** deliverable, never the PR body.
 
-| Kind | Severity | Confidence | Forge action |
-|------|----------|------------|--------------|
-| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` on disk, run the test suite, commit as `review: <description>`. |
-| `steering` | Critical or Important | Any | Do not apply — a steering finding is never auto-applied, at any confidence. Append the finding to the slice planning artifact's `## Specification Debt` section. |
-| `implementation` | Critical or Important | Low | Do not apply and do not record as debt. Append an `IQ-NNN` row to the tasks file's `## Open Implementation Questions` section when the slice came from a `.tasks.md`; otherwise note it in the **Review Summary**. |
-| `hygiene` | Critical or Important | Low | Do not apply and do not record as debt. Note in the **Review Summary** so the user can settle the correction directly. |
-| Any | Minor | Any | Do not apply and do not record as debt. Note in forge's terminal-output **Review Summary** deliverable so the user sees it; do not add to the PR body. |
+{{>plan-review-triage}}
 
-"Slice planning artifact" above means the `.tasks.md`, `.strike.md`,
-`.spec.md`, or equivalent planning file associated with the slice you were
-asked to implement (derived from the intake file path). This is intentionally
-independent of the finding's `artifact_path`: when `artifact_path` points to
-source code or another non-planning file, do **not** create or edit a
-`## Specification Debt` section there — record the debt in the planning
-artifact only.
 
 When applying a High-confidence `implementation` or `hygiene` fix:
 
@@ -323,6 +312,13 @@ git diff <BASE_SHA> HEAD
 ```
 
 {{>review-protocol}}
+
+For the triage below, **the target artifact** is the slice planning artifact
+associated with the slice you were asked to implement, and **the review note
+surface** is forge's terminal-output **Review Summary** deliverable, never
+the PR body.
+
+{{>plan-review-triage}}
 {{/ifAgent}}
 
 ---

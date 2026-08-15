@@ -92,51 +92,14 @@ sub-agent to perform a self-consistency review of the tasks file. Pass it:
   `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`).
 - **artifact_type** — `tasks`.
 
-The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared kind × severity × confidence
-triage table. Read each finding's `kind` first — only a `steering` finding can
-reach the debt table:
+For the triage below, **the target artifact** is the refined tasks file, and
+**the review note surface** is the refinement PR body.
 
-| Kind             | Severity              | Confidence | Action                                                                                                 |
-|------------------|-----------------------|------------|--------------------------------------------------------------------------------------------------------|
-| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the tasks file on disk. Note Critical fixes in the PR body.                  |
-| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the tasks file's `## Specification Debt` section. Flag in PR for the reviewer.   |
-| `steering`       | Important             | Any        | Do not apply. Append to the tasks file's `## Specification Debt` section.                                |
-| `implementation` | Critical or Important | Low        | Do not apply. Append an `IQ-NNN` row to the tasks file's `## Open Implementation Questions` section.     |
-| `hygiene`        | Critical or Important | Low        | Do not apply. List in the PR body for the reviewer to correct — never as a debt row.                    |
-| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                                 |
+{{>plan-review-triage}}
 
-For each `steering` finding routed to debt — confidence does not matter, since
-steering is never auto-applied — append a new row to
-the tasks file's `## Specification Debt` index table with the next available
-`SD-NNN` identifier (continue numbering from whatever the tasks file already
-contains, including debt inherited from the spec — do not reset). Use the
-finding's `description` as the body of a new `### SD-NNN — <Title>`
-detail section, derive a `Title` slug of 40 characters or fewer from it, set
-`Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), map severity into Impact (`Critical`
-stays `Critical`; `Important` becomes `High` — `Important` is not a valid
-`Impact` value) and copy confidence into Confidence, and set `Origin` to
-`local`.
 
-For each Low-confidence `implementation` finding, append a row to the tasks
-file's `## Open Implementation Questions` table instead: next available
-`IQ-NNN`, the finding's `description` compressed into a single question of 120
-characters or fewer, the `S<N>` slice it lands in (`—` when it spans slices),
-the `Settled By` path (`building`, `testing`, or `reading code`), and `Origin`
-`local`.
-
-For each High-confidence `implementation` or `hygiene` finding, edit the tasks file in place using the
-`proposed_fix`. The Phase 0c commit below captures both the refine diff and
-the plan-review fixes in the same commit.
-
-If the agent returns drift findings (assumption-output drift category),
-surface them prominently in the refinement PR body so the reviewer can
-confirm the underlying assumption rather than silently accepting the applied
-fix.
-
-The review agent never modifies files itself — all on-disk changes are made
-here, by cut.
+The Phase 0c commit below captures both the refine diff and the plan-review
+fixes in the same commit.
 
 **No-op check** (runs after refine and plan-review): if refine returned an
 empty `refinements` list, plan-review returned no High-confidence fixes and
@@ -873,50 +836,16 @@ perform a self-consistency review. Pass it:
   dependency-order table.
 - **artifact_type** — `tasks`.
 
-The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared kind × severity × confidence
-triage table from the contracts. Read each finding's `kind` first — only a
-`steering` finding can reach the debt table:
+For the triage below, **the target artifact** is the tasks file just
+written — its `SD-NNN` numbering continues from whatever it already carries,
+including debt inherited from the spec in Phase 1 and new items from cut's
+own clarify run. **The review note surface** is the PR body.
 
-| Kind             | Severity              | Confidence | Action                                                                                                 |
-|------------------|-----------------------|------------|--------------------------------------------------------------------------------------------------------|
-| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the tasks file on disk. Note Critical fixes in the PR body.                  |
-| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the tasks file's `## Specification Debt` section. Flag in PR for the reviewer.   |
-| `steering`       | Important             | Any        | Do not apply. Append to the tasks file's `## Specification Debt` section.                                |
-| `implementation` | Critical or Important | Low        | Do not apply. Append an `IQ-NNN` row to the tasks file's `## Open Implementation Questions` section.     |
-| `hygiene`        | Critical or Important | Low        | Do not apply. List in the PR body for the reviewer to correct — never as a debt row.                    |
-| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                                 |
+{{>plan-review-triage}}
 
-For each `steering` finding routed to debt — confidence does not matter, since
-steering is never auto-applied — append a new row to
-the tasks file's `## Specification Debt` index table with the next available
-`SD-NNN` identifier (continue numbering from whatever the tasks file already
-contains, including debt inherited from the spec in Phase 1 and new items
-from cut's own clarify run — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
-detail section, derive a `Title` slug of 40 characters or fewer from it, set
-`Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), map severity into Impact (`Critical`
-stays `Critical`; `Important` becomes `High` — `Important` is not a valid
-`Impact` value) and copy confidence into Confidence, and set `Origin` to
-`local`.
 
-For each Low-confidence `implementation` finding, append a row to the tasks
-file's `## Open Implementation Questions` table instead: next available
-`IQ-NNN`, the finding's `description` compressed into a single question of 120
-characters or fewer, the `S<N>` slice it lands in (`—` when it spans slices),
-the `Settled By` path (`building`, `testing`, or `reading code`), and `Origin`
-`local`.
-
-For each High-confidence `implementation` or `hygiene` finding, edit the tasks file in place using the
-`proposed_fix`. The commit below captures both the original tasks file and
-the applied fixes in the same diff.
-
-If the agent returns drift findings (assumption-output drift category),
-surface them prominently in the PR body so the reviewer can confirm the
-underlying assumption rather than silently accepting the applied fix.
-
-The review agent never modifies files itself — all on-disk changes are made
-here, by cut.
+The commit below captures both the original tasks file and the applied fixes
+in the same diff.
 
 ### Commit and create the PR
 
@@ -992,8 +921,10 @@ is the contract.
 - **DO NOT** emit a slice whose tasks span more than one repository — split it
   along the repo boundary and order the resulting slices in
   `## Dependency Order`. A cross-repo slice cannot be forged.
-- **DO** use zero-padded two-digit numbering for the filename (`01-`, `02-`,
-  ..., `99-`) for consistent sort order.
+- **DO** derive the filename by the rule in Phase 5, which depends on the
+  spec's ledger shape — a backend story table gives `<NN>-<story-slug>` and a
+  typed UI ledger gives `<node-id-lower>-<node-slug>`. Do not apply the
+  backend zero-padded form to a typed UI node.
 - **DO** invoke smithy-clarify for ambiguity scanning and triage.
 - **DO** read all three spec artifacts (spec, data model, contracts) before
   slicing — the data model and contracts inform implementation boundaries.

@@ -34,8 +34,7 @@ records the evidence from the 2026-08 audit.
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `commands/smithy.{mark,cut,render,ignite}.prompt` (two copies each), `commands/smithy.{strike,forge}.prompt` (one each) | Parent-side triage tables are hand-copied rather than composed from `snippets/review-protocol.md`, and the copies have diverged (ignite self-contradicts on the debt-row shape) | Temporary: predates this invariant; awaiting re-canonicalization | #553 | high |
-| `agents/smithy.clarify.prompt` Step 3b | A sibling kind-gate definition (third condition "no-prescription", no implementation/hygiene kinds) coexists with review-protocol's ("human-only") | Temporary: reconcile the two gates, or convert this row to Accepted with the deliberate difference stated | #553 | medium |
+| `agents/smithy.clarify.prompt` Step 3b, `agents/smithy.refine.prompt` | Both compose the one `kind-gate` definition but reroute a rejected candidate differently — clarify into its assumption stream with `[Critical Assumption]`, refine into `refinements` — because neither emits a `kind` field for a parent to route on | Accepted: the gate itself is shared and identical; only the return channel differs, and each consumer states its own in two sentences beside the composed gate | — | low |
 | Voice-tag grammar in `skills/smithy.helper-voice` §8, `agent-skills/README.md`, `snippets/audit-checklist-voice.md` | The same tag grammar and keys table is maintained in three places | Temporary: pick one canonical home and point the other two at it | #551 | low |
 
 ## Citations
