@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Calibrate structural workflow markers**
+- [x] **Calibrate structural workflow markers**
 
   Update the `fix-from-issue` scenario expectations so validation checks stable diagnosis, fix-action, and verification evidence produced by the offline run. Keep markers tied to workflow sections, labels, or fixture-specific evidence instead of a complete response snapshot.
 
@@ -28,7 +28,7 @@
   - The checks remain resilient to wording changes that preserve the workflow for AS 3.3.
   - Existing local fixture declaration and invocation behavior remains unchanged.
 
-- [ ] **Calibrate helper evidence from observed dispatches**
+- [x] **Calibrate helper evidence from observed dispatches**
 
   Run or inspect the offline `fix-from-issue` path and record helper evidence only for helpers that actually dispatch. If the current error-description path dispatches no helpers, leave helper evidence empty or omitted and document that choice on the scenario surface.
 
@@ -38,7 +38,7 @@
   - Helper patterns use stable dispatch or result evidence rather than agent-name-only matches.
   - The inherited helper-set uncertainty from spec SD-001 is resolved by observed behavior.
 
-- [ ] **Lock scenario validation coverage**
+- [x] **Lock scenario validation coverage**
 
   Add focused coverage that exercises the `fix-from-issue` structural expectations and the helper-evidence branch selected during calibration. The coverage should prove the report path emits the expected pass/fail checks without requiring live GitHub credentials.
 
