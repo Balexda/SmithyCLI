@@ -2640,15 +2640,23 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('### Typed UI Node Build Profiles');
     expect(forge).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
     expect(forge).toContain('Read the referenced `design/screens/<ScreenId>.design.md` before editing');
+    expect(forge).toContain('Read the task plan\'s `**Design Mode**` and `**Design Metadata**` lines');
+    expect(forge).toMatch(/`Design Mode` must be one of `none`,\s+`import`, or `brief`/);
     expect(forge).toContain('the committed design skill named by the screen artifact');
     expect(forge).toContain('behind the resolved feature `flag`');
     expect(forge).toContain('Use mock data for screen-build work');
     expect(forge).toContain('Represent every brief state named by the screen intent');
     expect(forge).toContain('design-system');
     expect(forge).toContain('tokens and reusable project components');
-    expect(forge).toContain('Honor an attached `bundle` for layout and visual intent');
-    expect(forge).toContain('`brief`');
-    expect(forge).toContain('mode without a bundle and `none` mode are non-blocking');
+    expect(forge).toContain('Route by design mode without creating a visual-gate stall');
+    expect(forge).toContain('`Design: none` builds from the committed design skill');
+    expect(forge).toContain('`Design: import` carries any supplied bundle context into the build');
+    expect(forge).toContain('Bundle-less `Design: brief` builds from the committed design skill');
+    expect(forge).toMatch(/no\s+prototype bundle was attached/);
+    expect(forge).toContain('Honor any attached `bundle` for layout and visual intent regardless');
+    expect(forge).toContain('was attached after `mark` for');
+    expect(forge).toContain('fall back to the design skill and `.design.md` intent instead of stopping');
+    expect(forge).toContain('Do not ask reviewers to judge visual fidelity');
     expect(forge).toContain('Refuse to author a new `.design.md` from scratch');
   });
 

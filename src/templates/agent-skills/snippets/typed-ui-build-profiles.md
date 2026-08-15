@@ -7,6 +7,9 @@ documentation, validation, and PR creation stay the same as ordinary work.
   below is scoped to that profile:
   - Read the referenced `design/screens/<ScreenId>.design.md` before editing any
     implementation files, and treat it as mark-owned durable screen intent.
+  - Read the task plan's `**Design Mode**` and `**Design Metadata**` lines
+    before choosing the build path. `Design Mode` must be one of `none`,
+    `import`, or `brief`; do not infer it from the screen title.
   - Preload the committed design skill named by the screen artifact's
     `design_system` metadata as implementation dialect context. If the screen
     artifact is missing or does not name a design skill, stop instead of
@@ -29,11 +32,26 @@ documentation, validation, and PR creation stay the same as ordinary work.
     tokens and reusable project components for styling; do not introduce
     hardcoded colors or one-off style constants when a project token or
     component convention exists.
-  - Honor an attached `bundle` for layout and visual intent under the conflict
-    rule: bundle wins layout/visual intent, while the design skill remains
-    authoritative for implementation dialect and project conventions. `brief`
-    mode without a bundle and `none` mode are non-blocking; build from the
-    design skill and the `.design.md` intent without waiting for a prototype.
+  - Route by design mode without creating a visual-gate stall:
+    - `Design: none` builds from the committed design skill and the
+      `.design.md` intent; no bundle or prototype ceremony is required.
+    - `Design: import` carries any supplied bundle context into the build. When
+      the metadata or screen artifact names a bundle, read and honor it as the
+      visual source context.
+    - Bundle-less `Design: brief` builds from the committed design skill and
+      the `.design.md` intent. Record in the task/terminal notes that no
+      prototype bundle was attached; this is informational context, not an
+      implementation failure.
+  - Honor any attached `bundle` for layout and visual intent regardless of
+    whether it entered through `import` mode or was attached after `mark` for
+    `brief` mode. Apply the conflict rule consistently: bundle wins
+    layout/visual intent, while the design skill remains authoritative for
+    implementation dialect and project conventions. When no bundle is attached,
+    fall back to the design skill and `.design.md` intent instead of stopping
+    the slice.
+  - Do not ask reviewers to judge visual fidelity. Review remains structural:
+    project conventions, design-system tokens/components, accessible structure,
+    gated behavior, mock-data coverage, and every named brief state.
   - Refuse to author a new `.design.md` from scratch, and do not modify
     `.design.md` or `.flow.md` files as part of screen-build work. Those durable
     artifacts originate at `mark`; `forge` consumes them.
