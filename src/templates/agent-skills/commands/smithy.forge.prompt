@@ -258,17 +258,23 @@ Use the **smithy-implementation-review** sub-agent. Pass it:
   deliverable, never the PR body.
 - **Review profile**: If the tasks file's `**Node Kind**:` is
   `screen-build` (`SC<N>`) or `flow-wire` (`FL<N>`), request the
-  `ui-structural` profile. Otherwise use the default backend implementation
+  `ui-structural` profile. Otherwise use the default implementation
   review profile.
+- **UI artifact context**: With the `ui-structural` profile, also pass the
+  tasks-file path and its `**Node ID**`, `**Durable Artifact**`, and — for
+  `FL` nodes — `**Test Body**` header values, so the reviewer reads the same
+  `.design.md`, `.flow.md`, and paired test body the slice was built from
+  instead of guessing among a spec's several `SC`/`FL` rows.
 
 The `ui-structural` profile is still the ordinary read-only implementation
-review agent and output contract. It narrows UI-node review to structural
-contract conformance: design-system tokens, reusable project components,
-project conventions, stable selectors, accessible structure, feature-flag and
-mock/real-data boundaries, and whether every brief state or flow guard named by
-the mark-owned artifacts is represented. Do not ask for pixel matching,
-visual-diff work, subjective taste changes, or visual fidelity judgments. The
-default backend review profile and backend-story routing remain unchanged.
+review agent and output contract, and it is **additive**: correctness,
+security, contract conformance, test coverage, error handling, naming, and
+scope creep are reviewed on UI node work exactly as on backend work. The
+profile only adds the structural UI checks defined in the shared
+`ui-structural` review rules above, and rules visual fidelity out of scope.
+Do not ask for pixel matching, visual-diff work, subjective taste changes, or
+visual fidelity judgments. The default review profile and backend-story
+routing remain unchanged.
 
 `smithy-implementation-review` is **read-only**. It returns a `ReviewResult`
 containing a list of `Finding` entries (`category`, `kind`, `severity`,

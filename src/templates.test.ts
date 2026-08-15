@@ -106,7 +106,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(35);
+    expect(snippets.size).toBe(36);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -138,6 +138,7 @@ describe('loadSnippets', () => {
       'spec-debt-section.md',
       'open-implementation-questions.md',
       'typed-ui-build-profiles.md',
+      'ui-structural-review.md',
       'kind-gate.md',
       'debt-row-shape.md',
       'debt-grading.md',
@@ -3365,7 +3366,9 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('Honor any attached `bundle` for layout and visual intent regardless');
     expect(forge).toContain('was attached after `mark` for');
     expect(forge).toContain('fall back to the design skill and `.design.md` intent instead of stopping');
-    expect(forge).toContain('Do not ask reviewers to judge visual fidelity');
+    // The reviewer-facing half of this rule now lives in the shared
+    // `ui-structural-review` snippet the profile nests.
+    expect(forge).toContain('Out of scope, always: pixel matching, visual diffs');
     expect(forge).toContain('Refuse to author a new `.design.md` from scratch');
   });
 
@@ -3436,15 +3439,22 @@ describe('getComposedTemplates', () => {
     expect(forge).toMatch(
       /`screen-build` \(`SC<N>`\) or `flow-wire` \(`FL<N>`\), request the\s+`ui-structural` profile/,
     );
-    expect(forge).toContain('Otherwise use the default backend implementation');
-    // The profile narrows the review; it does not fork the agent or the
-    // output contract, and it never turns forge into a visual-fidelity judge.
+    expect(forge).toContain('Otherwise use the default implementation');
+    // The reviewer cannot pick among a spec's several SC/FL rows unless forge
+    // names the durable artifact the slice was built from.
+    expect(forge).toContain('- **UI artifact context**: With the `ui-structural` profile, also pass the');
     expect(forge).toMatch(
-      /`ui-structural` profile is still the ordinary read-only implementation\s+review agent and output contract/,
+      /`\*\*Node ID\*\*`, `\*\*Durable Artifact\*\*`, and — for\s+`FL` nodes — `\*\*Test Body\*\*` header values/,
+    );
+    // The profile narrows nothing: it does not fork the agent or the output
+    // contract, and it never turns forge into a visual-fidelity judge.
+    expect(forge).toMatch(
+      /`ui-structural` profile is still the ordinary read-only implementation\s+review agent and output contract, and it is \*\*additive\*\*/,
     );
     expect(forge).toContain('Do not ask for pixel matching');
-    expect(forge).toContain('visual-diff work, subjective taste changes, or visual fidelity judgments');
-    expect(forge).toContain('default backend review profile and backend-story routing remain unchanged');
+    expect(forge).toContain('visual fidelity judgments');
+    expect(forge).toContain('The default review profile and backend-story');
+    expect(forge).toContain('routing remain unchanged');
   });
 
   it('both typed UI build profiles request the ui-structural review, agent mode or not', () => {
@@ -3452,57 +3462,88 @@ describe('getComposedTemplates', () => {
     // degraded no-sub-agent variant still asks for a structural review.
     const forge = composed.commands.get('smithy.forge.md')!;
     const structuralRequests = forge.match(
-      /Request forge's `ui-structural` implementation review profile after the/g,
+      /Request the `ui-structural` implementation review profile after the slice/g,
     );
     expect(structuralRequests).toHaveLength(2);
-    expect(forge).toMatch(
-      /token-only\s+styling, reusable project components, project conventions, accessible\s+structure including touch-target roles and contrast-token usage/,
-    );
-    expect(forge).toMatch(
-      /stable selector\s+usage, guard\/traversal coverage in the paired test body/,
-    );
-    expect(forge).toContain('Do not ask reviewers to judge visual fidelity, run');
-    expect(forge).toContain('visual diffs, or propose');
+    expect(forge).toContain('The checks are defined once under **UI Structural Review**');
+    // ...and the checks themselves render exactly once, from the shared snippet.
+    expect(forge).toContain('#### UI Structural Review');
+    const additive = forge.match(/The `ui-structural` review profile is \*\*additive\*\*/g);
+    expect(additive).toHaveLength(1);
   });
 
-  it('implementation-review agent defines the structural UI review checks', () => {
+  it('the ui-structural checklist is one shared snippet, not a per-surface copy', () => {
+    // Reviewer and the inline/degraded build path must not drift: both
+    // {{>include}} the same source of truth.
+    const snippet = loadSnippets().get('ui-structural-review.md')!;
+    expect(snippet).toBeDefined();
+    expect(snippet).not.toContain('{{#ifAgent}}');
     const review = composed.agents.get('smithy.implementation-review.md')!;
-    expect(review).toBeDefined();
-    expect(review).toContain('## UI Structural Profile');
-    expect(review).toMatch(/\*\*Review profile\*\* — optional\. `ui-structural` means the diff comes from an/);
-    expect(review).toMatch(/If omitted, use the default backend\s+implementation review behavior/);
+    const forge = composed.commands.get('smithy.forge.md')!;
+    const implement = composed.agents.get('smithy.implement.md')!;
+    for (const rendered of [review, forge, implement]) {
+      expect(rendered).toContain(snippet.trim());
+    }
+    expect(forge).not.toContain('{{>ui-structural-review}}');
+  });
+
+  it('the ui-structural checklist covers screen, flow, and shared UI checks', () => {
+    const snippet = loadSnippets().get('ui-structural-review.md')!;
     // Screen checks: tokens, component reuse and conventions, every brief state.
-    expect(review).toContain('verify styling uses design-system tokens or existing');
-    expect(review).toContain('rather than hardcoded colors or one-off style constants');
-    expect(review).toMatch(/verify reusable components and local project\s+conventions are followed/);
-    expect(review).toMatch(/verify every brief state named by the referenced\s+`\.design\.md` or task plan is represented/);
+    expect(snippet).toMatch(/Styling that uses design-system tokens or the project's existing token APIs/);
+    expect(snippet).toContain('rather than hardcoded colors or one-off style constants');
+    expect(snippet).toMatch(/Reuse of existing project components and the local conventions established/);
+    expect(snippet).toMatch(/Representation of every brief state named by the referenced `\.design\.md`/);
     // Flow checks: stable selectors, guard/traversal coverage in the test body.
-    expect(review).toMatch(
-      /verify executable behavior uses stable test IDs,\s+accessibility IDs, or semantic tags instead of visible text or layout\s+position/,
+    expect(snippet).toMatch(
+      /Executable behavior keyed to stable test IDs, accessibility IDs, or semantic\s+tags instead of visible text or layout position/,
     );
-    expect(review).toMatch(/guard\/traversal assertions from the `\.flow\.md` are\s+represented in the paired test body/);
-    // Accessibility roles are checked structurally, not visually.
-    expect(review).toMatch(
-      /touch-target roles, accessible roles\/names, and\s+contrast-token usage structurally/,
+    expect(snippet).toMatch(
+      /Every guard and traversal assertion named by the `\.flow\.md` represented in\s+the paired test body/,
     );
-    expect(review).toContain('feature-flag boundaries, mock-data versus');
+    // Shared: flags, data boundaries, accessible structure.
+    expect(snippet).toContain('Feature-flag boundaries and mock-data versus real-data boundaries');
+    expect(snippet).toMatch(
+      /touch-target roles, accessible roles and names, and\s+contrast-token usage/,
+    );
   });
 
-  it('ui-structural review findings stay on the existing triage and skip pixel work', () => {
+  it('the ui-structural profile is additive and still skips pixel work', () => {
     const review = composed.agents.get('smithy.implementation-review.md')!;
+    expect(review).toContain('## UI Structural Profile');
     expect(review).toMatch(
       /When `Review profile` is `ui-structural`, keep the review read-only and use the\s+same `ReviewResult` shape and shared triage rules as every other implementation\s+review/,
     );
-    expect(review).toContain('**UI structural conformance** — only when the `ui-structural` profile is');
-    expect(review).toContain(
-      'Do not emit findings for pixel matching, visual diffs, palette preference,',
+    // The profile must never let a security or contract defect through just
+    // because the diff happens to be UI work.
+    expect(review).toMatch(
+      /It does not replace,\s+narrow, or excuse any ordinary implementation-review category/,
     );
-    expect(review).toMatch(/spacing taste, typography taste, or whether the result visually matches a\s+prototype/);
-    expect(review).toContain('do not ask forge to iterate visual');
+    expect(review).toContain('security issues, contract/data-model conformance, missing test coverage');
+    expect(review).toContain('This category is in addition to the ones above, never a replacement for');
+    // ...while visual fidelity stays out of scope.
+    expect(review).toContain(
+      'Out of scope, always: pixel matching, visual diffs, palette preference,',
+    );
+    expect(review).toMatch(/spacing taste, typography taste, and whether the result visually matches a\s+prototype/);
+    expect(review).toContain('never turn it into a visual-fidelity');
+    // The reviewer gets told which durable artifact it is checking against.
+    expect(review).toContain('**UI artifact context** — optional, passed alongside the `ui-structural`');
+    expect(review).toContain('Use the **UI artifact context** to resolve which `.design.md`');
     // Triage itself is unchanged: severity x confidence still comes from the
     // shared review protocol, and forge still owns applying or recording it.
     expect(review).toContain('Each category combines with a severity (Critical, Important, Minor) and a');
     expect(review).toContain('## Review Protocol');
+  });
+
+  it('the ReviewResult contract does not hardcode a category count', () => {
+    const review = composed.agents.get('smithy.implementation-review.md')!;
+    // A hardcoded "six categories" goes stale the moment a profile adds one,
+    // and a contradictory count can make the model drop the new category.
+    expect(review).not.toMatch(/\b(six|seven) categories\b/);
+    expect(review).toMatch(
+      /Use the categories\s+listed above for the `category` field — including `UI structural\s+conformance` whenever the `ui-structural` profile is in effect/,
+    );
   });
 
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {

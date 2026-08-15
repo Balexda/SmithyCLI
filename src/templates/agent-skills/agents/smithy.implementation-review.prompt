@@ -38,9 +38,15 @@ The parent agent passes you:
 8. **review_note_surface** — where the parent reports a finding it does not
    apply, in its own words.
 9. **Review profile** — optional. `ui-structural` means the diff comes from an
-   `SC<N>` screen-build or `FL<N>` flow-wire node and must be reviewed for
-   structural UI contract conformance only. If omitted, use the default backend
+   `SC<N>` screen-build or `FL<N>` flow-wire node and must additionally be
+   reviewed for structural UI contract conformance. If omitted, use the default
    implementation review behavior.
+10. **UI artifact context** — optional, passed alongside the `ui-structural`
+    profile: the tasks-file path plus its `**Node ID**`, `**Durable Artifact**`,
+    and (for `FL` nodes) `**Test Body**` header values. These name the
+    `.design.md`, `.flow.md`, and paired test body whose states and guards the
+    diff must honor — read them, because a spec with several `SC`/`FL` rows has
+    more than one candidate.
 
 Items 7 and 8 are the terms the routing step of the review protocol binds;
 you never write to either, you only name which one each finding is for.
@@ -77,8 +83,9 @@ as one of:
 - **Scope creep** — changes that exceed the slice goal or implement work
   that belongs to another task, slice, or story.
 - **UI structural conformance** — only when the `ui-structural` profile is
-  requested: UI node work that violates the screen/flow structural contract
-  while staying away from visual fidelity or taste judgments.
+  requested: UI node work that violates the screen/flow structural contract.
+  This category is in addition to the ones above, never a replacement for
+  them.
 
 Each category combines with a severity (Critical, Important, Minor) and a
 confidence (High or Low) as documented in the shared review protocol above.
@@ -87,27 +94,14 @@ confidence (High or Low) as documented in the shared review protocol above.
 
 When `Review profile` is `ui-structural`, keep the review read-only and use the
 same `ReviewResult` shape and shared triage rules as every other implementation
-review. Review structural conformance only:
+review.
 
-- For screen-build work, verify styling uses design-system tokens or existing
-  project token APIs rather than hardcoded colors or one-off style constants.
-- For screen-build work, verify reusable components and local project
-  conventions are followed where the diff's neighbors establish them.
-- For screen-build work, verify every brief state named by the referenced
-  `.design.md` or task plan is represented in the implementation.
-- For flow-wire work, verify executable behavior uses stable test IDs,
-  accessibility IDs, or semantic tags instead of visible text or layout
-  position, and that guard/traversal assertions from the `.flow.md` are
-  represented in the paired test body.
-- For UI work generally, verify feature-flag boundaries, mock-data versus
-  real-data boundaries, touch-target roles, accessible roles/names, and
-  contrast-token usage structurally where the project framework exposes them.
+{{>ui-structural-review}}
 
-Do not emit findings for pixel matching, visual diffs, palette preference,
-spacing taste, typography taste, or whether the result visually matches a
-prototype. If a bundle is present, use it only to understand structural intent
-that the slice was required to honor; do not ask forge to iterate visual
-fidelity.
+Use the **UI artifact context** to resolve which `.design.md`, `.flow.md`, and
+paired test body supply the states and guards you are checking. When the diff
+touches a typed UI node and no such context was passed, say so in the
+`summary` rather than guessing which durable artifact applies.
 
 ---
 
@@ -118,10 +112,11 @@ Return a single `ReviewResult` to `smithy.forge`. The result has two fields:
 - **`findings`** — a list of `Finding` entries in the structure documented
   in the shared review protocol (`category`, `kind`, `severity`,
   `confidence`, `destination`, `description`, `artifact_path`,
-  `proposed_fix`). Emit one finding per distinct issue. Use the six
-  categories listed above for the `category` field, set `kind` per the
-  **Kind gate** section of the shared review protocol above, which carries
-  the full steering test, and set `destination` per its routing step.
+  `proposed_fix`). Emit one finding per distinct issue. Use the categories
+  listed above for the `category` field — including `UI structural
+  conformance` whenever the `ui-structural` profile is in effect — set `kind`
+  per the **Kind gate** section of the shared review protocol above, which
+  carries the full steering test, and set `destination` per its routing step.
   Code review findings are overwhelmingly `hygiene` (a defect with a
   knowable correct fix); reserve `steering` for the rare case where the
   implementation exposed a product choice nobody has made.
