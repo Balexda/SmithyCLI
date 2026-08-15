@@ -23,7 +23,7 @@ Note the two sub-agent filename schemes: the Claude file derives from the source
 - **CLI entry**: `src/cli.ts` — Commander setup and arg parsing.
 - **Commands**: `src/commands/init.ts`, `src/commands/uninit.ts`, `src/commands/update.ts` — action handlers.
 - **Agent deployers**: `src/agents/{claude,gemini,codex}.ts` — per-agent deploy/remove logic.
-- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is stripped when deploying to Claude (kept for Gemini skills). Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
+- **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is kept verbatim for Gemini/Codex skills; on the Claude path, command frontmatter is *translated* to Claude's vocabulary (`src/command-frontmatter.ts`) and prompt frontmatter is stripped. Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
 - **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
 - **Orders body templates**: `src/orders-templates.ts` — exports the four canonical default body strings (`rfc` / `features` / `spec` / `tasks`) plus the `provisionOrdersTemplates` function that `smithy init` calls to write them under `<manifestDir>/templates/orders/<type>.md`. The same defaults double as the built-in fallback bodies in `smithy.orders` (parity asserted in `src/templates.test.ts`).
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
@@ -110,7 +110,13 @@ Templates are organized by their deployment target:
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility
-The same template source serves all three agents. Gemini and Codex keep frontmatter for skill metadata; Claude strips it from commands/prompts while retaining it for sub-agents and skills. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
+The same template source serves all three agents. Gemini and Codex keep frontmatter verbatim for skill metadata; Claude retains it for sub-agents and skills, strips it from reference prompts, and **translates** it for commands. The prompt text uses `$ARGUMENTS` which Claude replaces but Gemini/Codex leave as literal — so prompts include a fallback: "If no feature description is clear, ask the user."
+
+### Claude Command Frontmatter
+
+Claude Code advertises `.claude/commands/*.md` through the same registry skills use and drives that entry from the file's frontmatter, so the block is the command's only trigger signal. `src/command-frontmatter.ts` reduces the source block to the keys Claude Code reads — `description`, `argument-hint`, `disable-model-invocation`, `allowed-tools`, `model`, `context`, `agent`, `hooks` — and drops everything else, notably `name` (the dashed Codex spelling used to pick the Gemini/Codex skill directory; a Claude command is named by its filename instead). Unknown keys are dropped rather than rejected: one source block is the union of what all three targets need.
+
+Every command template declares `description`, `argument-hint`, and `disable-model-invocation: true` — all 13 Smithy commands are explicit pipeline steps the operator drives, so none should auto-fire, and keeping them out of the model registry recovers that context. `smithy.status` remains model-invocable because it ships as a skill, not a command. `src/templates.test.ts` enforces the contract on the source templates and through the Claude translation.
 
 ### Artifact Hierarchy and Relationships
 

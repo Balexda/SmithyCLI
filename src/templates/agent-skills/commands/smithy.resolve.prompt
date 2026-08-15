@@ -1,6 +1,8 @@
 ---
 name: smithy-resolve
 description: "Resolve a specification-debt item in a Smithy planning artifact through a guided, interactive exercise. Given an artifact (and optionally a specific SD-NNN id), select the debt item, gather context — walking up to the parent artifact when the item was inherited — pose the open choice to the operator, and record the resolution. Use when an operator wants to step in and settle open specification debt."
+argument-hint: "<artifact-path> [SD-NNN]"
+disable-model-invocation: true
 ---
 # smithy.resolve
 

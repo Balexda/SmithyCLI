@@ -1,6 +1,8 @@
 ---
 name: smithy-ignite
 description: "Ignite a broad idea into a structured RFC with milestones one-shot. Runs clarify, drafts the RFC, creates a PR, and renders a standardized terminal summary without intermediate approval gates."
+argument-hint: "<idea|prd-path|rfc-path>"
+disable-model-invocation: true
 ---
 # smithy-ignite
 

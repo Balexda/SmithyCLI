@@ -1,6 +1,8 @@
 ---
 name: smithy-mark
 description: "Transform an idea, RFC, or feature map into a feature specification with user stories, data model, and contracts. Use when you need structured planning before implementation."
+argument-hint: "<feature-description|rfc-path|features-path> [<feature-number>]"
+disable-model-invocation: true
 ---
 # smithy.mark
 

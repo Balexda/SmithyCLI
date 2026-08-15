@@ -28,9 +28,14 @@ See the README in each subdirectory for details on its contents and conventions.
 - **Body**: Markdown with Handlebars expressions. Dotprompt resolves partials
   (`{{>snippet-name}}`) and conditionals (`{{#ifAgent}}...{{/ifAgent}}`) at
   deploy time.
-- **Deploy transform**: Frontmatter is stripped when deploying Claude
-  commands/prompts (kept for Gemini and Codex skills). Files are renamed from
-  `.prompt` to `.md`. Sub-agents deploy with frontmatter intact to
+- **Deploy transform**: Claude **command** frontmatter is *translated* — reduced
+  to the keys Claude Code reads on a command file (`description`,
+  `argument-hint`, `disable-model-invocation`, `allowed-tools`, `model`,
+  `context`, `agent`, `hooks`), with `name` and every other source key dropped;
+  see [`commands/README.md`](commands/README.md#frontmatter). Claude **prompt**
+  frontmatter is still stripped outright — prompts are read as files, not
+  registered. Gemini and Codex keep the source block verbatim for both. Files
+  are renamed from `.prompt` to `.md`. Sub-agents deploy with frontmatter intact to
   `.claude/agents/` (Claude) and are translated into Codex custom-agent TOML at
   `.codex/agents/` — note the two filename schemes: Claude keeps the source
   `.prompt` filename (`smithy.plan.prompt` → `smithy.plan.md`) while Codex uses

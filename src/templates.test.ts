@@ -12,6 +12,7 @@ import {
   type ComposedTemplates,
 } from './templates.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
+import { toClaudeCommandContent } from './command-frontmatter.js';
 
 describe('stripFrontmatter', () => {
   it('removes YAML frontmatter from content', () => {
@@ -2056,6 +2057,8 @@ describe('getComposedTemplates', () => {
       '---\n' +
       'name: smithy-audit\n' +
       'description: "Context-aware artifact auditor. Reviews any Smithy artifact by extension, or reviews code on a forge branch against its upstream spec context."\n' +
+      'argument-hint: "[<artifact-path>]"\n' +
+      'disable-model-invocation: true\n' +
       '---\n';
     expect(audit.startsWith(expectedFrontmatter)).toBe(true);
   });
@@ -4697,5 +4700,81 @@ describe('getComposedTemplates artifactsRoot', () => {
     const c = await getComposedTemplates('claude', '~/.smithy/myrepo/');
     const strike = c.commands.get('smithy.strike.md')!;
     expect(strike).toContain('Do not `git push`');
+  });
+});
+
+describe('command template frontmatter contract', () => {
+  // Claude Code advertises `.claude/commands/*.md` through the same registry
+  // skills use, and drives that entry from this block. Every command therefore
+  // has to declare its registry metadata at the source, where all three
+  // deployers can see it.
+  const commandsDir = path.join(process.cwd(), 'src/templates/agent-skills/commands');
+  const commandFiles = fs.readdirSync(commandsDir).filter(f => f.endsWith('.prompt'));
+
+  const frontmatterOf = (file: string): string => {
+    const raw = fs.readFileSync(path.join(commandsDir, file), 'utf8');
+    const match = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+    expect(match, `${file} has no frontmatter block`).not.toBeNull();
+    return match![1]!;
+  };
+
+  it('finds every command template', () => {
+    expect(commandFiles.length).toBeGreaterThanOrEqual(13);
+  });
+
+  it.each(commandFiles)('%s declares a non-empty description', file => {
+    const description = frontmatterOf(file).match(/^description:\s*(.+)$/m)?.[1]?.trim();
+    expect(description, `${file} is missing description:`).toBeTruthy();
+    // The H1 recycled as a description ("smithy.audit: smithy-audit") is the
+    // failure mode this contract exists to prevent — a real description is a
+    // sentence, not a slug.
+    expect(description!.length).toBeGreaterThan(30);
+  });
+
+  it.each(commandFiles)('%s declares an argument-hint', file => {
+    const hint = frontmatterOf(file).match(/^argument-hint:\s*(.+)$/m)?.[1]?.trim();
+    expect(hint, `${file} is missing argument-hint:`).toBeTruthy();
+  });
+
+  it.each(commandFiles)('%s opts out of model invocation', file => {
+    // Every Smithy command is an explicit pipeline step the operator drives.
+    // Leaving them model-invocable spends registry context on 13 entries that
+    // should never auto-fire.
+    expect(frontmatterOf(file)).toMatch(/^disable-model-invocation:\s*true$/m);
+  });
+
+  it('keeps the source `name` for the Gemini and Codex skill-directory scheme', () => {
+    for (const file of commandFiles) {
+      expect(frontmatterOf(file), file).toMatch(/^name:\s*smithy-/m);
+    }
+  });
+});
+
+describe('command frontmatter reaches each agent', () => {
+  it('Claude commands carry description, argument-hint, and the invocation opt-out', async () => {
+    const claude = await getComposedTemplates('claude');
+    for (const [file, content] of claude.commands) {
+      const deployed = toClaudeCommandContent(content);
+      expect(deployed.startsWith('---\n'), `${file} lost its frontmatter`).toBe(true);
+      const block = deployed.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)![1]!;
+      expect(block, file).toMatch(/^description:/m);
+      expect(block, file).toMatch(/^argument-hint:/m);
+      expect(block, file).toMatch(/^disable-model-invocation:\s*true$/m);
+      // `name:` is the Codex spelling (smithy-audit); the Claude command is
+      // named by its filename (smithy.audit.md → /smithy.audit).
+      expect(block, file).not.toMatch(/^name:/m);
+    }
+  });
+
+  it('Gemini and Codex still receive the source block verbatim, `name` included', async () => {
+    for (const variant of ['gemini', 'codex'] as const) {
+      const composed = await getComposedTemplates(variant);
+      for (const [file, content] of composed.commands) {
+        const block = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)?.[1];
+        expect(block, `${variant}/${file} has no frontmatter`).toBeTruthy();
+        expect(block!, `${variant}/${file}`).toMatch(/^name:\s*smithy-/m);
+        expect(block!, `${variant}/${file}`).toMatch(/^description:/m);
+      }
+    }
   });
 });

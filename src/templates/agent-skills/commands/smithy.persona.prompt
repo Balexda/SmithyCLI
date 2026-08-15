@@ -1,6 +1,8 @@
 ---
 name: smithy-persona
 description: "Author durable .persona.md reference artifacts. Personas are cross-RFC, narrative-prose persona files stored flat under docs/personas/, identified by their filename slug."
+argument-hint: "<persona-description|rfc-path>"
+disable-model-invocation: true
 ---
 # smithy-persona
 
