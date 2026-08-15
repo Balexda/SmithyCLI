@@ -78,27 +78,15 @@ For each finding, produce all four elements:
    Include brief reasoning. For High-confidence findings, this must be
    concrete and ready for the parent agent to apply verbatim (e.g., exact
    text to insert, section to add, reference to correct).
-3. **Impact**: Critical / High / Medium / Low — how much does leaving this
-   unresolved affect the quality of the artifact?
-4. **Confidence**: High / Medium / Low — how confident are you that the
-   recommended resolution is correct?
+3. **Impact** — how much does leaving this unresolved affect the quality of
+   the artifact?
+4. **Confidence** — how confident are you that the recommended resolution is
+   correct?
 
-### Impact guidelines
+Both scales are the pipeline's shared ones:
 
-| Level | Meaning |
-|-------|---------|
-| **Critical** | Leaving this unresolved would invalidate the artifact or cause significant downstream rework. Must be addressed. |
-| **High** | Materially affects scope, architecture, or correctness. Unresolved leads to meaningful wasted effort. |
-| **Medium** | Affects quality or completeness but can be corrected later without major rework. |
-| **Low** | Minor improvement or stylistic concern. Negligible downstream cost if left as-is. |
+{{>debt-grading}}
 
-### Confidence guidelines
-
-| Level | Meaning |
-|-------|---------|
-| **High** | Strong evidence in the audited artifacts, codebase, or conventions. The recommended resolution is concrete and you would be surprised if the user disagreed. |
-| **Medium** | Reasonable inference but multiple valid fixes exist. The user might reasonably choose differently. |
-| **Low** | Genuine uncertainty. You are guessing, or the resolution depends on information not present in the audited artifacts. |
 
 ### Ordering
 
@@ -132,29 +120,25 @@ For each, record a structured `Refinement` entry containing:
   insert, section to add, reference to correct). Be specific enough that the
   parent agent can apply it without re-analysis.
 - **Rationale** — a one-line justification tied back to the finding statement
-- **Impact** — Critical / High / Medium / Low (from Step 2)
+- **Impact** — from Step 2
 
 These populate the `refinements` field of the returned `RefineResult`. The
 parent agent applies them to disk during its Phase 0 refinement step.
 
 ### Specification Debt (cannot confidently resolve)
 
-Apply the **same kind gate** as `smithy-clarify` Step 3b before
-routing a finding to debt: a finding qualifies as debt only if it
-names an unresolved choice between two or more meaningfully different
-paths and contains no prescription ("Implementers verify…",
-"Mitigation: pin both…", "Resolution: X owns A and Y owns B"). See
-`smithy-clarify` Step 3b for the full kind-gate rubric and routing
-table; do not duplicate it here.
+Apply the shared kind gate before routing a finding to debt. It is the
+same gate the clarification and review sub-agents apply:
 
-Findings that are really requirements, acceptance tests, dependency/
-coordination notes, deferral records, or post-hoc resolution notes
-are **not dropped** — they still carry information the artifact
-should reflect. Route them as `refinements` rather than `debt_items`,
-with the `Target` pointed at the proper home named in `smithy-clarify`
-Step 3b's routing table (`### Functional Requirements`, `### Acceptance
+{{>kind-gate}}
+
+
+**How you route a finding the gate rejects.** You emit no `kind` field,
+so nothing the gate rejects is dropped — it becomes a `refinement`
+rather than a `debt_item`, with the `Target` pointed at the home the
+routing table names (`### Functional Requirements`, `### Acceptance
 Scenarios`, `## Out of Scope`, the RFC's Cross-Cutting Governance
-matrix, etc.). The parent command applies the refinement to that
+matrix, and so on). The parent command applies the refinement to that
 section verbatim; the debt table stays clean.
 
 Everything that passes the kind gate where **Confidence is Medium or
@@ -169,10 +153,10 @@ For each, record a structured `DebtItem` entry containing:
   Never a directive. This becomes the item's detail section, not a
   table cell, so it is not width-constrained.
 - **Source Category** — the audit category that produced the finding
-- **Impact** — Critical / High / Medium / Low (from Step 2)
-- **Confidence** — Medium or Low (from Step 2). The column itself
-  admits `High` as well; refine never emits it, because a
-  High-confidence finding becomes a refinement rather than debt.
+- **Impact** — from Step 2
+- **Confidence** — `Medium` or `Low` (from Step 2). The column admits
+  `High` as well; refine never emits it, because a High-confidence
+  finding becomes a refinement rather than debt.
 - **Origin** — `local`. Everything refine produces is discovered in
   the artifact under review.
 

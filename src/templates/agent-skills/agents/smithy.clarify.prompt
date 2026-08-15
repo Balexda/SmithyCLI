@@ -61,22 +61,13 @@ For each candidate, produce all four elements:
 4. **Confidence**: High / Medium / Low — how confident are you that the
    recommended answer is correct?
 
-### Impact guidelines
+Both scales are the pipeline's shared ones:
 
-| Level | Meaning |
-|-------|---------|
-| **Critical** | Getting this wrong would invalidate the artifact or cause significant rework. When confidence is High, proceed as a `[Critical Assumption]`. |
-| **High** | Materially affects scope, architecture, or user experience. Wrong answer leads to meaningful wasted effort. |
-| **Medium** | Affects quality or completeness but can be corrected later without major rework. |
-| **Low** | Minor preference or stylistic choice. Wrong answer has negligible downstream cost. |
+{{>debt-grading}}
 
-### Confidence guidelines
 
-| Level | Meaning |
-|-------|---------|
-| **High** | Strong evidence in codebase, docs, or conventions. You would be surprised if the user disagreed. |
-| **Medium** | Reasonable inference but multiple valid approaches exist. The user might reasonably choose differently. |
-| **Low** | Genuine uncertainty. You are guessing or the codebase provides no clear signal. |
+A Critical-impact candidate you are confident about is not debt — carry it
+forward as a `[Critical Assumption]` per Step 3a.
 
 ---
 
@@ -101,38 +92,23 @@ will proceed with the assumption stream as recorded assumptions.
 
 ### Step 3b: Kind gate (applied only to Medium/Low candidates)
 
-A Medium/Low candidate qualifies as a `debt_items` row only if **all
-three** are true:
+A Medium/Low candidate qualifies as a `debt_items` row only if it is
+`steering` under the shared gate below. This is the same gate the review
+sub-agents apply to their findings; read "finding" as "candidate"
+throughout.
 
-1. **Open question**: the description names an unresolved choice the
-   codebase, conventions, and prior art cannot settle.
-2. **Named alternatives**: two or more meaningfully different paths
-   exist, and picking between them changes what the artifact specifies.
-3. **No prescription**: the description does not also tell the
-   implementer what to do, nor what to verify, nor when to defer it.
+{{>kind-gate}}
 
-Candidates that **pass** the gate go to `debt_items`. Candidates that
-**fail** are not silently discarded — they still represent information
-the model wants to surface. Route them to `assumptions` with a
+
+**How you route a candidate the gate rejects.** A review agent records
+the answer by setting a different `kind` on the finding and letting its
+parent file it. You emit no `kind` field, so you route by stream
+instead: send the candidate to `assumptions` with a
 `[Critical Assumption]` annotation regardless of Impact, so the parent
-command can lift them into the artifact's proper section
-(`### Functional Requirements`, `### Acceptance Scenarios`,
-`## Out of Scope`, the RFC's Cross-Cutting Governance matrix, the PR
-body, etc.) when populating the artifact. The annotation flags the
-finding for human attention because the model's confidence is
-non-High.
-
-The table below names the leak kinds and where they ultimately belong
-in the artifact:
-
-| If the candidate is really… | Tell the model | Proper home |
-|-----------------------------|----------------|-------------|
-| **A requirement** ("X must Y", "Implementers verify Z", "Mitigation: pin both files", "Resolution: X owns A and Y owns B") | the answer is known; the model is just writing the requirement | the artifact's `### Functional Requirements` (specs) or RFC body |
-| **A load-bearing assumption** ("Assumption: a retry count of 5 is sufficient", "Assumption: X is acceptable for now") | the model already chose; this is an assumption stated as if it were a question | the artifact's `## Assumptions` section, with `[Critical Assumption]` if the impact is Critical |
-| **An acceptance test** ("acceptance criteria require empirically capturing X", "Verification needed against actual Y at render/cut time") | this is verification work, not a steering choice | the user story's `### Acceptance Scenarios` |
-| **A dependency / coordination note** ("F1.5 and F1.6 both touch file Z; second-to-land rebases", "Tracked separately so SD-N's resolution explicitly closes both") | the RFC's Cross-Cutting Governance / touched-files matrix and `## Dependency Order` table already track this | the RFC's governance section, never debt |
-| **Future work / deferral** ("deferred to follow-up", "out of scope this round", "intentionally not authored in this round") | the decision to defer is already made; debt is forward-looking, not a deferral record | the artifact's `## Out of Scope` plus a follow-up GitHub issue |
-| **A resolution record** ("this was fixed in the same PR", "Resolution: resolved YYYY-MM-DD — verified that…", "Recorded here so a future maintainer can re-evaluate; no action expected", "reviewer's concern investigated and dismissed") | debt is forward-looking; backward-looking notes belong in the PR description or, at most, in a row whose `status` is already `resolved` | the PR body, never an `open` debt row |
+command lifts it into the home the routing table names when it
+populates the artifact. Nothing is discarded either way — the
+annotation flags the item for human attention precisely because your
+confidence is non-High.
 
 **Positive test for `debt_items`:** before recording any item as debt,
 you must be able to phrase its description as a question or as
@@ -189,8 +165,8 @@ Assumptions block contains one item. Debt list contains two items.
 | Candidate | Confidence | Kind gate | Triage result |
 |-----------|-----------|----------|--------------|
 | "Auth provider" — inferred from existing OAuth setup | High | not applied (Step 3a) | Assumption |
-| "Mitigation: pin the stub string in both the survey template and the eval scenario" | Medium | **fails** (prescription, no named alternatives) | Assumption with `[Critical Assumption]` — the parent will lift it into `### Functional Requirements` |
-| "Whether scenarios that create a PR need `gh` stub credentials, regex alternation, or assertion against the failure branch" | Medium | **passes** (open question + 3 named paths + no prescription) | Debt item |
+| "Mitigation: pin the stub string in both the survey template and the eval scenario" | Medium | **fails** — phrasable only as a directive, and it names no alternatives | Assumption with `[Critical Assumption]` — the parent will lift it into `### Functional Requirements` |
+| "Whether scenarios that create a PR need `gh` stub credentials, regex alternation, or assertion against the failure branch" | Medium | **passes** — open question, three named paths, human-only | Debt item |
 
 The assumptions block contains two items; one is a true high-confidence
 inference and one is a Critical-flagged leak that the parent must route
@@ -227,8 +203,8 @@ re-run." The debt table is already in `debt_items` — do not duplicate it in
      sequential), Title (a slug of 40 characters or fewer naming the
      unresolved choice), Description (the full statement, 1–3 sentences —
      this becomes the item's detail section, not a table cell), Source
-     Category, Impact (`Critical`/`High`/`Medium`/`Low`), Confidence
-     (`High`/`Medium`/`Low`), Origin (`local` — everything you produce is
+     Category, Impact, Confidence, and Origin, each on the scale defined
+     under Step 2 (`Origin` is always `local` — everything you produce is
      discovered in the artifact being authored). There is no Status or
      Resolution field: an item's lifecycle is carried structurally by the
      parent artifact's `## Specification Debt` section, not by a column.

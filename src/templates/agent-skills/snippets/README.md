@@ -20,7 +20,11 @@ its contents. The snippet file itself is never deployed.
 | `audit-checklist-features.md` | Audit checklist for feature map artifacts | smithy.audit |
 | `audit-checklist-tasks.md` | Audit checklist for task plan artifacts | smithy.audit |
 | `feature-kinds.md` | Feature kind (`backend`/`ui`) + build/wire phase field schema and the two-feature seam; the single source of the kind/phase fields | smithy.render, smithy.audit |
-| `review-protocol.md` | Read-only findings protocol shared by review agents (Finding structure, the `kind` gate, kind × severity × confidence triage, no file edits) | smithy.plan-review, smithy.implementation-review |
+| `review-protocol.md` | Read-only findings protocol shared by review agents: the Finding structure, the nested `kind-gate`, and the report-don't-act rule. Deliberately does **not** carry the parent-side consequence table — that is `plan-review-triage`, composed by the commands that own the on-disk action | smithy.plan-review, smithy.implementation-review, smithy.forge (degraded branch) |
+| `kind-gate.md` | The single definition of the `kind` gate: the three kinds, the three-part steering test (open question + named alternatives + human-only), the positive test that rejects directives, the routing table naming a home for every non-steering kind, and the calibration rule. Before this snippet the gate had two non-identical homes — review-protocol's and `smithy-clarify` Step 3b's — and they disagreed on the third condition | review-protocol; smithy.clarify; smithy.refine |
+| `debt-row-shape.md` | The `## Specification Debt` row's field rules: the `Impact` and `Confidence` enums stated positively, the review-severity → `Impact` mapping (`Important` becomes `High`), and the `Title` / `Source Category` / `Origin` rules. Composed wherever a row is written, so the enums cannot drift between producers | plan-review-triage; debt-grading |
+| `debt-grading.md` | Nests `debt-row-shape`, then adds what it means to *choose* an `Impact` or `Confidence` level. Split out because only clarify and refine grade a candidate from nothing — a parent command transcribing a review finding maps severity and copies confidence mechanically, and shipping it the grading rubric at every plan-review site would cost far more than it informs (P-1) | smithy.clarify; smithy.refine |
+| `plan-review-triage.md` | The parent-side kind × severity × confidence consequence table and the debt / `IQ-NNN` row-append rules, plus the nested `debt-row-shape`. Written against two terms the composing command binds just above the composition point — **the target artifact** and **the review note surface** — because commands disagree on both (strike and forge note findings in terminal output, the rest in the PR body) | smithy.mark, smithy.cut, smithy.ignite, smithy.render, smithy.strike, smithy.forge |
 | `open-implementation-questions.md` | The whole `## Open Implementation Questions` artifact section for tasks files: the `IQ-NNN` table (`ID`, `Question`, `Slice`, `Settled By`, `Origin`) and its empty-state line. Holds unknowns the implementer settles by building, so they stay out of the `## Specification Debt` decision queue. Carries its own voice tag. Must never contain a fenced code block: the host embeds it inside a markdown fence, and an inner fence would close the host early | smithy.cut |
 | `guidance-shell.md` | Shell environment guidance | smithy.guidance |
 | `tdd-protocol.md` | TDD workflow protocol | smithy.implement |
@@ -61,6 +65,19 @@ its contents. The snippet file itself is never deployed.
   (shared by the `smithy.implement` agent and `smithy.forge`) and
   `review-protocol.md` (shared across `smithy.plan-review` /
   `smithy.implementation-review` and forge).
+- **Split a protocol by who acts on it, not by who reads it.** `review-protocol`
+  once carried a section titled "applied by the parent command, not by the
+  review agent", which meant every review agent paid for a table it must never
+  act on while no parent could see it — so all six parents hand-copied their
+  own and drifted. The agent-facing half (`kind-gate`) and the parent-facing
+  half (`plan-review-triage`) are separate snippets, and each side composes
+  only what it acts on.
+- **Leave per-consumer variation as a named term, not a parameter.** Partials
+  take no arguments here. When one protocol has genuinely different
+  destinations per command, name the varying thing in the snippet (**the
+  target artifact**, **the review note surface**) and require the composing
+  command to bind it in the sentence immediately above the `{{>partial}}`.
+  That keeps one table for every consumer without a templating mechanism.
 - **Snippets are content, not commentary.** A snippet is inlined verbatim into
   a deployed agent skill, so it must read as a direct instruction. Do not
   narrate future/out-of-scope work ("lands in a later story", "there is no

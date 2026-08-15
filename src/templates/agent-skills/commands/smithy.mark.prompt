@@ -714,8 +714,8 @@ no checkboxes are flipped and no prose is rewritten.
 Write-back procedure:
 
 1. **Locate the `## Dependency Order` table** in the `.features.md` file
-   (locate by heading name, not by position). The table has the columns
-   `ID | Title | Depends On | Artifact`, with one `F<N>` row per feature.
+   (locate by heading name, not by position). It is the same table Routing
+   parsed to decide which features already have specs.
 2. **Find the matching row** whose `ID` cell equals `F<N>` where `<N>` is the
    current feature number (the one this spec was just created for). Match by
    the `F<N>` identifier, not by title or row position.
@@ -766,43 +766,20 @@ it:
   map's dependency-order table.
 - **artifact_type** — `spec`.
 
-The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared kind × severity × confidence triage
-table from the contracts, reading each finding's `kind` first. Only a `steering` finding —
-where a human must pick between named alternatives and the pick changes what
-gets built — can reach the debt table.
+For the triage below, **the target artifact** is the spec artifact set just
+written — record every debt row in the `.spec.md` file, and apply fixes to
+whichever of the three files the finding's `artifact_path` names. **The
+review note surface** is the PR body; a Low-confidence `implementation`
+finding goes there under an **Implementation questions** heading, since a
+spec carries no `## Open Implementation Questions` section and `smithy.cut`
+re-derives the unknown from its own plan-review pass when the tasks file is
+authored.
 
-| Kind             | Severity              | Confidence | Action                                                                                              |
-|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
-| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
-| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| `steering`       | Important             | Any        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
-| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note it in the PR body under an **Implementation questions** heading. This artifact has no `## Open Implementation Questions` section — that section is a tasks-file structure, and nothing reads a PR body, so the note is for the human reviewer. The unknown itself is settled while building, and `smithy.cut` re-derives it from its own plan-review pass when the tasks file is authored. |
-| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
-| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
+{{>plan-review-triage}}
 
-For each `steering` finding routed to debt — confidence does not matter, since
-steering is never auto-applied — append a new row to the
-`.spec.md` file's `## Specification Debt` index table with the next available
-`SD-NNN` identifier (continue numbering from whatever clarify already wrote
-in Phase 2 — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
-detail section, derive a `Title` slug of 40 characters or fewer from it, set
-`Source Category` to `plan-review:<finding category>` (e.g.,
-`plan-review:Internal contradiction`), map severity into Impact (`Critical`
-stays `Critical`; `Important` becomes `High` — `Important` is not a valid
-`Impact` value) and copy confidence into Confidence, and set `Origin` to
-`local`.
 
-For each High-confidence `implementation` or `hygiene` finding, edit the referenced spec artifact file in
-place using the `proposed_fix`. The commit below captures both the original
-artifacts and the applied fixes in the same diff.
-
-If the agent returns drift findings (assumption-output drift category),
-surface them prominently in the PR body so the reviewer can confirm the
-underlying assumption rather than silently accepting the applied fix.
-
-The review agent never modifies files itself — all on-disk changes are made
-here, by mark.
+The commit below captures both the original artifacts and the applied fixes
+in the same diff.
 
 ### Commit and create the PR
 
@@ -870,7 +847,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Dependency Order** | For `kind: backend` (or absent-kind) specs: does the spec contain a `## Dependency Order` 4-column table (`ID \| Title \| Depends On \| Artifact`) listing every user story with a `US<N>` ID (no leading zeros)? For `kind: ui` specs: does it instead contain the typed UI Spec Ledger — a 6-column table (`ID \| Kind \| Title \| Depends On \| Design \| Artifact`) with `SC<N>`/`FL<N>`/`US<N>` rows whose `Kind` matches the ID prefix (`screen`/`flow`/`story`), `Design` (`none`/`import`/`brief`) set on screen rows and `—` elsewhere, and screen/flow titles naming their durable `.design.md`/`.flow.md` files? Do not flag a valid UI ledger as missing the backend shape, and do not rewrite it back to the 4-column US-only table. In both shapes: does each `Depends On` cell contain `—` or comma-separated same-table IDs (no prose)? Does each `Artifact` cell contain `—` or a repo-relative path to the corresponding `.tasks.md` file (always `—` in mark's own output)? Are any `- [ ]`/`- [x]` checkboxes present in the section (an error if so)? |
+  | **Dependency Order** | Does the spec carry the ordering table its authoring path calls for, in the exact shape Phase 3 scaffolds — the backend `## Dependency Order` for `kind: backend` and absent-kind specs, or the typed UI Spec Ledger for `kind: ui`? Check every row against that shape: IDs, `Depends On` cells, `Design` cells where the shape has them, and `Artifact` cells (always `—` in mark's own output). Do not flag a valid UI ledger as missing the backend shape, and never rewrite one into the other. Flag any checkbox markup as an error. |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.
@@ -904,43 +881,20 @@ the spec artifact set. Pass it:
   (`<slug>.spec.md`, `<slug>.data-model.md`, `<slug>.contracts.md`).
 - **artifact_type** — `spec`.
 
-The agent is read-only and returns a `ReviewResult` containing `findings` and a
-`summary`. Process the findings using the shared kind × severity × confidence triage
-table, reading each finding's `kind` first. Only a `steering` finding —
-where a human must pick between named alternatives and the pick changes what
-gets built — can reach the debt table.
+For the triage below, **the target artifact** is the refined spec artifact
+set — record every debt row in the `.spec.md` file, and apply fixes to
+whichever of the three files the finding's `artifact_path` names. **The
+review note surface** is the refinement PR body; a Low-confidence
+`implementation` finding goes there under an **Implementation questions**
+heading, since a spec carries no `## Open Implementation Questions` section
+and `smithy.cut` re-derives the unknown from its own plan-review pass when
+the tasks file is authored.
 
-| Kind             | Severity              | Confidence | Action                                                                                              |
-|------------------|-----------------------|------------|-----------------------------------------------------------------------------------------------------|
-| `implementation` or `hygiene` | Critical or Important | High | Apply the `proposed_fix` to the relevant spec artifact on disk. Note Critical fixes in the PR body.  |
-| `steering`       | Critical              | Any        | Do not apply — a steering finding is never auto-applied. Append to the spec's `## Specification Debt` section. Flag in PR for the reviewer.     |
-| `steering`       | Important             | Any        | Do not apply. Append to the spec's `## Specification Debt` section.                                  |
-| `implementation` | Critical or Important | Low        | Do not apply and do not record as debt. Note it in the PR body under an **Implementation questions** heading. This artifact has no `## Open Implementation Questions` section — that section is a tasks-file structure, and nothing reads a PR body, so the note is for the human reviewer. The unknown itself is settled while building, and `smithy.cut` re-derives it from its own plan-review pass when the tasks file is authored. |
-| `hygiene`        | Critical or Important | Low        | Do not apply and do not record as debt. List in the PR body for the reviewer to correct.             |
-| Any              | Minor                 | Any        | Do not apply. Note in the PR body only.                                                              |
+{{>plan-review-triage}}
 
-For each `steering` finding routed to debt — confidence does not matter, since
-steering is never auto-applied — append a new row to the
-`.spec.md` file's `## Specification Debt` index table with the next available
-`SD-NNN` identifier (continue numbering from whatever the spec already
-contains — do not reset). Use the finding's `description` as the body of a new `### SD-NNN — <Title>`
-detail section, derive a `Title` slug of 40 characters or fewer from it, set
-`Source Category` to `plan-review:<finding category>`, map severity into
-Impact (`Critical` stays `Critical`; `Important` becomes `High` —
-`Important` is not a valid `Impact` value) and copy confidence into
-Confidence, and set `Origin` to `local`.
 
-For each High-confidence `implementation` or `hygiene` finding, edit the referenced spec artifact file in
-place using the `proposed_fix`. The Phase 0c commit below captures both the
-refine diff and the plan-review fixes in the same diff.
-
-If the agent returns drift findings (assumption-output drift category),
-surface them prominently in the refinement PR body so the reviewer can
-confirm the underlying assumption rather than silently accepting the applied
-fix.
-
-The review agent never modifies files itself — all on-disk changes are made
-here, by mark.
+The Phase 0c commit below captures both the refine diff and the plan-review
+fixes in the same diff.
 
 **No-op check** (runs after refine and plan-review): if refine returned an
 empty `refinements` list, plan-review returned no High-confidence fixes and

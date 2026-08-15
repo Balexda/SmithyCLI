@@ -147,8 +147,15 @@ The canonical schema and rules live in `src/templates/agent-skills/README.md`. W
 `## Specification Debt` is a **decision queue for a human**: a row belongs there
 only when a person must pick between named alternatives and the pick changes
 what gets built. Everything else the planning pass does not know has a
-different home, decided by the kind gate that `smithy-clarify` (Step 3b) and
-`smithy-plan-review` (Kind Gate) apply before any severity × confidence triage:
+different home, decided by the kind gate before any severity × confidence
+triage. The gate has one definition — `snippets/kind-gate.md` — composed by
+`smithy-clarify` (Step 3b), `smithy-refine`, and both review agents via
+`snippets/review-protocol.md`; the parent commands compose the consequence
+table from `snippets/plan-review-triage.md`. Only the reroute for a rejected
+candidate differs by consumer: the review agents name a different `kind` and
+let the parent file it, while clarify (which emits no `kind`) routes to its
+assumption stream with a `[Critical Assumption]` annotation and refine routes
+to `refinements`, both pointed at the home the gate's routing table names.
 
 | Kind | Home |
 |------|------|
