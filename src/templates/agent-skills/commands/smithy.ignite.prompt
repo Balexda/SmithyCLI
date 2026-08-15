@@ -430,12 +430,15 @@ Before drafting orchestrator-inline RFC prose in this phase, load
 source for directly authored RFC sections such as Decisions and coherence
 repairs. Keep Summary, Motivation / Problem Statement, and Personas delegated
 to `smithy-prose` where those sub-phases already own the narrative drafting,
-and do not inline the helper's taxonomy here. Sub-phase 3b is the sole
-Personas exception to this delegation rule: covered personas are projected
-inline by the orchestrator from their `.persona.md` files, and only the
-uncovered-persona gaps are delegated to `smithy-prose` — so when every needed
-persona is covered, no `smithy-prose` Personas dispatch occurs at all. See
-Sub-phase 3b for the full projection-and-gap procedure.
+and do not inline the helper's taxonomy here. Two Personas paths are
+exceptions to this delegation rule, and both follow the same
+project-covered / delegate-uncovered split: Sub-phase 3b's initial draft, and
+the Sub-phase 3g harmonize Personas repair branch. In both, covered personas
+are projected inline by the orchestrator from their `.persona.md` files, and
+only the uncovered-persona gaps are delegated to `smithy-prose` — so when
+every needed persona is covered, no `smithy-prose` Personas dispatch occurs at
+all. See Sub-phase 3b for the full projection-and-gap procedure and Sub-phase
+3g for the repair-time variant.
 
 {{#ifAgent}}
 ### RFC File Creation
@@ -640,7 +643,9 @@ Append the returned content to the RFC file.
 This sub-phase is primarily orchestrator-inline. The only exception is the
 Personas repair branch in step 3 below, which may conditionally re-dispatch
 **smithy-prose** for uncovered persona gaps when the coherence pass detects
-that the `## Personas` section is missing, empty, or placeholder-only. No other
+that the `## Personas` section is missing, empty, placeholder-only, or still
+misplaced after the reorder step. File-sourced personas are re-projected
+inline in that same branch and never go through that dispatch. No other
 sub-agents are dispatched in 3g.
 
 1. Read the complete `<slug>.rfc.md` from disk.
