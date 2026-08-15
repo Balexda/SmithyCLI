@@ -265,3 +265,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for test file details. Agent and human te
 - To test slash commands in Claude Code: run `smithy init` targeting a test repo, then start a **new** Claude Code session in that repo. Claude Code must be restarted to pick up new/changed commands.
 - The `--permissions` / `--no-permissions` flags control whether permissions are deployed at the selected location (`repo` or `user`).
 - The `templatesBaseDir` path in the built CLI resolves to `../src/templates` relative to `dist/`, so `src/templates/` must exist at runtime (it's included in `package.json` `files`).
+
+<!-- smithy:engraved:begin -->
+## Engraved Knowledge
+
+This repository maintains engraved durable knowledge: decisions, invariants,
+and principles. Before planning or making changes, read the applicable records
+under these locations and judge whether they apply to the work at hand.
+
+- docs/decisions/
+- docs/invariants/
+- docs/constitution/
+<!-- smithy:engraved:end -->

@@ -103,3 +103,15 @@ npm test             # Run all tests
 
 Always use the `npm run` / `npm test` scripts — not `npx tsx` / `npx vitest`
 direct invocations.
+
+<!-- smithy:engraved:begin -->
+## Engraved Knowledge
+
+This repository maintains engraved durable knowledge: decisions, invariants,
+and principles. Before planning or making changes, read the applicable records
+under these locations and judge whether they apply to the work at hand.
+
+- docs/decisions/
+- docs/invariants/
+- docs/constitution/
+<!-- smithy:engraved:end -->
