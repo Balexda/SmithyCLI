@@ -122,7 +122,8 @@ solely from the parsed `### Feature N` headings and the `.features.md`
 2. Explore the codebase to understand current architecture, relevant modules,
    and existing patterns that inform the specification.
 3. Determine the spec folder name:
-   - Scan `specs/` for existing folders matching `YYYY-MM-DD-NNN-*`.
+   - Scan `{{artifactsRoot}}specs/` for existing folders matching
+     `YYYY-MM-DD-NNN-*`.
    - Derive `<NNN>` as the next sequential number (zero-padded to 3 digits,
      starting at `001`).
    - Derive `<slug>` from the feature title (when from a feature map) or the
@@ -371,7 +372,10 @@ Guidelines for the spec:
 - Do NOT include implementation phases, milestones, or task breakdowns.
 - Do NOT include specific file paths, function names, or implementation details.
 - DO trace back to RFC sections when input is an RFC.
-- Populate the `## Specification Debt` section from clarify's returned `debt_items`. Assign sequential SD-NNN identifiers starting at SD-001. Carry the title, source_category, impact, confidence, and origin fields into the index table and the description into the item's `### SD-NNN — <Title>` detail section, directly from clarify's return — never reword a description into a directive, and never add an item that did not come from `debt_items`. Everything clarify returns is `Origin: local`, so every item gets a detail section. The kind gate is enforced by `smithy-clarify` Step 3; do not bypass it here by manually appending requirement, acceptance-test, dependency-coordination, deferral, or post-hoc resolution items. Omit `### Resolved` on a first pass — nothing has been resolved yet.
+- Populate the `## Specification Debt` section from clarify's returned
+  `debt_items`.
+  {{>debt-from-clarify}}
+
 - The `## Dependency Order` section lists all user stories in recommended
   implementation sequence as a 4-column table using `US<N>` IDs (e.g., `US1`,
   `US2`). Order rows by dependency graph, not by priority — stories with no
@@ -826,7 +830,8 @@ terminal; the snippet is the contract.
 ## Phase 0: Review Loop (Repeat to Refine)
 
 **If spec artifacts already exist for this feature** (detected by branch name
-matching a `specs/` folder, or by the user pointing to an existing spec):
+matching a `{{artifactsRoot}}specs/` folder, or by the user pointing to an
+existing spec):
 
 ### 0a–0b. Audit & Refinement Questions
 
@@ -931,8 +936,16 @@ went wrong.
 
 Render the shared one-shot output snippet as the terminal output, populating
 Summary (note that "Artifacts produced" describes the refinement diff, not a
-first-pass run), Assumptions (from refine's returned findings), Specification
-Debt (from refine's `debt_items`), and PR (the captured URL).
+first-pass run), Assumptions, Specification Debt, and PR (the captured URL).
+
+A refinement pass runs no clarify, and `RefineResult` carries `refinements`,
+`debt_items`, and `summary` — **no assumptions array**. So the Assumptions
+section is not sourced from refine: render the spec's own `## Assumptions`
+section as it stands after the refinements were applied, preserving each
+`[Critical Assumption]` annotation. If the spec has no assumptions, write the
+snippet's empty-state line. Never invent assumptions from refine's findings.
+Specification Debt is sourced from the refined spec's debt table, per the
+snippet's placeholder guidance.
 
 {{>one-shot-output}}
 

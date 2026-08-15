@@ -137,9 +137,11 @@ same gate the clarification and review sub-agents apply:
 so nothing the gate rejects is dropped — it becomes a `refinement`
 rather than a `debt_item`, with the `Target` pointed at the home the
 routing table names (`### Functional Requirements`, `### Acceptance
-Scenarios`, `## Out of Scope`, the RFC's Cross-Cutting Governance
-matrix, and so on). The parent command applies the refinement to that
-section verbatim; the debt table stays clean.
+Scenarios`, `## Out of Scope`, `## Dependency Order`, and so on). The
+`Target` must name a section the artifact actually has — never a
+section you would have to invent for the finding to fit. The parent
+command applies the refinement to that section verbatim; the debt table
+stays clean.
 
 Everything that passes the kind gate where **Confidence is Medium or
 Low** becomes a debt item.

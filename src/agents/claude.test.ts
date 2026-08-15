@@ -444,6 +444,9 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('mcp__github__pull_request_read');
     expect(list).toContain('mcp__github__add_reply_to_pull_request_comment');
     expect(list).toContain('mcp__github__issue_write');
+    // Issue #554 D4: the gh-issue skill's duplicate-detection step needs a
+    // search path that does not depend on the `gh` CLI being installed.
+    expect(list).toContain('mcp__github__search_issues');
     // Destructive / scope-broadening tools must NOT be auto-allowed.
     expect(list).not.toContain('mcp__github__merge_pull_request');
     expect(list).not.toContain('mcp__github__delete_file');
