@@ -292,8 +292,9 @@ export function loadBaseline(
 
 /**
  * Compare a live skill output against a persisted baseline and emit one
- * `CheckResult` per baseline heading, one per baseline table, and a final
- * aggregate summary entry.
+ * `CheckResult` per baseline heading, one per baseline table, an aggregate
+ * summary entry, and — only when the baseline declares a token envelope — a
+ * trailing token check.
  *
  * The comparator is intentionally a regression signal, not a content lock —
  * additional headings or tables in `output` that are not recorded in
@@ -310,10 +311,14 @@ export function loadBaseline(
  *   1. one check per baseline heading, in baseline order
  *   2. one check per baseline table, in baseline order
  *   3. exactly one `'baseline regression summary'` aggregate check
+ *   4. one `'token envelope'` check, only when `baseline.token_envelope` is
+ *      present — omitted entirely for structural-only baselines
  *
  * The summary's `actual` field enumerates every missing item on a single line
  * so a reviewer can see "what changed" without correlating the per-item
- * checks. When nothing is missing, `actual` is `'no regressions'`.
+ * checks. When nothing is missing, `actual` is `'no regressions'`. The summary
+ * covers structural drift only; token drift is reported by the separate token
+ * check so an out-of-envelope run does not read as a missing heading or table.
  *
  * This function is pure: no I/O, no mutation of `baseline` or `output`.
  *
@@ -321,7 +326,9 @@ export function loadBaseline(
  * @param baseline  The persisted `Baseline` snapshot to compare against.
  * @param tokens    Optional live token totals. Required for token comparison
  *                  when the baseline includes a token envelope.
- * @returns A `CheckResult[]` with per-heading, per-table, and aggregate entries.
+ * @returns A `CheckResult[]` with per-heading, per-table, and aggregate
+ *          entries, plus a trailing token-envelope entry when the baseline
+ *          declares one.
  */
 export function compareToBaseline(
   output: string,
