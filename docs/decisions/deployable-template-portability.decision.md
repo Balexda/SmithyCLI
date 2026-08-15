@@ -16,8 +16,10 @@ establishes: [INV-2]
 
 ## Context
 
-Templates under `src/templates/agent-skills/` deploy verbatim into
-arbitrary target repositories, but they are authored inside SmithyCLI —
+Templates under `src/templates/agent-skills/` are rendered into arbitrary
+target repositories — Handlebars partials resolved, frontmatter stripped
+or kept per target — but their prose ships as written, and they are
+authored inside SmithyCLI —
 where references to `src/manifest.ts`, local issue numbers, spec
 data-models, and this repo's settings are natural to reach for. The
 2026-08 audit (#551) found such references shipped on five surfaces
