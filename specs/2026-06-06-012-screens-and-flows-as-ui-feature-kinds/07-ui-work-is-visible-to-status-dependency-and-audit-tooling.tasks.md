@@ -64,7 +64,7 @@
 
 ### Tasks
 
-- [ ] **Add screen artifact audit support**
+- [x] **Add screen artifact audit support**
 
   Extend audit artifact classification and guidance so `design/screens/<ScreenId>.design.md` files are valid audit targets. The audit should apply the `smithy.helper-screen-design` review checklist and keep screen bodies rationale-only rather than evaluating visual fidelity.
 
@@ -75,7 +75,7 @@
   - Missing or invalid `design_system` is reported
   - Layout prose and state inventories are flagged as out of contract
 
-- [ ] **Add flow artifact audit support**
+- [x] **Add flow artifact audit support**
 
   Extend audit artifact classification and guidance so `design/flows/<FlowId>.flow.md` files are valid audit targets. The audit should apply the `smithy.helper-flow-definition` checklist, including driver-neutral `test-body`, screen references, and intent-only body constraints for AS 7.3.
 
@@ -86,7 +86,7 @@
   - Missing or invalid `test-body` is reported
   - Step lists and executable behavior inside `.flow.md` are flagged as out of contract
 
-- [ ] **Document UI audit routing**
+- [x] **Document UI audit routing**
 
   Update source-template documentation adjacent to `smithy.audit` and the helper skills so maintainers can see which checker owns screen and flow artifact review. Keep the guidance self-contained in deployable templates and avoid source-tree-only path references.
 

@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Render token totals on every case line**
+- [x] **Render token totals on every case line**
 
   Update `evals/lib/report.ts` so `formatReport` includes each result's token totals on every per-case line in the contract shape `input: <N>, output: <N>`. Preserve the existing status token, scenario name, duration, final elapsed line, and final result line behavior for AS 2.1 and AS 2.2.
 
@@ -29,7 +29,7 @@
   - Empty reports remain well formed and do not invent case lines.
   - Unit coverage verifies per-case token rendering for pass, fail, timeout, and error results.
 
-- [ ] **Keep baseline markers visible with token totals**
+- [x] **Keep baseline markers visible with token totals**
 
   Extend the report-formatting coverage for baseline-enabled reports so token totals and baseline markers both appear on the relevant case lines. Keep the existing rule that baseline markers render for all cases only when at least one result carries baseline checks.
 
@@ -40,7 +40,7 @@
   - Existing `baseline: PASS`, `baseline: FAIL`, and `baseline: n/a` marker semantics remain unchanged.
   - Unit coverage verifies AS 2.3 without depending on token-aware baseline envelopes from User Story 3.
 
-- [ ] **Refresh eval report documentation examples**
+- [x] **Refresh eval report documentation examples**
 
   Update `evals/README.md` report examples and surrounding prose so contributors see the token-total line shape when reading the eval workflow documentation. Keep the documentation scoped to formatted report output; do not document token envelopes or token-delta workflows owned by other stories.
 

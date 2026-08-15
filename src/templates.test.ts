@@ -104,7 +104,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(28);
+    expect(snippets.size).toBe(29);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -135,6 +135,7 @@ describe('loadSnippets', () => {
       'engraved-project-resolution.md',
       'spec-debt-section.md',
       'open-implementation-questions.md',
+      'typed-ui-build-profiles.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -729,6 +730,49 @@ describe('feature-kinds snippet', () => {
   });
 });
 
+describe('smithy.audit UI artifact routing', () => {
+  let composed: ComposedTemplates;
+  let audit: string;
+
+  beforeAll(async () => {
+    composed = await getComposedTemplates();
+    audit = composed.commands.get('smithy.audit.md')!;
+  });
+
+  it('recognizes screen and flow durable artifacts as file-argument targets', () => {
+    expect(audit).toContain('`.design.md` under `design/screens/`');
+    expect(audit).toContain('Screen Design Annotation');
+    expect(audit).toContain('`.flow.md` under `design/flows/`');
+    expect(audit).toContain('Flow Definition');
+  });
+
+  it('routes UI artifact audits to the helper-skill contracts', () => {
+    expect(audit).toContain('smithy.helper-screen-design');
+    expect(audit).toContain('smithy.helper-flow-definition');
+    expect(audit).toContain('review against its "Review checklist" section');
+  });
+
+  it('checks required screen contract fields and rationale-only body scope', () => {
+    expect(audit).toContain('`component-path`');
+    expect(audit).toContain('`design_system`');
+    expect(audit).toContain('state inventories');
+    expect(audit).toContain('do not judge visual fidelity');
+  });
+
+  it('checks required flow contract fields and excludes executable behavior', () => {
+    expect(audit).toContain('`screens`');
+    expect(audit).toContain('`test-body`');
+    expect(audit).toContain('no matching `design/screens/<ScreenId>.design.md` annotation');
+    expect(audit).toContain('ordered executable behavior');
+  });
+
+  it('keeps deployed audit guidance self-contained', () => {
+    expect(audit).not.toContain('src/templates/');
+    expect(audit).not.toContain('agent-skills/README.md');
+    expect(audit).not.toContain('snippets/README.md');
+  });
+});
+
 describe('getTemplateFilesByCategory', () => {
   it('returns the correct number of files per category', () => {
     const byCategory = getTemplateFilesByCategory();
@@ -907,8 +951,10 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('command-argument placeholder');
     expect(persona).toContain('use it as the effective command input for');
     expect(persona).toContain('what persona to generate');
-    expect(persona).toContain('continue directly through free-text mode');
+    expect(persona).toContain('continue directly through the two');
+    expect(persona).toContain('mode-selection rules below');
     expect(persona).toContain('do not add an approval STOP');
+    expect(persona).toContain('If the input ends in `.rfc.md`, select **RFC mode**');
     expect(persona).toContain('If the input is non-empty and does **not** end in `.rfc.md`, select');
     expect(persona).toContain('**free-text mode**');
     expect(persona).toContain('Dispatch **smithy-prose** with:');
@@ -922,6 +968,45 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('written from free text with no intermediate approval gates');
     expect(persona).toContain('target persona slug already exists');
     expect(persona).toContain('written and skipped persona paths as explicit result fields');
+  });
+
+  it('smithy.persona renders RFC-mode routing and named persona extraction', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    const routingIdx = persona.indexOf('If the input ends in `.rfc.md`, select **RFC mode**');
+    const freeTextRoutingIdx = persona.indexOf(
+      'If the input is non-empty and does **not** end in `.rfc.md`, select',
+    );
+    const rfcModeIdx = persona.indexOf('## RFC Mode');
+    const freeTextModeIdx = persona.indexOf('## Free-Text Mode');
+
+    expect(routingIdx).toBeGreaterThan(-1);
+    expect(freeTextRoutingIdx).toBeGreaterThan(routingIdx);
+
+    // The ask-fallback is the primary entry path on agents that leave
+    // $ARGUMENTS literal, so a clarified answer must reach RFC mode too.
+    expect(persona).toContain('Route the clarified answer by the same `.rfc.md`');
+    expect(persona).toContain('an answer ending in `.rfc.md`');
+    expect(persona).toContain('selects RFC mode, and any other clear answer selects free-text mode');
+
+    expect(rfcModeIdx).toBeGreaterThan(freeTextRoutingIdx);
+    expect(freeTextModeIdx).toBeGreaterThan(rfcModeIdx);
+
+    const rfcMode = persona.slice(rfcModeIdx, freeTextModeIdx);
+    expect(rfcMode).toContain('Read the input RFC file before drafting, writing');
+    expect(rfcMode).toContain("Locate the RFC's `## Personas` section");
+    expect(rfcMode).toContain('after that heading up to the next H2 heading');
+    expect(rfcMode).toContain('Extract one persona candidate for each clearly named persona');
+    expect(rfcMode).toContain('explicit');
+    expect(rfcMode).toContain('bullet/list item, bold lead-in, or subheading');
+    expect(rfcMode).toContain('Keep the extracted candidate set as a structured list');
+    expect(rfcMode).toContain('as its source of truth');
+    expect(rfcMode).toContain('completes after reporting the candidate set');
+    expect(rfcMode).toContain('Do not draft with');
+    expect(rfcMode).toContain('smithy-prose');
+    expect(rfcMode).toContain('write files, or overwrite artifacts');
+    expect(rfcMode).toContain('Do not infer personas from');
+    expect(rfcMode).toContain('narrative-only prose');
+    expect(rfcMode).toContain('emit empty-section diagnostics');
   });
 
   it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {
@@ -991,6 +1076,56 @@ describe('getComposedTemplates', () => {
     expect(subphase3bBlock).toMatch(/do not\s+dispatch smithy-prose for Personas/);
     expect(subphase3bBlock).toContain('Combine the file-sourced projections and any cold-drafted uncovered gap content');
     expect(subphase3bBlock).toContain('exactly one `## Personas` section');
+  });
+
+  it('smithy.ignite re-discovers file-sourced personas during harmonize repair checks', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    const provenanceIdx = subphase3gBlock.indexOf('Personas repair provenance pre-check');
+    const repairIdx = subphase3gBlock.indexOf('3. **Personas repair.**');
+    const dispatchIdx = subphase3gBlock.indexOf('re-dispatch **smithy-prose**');
+    expect(provenanceIdx).toBeGreaterThan(-1);
+    expect(repairIdx).toBeGreaterThan(provenanceIdx);
+    expect(dispatchIdx).toBeGreaterThan(provenanceIdx);
+    expect(subphase3gBlock).toMatch(/re-run the same\s+durable persona discovery and slug coverage procedure used by sub-phase\s+3b/);
+    expect(subphase3gBlock).toContain('Read the **Persona Artifact Convention** above as the canonical');
+    expect(subphase3gBlock).toContain('active artifacts root');
+    expect(subphase3gBlock).toMatch(
+      /list existing `\.persona\.md` files in that resolved persona\s+directory/,
+    );
+    expect(subphase3gBlock).toMatch(/derive\s+deterministic kebab-case slugs/);
+    expect(subphase3gBlock).toMatch(/exact\s+filename-slug identity/);
+    expect(subphase3gBlock).toContain('`<slug>.persona.md`');
+    expect(subphase3gBlock).toContain('including resumes from an on-disk RFC');
+    expect(subphase3gBlock).toContain('do not rely on');
+    expect(subphase3gBlock).toContain('inline markers');
+    expect(subphase3gBlock).toContain('sidecar files');
+    expect(subphase3gBlock).toMatch(/interactive\s+selection/);
+  });
+
+  it('smithy.ignite classifies harmonize personas against durable file coverage', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    expect(subphase3gBlock).toContain('from persona names or roles surfaced in');
+    expect(subphase3gBlock).toContain('from the current on-disk `## Personas` section');
+    expect(subphase3gBlock).toContain('Record matching personas as');
+    expect(subphase3gBlock).toContain('file-sourced for harmonize/repair purposes');
+    expect(subphase3gBlock).toContain('treat the matching durable');
+    expect(subphase3gBlock).toContain('files as their source of truth');
+    expect(subphase3gBlock).toContain('Personas with no matching durable file');
+    expect(subphase3gBlock).toContain('remain eligible for the existing cold repair path');
+    expect(subphase3gBlock).toContain('is not a repair failure solely because');
+    expect(subphase3gBlock).toContain('projected from durable `.persona.md` files');
   });
 
   it('smithy.pr-review scripts start with bash shebang', () => {
@@ -2498,6 +2633,40 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('**No declaration → nothing to check.**');
     expect(forge).toContain('git rev-parse --show-toplevel');
     expect(forge).toContain('Implementation repo mismatch');
+  });
+
+  it('forge template defines the screen-build profile for typed UI nodes', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('### Typed UI Node Build Profiles');
+    expect(forge).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
+    expect(forge).toContain('Read the referenced `design/screens/<ScreenId>.design.md` before editing');
+    expect(forge).toContain('the committed design skill named by the screen artifact');
+    expect(forge).toContain('behind the resolved feature `flag`');
+    expect(forge).toContain('Use mock data for screen-build work');
+    expect(forge).toContain('Represent every brief state named by the screen intent');
+    expect(forge).toContain('design-system');
+    expect(forge).toContain('tokens and reusable project components');
+    expect(forge).toContain('Honor an attached `bundle` for layout and visual intent');
+    expect(forge).toContain('`brief`');
+    expect(forge).toContain('mode without a bundle and `none` mode are non-blocking');
+    expect(forge).toContain('Refuse to author a new `.design.md` from scratch');
+  });
+
+  it('screen-build profile resolves the gating feature flag or stops', () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain('Resolve the gating feature `flag` before writing code');
+    expect(forge).toContain('`**Design Metadata**` line first');
+    expect(forge).toContain("`**Source Feature Map**` pointer");
+    expect(forge).toContain('never');
+    expect(forge).toContain('ship an ungated screen');
+  });
+
+  it('smithy-implement carries the same typed UI build profile as forge', () => {
+    const implement = composed.agents.get('smithy.implement.md')!;
+    expect(implement).toBeDefined();
+    expect(implement).toContain('**`SC<N>` / `screen-build` tasks** select the screen-build profile');
+    expect(implement).toContain('Resolve the gating feature `flag` before writing code');
+    expect(implement).toContain('Refuse to author a new `.design.md` from scratch');
   });
 
   it('strike template contains ## Specification Debt between ## Decisions and ## Single Slice', () => {

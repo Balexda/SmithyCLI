@@ -158,24 +158,24 @@ function statusToken(status: EvalResult['status']): string {
  * Output shape:
  *
  *     Eval Summary
- *       [PASS] strike-health-check (1234ms)
- *       [FAIL] plan-standalone (5678ms)
- *       [TIMEOUT] scout-standalone (120000ms)
- *       [ERROR] clarify-standalone (42ms)
+ *       [PASS] strike-health-check (1234ms) input: 1200, output: 345
+ *       [FAIL] plan-standalone (5678ms) input: 2300, output: 456
+ *       [TIMEOUT] scout-standalone (120000ms) input: 3400, output: 567
+ *       [ERROR] clarify-standalone (42ms) input: 4500, output: 678
  *
  *     Total elapsed: 127000ms
  *     Result: FAIL (1/4 passed, 4 total)
  *
  * When at least one result in the report has populated `baseline_checks`,
  * each per-case line is extended with a compact `baseline: PASS`,
- * `baseline: FAIL`, or `baseline: n/a` marker (AS 10.3 — the marker only
- * appears when at least one case opts into baselines, so scenarios without
- * a baseline never pollute the default output):
+ * `baseline: FAIL`, or `baseline: n/a` marker after token totals (AS 10.3 —
+ * the marker only appears when at least one case opts into baselines, so
+ * scenarios without a baseline never pollute the default output):
  *
  *     Eval Summary
- *       [PASS] strike-health-check (1234ms) baseline: PASS
- *       [FAIL] plan-standalone (5678ms) baseline: FAIL
- *       [PASS] no-baseline-case (789ms) baseline: n/a
+ *       [PASS] strike-health-check (1234ms) input: 1200, output: 345 baseline: PASS
+ *       [FAIL] plan-standalone (5678ms) input: 2300, output: 456 baseline: FAIL
+ *       [PASS] no-baseline-case (789ms) input: 0, output: 0 baseline: n/a
  *
  *     Total elapsed: 127000ms
  *     Result: FAIL (1/3 passed, 3 total)
@@ -191,7 +191,7 @@ function statusToken(status: EvalResult['status']): string {
  * (US11 AS 11.2, FR-009). Durations render as integer milliseconds with
  * the `ms` suffix uniformly across per-case and total lines. The
  * `Total elapsed:` and `Result:` summary lines are unchanged regardless
- * of whether baseline markers appear (US10 Slice 2 — additions only).
+ * of whether token totals or baseline markers appear.
  */
 export function formatReport(report: EvalReport): string {
   const lines: string[] = ['Eval Summary'];
@@ -202,7 +202,7 @@ export function formatReport(report: EvalReport): string {
 
   for (const result of report.results) {
     const token = statusToken(result.status);
-    let line = `  [${token}] ${result.scenario_name} (${result.duration_ms}ms)`;
+    let line = `  [${token}] ${result.scenario_name} (${result.duration_ms}ms) input: ${result.tokens.input}, output: ${result.tokens.output}`;
     if (anyBaseline) {
       line += ` baseline: ${baselineMarker(result)}`;
     }

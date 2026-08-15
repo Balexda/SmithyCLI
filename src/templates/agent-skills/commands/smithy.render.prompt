@@ -13,11 +13,18 @@ together deliver the milestone's goals.
 
 ## Input
 
-The user's RFC path and optional milestone number: $ARGUMENTS
+The user's RFC path, optional milestone number, and optional `--bundle <path>`:
+$ARGUMENTS
 
 This may be:
 - An **RFC file path** (`.rfc.md`) — auto-selects the next unprocessed milestone.
 - An **RFC file path + milestone number** — targets that specific milestone.
+- **Either of the above plus `--bundle <path>`** — treats the named bundle as
+  prototype-first UI context for any `design: import` features the map emits.
+  `--bundle` is a named argument, so it never competes with the optional
+  milestone number: `<rfc> --bundle <path>` keeps auto-selection, while
+  `<rfc> 3 --bundle <path>` targets milestone 3. A bare path that is not
+  preceded by `--bundle` is never treated as a bundle.
 - An **existing `.features.md` path** — enters the review loop (Phase 0).
 - Empty — ask the user for a path.
 
@@ -188,6 +195,35 @@ Parse the input and prepare the target:
    - RFC path
    - Milestone number and title
    - Derived filename
+   - Import bundle path, if supplied
+
+### Import Bundle Intake
+
+If the input includes a `--bundle <path>` argument, treat that path as a
+boundary object available while drafting the feature map. Read the bundle path
+from `--bundle` only — never from a bare positional argument, so auto-selected
+and explicitly numbered milestone runs accept a bundle identically:
+
+- Record the exact repo-relative bundle path in every relevant `kind: ui`,
+  `design: import` feature's metadata.
+- Keep `design_system` as the committed implementation dialect source even
+  when a bundle is present. A bundle supplements visual/structural context; it
+  does not replace the design skill.
+- Use the supplied prototype/bundle to derive candidate `ScreenId` and `FlowId`
+  values for the feature metadata (`screens:` and `flows:`). These IDs are a
+  human-confirmable starting point that `smithy.mark` later turns into the typed
+  ledger and durable artifacts.
+- Surface unclear prototype structure as specification debt instead of hiding
+  it. Examples: multiple plausible screen boundaries, unnamed alternate paths,
+  or flows whose entry/exit/guard cannot be inferred confidently.
+- Do not call a visual design/prototyping tool inline. Render only ingests the
+  supplied bundle reference and records/derives feature-map structure from it.
+- Do not author `.design.md`, `.flow.md`, or executable test-body files during
+  render. Those durable artifacts remain owned by downstream `smithy.mark`.
+
+If no `--bundle` argument is supplied, keep the existing no-bundle path: omit
+`bundle`, choose `design` from the milestone/RFC context, and derive only the
+screen/flow identifiers supported by the written milestone intent.
 
 ---
 
@@ -332,13 +368,15 @@ kind: ui
 phase: build
 design_system: <committed design skill, e.g. story-spider-design>
 design: <none|import|brief>
-bundle: <optional repo-relative path to a visual prototype boundary object, or omit the key>
+bundle: <repo-relative path to a visual prototype boundary object — supplied via --bundle at render for `design: import`, or attached later for `design: brief`; omit the key when no bundle exists yet>
 flag: <feature-flag name gating this screen>
-screens: [<ScreenId>]
-flows: [<FlowId>]
+screens: [<candidate ScreenId derived from milestone or import bundle>]
+flows: [<candidate FlowId derived from milestone or import bundle>]
 ```
 
-**Description**: <What this screen delivers, built against a mock behind the flag.>
+**Description**: <What this screen delivers, built against a mock behind the flag. If
+`design: import`, name the supplied bundle as context and state that the screen/flow
+IDs are candidate structure for human confirmation.>
 
 **User-Facing Value**: <Why a user cares about this feature.>
 
@@ -522,6 +560,22 @@ here, by render.
   `screens`/`flows` name the candidate identifiers that downstream `mark` will
   turn into the typed ledger and durable artifacts. Do not rely on feature
   titles to communicate any of those facts.
+- **DO** accept a supplied import bundle as feature-map context when present:
+  write its repo-relative path to `bundle` on relevant `kind: ui`,
+  `design: import` features, keep `design_system` as the committed dialect
+  source, and derive candidate `ScreenId`/`FlowId` metadata from the prototype
+  for human confirmation. `bundle` itself is not import-only — a `design: brief`
+  feature may gain one later, after the visual tool answers mark's brief — so
+  omit the key at render rather than treating its absence as a mode signal.
+- **DO** route ambiguous import derivation to specification debt. The feature
+  map should say what is unclear rather than pretending the candidate screen or
+  flow structure is authoritative.
+- **DO NOT** call visual design tools inline or describe inline visual-tool calls
+  as part of render. Render records a supplied bundle reference; it does not
+  create, modify, or round-trip a prototype.
+- **DO NOT** author `.design.md`, `.flow.md`, or executable test-body files from
+  render. Candidate `screens`/`flows` metadata is the handoff to `smithy.mark`,
+  which owns the durable files.
 - **DO** keep backend features visibly backend: emit only `kind: backend` in the
   metadata block, and do not add `phase`, `design_system`, `design`, `bundle`,
   `flag`, `screens`, or `flows` to backend feature metadata. Missing `kind` on

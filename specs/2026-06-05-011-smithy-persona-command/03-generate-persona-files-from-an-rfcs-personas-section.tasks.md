@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Add RFC-mode routing**
+- [x] **Add RFC-mode routing**
 
   Update `src/templates/agent-skills/commands/smithy.persona.prompt` so a resolved input path ending in `.rfc.md` routes to RFC mode instead of free-text mode. Preserve the existing ask-fallback and free-text behavior from US2 for non-RFC inputs.
 
@@ -27,7 +27,7 @@
   - Empty or unclear input still engages the existing ask-fallback.
   - RFC-mode routing does not draft or overwrite persona files before extraction succeeds.
 
-- [ ] **Extract RFC persona candidates**
+- [x] **Extract RFC persona candidates**
 
   Add RFC-mode instructions that read the target RFC and extract one persona candidate per named persona in the `## Personas` section. Keep this v1 extraction focused on clearly named personas, with US6 still owning narrative-prose robustness and empty-section placeholder handling.
 
@@ -37,7 +37,7 @@
   - The extracted candidate set is used as the source for subsequent persona-file creation.
   - Narrative-only robustness and empty/placeholder diagnostics remain reserved for US6 unless already present.
 
-- [ ] **Cover RFC-mode routing and extraction**
+- [x] **Cover RFC-mode routing and extraction**
 
   Update template coverage around `smithy.persona.prompt` so the RFC-mode branch is protected without regenerating deployed snapshots. Focus the checks on `.rfc.md` routing, preservation of free-text routing, and extraction from the RFC `## Personas` section.
 
