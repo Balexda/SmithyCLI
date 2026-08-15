@@ -776,7 +776,11 @@ it:
   `<slug>.contracts.md` in the new spec folder). The feature-map
   write-back path is **not** part of the review's `artifact_paths` — the
   review only audits the new spec artifact set, not the parent feature
-  map's dependency-order table.
+  map's dependency-order table. For the UI authoring path, do **not** include
+  mark-owned `design/screens/<ScreenId>.design.md`,
+  `design/flows/<FlowId>.flow.md`, or paired executable test-body files in
+  `artifact_paths`; their helper-contract review belongs to `smithy.audit`,
+  and graph/test pairing belongs to `flow-lint`.
 - **artifact_type** — `spec`.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the `.spec.md` file:
@@ -893,6 +897,10 @@ the spec artifact set. Pass it:
 
 - **artifact_paths** — the repo-relative paths to the refined spec artifacts
   (`<slug>.spec.md`, `<slug>.data-model.md`, `<slug>.contracts.md`).
+  Do **not** include durable UI artifacts or paired executable test bodies:
+  plan-review checks the planning artifact set, while `smithy.audit` checks
+  screen/flow helper contracts and `flow-lint` checks screen/flow/test graph
+  consistency.
 - **artifact_type** — `spec`.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the refined `.spec.md`
