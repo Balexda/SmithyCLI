@@ -910,7 +910,8 @@ the spec), and substitute the PR URL from the previous step into the
 ones. Do NOT dump the full file contents into the terminal; the snippet
 is the contract.
 
-{{>one-shot-output}}
+Use the `## One-Shot Output` format defined under Phase 0 above — the same
+sections, the same placeholder guidance, and the same error fallbacks.
 
 ---
 

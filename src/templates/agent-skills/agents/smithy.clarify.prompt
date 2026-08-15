@@ -1,6 +1,6 @@
 ---
 name: smithy-clarify
-description: "Shared clarification sub-agent. Non-interactive: scans for ambiguity across provided categories, triages findings into assumptions (including Critical Assumptions) and specification debt with confidence/impact scoring, and returns a structured ClarifyResult directly to the parent agent without any user interaction. Invoked by other smithy agents."
+description: "Shared clarification sub-agent. Non-interactive: scans for ambiguity across provided categories, triages findings into assumptions (including Critical Assumptions) and specification debt with confidence/impact scoring. Returns a structured ClarifyResult."
 tools:
   - Read
   - Grep

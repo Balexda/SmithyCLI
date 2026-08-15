@@ -1629,18 +1629,23 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-voice description triggers on draft and review/cleanup phrasing', () => {
     const skill = composed.skills.get('smithy.helper-voice')!;
-    // Auto-trigger description (frontmatter) must name the two invocation
-    // surfaces and the deliverable types the skill covers, so calling
-    // agents recognize when to lazy-load it.
-    expect(skill.prompt).toMatch(/drafting or reviewing prose/i);
-    expect(skill.prompt).toContain('migration plans');
-    expect(skill.prompt).toContain('ADRs');
-    expect(skill.prompt).toContain('runbooks');
-    expect(skill.prompt).toContain('READMEs');
+    // Auto-trigger description (frontmatter) must name the deliverable types
+    // the skill covers, so calling agents recognize when to lazy-load it.
+    const description = skill.prompt.match(/^description: "(.*)"$/m)![1]!;
+    expect(description).toMatch(/drafting or reviewing prose/i);
+    expect(description).toContain('migration plans');
+    expect(description).toContain('ADRs');
+    expect(description).toContain('runbooks');
+    expect(description).toContain('READMEs');
     // The Role × Diátaxis-mode framing is the load-bearing claim of the
     // description — if it disappears, the skill no longer advertises its
     // actual content.
-    expect(skill.prompt).toMatch(/Role × Diátaxis-mode taxonomy/i);
+    expect(description).toMatch(/Role × Diátaxis-mode taxonomy/i);
+    // Issue #555: trigger condition, not a table of contents. The skill is
+    // reached through smithy.helper-documentation, so the description must
+    // still say so — but the body's feature list stays in the body.
+    expect(description).toMatch(/not a direct user entry point/i);
+    expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
   it('smithy.helper-voice body covers the 10-section outline', () => {
@@ -1834,14 +1839,20 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-screen-design description triggers on authoring and auditing UI screens', () => {
     const skill = composed.skills.get('smithy.helper-screen-design')!;
-    // Auto-trigger description (frontmatter) must name the artifact path,
-    // the two invocation modes (authoring + auditing), and the four
-    // front-matter keys so calling agents recognize when to lazy-load it.
-    expect(skill.prompt).toContain('design/screens/<ScreenId>.design.md');
-    expect(skill.prompt).toMatch(/authoring or auditing/i);
-    expect(skill.prompt).toContain('kind: ui');
-    // The four schema keys are the load-bearing claim of the description.
-    expect(skill.prompt).toMatch(/id\s*\/\s*component-path\s*\/\s*design_system\s*\/\s*bundle/);
+    // Auto-trigger description (frontmatter) must name the artifact path and
+    // the two invocation modes (authoring + auditing) so calling agents
+    // recognize when to lazy-load it.
+    const description = skill.prompt.match(/^description: "(.*)"$/m)![1]!;
+    expect(description).toContain('design/screens/<ScreenId>.design.md');
+    expect(description).toMatch(/authoring or auditing/i);
+    expect(description).toContain('kind: ui');
+    // Issue #555: the description is a trigger condition, not a table of
+    // contents. It must not summarize the body — the schema key list, the
+    // skeleton template, and the worked example all live in the body, which
+    // only loads once the skill is invoked. Every deployed repo pays for
+    // this string in every session, so cap it.
+    expect(description).not.toMatch(/skeleton template|worked .* example/i);
+    expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
   it('smithy.helper-screen-design body documents the four front-matter fields', () => {
@@ -1969,17 +1980,21 @@ describe('getComposedTemplates', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
     // Auto-trigger description must name BOTH artifact paths (this is the
     // load-bearing claim — flows are a 1:1 pair, not a single file), the
-    // two invocation modes (authoring + auditing), the wire-phase context,
-    // and the three front-matter keys so calling agents recognize when to
-    // lazy-load it.
-    expect(skill.prompt).toContain('design/flows/<FlowId>.flow.md');
-    expect(skill.prompt).toContain('<test-body>');
-    expect(skill.prompt).toMatch(/authoring or auditing/i);
-    expect(skill.prompt).toContain('kind: ui');
-    expect(skill.prompt).toMatch(/phase:\s*wire/);
-    // The three flow.md schema keys are the load-bearing key list of the
-    // description.
-    expect(skill.prompt).toMatch(/id\s*\/\s*screens\s*\/\s*test-body/);
+    // two invocation modes (authoring + auditing), and the wire-phase
+    // context, so calling agents recognize when to lazy-load it.
+    const description = skill.prompt.match(/^description: "(.*)"$/m)![1]!;
+    expect(description).toContain('design/flows/<FlowId>.flow.md');
+    expect(description).toContain('<test-body>');
+    expect(description).toMatch(/authoring or auditing/i);
+    expect(description).toContain('kind: ui');
+    expect(description).toMatch(/phase:\s*wire/);
+    // Issue #555: the description is a trigger condition, not a table of
+    // contents. It must not summarize the body — the schema key list, the
+    // skeleton template, and the worked example all live in the body, which
+    // only loads once the skill is invoked. Every deployed repo pays for
+    // this string in every session, so cap it.
+    expect(description).not.toMatch(/skeleton template|worked .* example/i);
+    expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
   it('smithy.helper-flow-definition body documents the three front-matter fields', () => {
@@ -4870,6 +4885,61 @@ describe('getComposedTemplates artifactsRoot', () => {
     const strike = c.commands.get('smithy.strike.md')!;
     expect(strike).toContain('~/.smithy/x/specs/strikes/');
     expect(strike).not.toContain('{{artifactsRoot}}');
+  });
+
+  it('collapses the artifact-location policy in repo mode', async () => {
+    // Issue #555: in repo mode `{{artifactsRoot}}` renders empty, so the
+    // both-values prose came out as literal gibberish — "is already prefixed
+    // with `` so it points…", "When `` is empty…" — ~35 lines explaining a
+    // variable fixed at deploy time, in ten commands. The repo-mode branch
+    // states the one true answer instead.
+    const inRepo = await getComposedTemplates('claude');
+    const strike = inRepo.commands.get('smithy.strike.md')!;
+    // Empty inline code is the tell: a `{{artifactsRoot}}` interpolation that
+    // rendered to nothing inside backticks. Bound the pattern on both sides
+    // so fenced code blocks (```) do not match.
+    expect(strike).not.toMatch(/(^|[^`])``($|[^`])/m);
+    expect(strike).not.toContain('is already prefixed with');
+    expect(strike).toContain('Authored Smithy artifacts live **in the repo**');
+    // The two home-anchored engraved levels are unaffected by the mode, so
+    // both branches must still name them.
+    expect(strike).toContain('~/.smithy/projects/<project>/decisions/');
+
+    // External mode keeps the full policy, minus the now-impossible
+    // empty-root case.
+    const external = await getComposedTemplates('claude', '~/.smithy/myrepo/');
+    const extStrike = external.commands.get('smithy.strike.md')!;
+    expect(extStrike).toContain('is already prefixed with');
+    expect(extStrike).not.toContain('Authored Smithy artifacts live **in the repo**');
+    expect(extStrike).toContain('~/.smithy/myrepo/docs/decisions/');
+  });
+
+  it('injects each heavyweight snippet at most once per rendered command', async () => {
+    // Issue #555: `one-shot-output` (122 lines) was injected twice into mark
+    // and twice into cut — verbatim duplicates ~250 lines apart in the same
+    // context window — and `spec-debt-section` twice into spark. A second
+    // occurrence is a cross-reference now. `plan-review-triage` is
+    // deliberately excluded: issue #553 made both dispatch sites compose it
+    // so the parent-side table cannot drift, and that contract still holds.
+    for (const artifactsRoot of ['', '~/.smithy/myrepo/']) {
+      for (const variant of ['claude', 'gemini', 'codex']) {
+        const c = await getComposedTemplates(variant, artifactsRoot);
+        for (const [file, body] of c.commands) {
+          const where = `${file} (${variant}, root="${artifactsRoot}")`;
+          const marker = (re: RegExp) => (body.match(re) ?? []).length;
+          expect(marker(/^## One-Shot Output$/gm), `${where} one-shot-output`)
+            .toBeLessThanOrEqual(1);
+          expect(
+            marker(/slug naming the unresolved choice/g),
+            `${where} spec-debt-section`,
+          ).toBeLessThanOrEqual(1);
+          expect(
+            marker(/Assign sequential `SD-NNN` identifiers, continuing from the highest/g),
+            `${where} debt-from-clarify`,
+          ).toBeLessThanOrEqual(1);
+        }
+      }
+    }
   });
 
   it('includes the store commit protocol only in external mode', async () => {

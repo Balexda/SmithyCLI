@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-flow-definition
-description: "Schema and authoring rules for the durable Flow entity pair — `design/flows/<FlowId>.flow.md` (thin intent annotation) and a paired executable test body — keyed 1:1 by flat FlowId. Use when authoring or auditing a flow definition, when emitting a mark-owned flow artifact and paired stub test body for a UI feature's wire phase (kind: ui, phase: wire), or when validating an existing flow stays thin and testID-keyed. Provides the YAML front-matter field schema (id / screens / test-body), the rationale-only body rule, the driver-neutral selector contract, the testID naming convention, a skeleton template, and a worked AddTitle example."
+description: "Schema and authoring rules for the durable Flow entity pair — `design/flows/<FlowId>.flow.md` and its paired executable <test-body>. Use when authoring or auditing a flow definition, when emitting a flow artifact and stub test body for a UI feature's wire phase (kind: ui, phase: wire), or when checking an existing flow stays thin and testID-keyed."
 ---
 # smithy.helper-flow-definition
 
@@ -23,7 +23,7 @@ this skill when:
   step-leakage from the executable test body into prose.
 - Emitting a mark-owned flow artifact and paired stub test body for a UI wire
   feature.
-- Validating cross-references during `flow-lint` (issue #409).
+- Validating cross-references during `flow-lint`.
 
 Do **not** load this skill for backend features, for screen-only work
 (`smithy.helper-screen-design` covers screens), or for general prose work
@@ -63,7 +63,7 @@ Three keys, all required:
 | Key | Required | Notes |
 |-----|----------|-------|
 | `id` | Yes | Flat, stable `FlowId` (e.g. `AddTitle`). Matches the `.flow.md` filename stem and the paired executable test body named by `test-body`, plus the `flows:` list of the originating UI feature in `.features.md`. Never reused across flows. |
-| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must appear in some feature's `screens:` field; cross-file resolution is enforced by `flow-lint` (#409). |
+| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must appear in some feature's `screens:` field; cross-file resolution is enforced by `flow-lint`. |
 | `test-body` | Yes | Repo-relative path to the paired executable test body in the project's UI driver (for example `maestro/flows/AddTitle.yaml` for Maestro, or `tests/e2e/add-title.spec.ts` for Playwright/Cypress). The path is the contract; renaming the test without updating this field is a `flow-lint` failure. |
 
 No other keys. In particular, **no `feature:` or `kind:` field here** — flow
@@ -367,7 +367,7 @@ When auditing an existing flow pair, flag any of the following:
       `design/screens/<ScreenId>.design.md` annotation. A direct review of
       this pair checks only that each referenced annotation file **exists**;
       whether that `ScreenId` is declared by some feature — and the rest of
-      the screen/flow/test graph — stays with `flow-lint` (#409).
+      the screen/flow/test graph — stays with `flow-lint`.
 - [ ] `.flow.md` body contains a `## Steps`, `## Walkthrough`, `## Flow`,
       or `## Path` section.
 - [ ] `.flow.md` body contains click/tap sequences, selectors, assertions,

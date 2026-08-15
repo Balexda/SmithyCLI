@@ -501,7 +501,7 @@ Common update operations:
   patch the field, keep the body intact, run Phase 7, then commit.
 - **Body section**: locate the heading, replace its content, run Phase 7,
   then commit. Do not reorder or rename headings — the section ordering
-  above is load-bearing for the audit (#418) and parser (#416).
+  above is load-bearing for `smithy.audit` and for the record parser.
 - **Decision lifecycle change** (`proposed → accepted`): patch
   `status:` and leave the body intact. Decisions are append-only — never
   rewrite the Context / Decision / Consequences sections once

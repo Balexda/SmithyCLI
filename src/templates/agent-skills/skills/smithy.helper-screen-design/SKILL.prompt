@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-screen-design
-description: "Schema and authoring rules for `design/screens/<ScreenId>.design.md` — the thin durable intent annotation that colocates with a UI screen's component body. Use when authoring or auditing a screen design-context annotation, when emitting a screen as part of a UI feature (kind: ui), or when validating that an existing annotation stays thin. Provides the YAML front-matter field schema (id / component-path / design_system / bundle), the rationale-only body rule, a skeleton template, and a worked Library example."
+description: "Schema and authoring rules for `design/screens/<ScreenId>.design.md`, the thin durable intent annotation colocated with a UI screen's component body. Use when authoring or auditing a screen design-context annotation, when emitting a screen as part of a UI feature (kind: ui), or when checking an existing annotation stays thin."
 ---
 # smithy.helper-screen-design
 
@@ -15,7 +15,7 @@ deliberately chosen, what was deferred. Load this skill when:
   re-description.
 - Emitting a screen annotation from `smithy.mark` for a UI feature's typed
   ledger.
-- Validating cross-references during `flow-lint` (issue #409).
+- Validating cross-references during `flow-lint`.
 
 Do **not** load this skill for backend features or for general voice/audience
 prose work — `smithy.helper-voice` covers the latter, and `kind: backend`

@@ -1,6 +1,6 @@
 ---
 name: smithy-prose
-description: "Narrative/persuasive prose drafting for RFC sections and planning artifacts. Drafts Summary, Motivation/Problem Statement, and Personas sections. Designed as a shared sub-agent reusable by any command."
+description: "Narrative/persuasive prose drafting for RFC sections and planning artifacts. Drafts Summary, Motivation/Problem Statement, and Personas sections."
 tools:
   - Read
   - Grep

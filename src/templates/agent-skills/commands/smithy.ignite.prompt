@@ -206,8 +206,8 @@ After the sub-agent returns its summary:
 4. Commit the refinement diff and create a PR for the refinement using the
    forge `gh pr create` pattern (the same pattern Phase 4 uses below;
    {{>pr-create-tool-choice}}).
-5. Render the one-shot output block (the format defined in the
-   `one-shot-output` shared snippet, inlined into Phase 4 below) as the
+5. Render the one-shot output block (the `## One-Shot Output` format
+   defined at the end of Phase 4 below) as the
    terminal contract for the refinement pass, treating the refinement diff
    as the artifact produced. Do **not** pause for user approval of the
    refinement diff before creating the PR — Phase 0 is non-interactive like
@@ -811,9 +811,12 @@ Recommended implementation sequence:
 
 Populate the `## Specification Debt` section from clarify's returned
 `debt_items` at draft time.
+{{#ifAgent}}
+Follow the numbering and row-shape rules stated in sub-phase 3e above.
+{{else}}
 
 {{>debt-from-clarify}}
-
+{{/ifAgent}}
 
 At the RFC layer in particular, an empty `## Specification Debt` section is
 the common, expected outcome.

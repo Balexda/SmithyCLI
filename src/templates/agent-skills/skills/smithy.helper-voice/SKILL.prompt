@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-voice
-description: "Section-level voice and audience guidance, invoked by smithy.helper-documentation and the authoring commands/agents (render / mark / cut / engrave / ignite / spark / strike / prose) — not a direct user entry point; users reach for smithy.helper-documentation, which calls this skill. Applies when drafting or reviewing prose for any artifact: RFC/spec/PRD narrative, migration plans, ADRs, runbooks, READMEs, design docs, change notes, inline documentation, for readers spanning stakeholders, reviewers, implementers, or AI agents. Provides a Role × Diátaxis-mode taxonomy, an expanded review-mode anti-pattern checklist, conciseness budgets, diagram-first framing, depth-control rules, and AI-vs-human audience separation."
+description: "Section-level voice and audience guidance built on a Role × Diátaxis-mode taxonomy. Use when drafting or reviewing prose for any artifact: RFC/spec/PRD narrative, migration plans, ADRs, runbooks, READMEs, design docs, change notes, inline documentation. Not a direct user entry point — artifact-level shape questions go to smithy.helper-documentation, which calls this skill."
 ---
 # smithy.helper-voice
 
