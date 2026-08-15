@@ -5,10 +5,12 @@
 # Data model: specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/smithy-fix-end-to-end-eval-scenario.data-model.md
 # Contracts:  specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/smithy-fix-end-to-end-eval-scenario.contracts.md
 # Tasks:      specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/02-run-smithy-fix-against-local-failure-evidence.tasks.md
+#             specs/2026-06-03-009-smithy-fix-end-to-end-eval-scenario/03-validate-smithy-fix-output-structure-and-helper-evidence.tasks.md
 #
-# This case intentionally stops at local fixture declaration and invocation.
-# Stable output marker and helper-evidence calibration belongs to the later
-# structural-validation story.
+# Helper calibration: the committed offline prompt supplies an error
+# description with local evidence, so smithy.fix follows Path D. The current
+# Path D template contains no sub-agent dispatch instructions; helper evidence
+# is intentionally omitted rather than fabricating an agent-name check.
 
 name: fix-from-issue
 skill: /smithy.fix
@@ -35,14 +37,19 @@ structural_expectations:
     # deliberately not touched (spec Out of Scope).
     - '## Diagnosis'
   required_patterns:
-    # Template-guaranteed diagnosis labels (smithy.fix.prompt Step 1). These
-    # are bullet lines with trailing descriptions, so whole-line equality
-    # never matches -- they belong here rather than in `required_headings`.
+    # Template-stable diagnosis labels (smithy.fix.prompt Step 1).
     - '\*\*Error\*\*'
     - '\*\*Cause\*\*'
+    # Fix-action evidence: the template requires a Fix label, and the fixture
+    # points the smallest change at the missing /health route in src/index.ts.
     - '\*\*Fix\*\*'
-    - 'health'
-    - 'src/index\.ts|/health|verification'
+    - 'src/index\.ts'
+    - '/health'
+    # Verification-result evidence: require the output to name the local build
+    # or test verification and include a pass/success result, without snapshotting
+    # exact prose.
+    - '(npm run build|npm test|[Vv]erification)'
+    - '([Pp]ass|[Pp]assed|[Pp]asses|successful|succeeded)'
   forbidden_patterns:
     - "I'd be happy to help"
     - "Sure, here's"
