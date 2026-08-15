@@ -27,7 +27,7 @@ The rule is cross-domain — it governs command bodies, skill descriptions,
 agent frontmatter, snippet architecture, and deploy-time rendering alike —
 and no release-to-release change in Smithy's features unseats it: it follows
 from how LLM context works, not from any current template's shape. The
-2026-08 template audit (#551) found five separate surfaces drifting toward
+2026-08 template audit ([#551](https://github.com/Balexda/SmithyCLI/issues/551)) found five separate surfaces drifting toward
 documentation-shaped always-loaded text independently, which is the
 signature of a missing constitution-level commitment rather than five local
 mistakes.

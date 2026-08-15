@@ -14,11 +14,15 @@ established_by: [D-1]
 ## Rule
 
 A protocol consumed by more than one template lives in exactly one
-canonical file. Consumers pull it in by composition (`{{>snippet}}`) or
-reference it by name and location; no template carries its own hand-written
-copy of the tables, gates, enums, or contract shapes defined there. A
-consumer that needs a genuine variant records the divergence as a row in
-this ledger instead of restating the protocol with local edits.
+canonical file; no template carries its own hand-written copy of the
+tables, gates, enums, or contract shapes defined there. A deployable
+consumer that needs the protocol at runtime composes it (`{{>snippet}}`) —
+snippets are inlined at render and never deploy as standalone files, so a
+deployed citation to one resolves to nothing. Citation in place of
+composition is valid only where the cited home is readable from where the
+text runs (source-tree docs, or another deployed file). A consumer that
+needs a genuine variant records the divergence as a row in this ledger
+instead of restating the protocol with local edits.
 
 ## Rationale
 
@@ -37,4 +41,4 @@ records the evidence from the 2026-08 audit.
 ## Citations
 
 Established by D-1. Current-state evidence and the full duplication
-inventory: audit #551; remediation #553.
+inventory: audit [#551](https://github.com/Balexda/SmithyCLI/issues/551); remediation [#553](https://github.com/Balexda/SmithyCLI/issues/553).

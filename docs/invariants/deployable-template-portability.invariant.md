@@ -19,7 +19,11 @@ content references SmithyCLI source files or line numbers, SmithyCLI issue
 or PR numbers, specs or PRDs in this repo, or this repo's permission and
 settings choices; no deployable prose addresses the template's future
 editors. The test: rendered into a fresh repo by `smithy init`, every
-path, reference, and instruction resolves there.
+**actionable** reference — a path the agent is told to read, write, or
+execute; an issue or document cited as evidence; an instruction's target —
+resolves there. Purely illustrative example paths inside prose are exempt
+(per the carve-out in `AGENTS.md`'s deployable-template authoring rules):
+an example is not an instruction.
 
 ## Rationale
 
@@ -33,9 +37,9 @@ maintainer commentary is pure context weight. The establishing decision
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `commands/smithy.orders.prompt` | Cites `src/manifest.ts` / `src/commands/update.ts` line references and "the data-model row" from a SmithyCLI spec across ~8 sites | Temporary: strip or restate self-contained in the context-diet pass | #555 | medium |
-| `commands/smithy.spark.prompt` (lines ~455–476) | ~1.5KB of prose addressed to future template editors, with FR-006/FR-007 spec citations | Temporary: relocate to source-tree docs | #555 | low |
+| `commands/smithy.spark.prompt` (line ~290; lines ~455–476) | An FR-006 citation of the SmithyCLI-only reduce-interaction-friction spec embedded in the PRD-shape rules, plus ~1.5KB of prose addressed to future template editors with further FR-006/FR-007 citations | Temporary: strip the spec citation and relocate the editor commentary to source-tree docs | #555 | low |
 | `commands/smithy.engrave.prompt`, `agents/smithy.survey.prompt`, `snippets/branch-policy.md` | SmithyCLI issue numbers (#415/#416/#418), an eval-case maintenance comment, and a repo-local allowlist note ship in deployable text | Temporary: strip or generalize | #555 | low |
 
 ## Citations
 
-Established by D-2. Current-state evidence: audit #551; remediation #555.
+Established by D-2. Current-state evidence: audit [#551](https://github.com/Balexda/SmithyCLI/issues/551); remediation [#555](https://github.com/Balexda/SmithyCLI/issues/555).

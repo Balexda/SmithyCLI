@@ -22,7 +22,7 @@ or kept per target — but their prose ships as written, and they are
 authored inside SmithyCLI —
 where references to `src/manifest.ts`, local issue numbers, spec
 data-models, and this repo's settings are natural to reach for. The
-2026-08 audit (#551) found such references shipped on five surfaces
+2026-08 audit ([#551](https://github.com/Balexda/SmithyCLI/issues/551)) found such references shipped on five surfaces
 (orders, spark, engrave, the survey agent, branch-policy), where they
 resolve to nothing — or to an unrelated issue — in every customer repo,
 plus ~1.5KB of commentary addressed to future template editors deployed as
@@ -39,8 +39,12 @@ this repo's permission or settings choices — do not ship in deployable
 text, and neither does prose addressed to the template's future editors.
 Maintainer-facing rationale lives in source-tree-only files (directory
 READMEs, engraved records) or in commit and PR messages. The acceptance
-test: rendered into a fresh repo by `smithy init`, every path, reference,
-and instruction in the deployed file resolves there.
+test: rendered into a fresh repo by `smithy init`, every **actionable**
+reference in the deployed file — a path the agent is told to read, write,
+or execute; an issue or document cited as evidence; an instruction's
+target — resolves there. Purely illustrative example paths inside prose
+are exempt, per the carve-out in `AGENTS.md`'s deployable-template
+authoring rules: an example is not an instruction.
 
 ## Consequences
 
@@ -59,5 +63,5 @@ INV-2 — Deployable templates read correctly outside SmithyCLI.
 ## Citations
 
 P-1 (always-loaded context is a budget — internal commentary is spent
-weight with no runtime value). Evidence and remediation: audit #551,
-sub-issue #555.
+weight with no runtime value). Evidence and remediation: audit [#551](https://github.com/Balexda/SmithyCLI/issues/551),
+sub-issue [#555](https://github.com/Balexda/SmithyCLI/issues/555).
