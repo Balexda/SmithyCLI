@@ -147,10 +147,12 @@ Persona Artifact Convention section above.
 
 ## One-Shot Summary
 
-After the selected mode completes, present a compact terminal summary. Do not
-dump the full persona file contents into the terminal.
+After the selected mode completes, present a compact terminal summary. Report
+exactly one summary block — the mode that ran selects which block applies, and
+the blocks are mutually exclusive. Do not dump the full persona file contents
+into the terminal.
 
-For a successful write, report:
+For a successful **free-text mode** write, report:
 
 1. **Phase summary** — one line stating that one durable persona file was
    written from free text with no intermediate approval gates.
@@ -158,7 +160,7 @@ For a successful write, report:
    `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
 3. **Slug** — the derived slug used for filename identity.
 
-For a slug collision skip, report:
+For a **free-text mode** slug collision skip, report:
 
 1. **Phase summary** — one line stating that no file was written because the
    target persona slug already exists.
@@ -167,10 +169,8 @@ For a slug collision skip, report:
 3. **Next step** — tell the user to choose a different persona name/role or
    edit the existing file directly.
 
-Report the written and skipped persona paths as explicit result fields rather
-than a free-form diff, so the run's outcome is unambiguous.
-
-For RFC mode, report:
+For **RFC mode**, report only this block — the two free-text blocks above never
+apply to an RFC run, no matter how many files were written or skipped:
 
 1. **Phase summary** — one line stating that durable persona files were seeded
    from the RFC with no intermediate approval gates.
@@ -181,3 +181,6 @@ For RFC mode, report:
    already existed, including its name/role, slug, and existing path. If no
    collisions were skipped, say `none`.
 5. **Totals** — written count and skipped-collision count.
+
+In either mode, report the written and skipped persona paths as explicit result
+fields rather than a free-form diff, so the run's outcome is unambiguous.

@@ -883,7 +883,7 @@ describe('getComposedTemplates', () => {
     expect(persona).toContain('one durable persona file was');
     expect(persona).toContain('written from free text with no intermediate approval gates');
     expect(persona).toContain('target persona slug already exists');
-    expect(persona).toContain('written and skipped persona paths as explicit result fields');
+    expect(persona).toContain('written and skipped persona paths as explicit result');
   });
 
   it('smithy.persona renders RFC-mode routing, extraction, and persona writes', () => {
@@ -944,12 +944,34 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain('add the candidate name, slug, and path to the skipped-collisions list');
     expect(rfcMode).toContain('leave the existing file untouched');
     expect(rfcMode).toContain('Continue processing the remaining candidates after any collision skip');
-    expect(summary).toContain('For RFC mode, report:');
+    expect(summary).toContain('For **RFC mode**, report only this block');
     expect(summary).toContain('Written persona paths');
     expect(summary).toContain('name/role and slug');
     expect(summary).toContain('Skipped collisions');
     expect(summary).toContain('target slug');
     expect(summary).toContain('Totals');
+  });
+
+  it('smithy.persona scopes each One-Shot Summary block to a single mode', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    const summary = persona.slice(persona.indexOf('## One-Shot Summary'));
+
+    expect(summary).toContain('Report\nexactly one summary block');
+    expect(summary).toContain('the blocks are mutually exclusive');
+    expect(summary).toContain('For a successful **free-text mode** write, report:');
+    expect(summary).toContain('For a **free-text mode** slug collision skip, report:');
+    expect(summary).toContain(
+      'the two free-text blocks above never\napply to an RFC run',
+    );
+    expect(summary).toContain(
+      'In either mode, report the written and skipped persona paths',
+    );
+
+    // The RFC block must come last so its exclusivity clause can refer back to
+    // the free-text blocks it supersedes.
+    expect(summary.indexOf('For **RFC mode**, report only this block')).toBeGreaterThan(
+      summary.indexOf('For a **free-text mode** slug collision skip, report:'),
+    );
   });
 
   it('smithy.persona renders shared persona convention and artifact policy snippets across agents', async () => {
