@@ -176,6 +176,10 @@ Store this value for later.
 
 ### Typed UI Node Build Profiles
 
+The shared profile below is forge's build contract for typed UI work: `SC`
+tasks read `Design Mode` and `Design Metadata`, route `none`/`import`/`brief`
+without stalling, and honor any attached bundle under the conflict rule.
+
 {{>typed-ui-build-profiles}}
 
 Execute each task from the slice's checklist **in order**:

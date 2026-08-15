@@ -111,7 +111,7 @@
 
 ### Tasks
 
-- [ ] **Route screen builds by design mode**
+- [x] **Route screen builds by design mode**
 
   Update `src/templates/agent-skills/commands/smithy.forge.prompt` so `SC` task plans read the screen node's design mode and select the correct non-blocking build behavior. `none` and bundle-less `brief` should build from the committed design skill; `import` should expect a bundle when one was supplied upstream.
 
@@ -122,7 +122,7 @@
   - Missing bundle context never creates a hard stop for brief mode
   - Existing backend forge routing remains unchanged
 
-- [ ] **Honor bundles whenever present**
+- [x] **Honor bundles whenever present**
 
   Strengthen forge bundle handling so any attached bundle is honored at build time regardless of whether it entered through import mode or post-mark brief mode. Keep the design skill loaded as implementation-dialect context, and do not modify mark-owned `.design.md` or `.flow.md` files.
 
@@ -133,7 +133,7 @@
   - Bundle handling does not author or rewrite `.design.md` or `.flow.md`
   - Bundle absence falls back to the design skill rather than stopping the slice
 
-- [ ] **Surface unrealized prototypes in forge output**
+- [x] **Surface unrealized prototypes in forge output**
 
   Add forge guidance so a `brief` node with no bundle records the missing prototype as surfaced context, not as an implementation failure. This resolves the visual-intent honesty gap without introducing a visual-diff or pixel-fidelity review requirement.
 
