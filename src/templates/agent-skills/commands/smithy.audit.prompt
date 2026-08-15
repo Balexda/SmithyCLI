@@ -1,6 +1,8 @@
 ---
 name: smithy-audit
 description: "Context-aware artifact auditor. Reviews any Smithy artifact by extension, or reviews code on a forge branch against its upstream spec context."
+argument-hint: "[<artifact-path>]"
+disable-model-invocation: true
 ---
 # smithy-audit
 

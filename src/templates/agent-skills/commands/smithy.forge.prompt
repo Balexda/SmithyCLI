@@ -1,6 +1,8 @@
 ---
 name: smithy-forge
 description: "Implement a slice from a .tasks.md or .strike.md file as a pull request. Takes a file path and optional slice number."
+argument-hint: "<tasks-file|strike-file> [<slice-number>]"
+disable-model-invocation: true
 ---
 # smithy-forge
 

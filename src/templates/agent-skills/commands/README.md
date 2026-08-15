@@ -3,9 +3,10 @@
 Slash commands invocable by users (e.g., `/smithy.strike "add verbose flag"`).
 
 Deployed to:
-- **Claude**: `.claude/commands/smithy.<name>.md` (frontmatter stripped)
-- **Gemini**: `.gemini/skills/smithy.<name>/SKILL.md` (frontmatter kept)
-- **Codex**: `.agents/skills/smithy-<name>/SKILL.md` (frontmatter kept)
+- **Claude**: `.claude/commands/smithy.<name>.md` (frontmatter *translated* — see
+  [Frontmatter](#frontmatter) below)
+- **Gemini**: `.gemini/skills/smithy.<name>/SKILL.md` (frontmatter kept verbatim)
+- **Codex**: `.agents/skills/smithy-<name>/SKILL.md` (frontmatter kept verbatim)
 
 ## Current Commands
 
@@ -27,10 +28,43 @@ Deployed to:
 slash command, so it can auto-activate on natural-language status questions.
 It is still invocable explicitly via `/smithy.status …`.
 
+## Frontmatter
+
+One source block serves all three targets. Gemini and Codex consume it
+verbatim as skill metadata; the Claude deployer **translates** it, keeping only
+the keys Claude Code reads on a command file and dropping everything else. The
+translation lives in [`src/command-frontmatter.ts`](../../../command-frontmatter.ts).
+
+Claude Code advertises `.claude/commands/*.md` through the same registry skills
+use and drives that registry entry from this block, so the block is not
+decoration — it is the command's only trigger signal.
+
+### Required on every command
+
+| Key | Purpose |
+|-----|---------|
+| `name` | Skill-directory name for Gemini and Codex (dashed form: `smithy-cut`). **Dropped on the Claude path** — a Claude command is named by its filename, and emitting the dashed form would advertise a `/smithy-cut` that does not exist. |
+| `description` | What the command does and when to reach for it. Reaches all three targets. Never a restatement of the H1 — that is the failure this contract exists to prevent. |
+| `argument-hint` | The command's argument shape, in the `<required> [optional]` convention (e.g. `<tasks-file\|strike-file> [<slice-number>]`). Shown after the command name in Claude Code's completion. |
+| `disable-model-invocation: true` | Every Smithy command is an explicit pipeline step the operator drives. The opt-out keeps all 13 out of the model's registry — recovering that context — while leaving them fully user-invocable. |
+
+### Optional, Claude-only
+
+`allowed-tools`, `model`, `context` (`fork`), `agent`, and `hooks` are passed
+through to Claude when present and ignored by the other two targets. No command
+sets `allowed-tools` yet: per-command tool grants are the structural
+replacement for the global `settings.json` allowlist, and that migration is
+owned by the permissions work rather than this plumbing.
+
+Any other key is dropped on the Claude path rather than rejected — a source
+block is the union of what all three targets need, so a key one target does not
+understand is expected.
+
+`src/templates.test.ts` asserts the four required keys on every command
+template and that they survive the Claude translation.
+
 ## Conventions
 
-- Frontmatter must include `name` and `description`.
-- Commands that should deploy as slash commands set `command: true` in frontmatter.
 - Use `$ARGUMENTS` for user input; include a fallback for agents that don't substitute it.
 - Use `{{>partial-name}}` to include shared snippets (resolved by Dotprompt at deploy time).
 - Use `{{#ifAgent}}...{{else}}...{{/ifAgent}}` for orchestrator vs standalone conditional blocks; named branches such as `{{#ifAgent 'codex'}}` handle agent-specific paths.

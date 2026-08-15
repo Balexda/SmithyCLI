@@ -1,6 +1,8 @@
 ---
 name: smithy-strike
 description: "Strike while the iron is hot. Explore, plan, and produce a strike document in one shot — creates a PR and suggests forge for implementation."
+argument-hint: "<feature-description>"
+disable-model-invocation: true
 ---
 # smithy-strike
 

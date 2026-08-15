@@ -1,4 +1,5 @@
 import { parse as parseYaml } from 'yaml';
+import { splitFrontmatter } from './frontmatter.js';
 
 /**
  * Smithy's provider-neutral model abstraction for sub-agents.
@@ -66,14 +67,8 @@ export interface AgentModel {
   effort: ModelEffort | undefined;
 }
 
-const FRONTMATTER_RE = /^(---\s*\n[\s\S]*?\n---\s*\n)([\s\S]*)$/;
-
 /** Split an agent template into its raw frontmatter block and body. */
-export function splitAgentFrontmatter(content: string): { frontmatter: string; body: string } {
-  const match = content.match(FRONTMATTER_RE);
-  if (!match) return { frontmatter: '', body: content };
-  return { frontmatter: match[1] ?? '', body: match[2] ?? '' };
-}
+export const splitAgentFrontmatter = splitFrontmatter;
 
 function normalizeTools(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map(String).map(t => t.trim()).filter(Boolean);

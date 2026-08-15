@@ -1,6 +1,8 @@
 ---
 name: smithy-engrave
 description: "Author or update a durable-knowledge record (decision, invariant, principle). Use to capture pivot-level commitments, supersede an old decision, or update an invariant's Known-Exceptions ledger."
+argument-hint: "decision:|invariant:|principle: <topic> | <record-path> [supersede|exception] [--level <level>] [--project <slug>]"
+disable-model-invocation: true
 ---
 # smithy.engrave
 

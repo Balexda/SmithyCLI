@@ -76,6 +76,39 @@ describe('deploy', () => {
     }
   });
 
+  it('deploys commands with translated frontmatter, not stripped', async () => {
+    // Claude Code advertises command files through the skill registry and
+    // reads this block; stripping it left every command showing as its
+    // filename plus a recycled H1, with no trigger signal (#552).
+    await deploy(tmpDir, 'none');
+
+    const commandsDir = path.join(tmpDir, '.claude', 'commands');
+    for (const file of fs.readdirSync(commandsDir)) {
+      const content = fs.readFileSync(path.join(commandsDir, file), 'utf8');
+      expect(content.startsWith('---\n'), `${file} lost its frontmatter`).toBe(true);
+      const block = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)![1]!;
+      expect(block, file).toMatch(/^description:\s*\S/m);
+      expect(block, file).toMatch(/^argument-hint:\s*\S/m);
+      expect(block, file).toMatch(/^disable-model-invocation:\s*true$/m);
+      // The source `name:` is the Codex spelling (smithy-forge); a Claude
+      // command is named by its filename, so emitting it would advertise a
+      // command that does not exist.
+      expect(block, file).not.toMatch(/^name:/m);
+    }
+  });
+
+  it('keeps stripping frontmatter from reference prompts', async () => {
+    // Prompts are read as files, not registered — there is nothing for a
+    // frontmatter block to drive.
+    await deploy(tmpDir, 'none');
+
+    const promptsDir = path.join(tmpDir, '.claude', 'prompts');
+    for (const file of fs.readdirSync(promptsDir)) {
+      const content = fs.readFileSync(path.join(promptsDir, file), 'utf8');
+      expect(content.startsWith('---'), `${file} kept frontmatter`).toBe(false);
+    }
+  });
+
   it('deploys prompts only to prompts/ and not to commands/', async () => {
     await deploy(tmpDir, 'none');
 
@@ -241,18 +274,6 @@ describe('deploy', () => {
 
     for (const file of files) {
       const content = fs.readFileSync(path.join(promptsDir, file), 'utf8');
-      expect(content).not.toMatch(/^---\s*\n/);
-    }
-  });
-
-  it('strips frontmatter from deployed command files', async () => {
-    await deploy(tmpDir, 'none');
-
-    const commandsDir = path.join(tmpDir, '.claude', 'commands');
-    const files = fs.readdirSync(commandsDir);
-
-    for (const file of files) {
-      const content = fs.readFileSync(path.join(commandsDir, file), 'utf8');
       expect(content).not.toMatch(/^---\s*\n/);
     }
   });

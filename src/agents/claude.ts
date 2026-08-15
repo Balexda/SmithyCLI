@@ -4,6 +4,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
 import { toClaudeAgentContent } from '../agent-models.js';
+import { toClaudeCommandContent } from '../command-frontmatter.js';
 import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import { computeDrift, type DriftReport, type PermissionTriple } from '../drift.js';
@@ -42,14 +43,16 @@ export async function deploy(
   const templates = await getComposedTemplates('claude', artifactsRoot);
   const deployedFiles: string[] = [];
 
-  // Deploy commands -> .claude/commands/
+  // Deploy commands -> .claude/commands/ (frontmatter translated, not stripped:
+  // Claude Code advertises command files through the skill registry and reads
+  // description/argument-hint/disable-model-invocation from this block).
   const commandsDir = path.join(baseDir, '.claude', 'commands');
   if (templates.commands.size > 0) {
     if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
   }
   for (const [file, content] of templates.commands) {
     const dest = path.join(commandsDir, file);
-    fs.writeFileSync(dest, stripFrontmatter(content));
+    fs.writeFileSync(dest, toClaudeCommandContent(content));
     deployedFiles.push(path.relative(baseDir, dest));
   }
   console.log(picocolors.green(`\nDeployed Claude agent skills in ${path.join(baseDir, '.claude')}`));

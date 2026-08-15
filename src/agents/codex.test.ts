@@ -161,6 +161,21 @@ describe('deploy', () => {
     }
   });
 
+  it('deploys command skills with the source frontmatter intact, `name` included', async () => {
+    // Codex derives the skill directory from `name:`, so the Claude-side
+    // frontmatter translation (#552) must not reach this path.
+    await deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.agents', 'skills');
+    const composed = await getComposedTemplates('codex');
+    for (const [, content] of composed.commands) {
+      const name = parseFrontmatterName(content)!;
+      const deployed = fs.readFileSync(path.join(skillsDir, name, 'SKILL.md'), 'utf8');
+      expect(deployed, name).toBe(content);
+      expect(deployed, name).toMatch(/^---\s*\nname:\s*smithy-/);
+    }
+  });
+
   it('deploys operational skill scripts for Codex', async () => {
     await deploy(tmpDir, false);
 

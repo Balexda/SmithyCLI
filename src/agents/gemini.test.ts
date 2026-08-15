@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { buildGeminiAllowList, deploy, removeLegacy } from './gemini.js';
+import { getComposedTemplates, parseFrontmatterName } from '../templates.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -29,6 +30,21 @@ describe('deploy', () => {
     for (const skill of skills) {
       const skillMd = path.join(skillsDir, skill, 'SKILL.md');
       expect(fs.existsSync(skillMd)).toBe(true);
+    }
+  });
+
+  it('deploys command skills with the source frontmatter intact, `name` included', async () => {
+    // Gemini derives the skill directory from `name:`, so the Claude-side
+    // frontmatter translation (#552) must not reach this path.
+    await deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.gemini', 'skills');
+    const composed = await getComposedTemplates('gemini');
+    for (const [, content] of composed.commands) {
+      const name = parseFrontmatterName(content)!;
+      const deployed = fs.readFileSync(path.join(skillsDir, name, 'SKILL.md'), 'utf8');
+      expect(deployed, name).toBe(content);
+      expect(deployed, name).toMatch(/^---\s*\nname:\s*smithy-/);
     }
   });
 
