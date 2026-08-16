@@ -288,19 +288,14 @@ the bullet.
 sections. Include every debt item from clarify **and** every debt item added
 during Phase 2.5, assigning sequential `SD-NNN` identifiers across the merged
 list. Every item a PRD records is discovered locally, so each row carries
-`Origin: local` and gets its own `### SD-NNN — <Title>` detail section. Follow the
-positioning rule from the reduce-interaction-friction spec (FR-006):
+`Origin: local` and gets its own `### SD-NNN — <Title>` detail section. Use
+the `## Specification Debt` shape from the PRD Template Reference below —
+index table, per-item detail sections, and the empty-state line.
+
 `## Specification Debt` appears **after** `## Assumptions`. The PRD has no
 `## Out of Scope` section — scope edges are part of the Problem Statement
 framing and the debt table — so Specification Debt is the last structured
 section before the closing Open Questions block.
-
-Format:
-
-```markdown
-{{>spec-debt-section}}
-
-```
 
 Append both sections to the PRD file.
 
@@ -454,28 +449,11 @@ we want.>
 - <Genuinely unresolved item that needs stakeholder input or experimentation>
 ```
 
-**Positioning note**: `## Specification Debt` follows `## Assumptions` per
-FR-006 of the reduce-interaction-friction spec. PRDs have no `## Out of
-Scope` section — scope edges are folded into the Problem Statement and debt
-table.
-
-**Dependency-order hierarchy note**: The PRD template deliberately contains
-**no** `## Dependency Order` section. The canonical 4-column Dependency
-Order table format applies only to artifacts that
-decompose in the strict parent/child lineage
-`RFC → Feature Map → Spec → Tasks` (milestones → features → stories →
-slices). PRDs sit **upstream** of that lineage as an optional entry point
-before `smithy.ignite`; they do not decompose into milestones or feature
-maps and therefore have nothing to order or track with an `Artifact`
-column. Do not retrofit a `## Dependency Order` section onto the PRD
-template in a future refactor — the RFC that `smithy.ignite` produces from
-this PRD is where the first Dependency Order table appears.
-
-**Forward compatibility**: Once FR-007 of the reduce-interaction-friction
-spec lands, `smithy.ignite` will automatically inherit spark's debt items
-when invoked on a `.prd.md` file (flagged as "inherited from PRD"). Spark
-does not need to do anything special today to support this — the debt table
-schema is already compatible.
+A PRD has **no** `## Dependency Order` section. That table belongs to the
+artifacts that decompose along the `RFC → Feature Map → Spec → Tasks`
+lineage; a PRD sits upstream of it as an optional entry point before
+`smithy.ignite`, with nothing to order. The RFC that `smithy.ignite`
+produces from this PRD is where the first Dependency Order table appears.
 
 ---
 

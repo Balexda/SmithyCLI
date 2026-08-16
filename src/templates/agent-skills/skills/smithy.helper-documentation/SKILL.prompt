@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-documentation
-description: "Artifact-shape and quality review for any document — Smithy-authored or not. Use when shaping or reviewing a README, migration plan, runbook, design doc, ADR, or any document that feels long, hard to follow, incomplete, or like it serves several readers at once. Frames the document's template/genre latitude, runs an audience inventory and fit-for-purpose (split) check, reviews structure — section presence/completeness, ordering, value/non-redundancy, navigation — recommends a split / in-place restructure / leave-as-is, designs the navigation artifact when splitting, then hands each resulting artifact to the voice helper for prose-level cleanup with directed findings."
+description: "Artifact-shape and quality review for any document — Smithy-authored or not. Use when shaping or reviewing a README, migration plan, runbook, design doc, ADR, or any document that feels long, hard to follow, incomplete, or like it serves several readers at once, and when deciding whether one document should be split into several."
 ---
 # smithy.helper-documentation
 

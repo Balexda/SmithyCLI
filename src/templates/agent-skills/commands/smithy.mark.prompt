@@ -947,7 +947,8 @@ snippet's empty-state line. Never invent assumptions from refine's findings.
 Specification Debt is sourced from the refined spec's debt table, per the
 snippet's placeholder guidance.
 
-{{>one-shot-output}}
+Use the `## One-Shot Output` format defined under Phase 6 above — the same
+sections, the same placeholder guidance, and the same error fallbacks.
 
 **Resolving specification debt**: When the refine sub-agent identifies debt
 items that can now be resolved based on new information or user answers,

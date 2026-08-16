@@ -1,6 +1,6 @@
 ---
 name: smithy-refine
-description: "Shared review sub-agent. Non-interactive: audits existing artifacts against provided categories, then triages findings into ready-to-apply refinements (High confidence) and specification debt (Medium/Low confidence), and returns a structured RefineResult directly to the parent agent without any user interaction. Invoked by other smithy agents during Phase 0 review loops."
+description: "Shared review sub-agent. Non-interactive: audits existing artifacts against provided categories, then triages findings into ready-to-apply refinements (High confidence) and specification debt (Medium/Low confidence). Returns a structured RefineResult."
 tools:
   - Read
   - Grep

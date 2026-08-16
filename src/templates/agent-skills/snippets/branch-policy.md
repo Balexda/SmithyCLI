@@ -19,9 +19,7 @@ auto-create its own branch as before.
 
    On success it prints a single line like `refs/remotes/origin/main`;
    strip the `refs/remotes/origin/` prefix to get the default branch
-   name. Do not assume `main`. (Note: do **not** add the `--short` flag —
-   the bare form is what the repo's auto-allow list permits, and the
-   prefix is easy to strip.)
+   name. Do not assume `main`.
 
 2. If that command exits non-zero with `not a symbolic ref` (common in
    fresh clones, mirrors, and some linked worktrees where `origin/HEAD`
@@ -81,8 +79,8 @@ Confirm the resolved branch name to the user and proceed.
 The same rule applies during the commit-and-PR step: push the resolved
 branch as-is, and pass it as the PR's head when the chosen PR-creation
 tool requires it (e.g. the `head` argument for the GitHub MCP tool, or
-the equivalent flag on the CLI fallback — see the
-`pr-create-tool-choice` snippet for which tool to prefer). **Never
+the equivalent flag on the CLI fallback — the parent phase names
+which tool to prefer). **Never
 create a new branch or rename the current one as part of the PR-creation
 command** (in particular, do not prepend `feature/` to the resolved
 branch). The branch the agent commits and pushes from must be the same
