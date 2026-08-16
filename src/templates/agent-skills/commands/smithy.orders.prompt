@@ -68,7 +68,8 @@ the message and stop.
 
 ### Manifest Discovery and `<manifestDir>` Resolution
 
-After `check-env.sh` succeeds, locate the active smithy manifest **before**
+Once **Validate Environment** has resolved the repo — on either path, MCP or
+the `check-env.sh` fallback — locate the active smithy manifest **before**
 Phase 4 ever runs. Phase 5's `.spec.md` mapping (and the rfc/features/tasks
 mappings added in later slices) reads body templates from
 `<manifestDir>/templates/orders/<type>.md`, so the prompt must resolve a
