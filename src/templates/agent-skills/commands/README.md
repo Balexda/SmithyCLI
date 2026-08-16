@@ -50,18 +50,28 @@ decoration — it is the command's only trigger signal.
 
 ### Optional, Claude-only
 
-`allowed-tools`, `model`, `context` (`fork`), `agent`, and `hooks` are passed
-through to Claude when present and ignored by the other two targets. No command
-sets `allowed-tools` yet: per-command tool grants are the structural
-replacement for the global `settings.json` allowlist, and that migration is
-owned by the permissions work rather than this plumbing.
+`allowed-tools`, `model`, `context` (`fork`), `agent`, `background`, and
+`hooks` are passed through to Claude when present and ignored by the other two
+targets. No command sets `allowed-tools` yet: per-command tool grants are the
+structural replacement for the global `settings.json` allowlist, and that
+migration is owned by the permissions work rather than this plumbing.
+
+`background` only means anything alongside `context: fork`, and there it is
+not optional: Claude Code runs a forked command detached unless the block says
+`background: false`, and a detached run commits, pushes, and writes outside the
+session's checkpoints while the rest of the session shares the worktree. No
+command sets `context: fork` yet — the evaluation behind that
+(`docs/research/2026-08-16-context-fork-evaluation.md`) gates adoption on an
+intake-gate rewrite, because a forked command has no user to ask when its
+input is under-specified.
 
 Any other key is dropped on the Claude path rather than rejected — a source
 block is the union of what all three targets need, so a key one target does not
 understand is expected.
 
 `src/templates.test.ts` asserts the four required keys on every command
-template and that they survive the Claude translation.
+template, that they survive the Claude translation, and that any command
+declaring `context: fork` also declares `background: false`.
 
 ## Conventions
 

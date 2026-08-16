@@ -31,7 +31,8 @@ See the README in each subdirectory for details on its contents and conventions.
 - **Deploy transform**: Claude **command** frontmatter is *translated* — reduced
   to the keys Claude Code reads on a command file (`description`,
   `argument-hint`, `disable-model-invocation`, `allowed-tools`, `model`,
-  `context`, `agent`, `hooks`), with `name` and every other source key dropped;
+  `context`, `agent`, `background`, `hooks`), with `name` and every other
+  source key dropped;
   see [`commands/README.md`](commands/README.md#frontmatter). Claude **prompt**
   frontmatter is still stripped outright — prompts are read as files, not
   registered. Gemini and Codex keep the source block verbatim for both. Files

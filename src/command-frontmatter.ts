@@ -35,7 +35,16 @@ import { filterFrontmatterKeys } from './frontmatter.js';
  * | `model` | Pins the command to a model. |
  * | `context` | `fork` runs the command in a separate context window. |
  * | `agent` | Sub-agent to run a forked command in. |
+ * | `background` | `false` makes a forked command block its turn instead of running detached. |
  * | `hooks` | Command-scoped hooks. |
+ *
+ * `background` has to travel with `context` rather than being dropped as
+ * Claude-irrelevant. A forked command runs detached by default, and a detached
+ * run of a command that branches, commits, and pushes races whatever else the
+ * session is doing in the same worktree — so the safe setting is the one a
+ * template has to spell out. Dropping the key would silently downgrade every
+ * `background: false` a template declares into the mode it was written to
+ * avoid.
  */
 export const CLAUDE_COMMAND_FRONTMATTER_KEYS = [
   'description',
@@ -45,6 +54,7 @@ export const CLAUDE_COMMAND_FRONTMATTER_KEYS = [
   'model',
   'context',
   'agent',
+  'background',
   'hooks',
 ] as const;
 
