@@ -18,8 +18,8 @@ it deliberately does not flip the frontmatter.
 
 Two sources, weighted toward the second.
 
-1. Current Claude Code docs (`code.claude.com/docs/en/skills`,
-   `/docs/en/sub-agents`) for the documented contract.
+1. Current Claude Code docs (<https://code.claude.com/docs/en/skills>,
+   <https://code.claude.com/docs/en/sub-agents>) for the documented contract.
 2. **Four executed probes** against Claude Code **2.1.233**, run headless in
    throwaway repos. The audit's capability list was written from docs alone;
    several load-bearing claims here contradict what a first read of those docs
@@ -96,11 +96,15 @@ Since 2.1.218 a forked command runs detached unless the frontmatter sets
 `background: false`. Detached is wrong for every command in scope, for three
 independent reasons, any one of which is sufficient:
 
-- Every one of these commands branches, commits, and pushes. Detached, it does
-  that while the user keeps working in the same worktree. Git index contention
-  is not a hypothetical for a command whose last phase is `git commit`.
+- Five of the six branch, commit, and push. Detached, that happens while the
+  user keeps working in the same worktree; git index contention is not a
+  hypothetical for a command whose last phase is `git commit`. `spark` is the
+  sole exception — checked against composed output rather than source, since
+  the git steps arrive through partials: `spark` has no git, branch, or PR
+  step at all, and neither do `audit`, `orders`, `resolve`, `persona`, or
+  `engrave` outside the scope set.
 - A detached fork's edits land outside the session's checkpoints, so `/rewind`
-  cannot undo them.
+  cannot undo them. This one binds `spark` too — it still writes a PRD file.
 - A detached fork also drops to the narrower background tool set. That set
   happens to retain everything Smithy needs — `Read`, `Write`, `Edit`, `Bash`,
   `Grep`, `Glob`, `Skill`, every MCP tool, and `Agent`, which follows the
@@ -240,9 +244,11 @@ second bucket is thin — most of strike's isolation is already bought.
 | `audit`, `status` | **No** | Output *is* the deliverable and is small; a fork adds a hop for nothing. |
 
 `background: false` on every command that forks — F6, no per-command variance.
-`spark` is the only plausible detached candidate (read- and web-heavy, one PRD,
-little worktree contention), and it is on the hold list anyway; uniformity is
-worth more than the one exception.
+`spark` is the only plausible detached candidate: it is read- and web-heavy,
+writes one PRD, and has no git step whatsoever, so it is the one command in
+scope that cannot contend for the git index. It is on the hold list anyway,
+and it would still write that PRD outside the session's checkpoints —
+uniformity is worth more than the one exception.
 
 Leave `agent:` unset. The default `general-purpose` inherits the session model,
 so a forked command runs on the same model it runs on today — no quality
