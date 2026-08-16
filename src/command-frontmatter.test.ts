@@ -25,6 +25,7 @@ describe('toClaudeCommandContent', () => {
       'model: opus',
       'context: fork',
       'agent: smithy-plan',
+      'background: false',
       'hooks:',
       '  PreToolUse: []',
       '---',
@@ -35,6 +36,15 @@ describe('toClaudeCommandContent', () => {
     for (const key of CLAUDE_COMMAND_FRONTMATTER_KEYS) {
       expect(out).toContain(`${key}:`);
     }
+  });
+
+  it('carries `background` through so a forked command can opt out of running detached', () => {
+    // A forked command runs detached unless it says otherwise. Dropping the
+    // key would turn every `background: false` a template declares into the
+    // detached run it was written to avoid — commits and pushes racing the
+    // rest of the session in one worktree.
+    const content = '---\nname: smithy-mark\ndescription: "d"\ncontext: fork\nbackground: false\n---\nbody\n';
+    expect(toClaudeCommandContent(content)).toContain('background: false');
   });
 
   it('drops keys that only Gemini or Codex consume', () => {

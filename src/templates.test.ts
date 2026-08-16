@@ -5027,6 +5027,20 @@ describe('command template frontmatter contract', () => {
       expect(frontmatterOf(file), file).toMatch(/^name:\s*smithy-/m);
     }
   });
+
+  it.each(commandFiles)('%s pairs any `context: fork` with `background: false`', file => {
+    // Claude Code runs a forked command detached unless the frontmatter says
+    // otherwise. Every Smithy command branches, commits, and pushes, and a
+    // detached run does that alongside whatever else the session is doing in
+    // the same worktree — and outside the session's checkpoints, so `/rewind`
+    // cannot undo it. Forking is opt-in per command; blocking is not optional
+    // once a command opts in.
+    const block = frontmatterOf(file);
+    if (!/^context:\s*fork\s*$/m.test(block)) return;
+    expect(block, `${file} forks without declaring background: false`).toMatch(
+      /^background:\s*false\s*$/m,
+    );
+  });
 });
 
 describe('command frontmatter reaches each agent', () => {
