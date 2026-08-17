@@ -106,7 +106,7 @@ Recommended implementation sequence:
 | US1 | Declare Per-Scenario Fixture Selection | — | specs/2026-06-06-011-jvm-multi-language-fixture/01-declare-per-scenario-fixture-selection.tasks.md |
 | US2 | Resolve Fixture Paths in the Runner | US1 | specs/2026-06-06-011-jvm-multi-language-fixture/02-resolve-fixture-paths-in-the-runner.tasks.md |
 | US3 | Provide a Minimal JVM Gradle Fixture | — | specs/2026-06-06-011-jvm-multi-language-fixture/03-provide-a-minimal-jvm-gradle-fixture.tasks.md |
-| US4 | Preserve Existing Fixture Behavior | US1, US2, US3 | — |
+| US4 | Preserve Existing Fixture Behavior | US1, US2, US3 | specs/2026-06-06-011-jvm-multi-language-fixture/04-preserve-existing-fixture-behavior.tasks.md |
 
 ## Requirements *(mandatory)*
 
