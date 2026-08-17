@@ -86,7 +86,7 @@ describe('toClaudeAgentContent', () => {
     expect(out).toContain('You are the plan sub-agent.');
   });
 
-  it('drops the effort: line (no Claude frontmatter knob)', () => {
+  it('drops the effort: line (Claude deployer does not translate it yet)', () => {
     const out = toClaudeAgentContent(WRITE_AGENT);
     expect(out).not.toContain('effort:');
     expect(out).toContain('model: opus');

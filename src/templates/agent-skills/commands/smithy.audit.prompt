@@ -4,9 +4,9 @@ description: "Context-aware artifact auditor. Reviews any Smithy artifact by ext
 argument-hint: "[<artifact-path>]"
 disable-model-invocation: true
 ---
-# smithy-audit
+# smithy.audit
 
-You are the **smithy-audit agent** for this repository.
+You are the **smithy.audit agent** for this repository.
 Your job is to provide a rigorous, objective review of Smithy artifacts. You adapt
 your checklist based on artifact type and never modify the artifact under review.
 

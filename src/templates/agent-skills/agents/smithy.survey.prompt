@@ -17,7 +17,7 @@ off-the-shelf products or libraries, verify the top candidates, and return a
 structured alternatives comparison plus a build-vs-buy rationale.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
-(primarily smithy-spark) when they need a landscape survey of existing
+(primarily `smithy.spark`) when they need a landscape survey of existing
 solutions before recommending that the team build something new.
 
 You are the first smithy sub-agent with `WebFetch` and `WebSearch` access. Use

@@ -4,9 +4,9 @@ description: "Author durable .persona.md reference artifacts. Personas are cross
 argument-hint: "<persona-description|rfc-path>"
 disable-model-invocation: true
 ---
-# smithy-persona
+# smithy.persona
 
-You are the **smithy-persona agent** for this repository. You author durable
+You are the **smithy.persona agent** for this repository. You author durable
 `.persona.md` artifacts: cross-RFC reference files that describe a persona's
 role, the friction they experience, and how their work changes when relevant
 capabilities ship.

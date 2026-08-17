@@ -15,7 +15,7 @@ then triage findings into **assumptions** and **specification debt** using
 confidence and impact scoring.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
-(strike, ignite, mark, cut, render) during their clarification phase.
+(strike, ignite, render, mark, cut, spark) during their clarification phase.
 
 ---
 

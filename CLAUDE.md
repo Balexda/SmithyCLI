@@ -55,7 +55,7 @@ section.
 
 Smithy provides a collection of workflow prompts, each for a different stage/style of development:
 
-- **smithy.strike** — The lightweight "just do it" command. One-shot: explore, plan, write a `.strike.md` document, and create a PR in a single pass — no intermediate approval stops. This is the starting point we're actively developing. Has `command: true` so it deploys as a Claude Code slash command (`/smithy.strike`).
+- **smithy.strike** — The lightweight "just do it" command. One-shot: explore, plan, write a `.strike.md` document, and create a PR in a single pass — no intermediate approval stops. This is the starting point we're actively developing. Living under `commands/` is what deploys it as a Claude Code slash command (`/smithy.strike`) — the directory is the signal; there is no `command:` frontmatter field.
 - **smithy.spark** — Optional upstream entry point. Turns a raw idea into a ~1 page PRD (problem statement, proposed solution, alternatives / build-vs-buy) at `docs/prds/<YYYY>-<NNN>-<slug>.prd.md`. One-shot by default. The PRD can then feed `smithy.ignite`.
 - **smithy.ignite** — Full pipeline kickoff for larger features (RFC, design, etc.). Accepts a PRD file path as input to workshop into an RFC.
 - **smithy.forge** — Implementation executor that works from task specs
@@ -68,16 +68,18 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 
 ### Sub-Agents (not user-invocable)
 
-- **smithy-plan** — Design sub-agent: explores codebase, proposes approach, identifies risks and tradeoffs. Runs in parallel with focus lenses for competing perspectives (used by strike in agent mode)
-- **smithy-reconcile** — Reconciliation sub-agent: synthesizes outputs from multiple competing smithy-plan runs into a single coherent plan (used by strike in agent mode)
-- **smithy-clarify** — Ambiguity scanning and triage into assumptions and specification debt (used by strike, ignite, mark, cut, render)
-- **smithy-refine** — Artifact review and refinement findings (used by mark, cut, ignite, render in Phase 0)
+- **smithy-plan** — Design sub-agent: explores codebase, proposes approach, identifies risks and tradeoffs. Dispatched once per focus lens for competing perspectives, through the `competing-lenses-implementation` (3 lenses) and `competing-lenses-scoping` (4 lenses) snippets (used by strike, ignite, render, mark)
+- **smithy-reconcile** — Reconciliation sub-agent: synthesizes outputs from multiple competing smithy-plan runs into a single coherent plan (used by strike, ignite, render, mark — dispatched from the same competing-lenses snippets)
+- **smithy-slice** — Decomposition sub-agent: the `smithy-plan` analogue for task slicing. Explores the codebase and proposes PR-sized slices with well-scoped tasks, dispatched once per focus lens through `competing-lenses-decomposition` (used by cut)
+- **smithy-reconcile-slices** — Slice reconciliation sub-agent: synthesizes competing smithy-slice runs at two levels — slice boundaries and task lists (used by cut)
+- **smithy-clarify** — Ambiguity scanning and triage into assumptions and specification debt (used by strike, ignite, render, mark, cut, spark)
+- **smithy-refine** — Artifact review and refinement findings (used by ignite, render, mark, cut in Phase 0, and by spark)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
 - **smithy-implementation-review** — Read-only code review; returns findings for forge to apply (used by forge)
-- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, mark, render, cut after artifact generation)
+- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, render, mark, cut after artifact generation)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
-- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; used by spark for the PRD Problem Statement; designed for reuse by other commands)
+- **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; by spark for the PRD Problem Statement; and by persona for the `.persona.md` narrative body)
 - **smithy-recall** — Read-only engraved-knowledge recall across the user / repo / project levels: ranks level-tagged records, flags candidate invariant exceptions with their ledger severity, reports declared vs. undeclared cross-level conflicts, and flags retired-decision citation hazards. Advisory only — parents escalate (used by strike, ignite, render, mark, cut in the scan phase)
 - **smithy-survey** — WebFetch/WebSearch-enabled landscape survey: finds off-the-shelf alternatives and returns a structured build-vs-buy rationale (used by spark during PRD drafting; first smithy sub-agent to use web-research tools)
 

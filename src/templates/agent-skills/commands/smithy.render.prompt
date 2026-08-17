@@ -4,9 +4,9 @@ description: "Break an RFC milestone into a feature map one-shot. Runs clarify, 
 argument-hint: "<rfc-path|features-path> [<milestone-number>] [--bundle <path>]"
 disable-model-invocation: true
 ---
-# smithy-render
+# smithy.render
 
-You are the **smithy-render agent** for this repository.
+You are the **smithy.render agent** for this repository.
 Your job is to take an **RFC milestone** and interactively break it into a
 **feature map** — a structured list of discrete, user-facing features that
 together deliver the milestone's goals.
@@ -305,6 +305,15 @@ Use the **smithy-clarify** sub-agent. Pass it:
 **Title conventions**: Before writing, read the `smithy.titles` prompt for
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
+
+Before drafting prose-bearing feature-map sections, load
+`Skill("smithy.helper-voice")` in draft mode. Use it as the shared voice
+source for the narrative fields a feature carries — descriptions, rationale,
+and the seam explanation between a build/wire pair — while leaving the
+`## Dependency Order` table and the typed field blocks as structured Reference
+content. It is also the source of the `<!-- audience: ... -->` tags this
+artifact carries and `smithy.audit` lints. Do not inline the helper's taxonomy
+in this prompt.
 
 Using the workshopped answers from Phase 2, draft a structured `.features.md`. Every
 feature is typed per the shared schema below:

@@ -13,5 +13,11 @@ Deployed to:
 
 | Prompt | Purpose | Referenced By |
 |--------|---------|---------------|
-| `smithy.titles` | Canonical title format conventions for all Smithy artifacts | mark, cut, render, forge (any command that writes headings) |
-| `smithy.guidance` | Shell and environment guidance for implementation agents | forge, strike |
+| `smithy.titles` | Canonical title format conventions for all Smithy artifacts | spark, ignite, render, mark, cut, strike, orders — every command that writes artifact headings |
+| `smithy.guidance` | Shell and environment guidance | audit, forge, orders |
+
+A prompt is a *deployed file* a command is told to read, so its **Referenced
+By** column lists the commands whose text names it. That is a different
+relationship from a snippet's **Used By**: the `guidance-shell` snippet is the
+shared body behind `smithy.guidance`, and `smithy-implement` composes that
+snippet directly rather than reading this prompt.

@@ -717,7 +717,12 @@ the same source serves every agent:
   is inherited from the parent session (Codex model ids are session/plan
   dependent).
 - An optional `effort: low|medium|high` overrides the tier's default Codex
-  effort. It has no Claude frontmatter knob and is dropped from the Claude build.
+  effort. It is dropped from the Claude build — not because Claude lacks the
+  knob (Claude Code does read an `effort:` field on a sub-agent, over a wider
+  range than Smithy's three values), but because the Claude deployer does not
+  translate it yet. On Claude the tier is currently the only horsepower signal
+  that reaches the agent. No sub-agent declares `effort:` today, so nothing is
+  silently lost.
 - Omitting `tier` defaults to `standard`. A legacy bare `model: opus|sonnet|haiku`
   is still tolerated and mapped back onto the equivalent tier.
 
@@ -729,13 +734,20 @@ Sub-agents are invoked by parent commands, not directly by users:
 
 | Agent | Role | Invoked By |
 |-------|------|------------|
-| smithy-plan | Design planning with focus lenses | strike (agent mode), ignite (Phase 1.5 + Phase 3) |
-| smithy-reconcile | Synthesize competing plan outputs | strike (agent mode, after smithy-plan), ignite (Phase 1.5) |
-| smithy-clarify | Ambiguity scanning and triage (assumptions + specification debt) | strike, ignite, mark, cut, render |
-| smithy-refine | Artifact review and refinement | mark, cut, ignite, render (Phase 0) |
-| smithy-plan-review | Read-only self-consistency review of planning artifacts; returns structured findings | strike, ignite, mark, render, cut (after artifact generation, before PR) |
+| smithy-plan | Design planning under a focus lens, run in parallel for competing perspectives | strike, ignite, render, mark |
+| smithy-reconcile | Synthesize competing smithy-plan outputs | strike, ignite, render, mark |
+| smithy-slice | Task decomposition under a focus lens, run in parallel for competing perspectives | cut |
+| smithy-reconcile-slices | Synthesize competing smithy-slice outputs (slice boundaries + task lists) | cut |
+| smithy-clarify | Ambiguity scanning and triage (assumptions + specification debt) | strike, ignite, render, mark, cut, spark |
+| smithy-refine | Artifact review and refinement | ignite, render, mark, cut (Phase 0), spark |
+| smithy-plan-review | Read-only self-consistency review of planning artifacts; returns structured findings | strike, ignite, render, mark, cut (after artifact generation, before PR) |
 | smithy-implement | TDD implementation (test → code → commit) | forge |
 | smithy-implementation-review | Read-only code review; returns findings for forge to apply | forge |
+| smithy-recall | Read-only engraved-knowledge recall across the user / repo / project levels; advisory only | strike, ignite, render, mark, cut (scan phase) |
 | smithy-scout | Pre-planning consistency scan | render, mark, cut |
 | smithy-maid | Post-implementation doc cleanup | forge |
-| smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b) |
+| smithy-prose | Narrative/persuasive section drafting | ignite (sub-phases 3a, 3b), spark (sub-phase 3a), persona |
+| smithy-survey | Off-the-shelf landscape survey (WebFetch/WebSearch); returns a build-vs-buy rationale | spark (Phase 2.5) |
+
+Per-agent tiers, tool grants, and the exact dispatch sites are in
+[`agents/README.md`](agents/README.md).

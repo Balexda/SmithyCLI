@@ -262,6 +262,15 @@ narrow the scope, then re-run.
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
+Before drafting prose-bearing spec sections, load
+`Skill("smithy.helper-voice")` in draft mode. Use it as the shared voice
+source for the Explanation-mode sections — overview, user-story narrative, and
+the framing paragraphs of the data model and contracts — while leaving
+acceptance scenarios, entity tables, and interface definitions as structured
+Reference content. It is also the source of the `<!-- audience: ... -->` tags
+these artifacts carry and `smithy.audit` lints. Do not inline the helper's
+taxonomy in this prompt.
+
 Draft the `<slug>.spec.md` file with this structure:
 
 ```markdown
