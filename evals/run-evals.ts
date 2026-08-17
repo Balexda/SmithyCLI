@@ -37,7 +37,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { preflight, runScenario } from './lib/runner.js';
+import { preflight, resolveFixtureDir, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
 import { loadBaseline, compareToBaseline } from './lib/baseline.js';
@@ -255,11 +255,19 @@ console.log('');
 const results: EvalResult[] = [];
 
 for (const scenario of finalScenarios) {
+  let effectiveFixtureDir;
+  try {
+    effectiveFixtureDir = resolveFixtureDir(scenario, fixtureDir, canonicalFixtureRoot);
+  } catch (err) {
+    console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+
   console.log(`Running scenario: ${scenario.name}`);
   console.log(`  Agent:   ${agent}`);
   console.log(`  Skill:   ${scenario.skill}`);
   console.log(`  Prompt:  ${scenario.prompt}`);
-  console.log(`  Fixture: ${fixtureDir}`);
+  console.log(`  Fixture: ${effectiveFixtureDir}`);
   console.log(
     `  Timeout: ${
       scenario.timeout !== undefined
@@ -271,7 +279,7 @@ for (const scenario of finalScenarios) {
 
   let output;
   try {
-    output = await runScenario(scenario, fixtureDir, agent, canonicalFixtureRoot);
+    output = await runScenario(scenario, effectiveFixtureDir, agent);
   } catch (err) {
     console.error(`Error running scenario: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

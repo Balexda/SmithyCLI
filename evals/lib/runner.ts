@@ -369,13 +369,7 @@ export async function runScenario(
   scenario: EvalScenario,
   fixtureDir: string,
   agent: EvalAgent = 'claude',
-  canonicalFixtureRoot: string = fixtureDir,
 ): Promise<RunOutput> {
-  const selectedFixtureDir = resolveScenarioFixtureDir(
-    scenario,
-    fixtureDir,
-    canonicalFixtureRoot,
-  );
   const requiresGit = scenario.requires_git ?? true;
 
   // Create a unique temp directory and copy the fixture into it.
@@ -385,7 +379,7 @@ export async function runScenario(
 
   try {
     // FR-002: Copy fixture to temp directory.
-    fs.cpSync(selectedFixtureDir, tmpDir, { recursive: true });
+    fs.cpSync(fixtureDir, tmpDir, { recursive: true });
 
     if (requiresGit) {
       // Initialize the temp copy as a git repository with a baseline commit
@@ -414,7 +408,7 @@ export async function runScenario(
     }
 
     // FR-011: Checksum the source fixture *before* execution.
-    const checksumBefore = hashDirectory(selectedFixtureDir);
+    const checksumBefore = hashDirectory(fixtureDir);
 
     const fixtureBindings = resolveLocalFixtureBindings(scenario, tmpDir);
 
@@ -450,7 +444,7 @@ export async function runScenario(
     }
 
     // FR-011: Re-verify the source fixture after execution.
-    const checksumAfter = hashDirectory(selectedFixtureDir);
+    const checksumAfter = hashDirectory(fixtureDir);
     if (checksumAfter !== checksumBefore) {
       throw new Error(
         'Source fixture directory was modified during eval execution. ' +
@@ -472,35 +466,88 @@ export async function runScenario(
   }
 }
 
-function resolveScenarioFixtureDir(
+export function resolveFixtureDir(
   scenario: EvalScenario,
-  fixtureDir: string,
-  canonicalFixtureRoot: string,
+  globalFixtureDir: string,
+  repoFixtureRoot: string,
 ): string {
   const fixture = scenario.fixture;
-
-  // No selector: use the default fixture root, which honors the `--fixture`
-  // override. An explicit selector overrides that default per the F1.6 fixture
-  // contract and always resolves to its committed location under the canonical
-  // fixture root, so a `--fixture` override aimed at other cases never redirects
-  // (or hides) it. The loader has already validated any selector as a safe
-  // relative path under the fixture root (no absolute roots, no '..').
   const selectedDir = fixture === undefined
-    ? fixtureDir
-    : path.join(canonicalFixtureRoot, fixture);
+    ? path.resolve(globalFixtureDir)
+    : path.resolve(repoFixtureRoot, fixture);
+
+  const fixtureRoot = path.resolve(repoFixtureRoot);
+
+  // Defense in depth beyond loader validation. The loader rejects `..` path
+  // *segments*, so containment is checked per segment here too: the fixture
+  // root itself (`fixture: .`, which selects the default fixture even under a
+  // `--fixture` override) and children whose names merely begin with dots
+  // (`..fixtures`) are legitimate selections the loader accepts — only a real
+  // parent traversal escapes the root.
+  if (fixture !== undefined && !isRootOrDescendant(selectedDir, fixtureRoot)) {
+    throw new Error(
+      `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root: ${selectedDir}`,
+    );
+  }
+
   const stat = fs.statSync(selectedDir, { throwIfNoEntry: false });
   if (!stat) {
+    if (fixture === undefined) {
+      throw new Error(
+        `Scenario "${scenario.name}" effective fixture directory was not found: ${selectedDir}`,
+      );
+    }
     throw new Error(
       `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture directory was not found: ${selectedDir}`,
     );
   }
   if (!stat.isDirectory()) {
+    if (fixture === undefined) {
+      throw new Error(
+        `Scenario "${scenario.name}" effective fixture path is not a directory: ${selectedDir}`,
+      );
+    }
     throw new Error(
       `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path is not a directory: ${selectedDir}`,
     );
   }
 
+  // The checks above only constrain the path *text*. Resolve the real paths and
+  // re-check containment so a symlink under the fixture root cannot redirect the
+  // copied fixture outside it — the same defense the scenario loader applies to
+  // `local_fixtures` declarations.
+  if (fixture !== undefined) {
+    let realSelectedDir: string;
+    let realFixtureRoot: string;
+    try {
+      realSelectedDir = fs.realpathSync(selectedDir);
+      realFixtureRoot = fs.realpathSync(fixtureRoot);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path could not be resolved: ${selectedDir} (${msg})`,
+      );
+    }
+    if (!isRootOrDescendant(realSelectedDir, realFixtureRoot)) {
+      throw new Error(
+        `Scenario "${scenario.name}" requested fixture "${fixture}", but fixture path resolves outside fixture root via symlink: ${selectedDir}`,
+      );
+    }
+  }
+
   return selectedDir;
+}
+
+/**
+ * True when `childAbs` is `parentAbs` itself or a descendant of it. Containment
+ * is checked per path segment rather than by string prefix, so a directory whose
+ * name merely begins with `..` is not mistaken for a parent traversal.
+ */
+function isRootOrDescendant(childAbs: string, parentAbs: string): boolean {
+  const relative = path.relative(parentAbs, childAbs);
+  if (relative === '') return true;
+  if (path.isAbsolute(relative)) return false;
+  return !relative.split(/[\\/]+/).includes('..');
 }
 
 function buildAgentArgs(agent: EvalAgent, invocation: string, tmpDir: string): string[] {
