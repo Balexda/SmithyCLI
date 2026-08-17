@@ -5,6 +5,7 @@ import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter, par
 import { toCodexAgentToml } from '../agent-models.js';
 import { permissions, STORE_GIT_ARGS } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
+import { writeSkillResources } from './skill-resources.js';
 
 const SMITHY_CODEX_RULES_BEGIN = '# BEGIN SMITHY CODEX RULES';
 const SMITHY_CODEX_RULES_END = '# END SMITHY CODEX RULES';
@@ -73,7 +74,8 @@ export async function deploy(
 
   for (const [skillName, skill] of templates.skills) {
     const skillPath = deployAsSkill(skill.prompt, skillName);
-    if (skillPath && skill.scripts.size > 0) {
+    if (!skillPath) continue;
+    if (skill.scripts.size > 0) {
       const scriptsDir = path.join(skillPath, 'scripts');
       if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
       for (const [filename, content] of skill.scripts) {
@@ -83,6 +85,7 @@ export async function deploy(
         deployedFiles.push(path.relative(targetDir, dest));
       }
     }
+    deployedFiles.push(...writeSkillResources(skillPath, targetDir, skill.resources));
   }
 
   // Deploy sub-agents -> .codex/agents/<name>.toml as Codex custom agents.

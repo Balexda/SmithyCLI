@@ -640,6 +640,26 @@ describe('CLI uninit --yes (non-interactive)', () => {
     }
   });
 
+  it('installs bundled skill reference files and removes them again on uninit', () => {
+    // Issue #557: skill bodies link to reference files loaded on demand. The
+    // real CLI must both ship them and — because they are manifest-tracked —
+    // take them back out, leaving no orphaned references/ tree behind.
+    const voiceRefs = path.join(tmpDir, '.claude', 'skills', 'smithy.helper-voice', 'references');
+    expect(fs.existsSync(path.join(voiceRefs, 'review-checklist.md'))).toBe(true);
+    expect(fs.existsSync(path.join(voiceRefs, 'worked-examples.md'))).toBe(true);
+
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, '.smithy', 'smithy-manifest.json'), 'utf-8'),
+    ) as { files: Record<string, string[]> };
+    expect(manifest.files.claude).toContain(
+      '.claude/skills/smithy.helper-voice/references/review-checklist.md',
+    );
+
+    execFileSync('node', [CLI, 'uninit', '-y'], { encoding: 'utf-8', cwd: tmpDir });
+
+    expect(fs.existsSync(voiceRefs)).toBe(false);
+  });
+
   it('preserves .claude/settings.json after uninit', () => {
     // settings.json should exist after init -y (permissions default to true)
     expect(fs.existsSync(path.join(tmpDir, '.claude', 'settings.json'))).toBe(true);

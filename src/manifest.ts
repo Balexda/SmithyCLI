@@ -366,13 +366,54 @@ export function removeManifestFiles(targetDir: string, location: DeployLocation)
   if (!manifest) return 0;
 
   const baseDir = location === 'user' ? os.homedir() : targetDir;
+  const emptiedDirs: string[] = [];
   let removed = 0;
   for (const file of allManifestFiles(manifest)) {
     const absPath = path.join(baseDir, file);
-    if (removeIfExists(absPath)) removed++;
+    if (removeIfExists(absPath)) {
+      removed++;
+      emptiedDirs.push(path.dirname(absPath));
+    }
+  }
+  for (const dir of emptiedDirs) {
+    pruneEmptyDirs(dir, baseDir);
   }
 
   // Remove the manifest itself
   removeIfExists(resolveManifestPath(targetDir, location));
   return removed;
+}
+
+/**
+ * Walk up from `dir` toward `stopAt`, deleting each directory that is empty
+ * and stopping at the first one that isn't (or at `stopAt`, exclusive).
+ *
+ * Removing a tracked file leaves its directory behind, which matters now that
+ * a skill can nest bundled reference files: an uninit that deletes
+ * `references/examples.md` would otherwise leave `<skill>/references/` and
+ * `<skill>/` sitting in the target repo as empty scaffolding. Only
+ * *already-empty* directories are removed, so nothing a user put there is at
+ * risk — a sibling file or a stray dot-file is enough to keep the directory.
+ *
+ * Not counted in the removal total: these are directories the caller's own
+ * file deletions emptied, not artifacts in their own right.
+ */
+function pruneEmptyDirs(dir: string, stopAt: string): void {
+  let current = path.resolve(dir);
+  const boundary = path.resolve(stopAt);
+  while (current !== boundary && current.startsWith(boundary + path.sep)) {
+    let entries: string[];
+    try {
+      entries = fs.readdirSync(current);
+    } catch {
+      return; // already gone, or unreadable — nothing to prune
+    }
+    if (entries.length > 0) return;
+    try {
+      fs.rmdirSync(current);
+    } catch {
+      return;
+    }
+    current = path.dirname(current);
+  }
 }

@@ -197,6 +197,28 @@ describe('deploy', () => {
     expect(skillMd).not.toContain('./.gemini/skills/smithy.pr-review');
   });
 
+  // Issue #557: bundled reference files ship on every target — see the
+  // matching Gemini test for why the policy is uniform rather than
+  // Claude-only.
+  it('deploys bundled skill reference files and tracks them for cleanup', async () => {
+    const files = await deploy(tmpDir, false);
+
+    const templates = await getComposedTemplates('codex');
+    let deployed = 0;
+    for (const [skillName, skill] of templates.skills) {
+      for (const [relPath, content] of skill.resources) {
+        const dest = path.join(tmpDir, '.agents', 'skills', skillName, ...relPath.split('/'));
+        expect(fs.existsSync(dest), `${skillName}/${relPath}`).toBe(true);
+        // Compare as bytes: a `.prompt`-derived entry is rendered text, any
+        // other bundled file is a raw Buffer, and both must land unchanged.
+        expect(fs.readFileSync(dest).equals(Buffer.from(content))).toBe(true);
+        expect(files).toContain(`.agents/skills/${skillName}/${relPath}`);
+        deployed++;
+      }
+    }
+    expect(deployed).toBeGreaterThan(0);
+  });
+
   it('renders forge with sub-agent orchestration for Codex', async () => {
     await deploy(tmpDir, false);
 
