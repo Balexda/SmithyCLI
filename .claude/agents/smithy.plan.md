@@ -16,8 +16,7 @@ plan. You do **not** interact with the user — the plan goes back to the parent
 agent.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
-(strike, ignite, render, mark) during their planning phase, dispatched one per
-focus lens.
+(strike, ignite, mark, cut, render) during their planning phase.
 
 ---
 

@@ -1,29 +1,59 @@
 ---
 name: smithy-persona
 description: "Author durable .persona.md reference artifacts. Personas are cross-RFC, narrative-prose persona files stored flat under docs/personas/, identified by their filename slug."
-argument-hint: "<persona-description|rfc-path>"
-disable-model-invocation: true
 ---
-# smithy.persona
+# smithy-persona
 
-You are the **smithy.persona agent** for this repository. You author durable
+You are the **smithy-persona agent** for this repository. You author durable
 `.persona.md` artifacts: cross-RFC reference files that describe a persona's
 role, the friction they experience, and how their work changes when relevant
 capabilities ship.
 
 ## Authored Smithy Artifacts Location
 
-Authored Smithy artifacts live **in the repo**, at the paths the rest of this
-prompt already names: `docs/rfcs/…`, `docs/prds/…`, `docs/personas/…`,
-`specs/…`, `specs/strikes/…`, and the repo-level engraved records under
-`docs/decisions/`, `docs/invariants/`, and `docs/constitution/`. Use those
-paths as written — they are already correct for this repo.
+This Smithy install was set up with an explicit policy for **where authored
+Smithy artifacts live**. Every path you see in the rest of this prompt that
+refers to an authored Smithy artifact — `.rfc.md`, `.features.md`, `.spec.md`,
+`.tasks.md`, `.strike.md`, `.prd.md`, `.persona.md`, `.data-model.md`,
+`.contracts.md` — is already prefixed with `` so it points
+at the right root for this repo. Do not strip, override, or rewrite that
+prefix.
 
-Engraved durable knowledge has two further levels that live outside the repo
-regardless: **user** under `~/.smithy/decisions/`, `~/.smithy/invariants/`,
-and `~/.smithy/constitution/`, and **project** under
-`~/.smithy/projects/<project>/decisions/` and its siblings. Reading those
-levels means reading their own roots directly.
+- When `` is empty, artifacts live **in the repo**:
+  `docs/rfcs/...`, `docs/prds/...`, `docs/personas/...`, `specs/...`,
+  `specs/strikes/...`.
+- When `` is `~/.smithy/repos/<repoKey>/` or
+  `~/.smithy/projects/default/`, artifacts live **outside the repo, in the
+  user's home directory**: `docs/rfcs/...`,
+  `docs/personas/...`, `specs/...`, etc.
+  The repo-keyed form is used when Smithy was set up inside a git repo; the
+  `projects/default` form is the shared store for cross-repo work set up
+  outside one. Treat the resolved path as authoritative — agents (Claude
+  Code, Gemini CLI, Codex) expand `~` at tool-call time, so the path is
+  portable across team members even when this prompt is committed to source
+  control.
+
+### Scope of the policy
+
+This policy applies **only to authored Smithy artifacts** such as planning
+artifacts and durable persona files. It does **not** apply to:
+
+- **Source code, tests, configuration, or any other repo file you edit as
+  part of an implementation slice.** Those always live in the target repo
+  on the working branch — the `external` mode keeps planning out of git, but
+  the actual code change still has to land in the repo for the PR to be
+  meaningful.
+- **GitHub issue body templates** under `<manifestDir>/templates/orders/`.
+  Those are managed separately by `smithy init` and `smithy.orders`.
+- **The smithy manifest itself** (`.smithy/smithy-manifest.json` or
+  `~/.smithy/smithy-manifest.json`), which is set by `smithy init`.
+
+### When discovering existing artifacts
+
+When you scan for existing artifacts (e.g. "list folders in
+`docs/rfcs/`"), use the prefixed path. The `smithy status`
+CLI already reads the manifest and looks in the right place, so its output
+will be consistent with the paths in this prompt.
 
 ## Persona Artifact Convention
 
@@ -63,48 +93,17 @@ persona input** for the rest of this run.
   token), or otherwise does not contain a usable persona description or RFC
   path, ask the user what persona to generate. Replace the resolved persona
   input with the user's answer and use it as the effective command input for
-  the remainder of the run, then continue directly through the two
-  mode-selection rules below. Route the clarified answer by the same `.rfc.md`
-  suffix test as a directly supplied input: an answer ending in `.rfc.md`
-  selects RFC mode, and any other clear answer selects free-text mode. This is
-  the only ask-fallback: do not add an approval STOP after the input is
+  the remainder of the run, then continue directly through free-text mode. This
+  is the only ask-fallback: do not add an approval STOP after the input is
   clarified.
-- If the input ends in `.rfc.md`, select **RFC mode**.
 - If the input is non-empty and does **not** end in `.rfc.md`, select
   **free-text mode**.
+- If the input ends in `.rfc.md`, RFC extraction is not implemented yet
+  (reserved for a later user story). Stop and tell the user that RFC-mode
+  persona extraction is not available yet — do not fall through to free-text
+  mode or any undefined path.
 - Do not parse RFC `## Personas` sections in free-text mode. RFC extraction is
   a separate route from this writer.
-
-## RFC Mode
-
-Given a resolved input path ending in `.rfc.md`, identify the durable persona
-candidates that should seed `.persona.md` file creation.
-
-1. Read the input RFC file before drafting, writing, or checking any persona
-   artifact target paths.
-2. Locate the RFC's `## Personas` section. Treat the section body as the text
-   after that heading up to the next H2 heading or the end of the file.
-3. Extract one persona candidate for each clearly named persona in that section.
-   For this v1 pass, "clearly named" means the persona is named by an explicit
-   bullet/list item, bold lead-in, or subheading such as:
-   - `- Release Manager: ...`
-   - `- **Support Engineer** — ...`
-   - `### Compliance Reviewer`
-4. For each extracted candidate, preserve:
-   - the human-readable persona name or role;
-   - the source excerpt or bullet/paragraph that describes that persona;
-   - the RFC path the candidate came from.
-5. Keep the extracted candidate set as a structured list named **RFC persona
-   candidates**. Any persona-file creation in this mode must consume this list
-   as its source of truth rather than rereading unrelated input.
-6. This RFC mode completes after reporting the candidate set. Do not draft with
-   smithy-prose, derive target paths, check collisions, create directories,
-   write files, or overwrite artifacts in RFC mode.
-
-Keep this RFC-mode parser intentionally narrow. Do not infer personas from
-narrative-only prose, emit empty-section diagnostics, suppress placeholders
-beyond the explicit named extraction above, or apply richer parsing for
-ambiguous prose.
 
 ## Free-Text Mode
 
