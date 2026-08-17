@@ -96,6 +96,22 @@ export interface DispatchUsageEvidence {
   reviewed_at: string;
 }
 
+/** Normalized usage tied to a single sub-agent dispatch. */
+export interface DispatchUsageRecord {
+  dispatch_id: string;
+  agent: string;
+  input: number;
+  output: number;
+}
+
+/** Aggregated per-scenario token totals for one dispatched sub-agent. */
+export interface SubAgentTokenTotals {
+  agent: string;
+  input: number;
+  output: number;
+  dispatch_count: number;
+}
+
 // ---------------------------------------------------------------------------
 // Scenario / expectation types (from YAML definitions)
 // ---------------------------------------------------------------------------

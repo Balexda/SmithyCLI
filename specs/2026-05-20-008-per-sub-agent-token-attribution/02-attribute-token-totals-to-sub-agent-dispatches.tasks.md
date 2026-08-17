@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Extract attributed dispatch usage records**
+- [x] **Extract attributed dispatch usage records**
 
   Add an attribution path under `evals/lib/` that consumes parsed `StreamEvent` values and matches usage metadata to known sub-agent dispatches by stable dispatch identifier. Reuse the existing stream parsing helpers where possible, and keep parent-level, ambiguous, and malformed usage out of the returned records for AS 2.1 and AS 2.3.
 
@@ -30,7 +30,7 @@
   - Failed dispatches with parseable usage remain attributable.
   - Existing evidence classification behavior remains unchanged.
 
-- [ ] **Aggregate dispatch records by sub-agent**
+- [x] **Aggregate dispatch records by sub-agent**
 
   Extend the attribution path to return `SubAgentTokenTotals[]` for one scenario by grouping valid dispatch usage records by stable sub-agent display name. Preserve per-case token totals as the authoritative fallback by returning no attribution rows for unattributable usage, satisfying AS 2.1-2.3 without introducing report rendering from US3.
 
