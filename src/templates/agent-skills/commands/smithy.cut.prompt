@@ -431,6 +431,14 @@ narrow the scope, then re-run.
 canonical title formats and check for repo-level overrides in the project's
 CLAUDE.md. Apply those conventions to all headings in this artifact.
 
+Before drafting prose-bearing tasks sections, load
+`Skill("smithy.helper-voice")` in draft mode. Use it as the shared voice
+source for slice summaries and task descriptions, which are How-to content
+written for an implementer with no prior context — the conciseness budgets
+there are what keep a task under the word ceiling. It is also the source of
+the `<!-- audience: ... -->` tags this artifact carries and `smithy.audit`
+lints. Do not inline the helper's taxonomy in this prompt.
+
 Draft the tasks file with this structure:
 
 ```markdown

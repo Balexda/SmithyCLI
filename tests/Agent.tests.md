@@ -18,10 +18,11 @@ head -3 /tmp/smithy-test/.claude/prompts/smithy.strike.md
 ```
 
 **Expected**:
-- [ ] 12 files in `.claude/prompts/` (all `smithy.*.md`)
-- [ ] 9 files in `.claude/commands/` (only templates with `command: true`)
-- [ ] No YAML frontmatter (`---`) at the top of any deployed file
-- [ ] First line of each file is a markdown heading (e.g., `# smithy-strike`)
+- [ ] 2 files in `.claude/prompts/` (all `smithy.*.md`, one per `prompts/` template)
+- [ ] 13 files in `.claude/commands/` (one per `commands/` template)
+- [ ] No YAML frontmatter (`---`) at the top of any deployed **prompt** file
+      (commands keep a translated block; sub-agents and skills keep theirs)
+- [ ] First body line of each file is a markdown heading (e.g., `# smithy.strike`)
 
 ---
 

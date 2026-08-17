@@ -10,18 +10,25 @@ Deployed to:
 
 ## Current Commands
 
+Sub-agent dispatch is conditional: Claude and Codex both ship deployable
+sub-agent definitions and render the `{{#ifAgent}}` branch, while **Gemini**
+gets no sub-agents deployed and renders the inline `{{else}}` fallback for every
+row below.
+
 | Command | Purpose | Sub-Agents Used |
 |---------|---------|-----------------|
-| `smithy.strike` | Lightweight one-shot planning — explore, write `.strike.md`, create PR | clarify, plan, reconcile |
-| `smithy.ignite` | Workshop an idea into an RFC with milestones | clarify, refine, plan, reconcile |
-| `smithy.render` | Break an RFC milestone into a feature map | clarify, refine, **scout** |
-| `smithy.mark` | Transform a feature into a spec with user stories | clarify, refine, **scout** |
-| `smithy.cut` | Decompose a user story into PR-sized task slices | clarify, refine, **scout** |
-| `smithy.forge` | Implement a slice end-to-end (TDD + review + PR) | implement, review, **maid** in Claude/Gemini agent mode; direct TDD/review in Codex |
-| `smithy.fix` | Minimal-diff bug fix from a GitHub issue | (none) |
+| `smithy.spark` | Turn a raw idea into a ~1 page PRD (problem, proposed solution, build-vs-buy) | refine, clarify, **survey**, prose |
+| `smithy.ignite` | Workshop an idea (or a PRD) into an RFC with milestones | refine, recall, clarify, plan, reconcile, prose, plan-review |
+| `smithy.render` | Break an RFC milestone into a feature map | refine, **scout**, recall, clarify, plan, reconcile, plan-review |
+| `smithy.mark` | Transform a feature into a spec with user stories | refine, **scout**, recall, clarify, plan, reconcile, plan-review |
+| `smithy.cut` | Decompose a user story into PR-sized task slices | refine, **scout**, recall, clarify, **slice**, **reconcile-slices**, plan-review |
+| `smithy.strike` | Lightweight one-shot planning — explore, write `.strike.md`, create PR | recall, clarify, plan, reconcile, plan-review |
+| `smithy.forge` | Implement a slice end-to-end (TDD + review + PR) | implement, implementation-review, **maid** |
+| `smithy.fix` | Smallest correct fix for a CI failure, failing test, bug, or open PR review comments | (none — uses the `smithy.pr-review` skill) |
 | `smithy.audit` | Audit a Smithy artifact against its checklist | (none) |
-| `smithy.orders` | Show available Smithy commands and their usage | (none) |
-| `smithy.engrave` | Author / update a durable-knowledge record (decision, invariant, principle) at the `user`, `repo`, or `project` level — the prompt itself carries the full schema | (none) |
+| `smithy.orders` | Create GitHub issues from a Smithy artifact (`.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`) | (none — uses the `smithy.gh-issue` skill) |
+| `smithy.persona` | Author a durable `.persona.md` record for a user archetype | prose |
+| `smithy.engrave` | Author / update a durable-knowledge record (decision, invariant, principle) at the `user`, `repo`, or `project` level — the prompt itself carries the full schema | (none — reads the stores directly via `engraved-levels`) |
 | `smithy.resolve` | Interactively resolve one specification-debt item in a planning artifact — select the item, walk up to the parent for inherited context, ask the operator, record the answer | (none) |
 
 `smithy.status` is deployed as a skill (see `../skills/smithy.status/`), not a

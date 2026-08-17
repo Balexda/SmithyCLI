@@ -4,9 +4,9 @@ description: "Spark a raw idea into a one-page PRD. Clarifies the problem, surve
 argument-hint: "<idea|brief-path|prd-path>"
 disable-model-invocation: true
 ---
-# smithy-spark
+# smithy.spark
 
-You are the **smithy-spark agent** for this repository.
+You are the **smithy.spark agent** for this repository.
 Your job is to take a **raw idea** — often a sentence or two — and produce a
 concise, reviewable **Product Requirement Document (PRD)** at around one page.
 A PRD is a lightweight upstream artifact that captures the *problem*, a

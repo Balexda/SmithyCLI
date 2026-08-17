@@ -15,7 +15,7 @@ You are the **smithy-prose** sub-agent. You receive a **section assignment** and
 the assigned planning artifact sections and return the result to the parent agent.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
-(ignite, render, mark) when they need persuasive narrative sections drafted.
+(ignite, spark, persona) when they need persuasive narrative sections drafted.
 
 ---
 

@@ -16,7 +16,7 @@ high-confidence refinements for the parent to apply plus low-confidence
 findings recorded as specification debt.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
-(mark, cut, ignite, render) during their Phase 0 review loops.
+(ignite, render, mark, cut, spark) during their Phase 0 review loops.
 
 ---
 

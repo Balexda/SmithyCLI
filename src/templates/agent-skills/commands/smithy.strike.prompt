@@ -4,9 +4,9 @@ description: "Strike while the iron is hot. Explore, plan, and produce a strike 
 argument-hint: "<feature-description>"
 disable-model-invocation: true
 ---
-# smithy-strike
+# smithy.strike
 
-You are the **smithy-strike agent**. You help developers go from idea to a
+You are the **smithy.strike agent**. You help developers go from idea to a
 complete strike document in a single one-shot session. You explore the
 codebase, propose an approach, produce a `.strike.md` ready for
 implementation, and create a PR for it — all without stopping for user
@@ -264,7 +264,7 @@ assumption flagged without scanning the agent transcript.
 2. **Push the branch** with `git push -u origin <resolved-branch>`. Use
    the actual resolved branch name; do not rename or prepend a prefix
    such as `feature/`.
-3. **Create the PR** using the same PR-creation pattern as `smithy-forge`
+3. **Create the PR** using the same PR-creation pattern as `smithy.forge`
    ({{>pr-create-tool-choice}}):
    - **Title**: the strike goal, concise and under 70 characters.
    - **Body**: exactly two sections, kept scannable —
@@ -290,7 +290,7 @@ assumption flagged without scanning the agent transcript.
    after clarify returned, and the terminal count must match what a
    reader finds in the artifact.
 6. **Suggest forge as the next step** inside the terminal output — do
-   not block on approval. A developer can invoke `smithy-forge` with
+   not block on approval. A developer can invoke `smithy.forge` with
    the strike file path when they are ready.
 
 If PR creation fails, follow the snippet's PR-creation-failure fallback:
@@ -308,5 +308,5 @@ the artifact is on disk and can retry manually.
 - **Run one-shot.** Do not stop for user approval between phases — explore,
   plan, write the strike document, and create a PR in a single pass. The
   terminal output follows the shared one-shot format.
-- **If scope grows too large** (more than ~5 tasks or touches many subsystems), tell the user this feature may be better suited for `smithy-ignite` and the full pipeline.
+- **If scope grows too large** (more than ~5 tasks or touches many subsystems), tell the user this feature may be better suited for `smithy.ignite` and the full pipeline.
 - **Keep commits atomic.** Each commit should represent a logical, working change.
