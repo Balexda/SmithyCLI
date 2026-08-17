@@ -14,15 +14,17 @@ cd /path/to/SmithyCLI
 node dist/cli.js init -a claude --permissions repo -y -d /tmp/smithy-test
 ls /tmp/smithy-test/.claude/prompts/
 ls /tmp/smithy-test/.claude/commands/
-head -3 /tmp/smithy-test/.claude/prompts/smithy.strike.md
+head -3 /tmp/smithy-test/.claude/prompts/smithy.titles.md
+head -8 /tmp/smithy-test/.claude/commands/smithy.strike.md
 ```
 
 **Expected**:
 - [ ] 2 files in `.claude/prompts/` (all `smithy.*.md`, one per `prompts/` template)
 - [ ] 13 files in `.claude/commands/` (one per `commands/` template)
-- [ ] No YAML frontmatter (`---`) at the top of any deployed **prompt** file
-      (commands keep a translated block; sub-agents and skills keep theirs)
-- [ ] First body line of each file is a markdown heading (e.g., `# smithy.strike`)
+- [ ] `smithy.titles.md` has no YAML frontmatter (`---`) — prompts are stripped
+- [ ] `smithy.strike.md` opens with a translated frontmatter block carrying
+      `description`, `argument-hint`, and `disable-model-invocation`, and no `name:`
+- [ ] The first body line of each is a markdown heading (`# smithy.titles`, `# smithy.strike`)
 
 ---
 

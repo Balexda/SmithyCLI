@@ -126,7 +126,12 @@ export function toClaudeAgentContent(content: string): string {
       }
       continue; // drop the tier/legacy-model line (collapse duplicates)
     }
-    if (/^effort:\s*/.test(line)) continue; // effort has no Claude frontmatter knob
+    // Drop `effort:` on the Claude path. Claude Code *does* read an `effort:`
+    // field on a sub-agent (low|medium|high|xhigh|max) — this deployer simply
+    // does not translate it yet, so the tier is the only horsepower signal that
+    // reaches a Claude agent. No sub-agent declares `effort:` today, so nothing
+    // is silently lost; wiring it through is a separate change.
+    if (/^effort:\s*/.test(line)) continue;
     out.push(line);
   }
 

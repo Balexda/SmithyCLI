@@ -10,10 +10,18 @@ Deployed to:
 
 ## Current Commands
 
-Sub-agent dispatch is conditional: Claude and Codex both ship deployable
-sub-agent definitions and render the `{{#ifAgent}}` branch, while **Gemini**
-gets no sub-agents deployed and renders the inline `{{else}}` fallback for every
-row below.
+The Sub-Agents Used column is **what Claude and Codex dispatch**, not a
+capability list for every target. Both ship deployable sub-agent definitions and
+render the `{{#ifAgent}}` branch; **Gemini** gets none deployed.
+
+Gemini's fallback coverage is partial. Only two dispatch sites are wrapped in an
+`{{#ifAgent}}…{{else}}…{{/ifAgent}}` gate and so degrade to an inline path: the
+competing-lenses block (`plan` / `reconcile`, and `slice` / `reconcile-slices`
+in cut) and the engraved-recall block (`recall`). Every other dispatch below —
+`clarify`, `refine`, `scout`, `plan-review`, `prose`, `survey` — is unguarded, so
+Gemini receives the dispatch instruction verbatim with no sub-agent behind it.
+Adding those fallbacks is a template change, not a documentation one; this table
+describes the tree as it stands.
 
 | Command | Purpose | Sub-Agents Used |
 |---------|---------|-----------------|
