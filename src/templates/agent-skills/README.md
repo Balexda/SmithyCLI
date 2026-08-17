@@ -13,7 +13,9 @@ agent-skills/
   prompts/     Reference prompts (readable by the AI, not invocable)
   agents/      Sub-agent definitions (dispatched by parent commands)
   skills/      Lazy-loaded operational skills (frontmatter visible, body
-               loaded on Skill("<name>") invocation only)
+               loaded on Skill("<name>") invocation only; each skill is a
+               directory holding SKILL.prompt plus optional scripts/ and
+               references/ — see Skill Bundles below)
   snippets/    Shared Handlebars partials injected via {{>partial-name}}
 ```
 
@@ -41,6 +43,54 @@ See the README in each subdirectory for details on its contents and conventions.
   `.codex/agents/` — note the two filename schemes: Claude keeps the source
   `.prompt` filename (`smithy.plan.prompt` → `smithy.plan.md`) while Codex uses
   the frontmatter `name` (`smithy-plan` → `smithy-plan.toml`).
+
+## Skill Bundles and Progressive Disclosure
+
+A skill under `skills/` is a **directory**, not a single file, and the
+deployers copy all three of its parts to every target:
+
+| Part | Source | Deployed as | Loaded |
+|------|--------|-------------|--------|
+| Body | `SKILL.prompt` | `SKILL.md` (frontmatter retained) | Whole, on every `Skill("<name>")` invocation |
+| Scripts | `scripts/*.sh` | `scripts/*.sh`, mode `0755` | On execution |
+| Reference files | any other file, e.g. `references/*.md` | same relative path | Only when the body's link sends the agent to read one |
+
+**Reference files are the progressive-disclosure half of a skill.** A skill
+body is charged to context in full every time it loads, so material an agent
+needs only *sometimes* — worked examples, copy-ready skeletons, a checklist
+that applies to one of two modes, a payload contract for one branch — belongs
+in a bundled file the body *links* to rather than inlines. Claude Code's own
+guidance is to keep a `SKILL.md` under ~500 lines and move detail into
+bundled files; `src/templates.test.ts` enforces that ceiling on every Smithy
+skill body.
+
+Two rules keep the split honest, both enforced by `templates.test.ts`:
+
+- **Every bundled file is linked from the body that ships it.** A file
+  nothing links to never loads, and a link with no file behind it is worse
+  than the inline text it replaced.
+- **The body says *when* to read each file**, not just that it exists —
+  "read this in review mode", "read this before interpreting the engraved
+  payload". A pointer with no trigger gets read always or never.
+
+Extension rules inside a skill directory: a bundled `.prompt` file goes
+through the same snippet/Handlebars rendering as the body and deploys as
+`.md`; every other file is copied byte-for-byte, so a skill can ship a JSON
+schema or a fixture without it being parsed as a template. Dot-entries are
+skipped. Reference files are manifest-tracked like any other artifact, so
+`uninit` removes them and `update` replaces them.
+
+**Frontmatter deliberately omits `paths:`.** Claude Code supports a `paths:`
+key that limits *automatic* activation to sessions touching matching files,
+which looks like a fit for `smithy.helper-screen-design` and
+`smithy.helper-flow-definition` (`design/screens/**`, `design/flows/**`). It
+is not adopted, for two reasons: those two skills are dispatched explicitly
+by `smithy.mark` *before* the design files exist, so gating on the paths
+would risk suppressing the one dispatch that needs them; and the key is a
+Claude Code extension, while Smithy deploys skill frontmatter verbatim to
+Gemini and Codex, where a non-spec key is an unexpected-key risk rather than
+a no-op. Revisit if the dispatch ever follows the files instead of preceding
+them.
 
 ## Workflow Pipeline
 
@@ -433,12 +483,13 @@ template surface is wired through it will read them from the same
 template files, keeping the enforcement surface and the templates in
 lockstep. See
 `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
-for the per-cell rules, the expanded review-mode anti-pattern checklist,
-three worked before/after examples, and the "application beyond Smithy"
-appendix (migration plans, ADRs, runbooks, READMEs, inline
-documentation) — those non-Smithy targets have no template to inherit
-from, so the taxonomy is used as authoring discipline rather than a
-metadata convention. Artifact-*shape* decisions (whether a document
+for the per-cell rules, and that skill's `references/` bundle for the
+material it loads on demand: the review-mode anti-pattern checklist, the
+tag-grammar detail, three worked before/after examples, and genre presets
+for non-Smithy targets (migration plans, ADRs, runbooks, READMEs, inline
+documentation) — those targets have no template to inherit from, so the
+taxonomy is used as authoring discipline rather than a metadata
+convention. Artifact-*shape* decisions (whether a document
 should be one artifact or several, and what the navigation doc between
 them looks like) live one layer up, in the user-invocable
 `smithy.helper-documentation` skill, which calls `smithy.helper-voice`
@@ -589,10 +640,12 @@ choices, deferred bits) colocated with the code so it travels and versions with
 the component.
 
 The full authoring contract — YAML front-matter schema (`id`, `component-path`,
-`design_system`, optional `bundle`), the rationale-only body rule, the skeleton
-template, a worked `Library.design.md` example, naming decisions, and a review checklist
-— lives in the body-on-demand skill **`smithy.helper-screen-design`**
-(`skills/smithy.helper-screen-design/SKILL.prompt`). Agents lazy-load it via
+`design_system`, optional `bundle`), the rationale-only body rule, naming
+decisions, and a review checklist — lives in the body-on-demand skill
+**`smithy.helper-screen-design`**
+(`skills/smithy.helper-screen-design/SKILL.prompt`), with the skeleton
+template and a worked `Library.design.md` example one link further out in
+that skill's `references/examples.md`. Agents lazy-load it via
 `Skill("smithy.helper-screen-design")` when authoring or auditing a screen
 annotation; this README intentionally does not duplicate the schema so the two
 cannot drift.
@@ -618,10 +671,12 @@ coverage caveat for anything below what a UI driver can observe.
 The full authoring contract — YAML front-matter schema (`id`, `screens`,
 `test-body`), the rationale-only body rule, the driver-neutral selector
 contract (testID-keyed only, asserts traversal AND guards), the testID naming
-convention, skeleton templates for both halves, worked examples including
-Maestro, naming decisions, the audio-service coverage caveat, and a review checklist
-— lives in the body-on-demand skill **`smithy.helper-flow-definition`**
-(`skills/smithy.helper-flow-definition/SKILL.prompt`). Agents lazy-load it
+convention, naming decisions, the audio-service coverage caveat, and a review
+checklist — lives in the body-on-demand skill
+**`smithy.helper-flow-definition`**
+(`skills/smithy.helper-flow-definition/SKILL.prompt`), with the skeletons for
+both halves and a worked Maestro `AddTitle` example one link further out in
+that skill's `references/examples.md`. Agents lazy-load it
 via `Skill("smithy.helper-flow-definition")` when authoring or auditing a
 flow definition (typically at a UI feature's `wire` phase); this README
 intentionally does not duplicate the schema so the two cannot drift.

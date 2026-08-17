@@ -89,6 +89,16 @@ they exist, but the body only loads when the agent invokes
 `Skill("<name>")`. Use this category for capabilities that are situational —
 agents shouldn't pay for the context unless they hit the trigger.
 
+**Two levels of laziness.** The body is charged in full on every invocation, so
+material an agent needs only *sometimes* goes one level further out: a skill
+directory may bundle reference files (`references/*.md`) that the body **links**
+to instead of inlining, and the deployers ship them to all three targets with
+manifest tracking. Bodies stay under the ~500-line ceiling Claude Code
+documents (enforced in `src/templates.test.ts`), every bundled file is linked
+from the body that ships it, and the link says *when* to read it. Full
+convention — including why `paths:` frontmatter is deliberately not used — in
+[`src/templates/agent-skills/README.md`](src/templates/agent-skills/README.md#skill-bundles-and-progressive-disclosure).
+
 **Naming convention:** new helper skills that teach an agent how to handle a
 specific operational situation use the `smithy.helper-<topic>` prefix so they
 group together alphabetically and stand visually apart from slash commands
@@ -97,7 +107,7 @@ group together alphabetically and stand visually apart from slash commands
 - **smithy.pr-review** — GitHub PR review operations (find-pr, list inline comments, reply to comment) backed by shell scripts in `scripts/`. Used by `smithy.fix` when handling review feedback. Predates the `helper-` convention.
 - **smithy.helper-docker** — Diagnostic procedures for Docker container failures: bound waits, inspect/log triage, recover-vs-escalate rules, pre-flight checks. Body-only (no scripts). Advertised by `smithy.forge` so it can fall back when validation hits docker problems.
 - **smithy.helper-documentation** — The artifact-shape layer for documentation, and the **user-facing entry point** for ad-hoc doc review (Smithy-authored or not). Runs an audience inventory + fit-for-purpose check ("does any single reader-cell need > ~60% of this artifact?"), recommends a multi-artifact split / single-artifact restructure / leave-as-is, designs the navigation artifact when splitting, then pulls in `smithy.helper-voice` as a sub-skill for prose-level cleanup. Body-only. Use this before voice cleanup on any multi-audience doc — a voice pass can't see (or fix) an artifact that should be several artifacts.
-- **smithy.helper-voice** — Section- and prose-level voice and audience guidance (planning artifacts, migration plans, ADRs, runbooks, READMEs, inline documentation). Provides a Role × Diátaxis-mode taxonomy, an expanded review-mode anti-pattern checklist (the original structural four plus prose-comprehension checks — unglossed terms, schema-without-instance, internals leakage, conviction drift, bare cross-references, authoring-process / author-directed commentary — and two self-checks on the review pass itself), conciseness budgets, diagram-first framing, depth-control rules, and the `<!-- audience: ... -->` per-section tagging grammar that `smithy.audit`'s voice-tag lint enforces (`snippets/audit-checklist-voice.md`). **Not a direct user entry point** — invoked by `smithy.helper-documentation` and the authoring commands/agents (render / mark / cut / engrave / ignite / spark / strike / prose); artifact-level commingling escalates up to `smithy.helper-documentation`. Body-only; lazy-loaded for both draft and review/cleanup modes.
+- **smithy.helper-voice** — Section- and prose-level voice and audience guidance (planning artifacts, migration plans, ADRs, runbooks, READMEs, inline documentation). The body carries the Role × Diátaxis-mode taxonomy, the per-cell voice rules, conciseness budgets, diagram-first framing, depth-control rules, and the policy for where `<!-- audience: ... -->` tags live; four `references/` files carry the rest on demand — the review-mode anti-pattern checklist (structural checks plus prose-comprehension ones: unglossed terms, schema-without-instance, internals leakage, conviction drift, bare cross-references, authoring-process / author-directed commentary, and two self-checks on the review pass itself), the tag grammar `smithy.audit`'s voice-tag lint enforces (`snippets/audit-checklist-voice.md`), three worked before/after examples, and genre presets for non-Smithy deliverables. **Not a direct user entry point** — invoked by `smithy.helper-documentation` and the authoring commands/agents (render / mark / cut / engrave / ignite / spark / strike / prose); artifact-level commingling escalates up to `smithy.helper-documentation`. No scripts; lazy-loaded for both draft and review/cleanup modes.
 
 ## Key Concepts
 
@@ -106,7 +116,7 @@ Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
 - **`agents/`** — sub-agent definitions. Deployed to `.claude/agents/<name>.md` (frontmatter intact) for Claude and translated into Codex custom-agent TOML at `.codex/agents/<name>.toml`. Each agent declares a provider-neutral model `tier` (`light`/`standard`/`deep`) + optional `effort`, translated per-provider by `src/agent-models.ts` (Claude → `model:`, Codex → `model_reasoning_effort`). Not deployed for Gemini, which stays on the inline fallback path.
-- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/`. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` where present).
+- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/` and bundled reference files (`references/*.md`) the body links to instead of inlining. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` and any bundled files at their original relative paths).
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility

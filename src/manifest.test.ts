@@ -24,9 +24,11 @@ vi.mock('child_process', async (importOriginal) => {
 const { execFileSync } = await import('child_process');
 const {
   isInsideGitRepo,
+  removeManifestFiles,
   repoKey,
   resolveArtifactsRoot,
   templateArtifactsPrefix,
+  writeManifest,
 } = await import('./manifest.js');
 
 // Run a real git command for fixture setup, bypassing the mock entirely.
@@ -345,5 +347,69 @@ describe('templateArtifactsPrefix', () => {
     } finally {
       fs.rmSync(parent, { recursive: true, force: true });
     }
+  });
+});
+
+describe('removeManifestFiles', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-manifest-rm-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+    vi.mocked(execFileSync).mockReset();
+  });
+
+  function write(relPath: string, content = 'x'): void {
+    const abs = path.join(tmpDir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  }
+
+  it('removes tracked files and prunes the directories that emptying them left behind', () => {
+    // Issue #557: skills bundle reference files a level deeper than SKILL.md,
+    // so an uninit that only unlinks files leaves `<skill>/references/` and
+    // `<skill>/` as empty scaffolding in the target repo.
+    const tracked = [
+      '.claude/skills/smithy.helper-voice/SKILL.md',
+      '.claude/skills/smithy.helper-voice/references/worked-examples.md',
+    ];
+    for (const file of tracked) write(file);
+    writeManifest({
+      targetDir: tmpDir,
+      location: 'repo',
+      agents: ['claude'],
+      permissions: false,
+      files: { claude: tracked },
+    });
+
+    expect(removeManifestFiles(tmpDir, 'repo')).toBe(2);
+
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'skills', 'smithy.helper-voice'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, '.claude', 'skills'))).toBe(false);
+    // The pruning stops at the target directory itself.
+    expect(fs.existsSync(tmpDir)).toBe(true);
+  });
+
+  it('keeps a directory that still holds anything the user put there', () => {
+    const tracked = ['.claude/skills/smithy.helper-voice/references/worked-examples.md'];
+    write(tracked[0]!);
+    write('.claude/skills/smithy.helper-voice/references/MY-NOTES.md', 'mine');
+    writeManifest({
+      targetDir: tmpDir,
+      location: 'repo',
+      agents: ['claude'],
+      permissions: false,
+      files: { claude: tracked },
+    });
+
+    removeManifestFiles(tmpDir, 'repo');
+
+    const refs = path.join(tmpDir, '.claude', 'skills', 'smithy.helper-voice', 'references');
+    expect(fs.existsSync(refs)).toBe(true);
+    expect(fs.readFileSync(path.join(refs, 'MY-NOTES.md'), 'utf8')).toBe('mine');
   });
 });

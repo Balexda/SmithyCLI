@@ -250,6 +250,41 @@ describe('deploy', () => {
     }
   });
 
+  // Issue #557: skills practice progressive disclosure — the body links to
+  // bundled reference files loaded only when the agent needs them. Before
+  // this, the deployer copied SKILL.md + scripts/ only, so those links
+  // pointed at files that silently never shipped.
+  it('deploys bundled skill reference files, preserving their relative paths', async () => {
+    await deploy(tmpDir, 'none');
+
+    const templates = await getComposedTemplates('claude');
+    let deployed = 0;
+    for (const [skillName, skill] of templates.skills) {
+      for (const [relPath, content] of skill.resources) {
+        const dest = path.join(tmpDir, '.claude', 'skills', skillName, ...relPath.split('/'));
+        expect(fs.existsSync(dest), `${skillName}/${relPath}`).toBe(true);
+        expect(fs.readFileSync(dest, 'utf8')).toBe(content);
+        // Reference files are read, not run — no execute bit.
+        expect(fs.statSync(dest).mode & 0o111).toBe(0);
+        deployed++;
+      }
+    }
+    expect(deployed).toBeGreaterThan(0);
+  });
+
+  it('tracks bundled skill reference files in the deployed file list', async () => {
+    const files = await deploy(tmpDir, 'none');
+
+    // Manifest tracking is what makes uninit and update able to clean up
+    // (and replace) reference files rather than orphaning them.
+    const templates = await getComposedTemplates('claude');
+    for (const [skillName, skill] of templates.skills) {
+      for (const relPath of skill.resources.keys()) {
+        expect(files).toContain(`.claude/skills/${skillName}/${relPath}`);
+      }
+    }
+  });
+
   it('deploys smithy.pr-review skill with all scripts', async () => {
     // Issue #261 made the GitHub MCP tools the preferred path, but kept the
     // three `gh`-CLI shell scripts as a fallback for hosts without the

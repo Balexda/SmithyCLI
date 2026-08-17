@@ -4,6 +4,7 @@ import picocolors from 'picocolors';
 import { getComposedTemplates, parseFrontmatterName } from '../templates.js';
 import { flattenPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
+import { writeSkillResources } from './skill-resources.js';
 
 /**
  * Deploy Gemini templates. Returns the list of deployed file paths (relative to targetDir).
@@ -42,7 +43,8 @@ export async function deploy(
   // to invoke them via run_shell_command or use native tools.
   for (const [skillName, skill] of templates.skills) {
     const skillPath = deployAsSkill(skill.prompt, skillName);
-    if (skillPath && skill.scripts.size > 0) {
+    if (!skillPath) continue;
+    if (skill.scripts.size > 0) {
       const scriptsDir = path.join(skillPath, 'scripts');
       if (!fs.existsSync(scriptsDir)) fs.mkdirSync(scriptsDir, { recursive: true });
       for (const [filename, content] of skill.scripts) {
@@ -52,6 +54,7 @@ export async function deploy(
         deployedFiles.push(path.relative(targetDir, dest));
       }
     }
+    deployedFiles.push(...writeSkillResources(skillPath, targetDir, skill.resources));
   }
 
   if (initPermissions) {

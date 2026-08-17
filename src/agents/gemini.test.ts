@@ -71,6 +71,27 @@ describe('deploy', () => {
     expect(scripts).toContain('check-env.sh');
   });
 
+  // Issue #557: bundled reference files ship on every target. The files are
+  // plain markdown the calling agent reads on demand, so there is nothing
+  // per-agent to translate — and a body linking to a file that shipped only
+  // on Claude would be a dangling link here.
+  it('deploys bundled skill reference files and tracks them for cleanup', async () => {
+    const files = await deploy(tmpDir, false);
+
+    const templates = await getComposedTemplates('gemini');
+    let deployed = 0;
+    for (const [skillName, skill] of templates.skills) {
+      for (const [relPath, content] of skill.resources) {
+        const dest = path.join(tmpDir, '.gemini', 'skills', skillName, ...relPath.split('/'));
+        expect(fs.existsSync(dest), `${skillName}/${relPath}`).toBe(true);
+        expect(fs.readFileSync(dest, 'utf8')).toBe(content);
+        expect(files).toContain(`.gemini/skills/${skillName}/${relPath}`);
+        deployed++;
+      }
+    }
+    expect(deployed).toBeGreaterThan(0);
+  });
+
   it('does not deploy agent-only templates as Gemini skills', async () => {
     await deploy(tmpDir, false);
 

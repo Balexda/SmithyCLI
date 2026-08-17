@@ -7,6 +7,7 @@ import { toClaudeAgentContent } from '../agent-models.js';
 import { toClaudeCommandContent } from '../command-frontmatter.js';
 import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
+import { writeSkillResources } from './skill-resources.js';
 import { computeDrift, type DriftReport, type PermissionTriple } from '../drift.js';
 import type { PermissionLevel, DeployablePermissionLevel, DeployLocation } from '../interactive.js';
 
@@ -81,7 +82,8 @@ export async function deploy(
     deployedFiles.push(path.relative(baseDir, dest));
   }
 
-  // Deploy skills -> .claude/skills/<skillname>/SKILL.md + scripts/ subdirectory
+  // Deploy skills -> .claude/skills/<skillname>/SKILL.md + scripts/ and any
+  // bundled reference files the body links to.
   for (const [skillName, skill] of templates.skills) {
     const skillDir = path.join(baseDir, '.claude', 'skills', skillName);
     if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
@@ -102,6 +104,8 @@ export async function deploy(
         deployedFiles.push(path.relative(baseDir, dest));
       }
     }
+
+    deployedFiles.push(...writeSkillResources(skillDir, baseDir, skill.resources));
   }
 
   if (permissionLevel !== 'none') {

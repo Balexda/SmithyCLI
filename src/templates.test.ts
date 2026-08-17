@@ -1041,6 +1041,51 @@ describe('getComposedTemplates', () => {
     expect(skill!.scripts.has('add-comment.sh')).toBe(true);
   });
 
+  // Issue #557: progressive disclosure. A skill directory may bundle
+  // reference files the body links to but does not inline; the loader
+  // surfaces them as `resources`, keyed by POSIX path relative to the skill
+  // root, with `scripts/` and the SKILL.prompt itself excluded.
+  it('skills map exposes bundled reference files as resources, excluding SKILL.prompt and scripts/', () => {
+    const withResources = [...claudeComposed.skills].filter(([, s]) => s.resources.size > 0);
+    // The four split skills are the current population; the assertion is
+    // about the mechanism, so require at least one and check every entry.
+    expect(withResources.length).toBeGreaterThan(0);
+    for (const [name, skill] of claudeComposed.skills) {
+      expect(skill.resources, name).toBeInstanceOf(Map);
+      for (const [relPath, content] of skill.resources) {
+        expect(relPath, name).not.toMatch(/^scripts\//);
+        expect(relPath, name).not.toMatch(/SKILL\.(prompt|md)$/);
+        expect(relPath, name).not.toMatch(/\.prompt$/);   // rendered → .md
+        expect(relPath, name).not.toMatch(/^[/.]/);        // relative, no dot-entries
+        expect(content.length, `${name}/${relPath}`).toBeGreaterThan(0);
+      }
+      // A skill's scripts and resources never overlap.
+      for (const filename of skill.scripts.keys()) {
+        expect(skill.resources.has(`scripts/${filename}`), name).toBe(false);
+      }
+    }
+  });
+
+  it('every bundled reference file is linked from the SKILL body that ships it', () => {
+    // A bundled file nothing links to is dead weight the agent never loads,
+    // and a link with no file behind it is a dangling reference. Both are
+    // regressions this locks out.
+    for (const [name, skill] of claudeComposed.skills) {
+      for (const relPath of skill.resources.keys()) {
+        expect(skill.prompt, `${name} does not link ${relPath}`).toContain(`(${relPath})`);
+      }
+    }
+  });
+
+  it('every SKILL body stays under the 500-line ceiling Claude Code documents', () => {
+    // Claude Code's guidance: keep SKILL.md under ~500 lines and move detail
+    // into bundled files. This is the backstop that keeps a body from
+    // creeping back up after issue #557 split the four biggest ones.
+    for (const [name, skill] of claudeComposed.skills) {
+      expect(skill.prompt.split('\n').length, name).toBeLessThan(500);
+    }
+  });
+
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
     // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
@@ -1648,11 +1693,13 @@ describe('getComposedTemplates', () => {
     expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
-  it('smithy.helper-voice body covers the 10-section outline', () => {
+  it('smithy.helper-voice body covers the section outline', () => {
     const skill = composed.skills.get('smithy.helper-voice')!;
-    // Per issue #420, the body must cover all ten sections of the
-    // outline. Anchor on the numbered heading prefix so a regression that
-    // renumbers or drops one section is caught.
+    // Per issue #420, the body must cover every section of the outline.
+    // Anchor on the numbered heading prefix so a regression that renumbers
+    // or drops one section is caught. Issue #557 moved the two appendix
+    // sections (worked examples, genre presets) out of the always-loaded
+    // body; §9 is now the manifest that points at them.
     expect(skill.prompt).toContain('## 1. The two axes');
     expect(skill.prompt).toContain('## 2. Review-mode anti-pattern checklist');
     expect(skill.prompt).toContain('## 3. Voice rules per Role × Mode combination');
@@ -1661,8 +1708,35 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('## 6. Reference-prose anti-pattern');
     expect(skill.prompt).toContain('## 7. Depth-control rule');
     expect(skill.prompt).toContain('## 8. Audience tag grammar');
-    expect(skill.prompt).toContain('## 9. Three worked before/after examples');
-    expect(skill.prompt).toContain('## 10. Application beyond Smithy');
+    expect(skill.prompt).toContain('## 9. Reference files — load on demand');
+  });
+
+  it('smithy.helper-voice bundles its appendix material as on-demand reference files', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    // Issue #557: progressive disclosure. The always-loaded body links to
+    // each bundled file, and the moved material must actually be in the
+    // file the link names — a link with no file behind it is worse than
+    // the inline version it replaced.
+    for (const relPath of [
+      'references/review-checklist.md',
+      'references/audience-tags.md',
+      'references/worked-examples.md',
+      'references/genre-presets.md',
+    ]) {
+      expect(skill.resources.has(relPath)).toBe(true);
+      expect(skill.prompt).toContain(`(${relPath})`);
+    }
+    // The worked before/after transformations and the non-Smithy genre
+    // presets left the body but not the bundle.
+    const examples = skill.resources.get('references/worked-examples.md')!;
+    expect(examples).toContain('Wordy / depth-first Motivation');
+    expect(examples).toContain('Commingled Requirements section');
+    const genres = skill.resources.get('references/genre-presets.md')!;
+    expect(genres).toMatch(/Migration plan/);
+    expect(genres).toMatch(/ADR \(Architecture Decision Record\)/);
+    expect(genres).toMatch(/Runbook/);
+    // …and the body no longer carries them inline.
+    expect(skill.prompt).not.toContain('Wordy / depth-first Motivation');
   });
 
   it('smithy.helper-voice documents both invocation modes', () => {
@@ -1712,24 +1786,28 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/\.agents\/skills/);
   });
 
-  it('smithy.helper-voice §2 checklist names the prose-comprehension and self-check anti-patterns', () => {
+  it('smithy.helper-voice review checklist names the prose-comprehension and self-check anti-patterns', () => {
     const skill = composed.skills.get('smithy.helper-voice')!;
-    // The expanded review-mode checklist (this rework) must cover the
-    // prose-comprehension defects the original four structural
-    // anti-patterns missed, plus the two review-pass self-checks. Anchor
-    // on the bolded check names so a regression that quietly drops one
-    // fails the suite.
-    expect(skill.prompt).toContain('Unglossed terms-of-art');
-    expect(skill.prompt).toContain('Schema without a worked instance');
-    expect(skill.prompt).toContain('Internals leakage');
-    expect(skill.prompt).toContain('Conviction drift');
-    expect(skill.prompt).toContain('Bare cross-reference');
-    expect(skill.prompt).toContain('Authoring-process / author-directed commentary');
-    expect(skill.prompt).toContain("Diagram that doesn't earn its space");
-    expect(skill.prompt).toContain('Structural-vs-prose ratio');
+    // The expanded review-mode checklist must cover the prose-comprehension
+    // defects the original four structural anti-patterns missed, plus the
+    // two review-pass self-checks. Anchor on the bolded check names so a
+    // regression that quietly drops one fails the suite. Issue #557 moved
+    // the checklist into a bundled reference file loaded in review mode.
+    const checklist = skill.resources.get('references/review-checklist.md')!;
+    expect(checklist).toBeDefined();
+    expect(checklist).toContain('Unglossed terms-of-art');
+    expect(checklist).toContain('Schema without a worked instance');
+    expect(checklist).toContain('Internals leakage');
+    expect(checklist).toContain('Conviction drift');
+    expect(checklist).toContain('Bare cross-reference');
+    expect(checklist).toContain('Authoring-process / author-directed commentary');
+    expect(checklist).toContain("Diagram that doesn't earn its space");
+    expect(checklist).toContain('Structural-vs-prose ratio');
     // Artifact-level commingling escalates to helper-documentation rather
-    // than being retagged in place.
+    // than being retagged in place. That escalation stays in the
+    // always-loaded body — it decides whether this skill runs at all.
     expect(skill.prompt).toContain('smithy.helper-documentation');
+    expect(skill.prompt).toMatch(/Escalation — artifact-level commingling/);
   });
 
   // This rework: smithy.helper-documentation is the artifact-shape layer
@@ -1895,14 +1973,19 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-screen-design ships the skeleton template and the Library example', () => {
     const skill = composed.skills.get('smithy.helper-screen-design')!;
-    expect(skill.prompt).toContain('## Skeleton template');
-    expect(skill.prompt).toContain('## Worked example — `Library.design.md`');
+    // Issue #557 moved both out of the always-loaded body into a bundled
+    // reference file; the body must link to it and the file must carry them.
+    expect(skill.prompt).toContain('(references/examples.md)');
+    const examples = skill.resources.get('references/examples.md')!;
+    expect(examples).toBeDefined();
+    expect(examples).toContain('## Skeleton — `design/screens/<ScreenId>.design.md`');
+    expect(examples).toContain('## Worked example — `Library.design.md`');
     // Library example must be filled out, not a placeholder — at least the
     // component path and the rationale sections from the issue.
-    expect(skill.prompt).toContain('id: Library');
-    expect(skill.prompt).toContain('component-path:');
-    expect(skill.prompt).toContain('LibraryScreen.kt');
-    expect(skill.prompt).toContain('story-spider-design');
+    expect(examples).toContain('id: Library');
+    expect(examples).toContain('component-path:');
+    expect(examples).toContain('LibraryScreen.kt');
+    expect(examples).toContain('story-spider-design');
   });
 
   it('smithy.helper-screen-design ships a review checklist for the audit/lint surfaces', () => {
@@ -2068,24 +2151,29 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-flow-definition ships the skeleton template and the AddTitle example', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
-    expect(skill.prompt).toContain('## Skeleton template');
-    expect(skill.prompt).toContain('## Worked example');
+    // Issue #557 moved both out of the always-loaded body into a bundled
+    // reference file; the body must link to it and the file must carry them.
+    expect(skill.prompt).toContain('(references/examples.md)');
+    const examples = skill.resources.get('references/examples.md')!;
+    expect(examples).toBeDefined();
+    expect(examples).toContain('## Skeleton — `design/flows/<FlowId>.flow.md`');
+    expect(examples).toContain('## Worked example');
     // AddTitle example must be filled out (not a placeholder), with both
     // halves of the pair: front-matter for `.flow.md` and a testID-keyed
     // executable test body exercising the URL guard.
-    expect(skill.prompt).toContain('design/flows/AddTitle.flow.md');
-    expect(skill.prompt).toContain('maestro/flows/AddTitle.yaml');
-    expect(skill.prompt).toMatch(/id:\s*AddTitle/);
-    expect(skill.prompt).toMatch(/screens:\s*\[Library,\s*AddTitle\]/);
-    expect(skill.prompt).toMatch(/test-body:\s*maestro\/flows\/AddTitle\.yaml/);
+    expect(examples).toContain('design/flows/AddTitle.flow.md');
+    expect(examples).toContain('maestro/flows/AddTitle.yaml');
+    expect(examples).toMatch(/id:\s*AddTitle/);
+    expect(examples).toMatch(/screens:\s*\[Library,\s*AddTitle\]/);
+    expect(examples).toMatch(/test-body:\s*maestro\/flows\/AddTitle\.yaml/);
     // The executable test body must include the URL-guard assertion the issue calls
     // out: confirm is not visible until URL is valid.
-    expect(skill.prompt).toContain('add-title-url-field');
-    expect(skill.prompt).toContain('add-title-confirm-button-enabled');
-    expect(skill.prompt).toMatch(/assertNotVisible/);
+    expect(examples).toContain('add-title-url-field');
+    expect(examples).toContain('add-title-confirm-button-enabled');
+    expect(examples).toMatch(/assertNotVisible/);
   });
 
-  it('smithy.helper-flow-definition documents the audio-service coverage caveat', () => {
+  it('smithy.helper-flow-definition documents the audio-service coverage caveat once', () => {
     const skill = composed.skills.get('smithy.helper-flow-definition')!;
     // Coverage caveat: UI-driver flow tests cover navigable bookends.
     // Audio-service behaviors (auto-advance under lock, foreground TTS)
@@ -2096,6 +2184,11 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toMatch(/foreground TTS/i);
     expect(skill.prompt).toMatch(/instrumentation/i);
     expect(skill.prompt).toMatch(/must not be read as TTS coverage/i);
+    // Issue #557 also deduped it: the body stated the caveat three times
+    // (body-shape row, worked example, standalone section). One statement
+    // in the body now, plus the example's own caveat in the reference file.
+    expect(skill.prompt.match(/must not be read as TTS coverage/gi)!.length).toBe(1);
+    expect(skill.prompt).not.toContain('## Coverage caveat — applies to every audio-touching flow');
   });
 
   it('smithy.helper-flow-definition ships a review checklist for the audit/lint surfaces', () => {
@@ -2212,6 +2305,25 @@ describe('getComposedTemplates', () => {
     // the JSON branch entirely — collapsing the skill back to a pure
     // verbatim wrapper — fails the suite.
     expect(status).toContain('smithy status --format json');
+  });
+
+  it('status skill defers the engraved payload contract to a bundled reference file', () => {
+    const skill = composed.skills.get('smithy.status')!;
+    // Issue #557: the engraved inventory answers a minority of questions, so
+    // its wire shape moved out of the always-loaded body. The engraved branch
+    // must still name the command and point at the file that describes the
+    // payload, and the payload fields must live in that file.
+    expect(skill.prompt).toContain('smithy status --engraved --format json');
+    expect(skill.prompt).toContain('(references/engraved-inventory.md)');
+    expect(skill.prompt).not.toContain('## Engraved inventory');
+    const engraved = skill.resources.get('references/engraved-inventory.md')!;
+    expect(engraved).toBeDefined();
+    expect(engraved).toContain('`levels`');
+    expect(engraved).toContain('`project`');
+    expect(engraved).toContain('status_drift');
+    expect(engraved).toContain('id_level_mismatch');
+    expect(engraved).toContain('frontmatter_mismatch');
+    expect(engraved).toMatch(/project > repo > user/);
   });
 
   it('status skill surfaces CLI failures verbatim in the Errors section', () => {

@@ -10,6 +10,16 @@ export type TemplateCategory = 'commands' | 'prompts' | 'agents' | 'skills';
 export interface SkillTemplate {
   prompt: string;               // rendered SKILL.md content (frontmatter not yet stripped)
   scripts: Map<string, string>; // filename → raw script content
+  /**
+   * Bundled files the skill body links to but does not inline — the
+   * progressive-disclosure half of a skill (`references/examples.md` and
+   * friends). Keyed by POSIX-style path relative to the skill directory so a
+   * markdown link in `SKILL.md` resolves against the deployed tree unchanged.
+   *
+   * Excludes the `SKILL.prompt` itself and everything under `scripts/`, which
+   * have their own deploy paths (`prompt` / `scripts` above).
+   */
+  resources: Map<string, string>;
 }
 
 export interface ComposedTemplates {
@@ -169,8 +179,41 @@ function listSkillNames(): string[] {
 }
 
 /**
- * Read a single skill directory: find SKILL.prompt → renders to prompt string,
- * and collect all *.sh files from the scripts/ subdirectory as raw scripts.
+ * Directory name, relative to a skill root, whose contents deploy as
+ * executable scripts rather than as bundled reference files.
+ */
+const SKILL_SCRIPTS_DIR = 'scripts';
+
+/**
+ * Recursively list files under `dir` as POSIX-style paths relative to `dir`.
+ * Dot-entries are skipped at every level so editor and OS droppings
+ * (`.DS_Store`, `.swp`) never reach a target repo.
+ */
+function listFilesRecursive(dir: string, prefix = ''): string[] {
+  const found: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue;
+    const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      found.push(...listFilesRecursive(path.join(dir, entry.name), relPath));
+    } else {
+      found.push(relPath);
+    }
+  }
+  return found;
+}
+
+/**
+ * Read a single skill directory into its three deployable parts:
+ *
+ *   - `prompt`    — the rendered `SKILL.prompt` body (always loaded).
+ *   - `scripts`   — `*.sh` files under `scripts/` (deployed executable).
+ *   - `resources` — every other bundled file, keyed by its relative path.
+ *
+ * Bundled `.prompt` files go through the same snippet/Handlebars rendering as
+ * the skill body and are renamed to `.md` on the way out, matching the rest of
+ * the template pipeline; anything else is copied byte-for-byte, so a skill can
+ * ship a JSON schema or a sample fixture without it being parsed as a template.
  */
 async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<SkillTemplate> {
   const skillDir = path.join(skillsTemplateDir, skillName);
@@ -186,7 +229,7 @@ async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<Ski
 
   // Collect shell scripts from the scripts/ subdirectory
   const scripts = new Map<string, string>();
-  const scriptsDir = path.join(skillDir, 'scripts');
+  const scriptsDir = path.join(skillDir, SKILL_SCRIPTS_DIR);
   if (fs.existsSync(scriptsDir)) {
     for (const entry of fs.readdirSync(scriptsDir)) {
       if (entry.endsWith('.sh')) {
@@ -195,7 +238,20 @@ async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<Ski
     }
   }
 
-  return { prompt: promptContent, scripts };
+  // Collect everything else the skill bundles for on-demand loading.
+  const resources = new Map<string, string>();
+  for (const relPath of listFilesRecursive(skillDir)) {
+    if (relPath === promptFile) continue;
+    if (relPath.startsWith(`${SKILL_SCRIPTS_DIR}/`)) continue;
+    const raw = fs.readFileSync(path.join(skillDir, ...relPath.split('/')), 'utf8');
+    if (relPath.endsWith('.prompt')) {
+      resources.set(relPath.replace(/\.prompt$/, '.md'), await resolveSnippets(raw, renderer));
+    } else {
+      resources.set(relPath, raw);
+    }
+  }
+
+  return { prompt: promptContent, scripts, resources };
 }
 
 /**
