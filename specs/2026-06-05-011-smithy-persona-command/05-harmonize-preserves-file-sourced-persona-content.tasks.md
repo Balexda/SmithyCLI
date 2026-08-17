@@ -51,7 +51,7 @@
 
 ### Tasks
 
-- [ ] **Repair file-sourced personas from durable files**
+- [x] **Repair file-sourced personas from durable files**
 
   Update the Personas repair branch so any persona classified as file-sourced is rebuilt from its matching `.persona.md` file, preserving the durable persona's role, context, and friction while re-projecting the RFC-specific benefit language.
 
@@ -61,7 +61,7 @@
   - Repaired content remains an RFC-specific projection rather than copying the durable file verbatim.
   - Position or formatting normalization may occur without changing the source basis of the persona content.
 
-- [ ] **Keep cold repair limited to uncovered gaps**
+- [x] **Keep cold repair limited to uncovered gaps**
 
   Amend the Sub-phase 3g smithy-prose dispatch so it is used only for personas not covered by durable files, then combine any file re-projections with cold repaired gaps into one valid `## Personas` section.
 
@@ -71,7 +71,7 @@
   - The repaired RFC contains exactly one `## Personas` section.
   - If every persona is file-sourced and well-formed, harmonize does not perform an unnecessary cold Personas repair dispatch.
 
-- [ ] **Protect harmonize non-clobber behavior with template tests**
+- [x] **Protect harmonize non-clobber behavior with template tests**
 
   Update template coverage around `smithy.ignite.prompt` so the Sub-phase 3g behavior is protected without regenerating deployed snapshots. Focus the checks on repair-time re-discovery, slug-based file-sourced classification, re-projection from files, and gap-only cold repair.
 

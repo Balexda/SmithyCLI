@@ -1446,6 +1446,49 @@ describe('getComposedTemplates', () => {
     expect(subphase3gBlock).toContain('projected from durable `.persona.md` files');
   });
 
+  it('smithy.ignite re-projects file-sourced personas during harmonize repair', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    const repairIdx = subphase3gBlock.indexOf('3. **Personas repair.**');
+    const fileRepairIdx = subphase3gBlock.indexOf('For every persona recorded as file-sourced');
+    const coldDispatchIdx = subphase3gBlock.indexOf('re-dispatch **smithy-prose** for only those gaps');
+    expect(repairIdx).toBeGreaterThan(-1);
+    expect(fileRepairIdx).toBeGreaterThan(repairIdx);
+    expect(coldDispatchIdx).toBeGreaterThan(fileRepairIdx);
+    expect(subphase3gBlock).toContain('read the matching `.persona.md` file again');
+    expect(subphase3gBlock).toMatch(/Preserve the durable\s+persona's role, context, and friction/);
+    expect(subphase3gBlock).toContain('re-projecting the');
+    expect(subphase3gBlock).toContain('RFC-specific benefit language');
+    expect(subphase3gBlock).toContain('not a byte-for-byte copy');
+    expect(subphase3gBlock).toContain('must not be regenerated from clarify output');
+    expect(subphase3gBlock).toMatch(/source\s+basis stays the matching durable file/);
+  });
+
+  it('smithy.ignite limits harmonize cold persona repair to uncovered gaps', () => {
+    const ignite = claudeComposed.commands.get('smithy.ignite.md')!;
+    const subphase3gIdx = ignite.indexOf('Sub-phase 3g: Harmonize');
+    const phase4Idx = ignite.indexOf('## Phase 4', subphase3gIdx);
+    expect(subphase3gIdx).toBeGreaterThan(-1);
+    expect(phase4Idx).toBeGreaterThan(subphase3gIdx);
+    const subphase3gBlock = ignite.slice(subphase3gIdx, phase4Idx);
+
+    expect(subphase3gBlock).toContain('uncovered-persona repair gaps list');
+    expect(subphase3gBlock).toContain('Covered personas MUST be');
+    expect(subphase3gBlock).toContain('excluded from any cold Personas repair dispatch');
+    expect(subphase3gBlock).toContain('re-dispatch **smithy-prose** for only those gaps');
+    expect(subphase3gBlock).toContain('narrowed to the uncovered persona names or roles');
+    expect(subphase3gBlock).toMatch(/Do not regenerate personas covered by\s+existing `\.persona\.md` files/);
+    expect(subphase3gBlock).toMatch(/If every persona is file-sourced[\s\S]+do not dispatch\s+smithy-prose for Personas repair/);
+    expect(subphase3gBlock).toContain('Combine the file-sourced re-projections and any cold-repaired uncovered gap');
+    expect(subphase3gBlock).toContain('exactly one valid `## Personas` section');
+    expect(subphase3gBlock).toContain('do not append a second Personas section');
+  });
+
   it('smithy.pr-review scripts start with bash shebang', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     for (const [, content] of skill.scripts) {
