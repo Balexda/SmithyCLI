@@ -54,7 +54,7 @@
 
 ### Tasks
 
-- [ ] **Emit token envelope check results**
+- [x] **Emit token envelope check results**
 
   Extend `compareToBaseline` so a baseline with a token envelope produces one baseline check for the live token totals. The check must pass only when every defined input and output range contains the corresponding live total, and it must include expected bounds and actual totals when it fails.
 
@@ -67,7 +67,7 @@
   - Existing structural heading, table, and summary checks keep their ordering and behavior.
   - Unit coverage verifies passing, failing, skipped, and missing-live-token paths.
 
-- [ ] **Pass scenario tokens into baseline comparison**
+- [x] **Pass scenario tokens into baseline comparison**
 
   Update the eval runner/report assembly boundary so `run-evals` passes each scenario output's token totals into `compareToBaseline`. Preserve existing baseline marker rendering and status precedence so token check failures flow through the current baseline-check failure path.
 

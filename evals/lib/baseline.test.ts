@@ -737,6 +737,140 @@ describe('compareToBaseline', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Token envelope comparison
+  // -----------------------------------------------------------------------
+  describe('token envelope comparison', () => {
+    it('skips token checks when the baseline has no token envelope', () => {
+      const baseline = makeBaseline({
+        headings: ['## A'],
+        tables: [{ columns: ['Col1'] }],
+      });
+      const results = compareToBaseline('## A\n| Col1 |', baseline, {
+        input: 10,
+        output: 5,
+      });
+
+      expect(results.map((r) => r.check_name)).toEqual([
+        "has baseline heading '## A'",
+        'has baseline table with columns: Col1',
+        'baseline regression summary',
+      ]);
+    });
+
+    it('emits an additional passing token check when live totals are inside every defined range', () => {
+      const baseline = makeBaseline({
+        headings: ['## A'],
+        token_envelope: {
+          input: { min: 10, max: 20 },
+          output: { min: 4, max: 8 },
+        },
+      });
+
+      const results = compareToBaseline('## A', baseline, {
+        input: 15,
+        output: 6,
+      });
+      const tokenCheck = results[results.length - 1]!;
+
+      expect(results.map((r) => r.check_name)).toEqual([
+        "has baseline heading '## A'",
+        'baseline regression summary',
+        'token envelope',
+      ]);
+      expect(tokenCheck).toEqual({
+        check_name: 'token envelope',
+        passed: true,
+        expected: 'input 10-20, output 4-8',
+        actual: 'input 15, output 6',
+      });
+    });
+
+    it('passes with input-only and output-only envelopes when the defined range contains the live total', () => {
+      const inputOnly = compareToBaseline(
+        '',
+        makeBaseline({
+          token_envelope: { input: { min: 1, max: 3 } },
+        }),
+        { input: 2, output: 999 },
+      );
+      const outputOnly = compareToBaseline(
+        '',
+        makeBaseline({
+          token_envelope: { output: { min: 5, max: 7 } },
+        }),
+        { input: 999, output: 6 },
+      );
+
+      expect(inputOnly[inputOnly.length - 1]!.passed).toBe(true);
+      expect(inputOnly[inputOnly.length - 1]!.expected).toBe('input 1-3');
+      expect(outputOnly[outputOnly.length - 1]!.passed).toBe(true);
+      expect(outputOnly[outputOnly.length - 1]!.expected).toBe('output 5-7');
+    });
+
+    it('fails when a live input total is below min or above max', () => {
+      const baseline = makeBaseline({
+        token_envelope: { input: { min: 10, max: 20 } },
+      });
+
+      const below = compareToBaseline('', baseline, { input: 9, output: 0 });
+      const above = compareToBaseline('', baseline, { input: 21, output: 0 });
+
+      expect(below[below.length - 1]).toMatchObject({
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'input 10-20',
+        actual: 'input 9, output 0',
+      });
+      expect(above[above.length - 1]).toMatchObject({
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'input 10-20',
+        actual: 'input 21, output 0',
+      });
+    });
+
+    it('fails when a live output total is below min or above max', () => {
+      const baseline = makeBaseline({
+        token_envelope: { output: { min: 5, max: 7 } },
+      });
+
+      const below = compareToBaseline('', baseline, { input: 0, output: 4 });
+      const above = compareToBaseline('', baseline, { input: 0, output: 8 });
+
+      expect(below[below.length - 1]).toMatchObject({
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'output 5-7',
+        actual: 'input 0, output 4',
+      });
+      expect(above[above.length - 1]).toMatchObject({
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'output 5-7',
+        actual: 'input 0, output 8',
+      });
+    });
+
+    it('fails when a token-aware baseline has no live token totals', () => {
+      const baseline = makeBaseline({
+        token_envelope: {
+          input: { min: 10, max: 20 },
+          output: { min: 4, max: 8 },
+        },
+      });
+
+      const results = compareToBaseline('', baseline);
+
+      expect(results[results.length - 1]).toEqual({
+        check_name: 'token envelope',
+        passed: false,
+        expected: 'input 10-20, output 4-8',
+        actual: 'missing live token totals',
+      });
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Purity — function must not mutate its inputs
   // -----------------------------------------------------------------------
   describe('purity', () => {

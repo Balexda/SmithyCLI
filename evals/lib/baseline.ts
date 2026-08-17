@@ -15,7 +15,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { Baseline, CheckResult, TokenEnvelope } from './types.js';
+import type {
+  Baseline,
+  CheckResult,
+  TokenEnvelope,
+  TokenTotals,
+} from './types.js';
 
 /** Default directory (relative to cwd) where baselines are looked up. */
 const DEFAULT_BASELINES_DIR = 'evals/baselines';
@@ -91,6 +96,53 @@ function validateTokenEnvelope(
     return undefined;
   }
   return envelope;
+}
+
+function formatTokenBounds(envelope: TokenEnvelope): string {
+  const parts: string[] = [];
+  if (envelope.input !== undefined) {
+    parts.push(`input ${envelope.input.min}-${envelope.input.max}`);
+  }
+  if (envelope.output !== undefined) {
+    parts.push(`output ${envelope.output.min}-${envelope.output.max}`);
+  }
+  return parts.join(', ');
+}
+
+function formatTokenTotals(tokens: TokenTotals): string {
+  return `input ${tokens.input}, output ${tokens.output}`;
+}
+
+function tokenRangeContains(
+  range: { min: number; max: number } | undefined,
+  actual: number,
+): boolean {
+  return range === undefined || (actual >= range.min && actual <= range.max);
+}
+
+function compareTokenEnvelope(
+  envelope: TokenEnvelope,
+  tokens?: TokenTotals,
+): CheckResult {
+  const expected = formatTokenBounds(envelope);
+  if (tokens === undefined) {
+    return {
+      check_name: 'token envelope',
+      passed: false,
+      expected,
+      actual: 'missing live token totals',
+    };
+  }
+
+  const passed =
+    tokenRangeContains(envelope.input, tokens.input) &&
+    tokenRangeContains(envelope.output, tokens.output);
+  return {
+    check_name: 'token envelope',
+    passed,
+    expected,
+    actual: formatTokenTotals(tokens),
+  };
 }
 
 /**
@@ -240,8 +292,9 @@ export function loadBaseline(
 
 /**
  * Compare a live skill output against a persisted baseline and emit one
- * `CheckResult` per baseline heading, one per baseline table, and a final
- * aggregate summary entry.
+ * `CheckResult` per baseline heading, one per baseline table, an aggregate
+ * summary entry, and — only when the baseline declares a token envelope — a
+ * trailing token check.
  *
  * The comparator is intentionally a regression signal, not a content lock —
  * additional headings or tables in `output` that are not recorded in
@@ -258,20 +311,29 @@ export function loadBaseline(
  *   1. one check per baseline heading, in baseline order
  *   2. one check per baseline table, in baseline order
  *   3. exactly one `'baseline regression summary'` aggregate check
+ *   4. one `'token envelope'` check, only when `baseline.token_envelope` is
+ *      present — omitted entirely for structural-only baselines
  *
  * The summary's `actual` field enumerates every missing item on a single line
  * so a reviewer can see "what changed" without correlating the per-item
- * checks. When nothing is missing, `actual` is `'no regressions'`.
+ * checks. When nothing is missing, `actual` is `'no regressions'`. The summary
+ * covers structural drift only; token drift is reported by the separate token
+ * check so an out-of-envelope run does not read as a missing heading or table.
  *
  * This function is pure: no I/O, no mutation of `baseline` or `output`.
  *
  * @param output    The live extracted skill-output string to evaluate.
  * @param baseline  The persisted `Baseline` snapshot to compare against.
- * @returns A `CheckResult[]` with per-heading, per-table, and aggregate entries.
+ * @param tokens    Optional live token totals. Required for token comparison
+ *                  when the baseline includes a token envelope.
+ * @returns A `CheckResult[]` with per-heading, per-table, and aggregate
+ *          entries, plus a trailing token-envelope entry when the baseline
+ *          declares one.
  */
 export function compareToBaseline(
   output: string,
   baseline: Baseline,
+  tokens?: TokenTotals,
 ): CheckResult[] {
   const results: CheckResult[] = [];
 
@@ -334,6 +396,10 @@ export function compareToBaseline(
     expected: `${baseline.headings.length} headings, ${baseline.tables.length} tables`,
     actual: passed ? 'no regressions' : summaryParts.join('; '),
   });
+
+  if (baseline.token_envelope !== undefined) {
+    results.push(compareTokenEnvelope(baseline.token_envelope, tokens));
+  }
 
   return results;
 }
