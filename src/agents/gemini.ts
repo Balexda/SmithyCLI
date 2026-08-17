@@ -5,6 +5,7 @@ import { getComposedTemplates, parseFrontmatterName } from '../templates.js';
 import { flattenPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 import { writeSkillResources } from './skill-resources.js';
+import { translateSkillFrontmatter } from '../skill-frontmatter.js';
 
 /**
  * Deploy Gemini templates. Returns the list of deployed file paths (relative to targetDir).
@@ -30,7 +31,10 @@ export async function deploy(
     const skillPath = path.join(skillsDir, skillName);
     if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
     const dest = path.join(skillPath, 'SKILL.md');
-    fs.writeFileSync(dest, content);
+    // Gemini reads `name` and `description` off this block. Both tool-grant
+    // keys are Claude/Codex vocabulary and are dropped — Gemini's allowlist
+    // comes from `.gemini/settings.json`.
+    fs.writeFileSync(dest, translateSkillFrontmatter(content, 'gemini'));
     deployedFiles.push(path.relative(targetDir, dest));
     return skillPath;
   };

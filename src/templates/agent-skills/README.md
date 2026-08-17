@@ -43,6 +43,15 @@ See the README in each subdirectory for details on its contents and conventions.
   `.codex/agents/` — note the two filename schemes: Claude keeps the source
   `.prompt` filename (`smithy.plan.prompt` → `smithy.plan.md`) while Codex uses
   the frontmatter `name` (`smithy-plan` → `smithy-plan.toml`).
+- **Skill tool grants**: `allowed-tools` is a Claude Code field written in
+  Claude Code's permission grammar, so the deployers pick per target rather
+  than shipping one block three ways — Claude keeps it, Gemini drops it, and
+  Codex gets whatever the template put under `codex-allowed-tools` (see
+  [`src/skill-frontmatter.ts`](../../skill-frontmatter.ts)). Write Bash rules
+  in the `Bash(command *)` form and reach bundled scripts through
+  `${CLAUDE_SKILL_DIR}`, which Claude Code expands in the rule and in the body
+  alike; the full grammar is in
+  [`docs/permission-grammar.md`](../../../docs/permission-grammar.md).
 
 ## Skill Bundles and Progressive Disclosure
 

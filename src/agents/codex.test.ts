@@ -193,6 +193,11 @@ describe('deploy', () => {
     expect(skillMd).toContain('_fetch_pr_comments');
     expect(skillMd).toContain('_add_comment_to_issue');
     expect(skillMd).toContain('./.agents/skills/smithy.pr-review/scripts/find-pr.sh');
+    // The Codex actions arrive through `codex-allowed-tools`, which the
+    // deployer promotes to `allowed-tools`; Claude's grant — path variable
+    // and MCP tool names alike — does not ship here (issue #559).
+    expect(skillMd).not.toContain('codex-allowed-tools');
+    expect(skillMd.match(/^---\n[\s\S]*?\n---\n/)?.[0]).not.toContain('mcp__github__');
     expect(skillMd).not.toContain('${CLAUDE_SKILL_DIR}');
     expect(skillMd).not.toContain('./.gemini/skills/smithy.pr-review');
   });

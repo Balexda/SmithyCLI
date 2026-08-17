@@ -1,7 +1,8 @@
 ---
 name: smithy.pr-review
 description: "GitHub PR review operations: list and reply to inline and conversation comments. Use when handling review feedback on an open pull request."
-allowed-tools: Bash(git remote get-url *) Bash(git branch --show-current) Bash(git config --get remote.origin.url) Bash(*/smithy.pr-review/scripts/find-pr.sh) Bash(*/smithy.pr-review/scripts/get-comments.sh:*) Bash(*/smithy.pr-review/scripts/reply-comment.sh:*) Bash(*/smithy.pr-review/scripts/add-comment.sh:*) mcp__github__list_pull_requests mcp__github__pull_request_read mcp__github__add_reply_to_pull_request_comment mcp__github__issue_write _list_pull_request_review_threads _reply_to_review_comment _fetch_pr_comments _add_comment_to_issue
+allowed-tools: Bash(git remote get-url *) Bash(git branch --show-current) Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/find-pr.sh) Bash(${CLAUDE_SKILL_DIR}/scripts/get-comments.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/add-comment.sh *) mcp__github__list_pull_requests mcp__github__pull_request_read mcp__github__add_reply_to_pull_request_comment mcp__github__issue_write
+codex-allowed-tools: _list_pull_request_review_threads _reply_to_review_comment _fetch_pr_comments _add_comment_to_issue
 ---
 # smithy.pr-review
 

@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { translateSkillFrontmatter } from '../skill-frontmatter.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import {
   analyzeSettingsDrift,
   buildClaudeAllowList,
+  pruneCoveredBashRules,
   buildClaudeAskList,
   buildClaudeDenyList,
   deploy,
@@ -193,8 +195,8 @@ describe('deploy', () => {
       const content = fs.readFileSync(skillMd, 'utf8');
       // Frontmatter must be present — Claude Code reads allowed-tools from it
       expect(content).toMatch(/^---\s*\n/);
-      // Content should match what's in the template
-      expect(content).toBe(skill.prompt);
+      // Content matches the template, minus the Codex-only grant key
+      expect(content).toBe(translateSkillFrontmatter(skill.prompt, 'claude'));
     }
   });
 
@@ -211,10 +213,15 @@ describe('deploy', () => {
     expect(content).toContain('mcp__github__list_pull_requests');
     expect(content).toContain('mcp__github__pull_request_read');
     expect(content).toContain('mcp__github__add_reply_to_pull_request_comment');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(content).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
+    expect(content).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/find-pr.sh)');
+    expect(content).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/get-comments.sh *)');
+    expect(content).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh *)');
+    expect(content).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/add-comment.sh *)');
+    // The Codex GitHub-app actions ride in `codex-allowed-tools` and never
+    // reach this file, where Claude cannot call them (issue #559).
+    expect(content).not.toContain('codex-allowed-tools');
+    expect(content).not.toContain('_list_pull_request_review_threads');
+    expect(content).not.toContain('_add_comment_to_issue');
   });
 
   it('deploys skill scripts as executable files in scripts/ subdirectory', async () => {
@@ -444,6 +451,55 @@ describe('buildClaudeAllowList', () => {
     expect(bashEntries.length).toBeGreaterThan(20);
   });
 
+  it('prunes every rule another rule already covers', () => {
+    // `P *` matches `P`, `P x`, and `P x y` alike, so a list that also spells
+    // out `P -flag *` grants Claude nothing extra (issue #559). The variants
+    // stay in the shared table for Gemini, whose matcher does not treat `*`
+    // as covering a flag argument.
+    expect(pruneCoveredBashRules(['ls *', 'ls -la *', 'ls'])).toEqual(['ls *']);
+    // A covering rule is never removed by what it covers, and order holds.
+    expect(pruneCoveredBashRules(['git add -A', 'git add *'])).toEqual(['git add *']);
+    // Coverage needs a word boundary: `lsof` is not covered by `ls *`.
+    expect(pruneCoveredBashRules(['ls *', 'lsof *'])).toEqual(['ls *', 'lsof *']);
+    // Unrelated rules and rules with no wildcard sibling survive.
+    expect(pruneCoveredBashRules(['git push', 'git push origin *'])).toEqual([
+      'git push', 'git push origin *',
+    ]);
+    // Exact duplicates collapse.
+    expect(pruneCoveredBashRules(['pwd', 'pwd'])).toEqual(['pwd']);
+    // An interior wildcard is compared literally, which is what lets the
+    // external-store rules dedupe against each other.
+    expect(pruneCoveredBashRules([
+      'git -C ~/.smithy/repos/* add -A',
+      'git -C ~/.smithy/repos/* add *',
+    ])).toEqual(['git -C ~/.smithy/repos/* add *']);
+  });
+
+  it('ships an allow list with no rule covered by another', () => {
+    const list = buildClaudeAllowList();
+    const bash = list
+      .filter(entry => entry.startsWith('Bash(') && entry.endsWith(')'))
+      .map(entry => entry.slice('Bash('.length, -1));
+    expect(pruneCoveredBashRules(bash)).toEqual(bash);
+  });
+
+  it('names no skill the templates do not deploy', () => {
+    // The other direction of the coverage check below: a `Skill(...)` rule
+    // for a skill that no longer exists is a dead grant (issue #559).
+    const categories = getTemplateFilesByCategory();
+    const deployed = new Set([
+      ...categories.commands.map(file => file.replace(/\.md$/, '')),
+      ...categories.skills,
+    ]);
+    const named = buildClaudeAllowList()
+      .filter(entry => entry.startsWith('Skill('))
+      .map(entry => entry.slice('Skill('.length, -1).replace(/ \*$/, ''));
+    expect(named.length).toBeGreaterThan(0);
+    for (const name of named) {
+      expect(deployed.has(name), name).toBe(true);
+    }
+  });
+
   it('includes Claude-specific tool permissions', () => {
     const list = buildClaudeAllowList();
     expect(list).toContain('WebSearch');
@@ -453,9 +509,11 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Skill(smithy.gh-issue *)');
     expect(list).toContain('Skill(smithy.helper-docker *)');
     expect(list).toContain('Skill(smithy.status *)');
-    // Keep the older colon wildcard while Claude versions in the wild may
-    // still accept it.
-    expect(list).toContain('Skill(smithy.*:*)');
+    // `Skill(name)` / `Skill(name *)` are the whole grammar — there is no
+    // wildcard inside the name, so the old `Skill(smithy.*:*)` catch-all
+    // named no skill and granted nothing (issue #559).
+    expect(list).not.toContain('Skill(smithy.*:*)');
+    expect(list.some(entry => /^Skill\(smithy\.\*/.test(entry))).toBe(false);
   });
 
   it('includes current-form Skill permissions for every deployed smithy command and skill', () => {
@@ -507,18 +565,32 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(git push origin *)');
   });
 
-  it('includes Claude-only extraPermissions (smithy.pr-review script paths)', () => {
+  it('includes Claude-only extraPermissions (script-backed skill paths)', () => {
     const list = buildClaudeAllowList();
     // Repo-level relative paths
     expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
-    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh:*)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh *)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(list).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh *)');
     // Wildcard fallback for user-level / absolute deploys
     expect(list).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
-    expect(list).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(list).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(list).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh *)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(list).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh *)');
+    // gh-issue got the same treatment in issue #559 — without it, every
+    // orders/engrave issue call prompts on a non-MCP host.
+    expect(list).toContain('Bash(.claude/skills/smithy.gh-issue/scripts/check-env.sh)');
+    expect(list).toContain('Bash(.claude/skills/smithy.gh-issue/scripts/create-issue.sh *)');
+    expect(list).toContain('Bash(*/smithy.gh-issue/scripts/search-issues.sh *)');
+    expect(list).toContain('Bash(*/smithy.gh-issue/scripts/link-blocked-by.sh *)');
+  });
+
+  it('grants the smithy status read path (issue #559)', () => {
+    const list = buildClaudeAllowList();
+    expect(list).toContain('Bash(smithy status *)');
+    expect(list.some(entry => entry.startsWith('Bash(smithy init'))).toBe(false);
+    expect(list.some(entry => entry.startsWith('Bash(smithy update'))).toBe(false);
+    expect(list.some(entry => entry.startsWith('Bash(smithy uninit'))).toBe(false);
   });
 
   it('includes multi-language build tool commands', () => {
@@ -542,8 +614,12 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(cat *)');
     expect(list).toContain('Bash(mkdir *)');
     expect(list).toContain('Bash(cp *)');
-    expect(list).toContain('Bash(mv *)');
     expect(list).toContain('Bash(grep *)');
+    // `mv` and `tee` write over existing files outside the Edit/Write tools
+    // and no template calls either; the tracked rename goes through git.
+    expect(list).not.toContain('Bash(mv *)');
+    expect(list.some(entry => entry.startsWith('Bash(tee'))).toBe(false);
+    expect(list).toContain('Bash(git mv *)');
   });
 
   it('does not include destructive commands', () => {
@@ -562,27 +638,21 @@ describe('buildClaudeAllowList', () => {
     expect(joined).not.toMatch(/\bxargs\b/);
   });
 
-  it('generates both bare and wildcard gh permissions from ["", "*"] args', () => {
+  it('keeps the wildcard gh permissions and prunes the bare forms they cover', () => {
     const list = buildClaudeAllowList();
-    // Commands with ["", "*"] should produce both bare and wildcard entries
-    expect(list).toContain('Bash(gh pr list)');
-    expect(list).toContain('Bash(gh pr list *)');
-    expect(list).toContain('Bash(gh pr edit)');
-    expect(list).toContain('Bash(gh pr edit *)');
-    expect(list).toContain('Bash(gh pr create)');
-    expect(list).toContain('Bash(gh pr create *)');
-    expect(list).toContain('Bash(gh pr view)');
-    expect(list).toContain('Bash(gh pr view *)');
-    expect(list).toContain('Bash(gh pr diff)');
-    expect(list).toContain('Bash(gh pr diff *)');
-    expect(list).toContain('Bash(gh issue list)');
-    expect(list).toContain('Bash(gh issue list *)');
-    expect(list).toContain('Bash(gh issue view)');
-    expect(list).toContain('Bash(gh issue view *)');
-    expect(list).toContain('Bash(gh issue create)');
-    expect(list).toContain('Bash(gh issue create *)');
-    expect(list).toContain('Bash(gh repo view)');
-    expect(list).toContain('Bash(gh repo view *)');
+    // The shared table declares `["", "*"]` for these, and Gemini needs both
+    // spellings. Claude does not: a trailing ` *` matches at a word boundary
+    // *or* end-of-string, so `Bash(gh pr list *)` already covers `gh pr list`
+    // and shipping the bare form too is noise (issue #559).
+    for (const cmd of [
+      'gh pr list', 'gh pr edit', 'gh pr create', 'gh pr view', 'gh pr diff',
+      'gh issue list', 'gh issue view', 'gh issue create', 'gh repo view',
+    ]) {
+      expect(list, cmd).toContain(`Bash(${cmd} *)`);
+      expect(list, cmd).not.toContain(`Bash(${cmd})`);
+    }
+    // A bare command with no wildcard sibling still ships.
+    expect(list).toContain('Bash(gh pr status)');
   });
 
   it('allows gh --version', () => {
@@ -603,7 +673,7 @@ describe('buildClaudeAllowList', () => {
 
   it('threads platformManagers through to Bash() wrapping (mac)', () => {
     const macList = buildClaudeAllowList([], ['mac']);
-    expect(macList).toContain('Bash(brew list)');
+    expect(macList).toContain('Bash(brew list *)');
     expect(macList).toContain('Bash(brew info *)');
     expect(macList.some(e => e.startsWith('Bash(apt '))).toBe(false);
     expect(macList.some(e => e.startsWith('Bash(apt-cache'))).toBe(false);
@@ -612,9 +682,9 @@ describe('buildClaudeAllowList', () => {
 
   it('threads platformManagers through to Bash() wrapping (linux)', () => {
     const linuxList = buildClaudeAllowList([], ['linux']);
-    expect(linuxList).toContain('Bash(apt list)');
+    expect(linuxList).toContain('Bash(apt list *)');
     expect(linuxList).toContain('Bash(apt-cache search *)');
-    expect(linuxList).toContain('Bash(dpkg -l)');
+    expect(linuxList).toContain('Bash(dpkg -l *)');
     expect(linuxList.some(e => e.startsWith('Bash(brew'))).toBe(false);
   });
 
@@ -622,15 +692,15 @@ describe('buildClaudeAllowList', () => {
     const pyList = buildClaudeAllowList(['python']);
     expect(pyList).toContain('Bash(uv --version)');
     expect(pyList).toContain('Bash(uv add *)');
-    expect(pyList).toContain('Bash(uv sync)');
+    expect(pyList).toContain('Bash(uv sync *)');
     expect(pyList).toContain('Bash(uv pip install *)');
   });
 
   it('wraps cargo dep-management commands under rust toolchain', () => {
     const rustList = buildClaudeAllowList(['rust']);
     expect(rustList).toContain('Bash(cargo add *)');
-    expect(rustList).toContain('Bash(cargo update)');
-    expect(rustList).toContain('Bash(cargo fetch)');
+    expect(rustList).toContain('Bash(cargo update *)');
+    expect(rustList).toContain('Bash(cargo fetch *)');
     expect(rustList).toContain('Bash(cargo search *)');
     expect(rustList).toContain('Bash(cargo info *)');
     expect(rustList).not.toContain('Bash(cargo install *)');
@@ -772,7 +842,7 @@ describe('writePermissions', () => {
     expect(config.permissions).not.toHaveProperty('allowed_commands');
   });
 
-  it('seeds the allow list with smithy.pr-review skill script paths', () => {
+  it('seeds the allow list with the script-backed skills\' script paths', () => {
     writePermissions(tmpDir, 'repo');
 
     const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
@@ -780,14 +850,14 @@ describe('writePermissions', () => {
 
     // Repo-level relative invocation patterns
     expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/find-pr.sh)');
-    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/get-comments.sh *)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(config.permissions.allow).toContain('Bash(.claude/skills/smithy.pr-review/scripts/add-comment.sh *)');
     // Wildcard fallback for other deploy locations
     expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
-    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh *)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh *)');
+    expect(config.permissions.allow).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh *)');
   });
 
   it('entries are Bash()-wrapped or Claude tool names', () => {

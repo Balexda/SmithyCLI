@@ -48,6 +48,24 @@ describe('deploy', () => {
     }
   });
 
+  it('drops the Claude and Codex tool grants from deployed skills', async () => {
+    // `allowed-tools` is Claude Code vocabulary — Bash rules, MCP tool names,
+    // `${CLAUDE_SKILL_DIR}` — and Gemini's allowlist comes from
+    // `.gemini/settings.json` instead, so the key is noise here (issue #559).
+    await deploy(tmpDir, false);
+
+    const skillsDir = path.join(tmpDir, '.gemini', 'skills');
+    const composed = await getComposedTemplates('gemini');
+    for (const [skillName] of composed.skills) {
+      const deployed = fs.readFileSync(path.join(skillsDir, skillName, 'SKILL.md'), 'utf8');
+      const frontmatter = deployed.match(/^---\n[\s\S]*?\n---\n/)?.[0] ?? '';
+      expect(frontmatter, skillName).toContain(`name: ${skillName}`);
+      expect(frontmatter, skillName).toContain('description:');
+      expect(frontmatter, skillName).not.toContain('allowed-tools');
+      expect(frontmatter, skillName).not.toContain('${CLAUDE_SKILL_DIR}');
+    }
+  });
+
   it('returns deployed file paths', async () => {
     const files = await deploy(tmpDir, false);
     expect(files.length).toBeGreaterThan(0);

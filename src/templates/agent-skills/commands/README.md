@@ -69,7 +69,11 @@ decoration — it is the command's only trigger signal.
 `hooks` are passed through to Claude when present and ignored by the other two
 targets. No command sets `allowed-tools` yet: per-command tool grants are the
 structural replacement for the global `settings.json` allowlist, and that
-migration is owned by the permissions work rather than this plumbing.
+migration is owned by the permissions work rather than this plumbing. When a
+command does take one, write it in the same grammar the skills use — the
+verified rule set is in
+[`docs/permission-grammar.md`](../../../../docs/permission-grammar.md), and a
+grant that names a bundled script reaches it through `${CLAUDE_SKILL_DIR}`.
 
 `background` only means anything alongside `context: fork`, and there it is
 not optional: Claude Code runs a forked command detached unless the block says
