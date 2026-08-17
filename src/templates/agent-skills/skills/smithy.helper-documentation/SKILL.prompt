@@ -52,8 +52,11 @@ move available to you:
   freedom the template leaves. If the template itself looks wrong, raise that
   as a template-level finding — do not fix it per-instance.
 - **Conventional genre.** README, ADR, runbook, migration plan, design doc — no
-  hard template, but a well-understood expected shape (see the voice helper's
-  `references/genre-presets.md` for the per-genre voice specs). You have
+  hard template, but a well-understood expected shape. The per-genre voice
+  specs live in a file bundled with the **`smithy.helper-voice`** skill, not
+  this one — `Skill("smithy.helper-voice")` first, then read
+  `references/genre-presets.md` relative to *that* skill's directory. Skip
+  both if you already know the genre's shape. You have
   latitude to add missing expected
   sections, reorder for the reader, and merge redundant ones against the
   genre's conventions.

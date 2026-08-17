@@ -84,7 +84,9 @@ describe('deploy', () => {
       for (const [relPath, content] of skill.resources) {
         const dest = path.join(tmpDir, '.gemini', 'skills', skillName, ...relPath.split('/'));
         expect(fs.existsSync(dest), `${skillName}/${relPath}`).toBe(true);
-        expect(fs.readFileSync(dest, 'utf8')).toBe(content);
+        // Compare as bytes: a `.prompt`-derived entry is rendered text, any
+        // other bundled file is a raw Buffer, and both must land unchanged.
+        expect(fs.readFileSync(dest).equals(Buffer.from(content))).toBe(true);
         expect(files).toContain(`.gemini/skills/${skillName}/${relPath}`);
         deployed++;
       }

@@ -14,11 +14,15 @@ import path from 'path';
  *
  * Reference files are deliberately *not* marked executable — unlike
  * `scripts/`, nothing runs them.
+ *
+ * Values arrive as rendered text for `.prompt`-derived entries and as raw
+ * `Buffer`s for everything else; `fs.writeFileSync` handles both, and passing
+ * the Buffer straight through is what keeps a bundled binary byte-identical.
  */
 export function writeSkillResources(
   skillDir: string,
   baseDir: string,
-  resources: Map<string, string>,
+  resources: Map<string, string | Buffer>,
 ): string[] {
   const written: string[] = [];
   for (const [relPath, content] of resources) {

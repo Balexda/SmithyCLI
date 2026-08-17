@@ -18,8 +18,12 @@ export interface SkillTemplate {
    *
    * Excludes the `SKILL.prompt` itself and everything under `scripts/`, which
    * have their own deploy paths (`prompt` / `scripts` above).
+   *
+   * A `.prompt` entry is rendered text (keyed by its deployed `.md` name);
+   * every other entry is the file's raw bytes, so binary assets survive the
+   * round trip intact.
    */
-  resources: Map<string, string>;
+  resources: Map<string, string | Buffer>;
 }
 
 export interface ComposedTemplates {
@@ -250,16 +254,21 @@ async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<Ski
     }
   }
 
-  // Collect everything else the skill bundles for on-demand loading.
-  const resources = new Map<string, string>();
+  // Collect everything else the skill bundles for on-demand loading. Only
+  // `.prompt` files are decoded to text, because only they get rendered;
+  // everything else stays a Buffer so the bytes reaching the target repo are
+  // the bytes in this repo. Decoding a PNG or a zip as utf8 would replace
+  // every invalid sequence with U+FFFD and write the corruption back out.
+  const resources = new Map<string, string | Buffer>();
   for (const relPath of listFilesRecursive(skillDir)) {
     if (relPath === promptFile) continue;
     if (relPath.startsWith(`${SKILL_SCRIPTS_DIR}/`)) continue;
-    const raw = fs.readFileSync(path.join(skillDir, ...relPath.split('/')), 'utf8');
+    const absPath = path.join(skillDir, ...relPath.split('/'));
     if (relPath.endsWith('.prompt')) {
+      const raw = fs.readFileSync(absPath, 'utf8');
       resources.set(relPath.replace(/\.prompt$/, '.md'), await resolveSnippets(raw, renderer));
     } else {
-      resources.set(relPath, raw);
+      resources.set(relPath, fs.readFileSync(absPath));
     }
   }
 

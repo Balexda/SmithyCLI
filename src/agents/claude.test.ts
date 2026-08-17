@@ -263,7 +263,9 @@ describe('deploy', () => {
       for (const [relPath, content] of skill.resources) {
         const dest = path.join(tmpDir, '.claude', 'skills', skillName, ...relPath.split('/'));
         expect(fs.existsSync(dest), `${skillName}/${relPath}`).toBe(true);
-        expect(fs.readFileSync(dest, 'utf8')).toBe(content);
+        // Compare as bytes: a `.prompt`-derived entry is rendered text, any
+        // other bundled file is a raw Buffer, and both must land unchanged.
+        expect(fs.readFileSync(dest).equals(Buffer.from(content))).toBe(true);
         // Reference files are read, not run — no execute bit.
         expect(fs.statSync(dest).mode & 0o111).toBe(0);
         deployed++;

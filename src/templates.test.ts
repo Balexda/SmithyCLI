@@ -1067,6 +1067,40 @@ describe('getComposedTemplates', () => {
     }
   });
 
+  it('keeps a bundled binary as raw bytes instead of decoding it as utf8', async () => {
+    // Only `.prompt` entries are decoded, because only they get rendered.
+    // Reading a PNG/zip/fixture as utf8 would swap every invalid sequence for
+    // U+FFFD and write the corruption back out, breaking the byte-for-byte
+    // contract the non-`.prompt` path promises.
+    const planted = path.join(
+      skillsTemplateDir, 'smithy.helper-voice', 'references', 'fixture.bin',
+    );
+    // Bytes that are invalid UTF-8 (lone continuation, 0xFF, NUL).
+    const bytes = Buffer.from([0x00, 0xff, 0xfe, 0x80, 0x41, 0xc3, 0x28]);
+    fs.writeFileSync(planted, bytes);
+    try {
+      const reloaded = await getComposedTemplates('claude');
+      const value = reloaded.skills.get('smithy.helper-voice')!.resources.get('references/fixture.bin');
+      expect(Buffer.isBuffer(value)).toBe(true);
+      expect((value as Buffer).equals(bytes)).toBe(true);
+    } finally {
+      fs.rmSync(planted, { force: true });
+    }
+  });
+
+  it('every reference link in a SKILL body resolves to a file that skill owns', () => {
+    // The reverse of the check below, and the one that catches a body linking
+    // a sibling skill's file: `](references/x.md)` reads as "resolvable from
+    // this skill's directory", so it must be. Prose that points at another
+    // skill's bundle names the owning skill and is not written as a link.
+    for (const [name, skill] of claudeComposed.skills) {
+      const linked = [...skill.prompt.matchAll(/\]\((references\/[^)]+)\)/g)].map(m => m[1]!);
+      for (const relPath of linked) {
+        expect(skill.resources.has(relPath), `${name} links unowned ${relPath}`).toBe(true);
+      }
+    }
+  });
+
   it('every bundled reference file is linked from the SKILL body that ships it', () => {
     // A bundled file nothing links to is dead weight the agent never loads,
     // and a link with no file behind it is a dangling reference. Both are
