@@ -53,7 +53,7 @@ deployers copy all three of its parts to every target:
 |------|--------|-------------|--------|
 | Body | `SKILL.prompt` | `SKILL.md` (frontmatter retained) | Whole, on every `Skill("<name>")` invocation |
 | Scripts | `scripts/*.sh` | `scripts/*.sh`, mode `0755` | On execution |
-| Reference files | any other file, e.g. `references/*.md` | same relative path | Only when the body's link sends the agent to read one |
+| Reference files | `references/*.prompt` (or any other bundled file) | same relative path, `.prompt` → `.md` | Only when the body's link sends the agent to read one |
 
 **Reference files are the progressive-disclosure half of a skill.** A skill
 body is charged to context in full every time it loads, so material an agent
@@ -73,12 +73,25 @@ Two rules keep the split honest, both enforced by `templates.test.ts`:
   "read this in review mode", "read this before interpreting the engraved
   payload". A pointer with no trigger gets read always or never.
 
-Extension rules inside a skill directory: a bundled `.prompt` file goes
-through the same snippet/Handlebars rendering as the body and deploys as
-`.md`; every other file is copied byte-for-byte, so a skill can ship a JSON
-schema or a fixture without it being parsed as a template. Dot-entries are
-skipped. Reference files are manifest-tracked like any other artifact, so
-`uninit` removes them and `update` replaces them.
+**Author bundled prose as `.prompt`, not `.md`.** A bundled `.prompt` goes
+through the same snippet/Handlebars rendering as the body and deploys as `.md`,
+exactly like every command, prompt, and agent template — so a reference file
+can use `{{artifactsRoot}}`, `{{#ifAgent}}`, and `{{>snippet}}`. Writing one as
+`.md` instead skips rendering, which is how a `{{artifactsRoot}}` reference
+ships into a target repo as literal text; it also breaks the tree-wide read
+that **`.md` in `src/templates/` is never deployed** (only READMEs and
+snippets are `.md`). Every other file is copied byte-for-byte, so a skill can
+ship a JSON schema or a fixture without it being parsed as a template.
+Dot-entries are skipped. `templates.test.ts` fails on a stray non-README `.md`
+under `skills/`.
+
+Note the deliberate mismatch when linking: the source file is
+`references/worked-examples.prompt` and the body links
+`references/worked-examples.md`, because links resolve against the *deployed*
+tree. The link↔file test above catches a link left pointing at `.prompt`.
+
+Reference files are manifest-tracked like any other artifact, so `uninit`
+removes them and `update` replaces them.
 
 **Frontmatter deliberately omits `paths:`.** Claude Code supports a `paths:`
 key that limits *automatic* activation to sessions touching matching files,

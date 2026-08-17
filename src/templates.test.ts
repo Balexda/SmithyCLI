@@ -11,6 +11,7 @@ import {
   getComposedTemplates,
   type ComposedTemplates,
 } from './templates.js';
+import { skillsTemplateDir } from './utils.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 import { toClaudeCommandContent } from './command-frontmatter.js';
 
@@ -1075,6 +1076,31 @@ describe('getComposedTemplates', () => {
         expect(skill.prompt, `${name} does not link ${relPath}`).toContain(`(${relPath})`);
       }
     }
+  });
+
+  it('authors bundled prose as .prompt, keeping .md in the source tree "never deployed"', () => {
+    // Every `.md` under src/templates/ is a README or a snippet — neither is
+    // deployed. Authoring a bundled reference file as `.md` would break that
+    // read of the tree AND cut it off from `{{artifactsRoot}}` / `{{#ifAgent}}`
+    // / `{{>snippet}}`, which is how `{{artifactsRoot}}` ends up shipped as
+    // literal text. Bundled prose is `.prompt` and deploys as `.md`.
+    const skillDirs = fs.readdirSync(skillsTemplateDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+    const strayMarkdown: string[] = [];
+    const walk = (dir: string, rel: string): void => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.')) continue;
+        const childRel = `${rel}/${entry.name}`;
+        if (entry.isDirectory()) {
+          walk(path.join(dir, entry.name), childRel);
+        } else if (entry.name.endsWith('.md') && entry.name !== 'README.md') {
+          strayMarkdown.push(childRel);
+        }
+      }
+    };
+    for (const name of skillDirs) walk(path.join(skillsTemplateDir, name), name);
+    expect(strayMarkdown).toEqual([]);
   });
 
   it('every SKILL body stays under the 500-line ceiling Claude Code documents', () => {

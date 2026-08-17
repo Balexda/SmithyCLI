@@ -91,9 +91,9 @@ agents shouldn't pay for the context unless they hit the trigger.
 
 **Two levels of laziness.** The body is charged in full on every invocation, so
 material an agent needs only *sometimes* goes one level further out: a skill
-directory may bundle reference files (`references/*.md`) that the body **links**
-to instead of inlining, and the deployers ship them to all three targets with
-manifest tracking. Bodies stay under the ~500-line ceiling Claude Code
+directory may bundle reference files (`references/*.prompt`, deployed as `.md`
+like every other template) that the body **links** to instead of inlining, and
+the deployers ship them to all three targets with manifest tracking. Bodies stay under the ~500-line ceiling Claude Code
 documents (enforced in `src/templates.test.ts`), every bundled file is linked
 from the body that ships it, and the link says *when* to read it. Full
 convention — including why `paths:` frontmatter is deliberately not used — in
@@ -116,7 +116,7 @@ Templates are organized by their deployment target:
 - **`commands/`** — invocable as slash commands (e.g., `/smithy.strike "add verbose flag"`). Deployed to `.claude/commands/` for Claude, `.agents/skills/` for Codex, `.gemini/skills/` for Gemini.
 - **`prompts/`** — reference files the AI can read, but NOT invocable as `/command`. Deployed to `.claude/prompts/` for Claude, `tools/codex/prompts/` for Codex, `.gemini/skills/` for Gemini.
 - **`agents/`** — sub-agent definitions. Deployed to `.claude/agents/<name>.md` (frontmatter intact) for Claude and translated into Codex custom-agent TOML at `.codex/agents/<name>.toml`. Each agent declares a provider-neutral model `tier` (`light`/`standard`/`deep`) + optional `effort`, translated per-provider by `src/agent-models.ts` (Claude → `model:`, Codex → `model_reasoning_effort`). Not deployed for Gemini, which stays on the inline fallback path.
-- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/` and bundled reference files (`references/*.md`) the body links to instead of inlining. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` and any bundled files at their original relative paths).
+- **`skills/`** — lazy-loaded operational skills. Each skill is a directory containing a `SKILL.prompt` (frontmatter retained at deploy) plus optional `scripts/` and bundled reference files (`references/*.prompt` → `.md`) the body links to instead of inlining. Deployed to `.claude/skills/<name>/SKILL.md`, `.gemini/skills/<name>/SKILL.md`, and `.agents/skills/<name>/SKILL.md` for Codex (+ executable `scripts/` and any bundled files at their original relative paths).
 - **`snippets/`** — shared Markdown fragments injected into other templates via `{{>partial-name}}` Handlebars partials (resolved by Dotprompt at deploy time).
 
 ### Cross-Agent Compatibility

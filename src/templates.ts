@@ -184,6 +184,9 @@ function listSkillNames(): string[] {
  */
 const SKILL_SCRIPTS_DIR = 'scripts';
 
+/** Conventional filename of a skill's always-loaded body. */
+const SKILL_BODY_FILENAME = 'SKILL.prompt';
+
 /**
  * Recursively list files under `dir` as POSIX-style paths relative to `dir`.
  * Dot-entries are skipped at every level so editor and OS droppings
@@ -212,15 +215,24 @@ function listFilesRecursive(dir: string, prefix = ''): string[] {
  *
  * Bundled `.prompt` files go through the same snippet/Handlebars rendering as
  * the skill body and are renamed to `.md` on the way out, matching the rest of
- * the template pipeline; anything else is copied byte-for-byte, so a skill can
+ * the template pipeline — so authored prose in a bundle can use
+ * `{{artifactsRoot}}`, `{{#ifAgent}}`, and `{{>snippet}}` like any other
+ * template, and `.md` in the source tree keeps meaning "never deployed"
+ * (READMEs and snippets). Anything else is copied byte-for-byte, so a skill can
  * ship a JSON schema or a sample fixture without it being parsed as a template.
  */
 async function readSkillDir(skillName: string, renderer: Dotprompt): Promise<SkillTemplate> {
   const skillDir = path.join(skillsTemplateDir, skillName);
   const entries = fs.readdirSync(skillDir);
 
-  // Find and render the SKILL.prompt file
-  const promptFile = entries.find(f => f.endsWith('.prompt'));
+  // Find and render the SKILL.prompt file. Matched by exact name first: a
+  // skill may bundle its own top-level `.prompt` reference files, and picking
+  // the body by "first entry ending in .prompt" would make it depend on
+  // readdir order. The suffix match stays as a fallback for a skill whose
+  // body file is named something else.
+  const promptFile = entries.includes(SKILL_BODY_FILENAME)
+    ? SKILL_BODY_FILENAME
+    : entries.find(f => f.endsWith('.prompt'));
   let promptContent = '';
   if (promptFile) {
     const raw = fs.readFileSync(path.join(skillDir, promptFile), 'utf8');
