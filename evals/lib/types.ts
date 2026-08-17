@@ -218,6 +218,7 @@ export interface EvalResult {
   status: 'pass' | 'fail' | 'timeout' | 'error';
   extracted_text: string;
   tokens: TokenTotals;
+  sub_agent_tokens?: SubAgentTokenTotals[] | undefined;
   duration_ms: number;
   structural_checks: CheckResult[];
   sub_agent_checks?: CheckResult[] | undefined;
