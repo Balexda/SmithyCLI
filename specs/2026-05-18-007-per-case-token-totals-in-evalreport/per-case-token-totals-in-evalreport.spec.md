@@ -103,7 +103,7 @@ Recommended implementation sequence:
 | US1 | Capture Per-Case Token Totals | — | specs/2026-05-18-007-per-case-token-totals-in-evalreport/01-capture-per-case-token-totals.tasks.md |
 | US2 | Render Token Totals in Eval Reports | US1 | specs/2026-05-18-007-per-case-token-totals-in-evalreport/02-render-token-totals-in-eval-reports.tasks.md |
 | US3 | Extend Baselines with Token Envelopes | US1 | specs/2026-05-18-007-per-case-token-totals-in-evalreport/03-extend-baselines-with-token-envelopes.tasks.md |
-| US4 | Refresh the Strike Baseline in the Token-Aware Schema | US2, US3 | — |
+| US4 | Refresh the Strike Baseline in the Token-Aware Schema | US2, US3 | specs/2026-05-18-007-per-case-token-totals-in-evalreport/04-refresh-the-strike-baseline-in-the-token-aware-schema.tasks.md |
 
 ## Requirements *(mandatory)*
 
