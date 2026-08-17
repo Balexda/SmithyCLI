@@ -39,8 +39,8 @@ persona input** for the rest of this run.
 
 ## RFC Mode
 
-Given a resolved input path ending in `.rfc.md`, identify the durable persona
-candidates that should seed `.persona.md` file creation.
+Given a resolved input path ending in `.rfc.md`, create durable persona files
+from the named personas in that RFC.
 
 1. Read the input RFC file before drafting, writing, or checking any persona
    artifact target paths.
@@ -57,11 +57,46 @@ candidates that should seed `.persona.md` file creation.
    - the source excerpt or bullet/paragraph that describes that persona;
    - the RFC path the candidate came from.
 5. Keep the extracted candidate set as a structured list named **RFC persona
-   candidates**. Any persona-file creation in this mode must consume this list
-   as its source of truth rather than rereading unrelated input.
-6. This RFC mode completes after reporting the candidate set. Do not draft with
-   smithy-prose, derive target paths, check collisions, create directories,
-   write files, or overwrite artifacts in RFC mode.
+   candidates**. Persona-file creation in this mode must consume this list as
+   its source of truth rather than rereading unrelated input.
+6. For each RFC persona candidate, derive the filename slug from the preserved
+   human-readable persona name or role:
+   - lower-case ASCII where possible;
+   - words separated by single hyphens;
+   - no spaces, underscores, date prefix, or sequence prefix.
+7. Resolve each target path using the Persona Artifact Convention section:
+   `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
+8. Before drafting a candidate, check whether its target path already exists.
+   - If it exists, skip that candidate, leave the existing file untouched, and
+     add the candidate name, slug, and path to the skipped-collisions list.
+   - If it does not exist, continue with that candidate.
+   - Continue processing the remaining candidates after any collision skip.
+9. For each non-colliding candidate, dispatch **smithy-prose** with:
+   - `section_assignment`: "Personas"
+   - `idea_description`: the candidate's preserved source excerpt plus the RFC
+     path it came from
+   - `clarify_output`: the candidate's human-readable persona name or role,
+     source excerpt, derived slug, and source RFC path
+   - `rfc_file_path`: the resolved input RFC path
+   - `tone_directives`: "Draft exactly one reusable persona file body for the
+     named RFC persona. Cover role/context, friction today, and how their work
+     changes when relevant capabilities ship. Return narrative prose grounded
+     only in the candidate's RFC excerpt and source RFC context; do not add a
+     `## Personas` heading, bullets, dependency-order content, specification
+     debt, registry metadata, or a machine-readable identity field."
+10. Create the `{{artifactsRoot}}docs/personas/` directory if it does not
+    already exist. Write one file per non-colliding candidate at that
+    candidate's target path using the canonical file shape:
+    - `# Persona: <Name/Role>`
+    - blank line
+    - `**Created**: YYYY-MM-DD` using the current date
+    - blank line
+    - the smithy-prose narrative body
+
+If smithy-prose returns a `## Personas` heading for any candidate, remove that
+wrapper and keep only that single persona's narrative prose before writing the
+`.persona.md` file. Each final file must contain exactly one persona and must
+follow the Persona Artifact Convention section above.
 
 Keep this RFC-mode parser intentionally narrow. Do not infer personas from
 narrative-only prose, emit empty-section diagnostics, suppress placeholders
@@ -114,10 +149,12 @@ Persona Artifact Convention section above.
 
 ## One-Shot Summary
 
-After free-text mode completes, present a compact terminal summary. Do not dump
-the full persona file contents into the terminal.
+After the selected mode completes, present a compact terminal summary. Report
+exactly one summary block — the mode that ran selects which block applies, and
+the blocks are mutually exclusive. Do not dump the full persona file contents
+into the terminal.
 
-For a successful write, report:
+For a successful **free-text mode** write, report:
 
 1. **Phase summary** — one line stating that one durable persona file was
    written from free text with no intermediate approval gates.
@@ -125,7 +162,7 @@ For a successful write, report:
    `{{artifactsRoot}}docs/personas/<slug>.persona.md`.
 3. **Slug** — the derived slug used for filename identity.
 
-For a slug collision skip, report:
+For a **free-text mode** slug collision skip, report:
 
 1. **Phase summary** — one line stating that no file was written because the
    target persona slug already exists.
@@ -134,5 +171,18 @@ For a slug collision skip, report:
 3. **Next step** — tell the user to choose a different persona name/role or
    edit the existing file directly.
 
-Report the written and skipped persona paths as explicit result fields rather
-than a free-form diff, so the run's outcome is unambiguous.
+For **RFC mode**, report only this block — the two free-text blocks above never
+apply to an RFC run, no matter how many files were written or skipped:
+
+1. **Phase summary** — one line stating that durable persona files were seeded
+   from the RFC with no intermediate approval gates.
+2. **Source RFC** — the resolved input RFC path.
+3. **Written persona paths** — every file written, including its candidate
+   name/role and slug. If no files were written, say `none`.
+4. **Skipped collisions** — every candidate skipped because the target slug
+   already existed, including its name/role, slug, and existing path. If no
+   collisions were skipped, say `none`.
+5. **Totals** — written count and skipped-collision count.
+
+In either mode, report the written and skipped persona paths as explicit result
+fields rather than a free-form diff, so the run's outcome is unambiguous.
