@@ -136,8 +136,9 @@ same gate the clarification and review sub-agents apply:
 **How you route a finding the gate rejects.** You emit no `kind` field,
 so nothing the gate rejects is dropped — it becomes a `refinement`
 rather than a `debt_item`, with the `Target` pointed at the home the
-routing table names (`### Functional Requirements`, `### Acceptance
-Scenarios`, `## Out of Scope`, `## Dependency Order`, and so on). The
+routing table names (`### Functional Requirements`, the user story's
+`**Acceptance Scenarios**` list, `## Out of Scope`, `## Dependency Order`,
+and so on). The
 `Target` must name a section the artifact actually has — never a
 section you would have to invent for the finding to fit. The parent
 command applies the refinement to that section verbatim; the debt table

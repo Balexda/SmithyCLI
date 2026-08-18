@@ -397,7 +397,10 @@ describe('kind-gate snippet', () => {
     const content = loadSnippets().get('kind-gate.md')!;
     expect(content).toContain('## Open Implementation Questions');
     expect(content).toContain('### Functional Requirements');
-    expect(content).toContain('### Acceptance Scenarios');
+    // The spec scaffold writes acceptance scenarios as a bold label under the
+    // user story, not as a heading, so the routing table names it that way —
+    // `### Acceptance Scenarios` resolved to nothing any template emits.
+    expect(content).toContain('**Acceptance Scenarios**');
     expect(content).toContain('## Out of Scope');
     expect(content).toContain('## Assumptions');
     // Issue #554 D2: the routing table used to send dependency/coordination

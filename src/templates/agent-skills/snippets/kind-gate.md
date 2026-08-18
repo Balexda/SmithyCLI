@@ -53,7 +53,7 @@ finding carries the same information there.
 | Artifact housekeeping — "is the parent artifact corrected, or only this one?", "does this rename need to propagate upstream?" | `hygiene` | Same: applied. The answer is knowable now, so it is never open uncertainty |
 | A requirement — "X must Y", "implementers verify Z", "mitigation: pin both files" | `hygiene` | The artifact's `### Functional Requirements` (specs) or the RFC body |
 | A load-bearing assumption — "a retry count of 5 is sufficient", "X is acceptable for now" | `hygiene` | The artifact's `## Assumptions` section, annotated `[Critical Assumption]` when the impact is Critical |
-| An acceptance test — "acceptance criteria require empirically capturing X", "verification needed against actual Y" | `hygiene` | The user story's `### Acceptance Scenarios` |
+| An acceptance test — "acceptance criteria require empirically capturing X", "verification needed against actual Y" | `hygiene` | The user story's `**Acceptance Scenarios**` list |
 | A dependency or coordination note — "F1.5 and F1.6 both touch file Z; second-to-land rebases" | `hygiene` | The artifact's `## Dependency Order` table (and, in a feature map, `## Cross-Milestone Dependencies`), which already track this. Never debt |
 | Future work or a deferral — "deferred to follow-up", "out of scope this round" | `hygiene` | The artifact's `## Out of Scope`, plus a follow-up issue. The decision to defer is already made; debt is forward-looking |
 | A resolution record — "this was fixed in the same PR", "reviewer's concern investigated and dismissed" | `hygiene` | The pull request description, or at most a row already under `### Resolved`. Never an open debt row |
