@@ -119,13 +119,13 @@ describe('template lint — no restated protocol', () => {
     // mark's Phase 0 refine categories restate eight rows of the spec audit
     // checklist verbatim while deliberately diverging on four (Priority
     // Ordering, Specification Debt, Dependency Order, and no Over-Specification
-    // row). That is INV-1's "genuine variant" case, which the invariant says to
-    // resolve by extracting the shared rows rather than by keeping two tables;
-    // doing so changes what the refine loop assesses, so it is remediation work
-    // rather than part of the prevention layer.
+    // row); render's do the same against the feature-map checklist. That is
+    // INV-1's "genuine variant" case, which the invariant says to resolve by
+    // extracting the shared rows rather than by keeping two tables. Doing so
+    // reconciles four divergences that look deliberate in both directions, so
+    // it changes what the refine loop assesses: remediation work, tracked in
+    // #595, rather than part of the prevention layer.
     ['commands/smithy.mark.prompt', /restates audit-checklist-spec/],
-    // Same shape one level up: render's Phase 0 categories restate rows of the
-    // feature-map audit checklist while diverging on others.
     ['commands/smithy.render.prompt', /restates audit-checklist-features/],
   ];
 
