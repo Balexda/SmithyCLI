@@ -14,10 +14,16 @@
  * | INV-2 | deployable templates read correctly outside SmithyCLI | `findInternalReferences` |
  * | P-1 | always-loaded context is a budget | `findOverBudgetDescriptions` |
  *
- * Each function returns findings rather than throwing, so the test that drives
- * it owns the allowlists and the failure message. Anything reading the composed
- * form goes through `createTemplateRenderer` rather than regexing raw source,
- * so `{{#ifAgent}}` gating is resolved by the same code path that deploys.
+ * Every lint reads a `TemplateSource` and returns findings rather than
+ * throwing, so the test that drives it owns the allowlists and the failure
+ * message. The source is a parameter rather than a disk read inside each check:
+ * a test that needs to prove a lint still detects its defect builds a modified
+ * source in memory instead of writing to the tracked tree, which would race
+ * with every other test file vitest runs in parallel.
+ *
+ * Anything reading the composed form goes through `createTemplateRenderer`
+ * rather than regexing raw source, so `{{#ifAgent}}` gating is resolved by the
+ * same code path that deploys.
  *
  * Two checks the issue scoped here already exist elsewhere and are deliberately
  * not restated: the Bash permission grammar is asserted over generated
@@ -27,12 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { Dotprompt } from 'dotprompt';
-import {
-  buildPartialsMap,
-  createTemplateRenderer,
-  loadSnippets,
-  resolveSnippets,
-} from './templates.js';
+import { buildPartialsMap, createTemplateRenderer, loadSnippets, resolveSnippets } from './templates.js';
 import {
   agentsTemplateDir,
   commandsTemplateDir,
@@ -47,10 +48,21 @@ export interface DeployableTemplate {
   id: string;
   /** Which template category the file belongs to. */
   category: 'commands' | 'prompts' | 'agents' | 'snippets' | 'skills';
-  /** Absolute path on disk. */
-  absPath: string;
   /** Raw source text, frontmatter included. */
   source: string;
+}
+
+/**
+ * Everything the lints read, in one value.
+ *
+ * `snippets` is keyed by filename (`kind-gate.md`) to match `loadSnippets`,
+ * and its entries are also present in `templates` under the `snippets`
+ * category — the two views serve the partial map and the text scans
+ * respectively.
+ */
+export interface TemplateSource {
+  templates: DeployableTemplate[];
+  snippets: Map<string, string>;
 }
 
 /** One lint failure. `id` names the template; `detail` is the operator-facing why. */
@@ -60,17 +72,14 @@ export interface LintFinding {
 }
 
 /**
- * Every file whose *content* reaches a target repo: the four template
- * categories plus snippets (inlined rather than deployed, but their text ships)
- * and any reference files a skill bundles. READMEs are source-tree docs and are
- * excluded — they are the one place internal references are correct.
+ * Read the tree from disk: every file whose *content* reaches a target repo —
+ * the four template categories plus snippets (inlined rather than deployed,
+ * but their text ships) and any reference files a skill bundles. READMEs are
+ * source-tree docs and are excluded; they are the one place internal
+ * references are correct.
  */
-export function listDeployableTemplates(): DeployableTemplate[] {
-  const out: DeployableTemplate[] = [];
-  const add = (category: DeployableTemplate['category'], absPath: string, id: string) => {
-    out.push({ id, category, absPath, source: fs.readFileSync(absPath, 'utf8') });
-  };
-
+export function loadTemplateSource(): TemplateSource {
+  const templates: DeployableTemplate[] = [];
   const flat: Array<[DeployableTemplate['category'], string, string]> = [
     ['commands', commandsTemplateDir, '.prompt'],
     ['prompts', promptsTemplateDir, '.prompt'],
@@ -80,26 +89,50 @@ export function listDeployableTemplates(): DeployableTemplate[] {
   for (const [category, dir, ext] of flat) {
     for (const file of fs.readdirSync(dir).sort()) {
       if (!file.endsWith(ext) || file === 'README.md') continue;
-      add(category, path.join(dir, file), `${category}/${file}`);
+      templates.push({
+        id: `${category}/${file}`,
+        category,
+        source: fs.readFileSync(path.join(dir, file), 'utf8'),
+      });
     }
   }
 
-  for (const skill of listSkillNames()) {
+  for (const skill of fs.readdirSync(skillsTemplateDir, { withFileTypes: true })
+    .filter(e => e.isDirectory()).map(e => e.name).sort()) {
     const skillDir = path.join(skillsTemplateDir, skill);
     for (const rel of listFilesRecursive(skillDir)) {
       // Scripts are shell, not prose, and carry their own review surface.
       if (rel.startsWith('scripts/') || !rel.endsWith('.prompt')) continue;
-      add('skills', path.join(skillDir, ...rel.split('/')), `skills/${skill}/${rel}`);
+      templates.push({
+        id: `skills/${skill}/${rel}`,
+        category: 'skills',
+        source: fs.readFileSync(path.join(skillDir, ...rel.split('/')), 'utf8'),
+      });
     }
   }
-  return out;
+
+  return { templates, snippets: loadSnippets() };
 }
 
-function listSkillNames(): string[] {
-  return fs.readdirSync(skillsTemplateDir, { withFileTypes: true })
-    .filter(e => e.isDirectory())
-    .map(e => e.name)
-    .sort();
+/**
+ * A copy of `source` with one template's text replaced.
+ *
+ * The planted-defect tests use this to prove a lint still detects what it was
+ * written for, without touching the tracked tree.
+ */
+export function withTemplate(
+  source: TemplateSource,
+  id: string,
+  rewrite: (previous: string) => string,
+): TemplateSource {
+  const templates = source.templates.map(t => (t.id === id ? { ...t, source: rewrite(t.source) } : t));
+  if (!templates.some(t => t.id === id)) throw new Error(`no template with id ${id}`);
+  const snippets = new Map(source.snippets);
+  // A snippet's body feeds the partial map as well as the text scans, so both
+  // views have to move together.
+  const snippetFile = id.startsWith('snippets/') ? id.slice('snippets/'.length) : undefined;
+  if (snippetFile) snippets.set(snippetFile, rewrite(source.snippets.get(snippetFile)!));
+  return { templates, snippets };
 }
 
 function listFilesRecursive(dir: string, prefix = ''): string[] {
@@ -114,8 +147,18 @@ function listFilesRecursive(dir: string, prefix = ''): string[] {
 }
 
 /** Snippet partial names, e.g. `kind-gate`, in the spelling `{{>name}}` uses. */
-export function snippetNames(): string[] {
-  return [...loadSnippets().keys()].map(f => f.replace(/\.md$/, '')).sort();
+export function snippetNames(source: TemplateSource = loadTemplateSource()): string[] {
+  return [...source.snippets.keys()].map(f => f.replace(/\.md$/, '')).sort();
+}
+
+/** Skill directory names, derived from the template ids the source carries. */
+export function skillNames(source: TemplateSource = loadTemplateSource()): string[] {
+  const names = new Set<string>();
+  for (const t of source.templates) {
+    const m = t.id.match(/^skills\/([^/]+)\//);
+    if (m) names.add(m[1]!);
+  }
+  return [...names].sort();
 }
 
 const SENTINEL = (name: string) => `@@smithy-snippet:${name}@@`;
@@ -141,19 +184,19 @@ function occurrences(haystack: string, needle: string): number {
  * identical, so the same render answers both the injection question and the
  * restatement question below.
  */
-function sentinelRenderer(variant: string): Dotprompt {
+function sentinelRenderer(variant: string, source: TemplateSource): Dotprompt {
   const marked = new Map<string, string>();
-  for (const [name, body] of buildPartialsMap(loadSnippets())) {
+  for (const [name, body] of buildPartialsMap(source.snippets)) {
     marked.set(name, `${SENTINEL(name)}\n${body}`);
   }
   return createTemplateRenderer(variant, '', marked);
 }
 
 /** Compose every deployable template for one agent variant, sentinels included. */
-async function composeWithSentinels(variant: string): Promise<Map<string, string>> {
-  const renderer = sentinelRenderer(variant);
+async function composeWithSentinels(variant: string, source: TemplateSource): Promise<Map<string, string>> {
+  const renderer = sentinelRenderer(variant, source);
   const out = new Map<string, string>();
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     // Snippets are composed *into* the consumers below; linting them again
     // standalone would double-report every finding their bodies carry.
     if (t.category === 'snippets') continue;
@@ -169,10 +212,13 @@ async function composeWithSentinels(variant: string): Promise<Map<string, string
  * a second injection into the same file is paid by every agent that loads it,
  * every run (P-1). It is also how the two copies start to drift apart.
  */
-export async function findDuplicateInjections(variant: string): Promise<LintFinding[]> {
-  const names = snippetNames();
+export async function findDuplicateInjections(
+  variant: string,
+  source: TemplateSource = loadTemplateSource(),
+): Promise<LintFinding[]> {
+  const names = snippetNames(source);
   const findings: LintFinding[] = [];
-  for (const [id, body] of await composeWithSentinels(variant)) {
+  for (const [id, body] of await composeWithSentinels(variant, source)) {
     for (const name of names) {
       const n = occurrences(body, SENTINEL(name));
       if (n > 1) findings.push({ id, detail: `injects {{>${name}}} ${n} times` });
@@ -192,9 +238,12 @@ export async function findDuplicateInjections(variant: string): Promise<LintFind
  * because their rendered form varies by variant, and short lines are skipped
  * because they collide by accident.
  */
-export function snippetCanaries(minLength = 50): Map<string, string[]> {
+export function snippetCanaries(
+  source: TemplateSource = loadTemplateSource(),
+  minLength = 50,
+): Map<string, string[]> {
   const raw = new Map<string, string[]>();
-  for (const [file, body] of loadSnippets()) {
+  for (const [file, body] of source.snippets) {
     raw.set(
       file.replace(/\.md$/, ''),
       body.split('\n').map(l => l.trim()).filter(l => l.length >= minLength && !l.includes('{{')),
@@ -227,11 +276,12 @@ export function snippetCanaries(minLength = 50): Map<string, string[]> {
  */
 export async function findRestatedProtocol(
   variant: string,
+  source: TemplateSource = loadTemplateSource(),
   canariesPerSnippet = 6,
 ): Promise<LintFinding[]> {
-  const canaries = snippetCanaries();
+  const canaries = snippetCanaries(source);
   const findings: LintFinding[] = [];
-  for (const [id, body] of await composeWithSentinels(variant)) {
+  for (const [id, body] of await composeWithSentinels(variant, source)) {
     for (const [name, lines] of canaries) {
       const injected = occurrences(body, SENTINEL(name));
       for (const line of lines.slice(0, canariesPerSnippet)) {
@@ -259,16 +309,23 @@ const PLACEHOLDER = /[<>]|\bN\b|\d/;
 
 const normalizeHeading = (s: string) => s.replace(/\s+/g, ' ').trim();
 
-/** Every section heading any deployable template emits, scaffolds included. */
-export function emittedHeadings(): Set<string> {
+/**
+ * Every section heading any deployable template emits, as `<level> <title>`.
+ *
+ * The level is part of the key because it is part of the destination: `## Error`
+ * and `### Error` are different insertion points, and one template's `##`
+ * scaffold must not silently satisfy another's `###` reference. `smithy.survey`
+ * says as much in its own prose — "`### Error` — not `## Error`".
+ */
+export function emittedHeadings(source: TemplateSource = loadTemplateSource()): Set<string> {
   const headings = new Set<string>();
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     for (const line of t.source.split('\n')) {
       // Scaffolds are shown indented, inside fences, and blockquoted; strip
       // all three so an emitted heading counts wherever it is illustrated.
       const stripped = line.trim().replace(/^>+\s*/, '');
-      const m = stripped.match(/^#{2,4}\s+(\S.*)$/);
-      if (m) headings.add(normalizeHeading(m[1]!));
+      const m = stripped.match(/^(#{2,4})\s+(\S.*)$/);
+      if (m) headings.add(`${m[1]} ${normalizeHeading(m[2]!)}`);
     }
   }
   return headings;
@@ -283,15 +340,16 @@ export function emittedHeadings(): Set<string> {
  * the routing surfaces, and only literal section names are checked — a
  * reference carrying a placeholder names a shape rather than one section.
  */
-export function findDeadRoutingDestinations(): LintFinding[] {
-  const headings = emittedHeadings();
+export function findDeadRoutingDestinations(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const headings = emittedHeadings(source);
   const findings: LintFinding[] = [];
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     if (t.category !== 'snippets' && t.category !== 'agents') continue;
     for (const m of t.source.matchAll(HEADING_REF)) {
       const name = normalizeHeading(m[2]!);
-      if (PLACEHOLDER.test(name) || headings.has(name)) continue;
-      findings.push({ id: t.id, detail: `routes findings to \`${m[1]} ${name}\`, which no template emits` });
+      const key = `${m[1]} ${name}`;
+      if (PLACEHOLDER.test(name) || headings.has(key)) continue;
+      findings.push({ id: t.id, detail: `routes findings to \`${key}\`, which no template emits` });
     }
   }
   return findings;
@@ -328,22 +386,20 @@ function scalar(frontmatter: string, key: string): string {
 }
 
 /** Parse every sub-agent definition into the fields the lints grade. */
-export function listAgentTemplates(): AgentTemplate[] {
-  return fs.readdirSync(agentsTemplateDir).sort()
-    .filter(f => f.endsWith('.prompt'))
-    .map(file => {
-      const { frontmatter, body } = splitFrontmatter(
-        fs.readFileSync(path.join(agentsTemplateDir, file), 'utf8'),
-      );
-      // `tools:` is authored both inline (`tools: Read, Edit`) and as a
-      // YAML block list; a parser that read only one form would report the
-      // other as granting nothing.
+export function listAgentTemplates(source: TemplateSource = loadTemplateSource()): AgentTemplate[] {
+  return source.templates
+    .filter(t => t.category === 'agents')
+    .map(t => {
+      const { frontmatter, body } = splitFrontmatter(t.source);
+      // `tools:` is authored both inline (`tools: Read, Edit`) and as a YAML
+      // block list; a parser that read only one form would report the other as
+      // granting nothing.
       const inline = scalar(frontmatter, 'tools');
       const tools = inline
-        ? inline.split(',').map(t => t.trim()).filter(Boolean)
+        ? inline.split(',').map(x => x.trim()).filter(Boolean)
         : [...frontmatter.matchAll(/^\s*-\s*(\w+)\s*$/gm)].map(m => m[1]!);
       return {
-        id: `agents/${file}`,
+        id: t.id,
         name: scalar(frontmatter, 'name'),
         description: scalar(frontmatter, 'description'),
         tools,
@@ -362,9 +418,9 @@ export function listAgentTemplates(): AgentTemplate[] {
  * write an instruction as opposed to prose ("Task decomposition" is not a
  * `Task` call).
  */
-export function findMissingToolGrants(): LintFinding[] {
+export function findMissingToolGrants(source: TemplateSource = loadTemplateSource()): LintFinding[] {
   const findings: LintFinding[] = [];
-  for (const agent of listAgentTemplates()) {
+  for (const agent of listAgentTemplates(source)) {
     const granted = new Set(agent.tools);
     const needed = new Set<string>();
     if (/Skill\("/.test(agent.body)) needed.add('Skill');
@@ -374,7 +430,10 @@ export function findMissingToolGrants(): LintFinding[] {
     }
     for (const tool of [...needed].sort()) {
       if (!granted.has(tool)) {
-        findings.push({ id: agent.id, detail: `body invokes ${tool} but tools: grants only ${agent.tools.join(', ') || '(nothing)'}` });
+        findings.push({
+          id: agent.id,
+          detail: `body invokes ${tool} but tools: grants only ${agent.tools.join(', ') || '(nothing)'}`,
+        });
       }
     }
   }
@@ -382,53 +441,71 @@ export function findMissingToolGrants(): LintFinding[] {
 }
 
 /**
- * Every `smithy-…` identifier a template can legitimately name: the sub-agents
- * it can dispatch, the commands it can point an operator at (Codex's dashed
- * spelling), and the reference prompts it can tell one to read.
+ * Every `smithy…` identifier a template can legitimately name, in both
+ * spellings the deployed tree uses.
+ *
+ * Codex and Gemini receive the dashed `name:` from frontmatter
+ * (`smithy-plan`); Claude names a command, sub-agent, or reference prompt by
+ * its filename stem (`smithy.plan`) and a skill by its directory. A check that
+ * knew only one spelling would let a rename leave a broken instruction on the
+ * other surface.
  */
-export function knownSmithyIdentifiers(): Set<string> {
-  const names = new Set<string>();
-  for (const dir of [agentsTemplateDir, commandsTemplateDir, promptsTemplateDir]) {
-    for (const file of fs.readdirSync(dir)) {
-      if (!file.endsWith('.prompt')) continue;
-      const { frontmatter } = splitFrontmatter(fs.readFileSync(path.join(dir, file), 'utf8'));
-      const name = scalar(frontmatter, 'name');
-      if (name) names.add(name);
-    }
+export function knownSmithyIdentifiers(source: TemplateSource = loadTemplateSource()): Set<string> {
+  const names = new Set<string>(skillNames(source));
+  for (const t of source.templates) {
+    if (t.category !== 'commands' && t.category !== 'agents' && t.category !== 'prompts') continue;
+    names.add(path.basename(t.id).replace(/\.prompt$/, ''));   // smithy.plan
+    const declared = scalar(splitFrontmatter(t.source).frontmatter, 'name');
+    if (declared) names.add(declared);                          // smithy-plan
   }
   return names;
 }
 
 /**
- * `smithy-…` names that resolve to nothing deployed — a dispatch to an agent
+ * `smithy-…` and `smithy.…` tokens, with the trailing character that follows
+ * each.
+ *
+ * A leading `/` is deliberately allowed: `/smithy.forge` is how a Claude slash
+ * command is written, and it is also how a deployed path names one
+ * (`.claude/skills/smithy.status/`). The lookbehind only rules out a token
+ * glued to a preceding word or hyphen, which would be part of a longer name.
+ */
+const SMITHY_IDENTIFIER = /(?<![\w-])smithy[.-][a-z][a-z0-9-]*(.?)/g;
+
+/**
+ * `smithy…` names that resolve to nothing deployed — a dispatch to an agent
  * that does not exist, or a pointer at a renamed command.
  *
  * A name followed by `.` or `:` is a filename or a marker key
  * (`smithy-manifest.json`, `smithy-pr-review-response-to:`), not an identifier,
  * and is skipped.
  */
-export function findUnresolvedSmithyNames(): LintFinding[] {
-  const known = knownSmithyIdentifiers();
+export function findUnresolvedSmithyNames(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const known = knownSmithyIdentifiers(source);
   const findings: LintFinding[] = [];
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     const seen = new Set<string>();
-    for (const m of t.source.matchAll(/\bsmithy-[a-z][a-z-]*\b(.?)/g)) {
-      const name = m[0].slice(0, m[0].length - (m[1] ? 1 : 0));
-      if (m[1] === '.' || m[1] === ':') continue;
+    for (const m of t.source.matchAll(SMITHY_IDENTIFIER)) {
+      const trailing = m[1] ?? '';
+      const name = trailing ? m[0].slice(0, -1) : m[0];
+      if (trailing === '.' || trailing === ':') continue;
       if (known.has(name) || seen.has(name)) continue;
       seen.add(name);
-      findings.push({ id: t.id, detail: `names \`${name}\`, which matches no deployed agent, command, or prompt` });
+      findings.push({
+        id: t.id,
+        detail: `names \`${name}\`, which matches no deployed agent, command, prompt, or skill`,
+      });
     }
   }
   return findings;
 }
 
 /** `{{>snippet}}` targets and `Skill("name")` targets that do not exist. */
-export function findUnresolvedReferences(): LintFinding[] {
-  const snippets = new Set(snippetNames());
-  const skills = new Set(listSkillNames());
+export function findUnresolvedReferences(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const snippets = new Set(snippetNames(source));
+  const skills = new Set(skillNames(source));
   const findings: LintFinding[] = [];
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     for (const m of t.source.matchAll(/\{\{>\s*([\w-]+)\s*\}\}/g)) {
       if (!snippets.has(m[1]!)) findings.push({ id: t.id, detail: `composes {{>${m[1]}}}, which has no snippet` });
     }
@@ -465,9 +542,9 @@ const INTERNAL_REFERENCE_PATTERNS: Array<{ pattern: RegExp; why: string }> = [
   { pattern: /\bCONTRIBUTING\.md\b/g, why: 'source-tree-only document' },
 ];
 
-export function findInternalReferences(): LintFinding[] {
+export function findInternalReferences(source: TemplateSource = loadTemplateSource()): LintFinding[] {
   const findings: LintFinding[] = [];
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     for (const { pattern, why } of INTERNAL_REFERENCE_PATTERNS) {
       for (const m of t.source.matchAll(pattern)) {
         findings.push({ id: t.id, detail: `${why}: \`${m[0]}\`` });
@@ -500,36 +577,33 @@ export interface DescribedTemplate {
 }
 
 /** Every surface that ships a `description`, with its word count. */
-export function listDescribedTemplates(): DescribedTemplate[] {
+export function listDescribedTemplates(source: TemplateSource = loadTemplateSource()): DescribedTemplate[] {
   const out: DescribedTemplate[] = [];
-  const push = (surface: DescribedTemplate['surface'], id: string, source: string, fallbackName: string) => {
-    const { frontmatter } = splitFrontmatter(source);
+  for (const t of source.templates) {
+    const isSkillBody = t.category === 'skills' && t.id.endsWith('/SKILL.prompt');
+    if (t.category !== 'agents' && t.category !== 'commands' && !isSkillBody) continue;
+    const surface: DescribedTemplate['surface'] = isSkillBody ? 'skills' : t.category as 'agents' | 'commands';
+    const { frontmatter } = splitFrontmatter(t.source);
     const description = scalar(frontmatter, 'description');
+    const fallback = isSkillBody ? t.id.split('/')[1]! : path.basename(t.id);
     out.push({
-      id,
+      id: t.id,
       surface,
-      name: scalar(frontmatter, 'name') || fallbackName,
+      name: scalar(frontmatter, 'name') || fallback,
       description,
       words: description ? description.split(/\s+/).filter(Boolean).length : 0,
     });
-  };
-  for (const [surface, dir] of [['agents', agentsTemplateDir], ['commands', commandsTemplateDir]] as const) {
-    for (const file of fs.readdirSync(dir).sort()) {
-      if (!file.endsWith('.prompt')) continue;
-      push(surface, `${surface}/${file}`, fs.readFileSync(path.join(dir, file), 'utf8'), file);
-    }
-  }
-  for (const skill of listSkillNames()) {
-    const body = path.join(skillsTemplateDir, skill, 'SKILL.prompt');
-    if (fs.existsSync(body)) push('skills', `skills/${skill}/SKILL.prompt`, fs.readFileSync(body, 'utf8'), skill);
   }
   return out;
 }
 
 /** Descriptions that are missing, or longer than their surface's budget. */
-export function findOverBudgetDescriptions(exempt: ReadonlySet<string> = new Set()): LintFinding[] {
+export function findOverBudgetDescriptions(
+  exempt: ReadonlySet<string> = new Set(),
+  source: TemplateSource = loadTemplateSource(),
+): LintFinding[] {
   const findings: LintFinding[] = [];
-  for (const t of listDescribedTemplates()) {
+  for (const t of listDescribedTemplates(source)) {
     if (!t.description) {
       findings.push({ id: t.id, detail: 'declares no description' });
       continue;
@@ -575,9 +649,9 @@ export interface EnumStatement {
  * A line naming more than one of the three fields is skipped: the run beside it
  * cannot be attributed, and the canonical table's header row names all of them.
  */
-export function listEnumStatements(): EnumStatement[] {
+export function listEnumStatements(source: TemplateSource = loadTemplateSource()): EnumStatement[] {
   const out: EnumStatement[] = [];
-  for (const t of listDeployableTemplates()) {
+  for (const t of source.templates) {
     t.source.split('\n').forEach((line, i) => {
       const fields = new Set([...line.matchAll(ENUM_FIELD)].map(m => m[1]!.toLowerCase()));
       if (fields.size !== 1) return;
@@ -592,9 +666,9 @@ export function listEnumStatements(): EnumStatement[] {
 }
 
 /** Enumerations offering a value the field's canonical scale does not admit. */
-export function findEnumDrift(): LintFinding[] {
+export function findEnumDrift(source: TemplateSource = loadTemplateSource()): LintFinding[] {
   const findings: LintFinding[] = [];
-  for (const s of listEnumStatements()) {
+  for (const s of listEnumStatements(source)) {
     const allowed = ENUM_SCALES[s.field]!;
     const stray = s.values.filter(v => !allowed.includes(v));
     if (stray.length) {
@@ -615,10 +689,10 @@ export function findEnumDrift(): LintFinding[] {
  * agent, or prompt without its `smithy.` prefix, or a snippet's own filename
  * when one snippet nests another.
  */
-export function snippetConsumers(): Map<string, Set<string>> {
+export function snippetConsumers(source: TemplateSource = loadTemplateSource()): Map<string, Set<string>> {
   const consumers = new Map<string, Set<string>>();
-  for (const name of snippetNames()) consumers.set(name, new Set());
-  for (const t of listDeployableTemplates()) {
+  for (const name of snippetNames(source)) consumers.set(name, new Set());
+  for (const t of source.templates) {
     const label = t.category === 'snippets'
       ? path.basename(t.id).replace(/\.md$/, '')
       : path.basename(t.id).replace(/^smithy\./, '').replace(/\.prompt$/, '');

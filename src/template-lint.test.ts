@@ -7,13 +7,20 @@
  * divergence is either fixed or written down here with a reason, and the
  * allowlists shrink as remediation lands rather than the check being deleted.
  *
+ * Every check is paired with a planted-defect test, because a lint that
+ * silently stopped looking passes exactly like a clean tree. The plants go
+ * through `withTemplate`, which returns a modified copy of the in-memory
+ * source: writing to the tracked tree would race with the other test files
+ * vitest runs in parallel, and an interrupted worker would leave the mutation
+ * behind.
+ *
  * Two checks the issue scoped here are already asserted elsewhere and are not
  * restated: the Bash permission grammar is checked over generated settings.json
  * in `permissions.test.ts` ("writes every Bash rule in the space-wildcard
  * form") and over every skill's `allowed-tools` in `templates.test.ts` ("every
  * skill allowed-tools grant uses the one verified Bash grammar").
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -30,18 +37,27 @@ import {
   findUnresolvedReferences,
   findUnresolvedSmithyNames,
   listAgentTemplates,
-  listDeployableTemplates,
   listDescribedTemplates,
   listEnumStatements,
+  loadTemplateSource,
   snippetCanaries,
   snippetConsumers,
   snippetNames,
+  withTemplate,
   type LintFinding,
+  type TemplateSource,
 } from './template-lint.js';
 import { agentsTemplateDir, promptsTemplateDir, snippetsTemplateDir } from './utils.js';
 
 /** The three agent variants every deployable template is composed for. */
 const VARIANTS = ['claude', 'codex', 'gemini'] as const;
+
+/** The tree as committed. Read once; never mutated. */
+let tree: TemplateSource;
+beforeAll(() => { tree = loadTemplateSource(); });
+
+/** A sub-agent with no snippet composition and a minimal grant — a clean slate to plant into. */
+const PLANT_TARGET = 'agents/smithy.maid.prompt';
 
 const report = (findings: LintFinding[]) =>
   findings.map(f => `  ${f.id} — ${f.detail}`).join('\n');
@@ -50,6 +66,9 @@ const report = (findings: LintFinding[]) =>
 function unallowed(findings: LintFinding[], allow: ReadonlyArray<[string, RegExp]>): LintFinding[] {
   return findings.filter(f => !allow.some(([id, re]) => f.id === id && re.test(f.detail)));
 }
+
+/** The tree with `extra` appended to one template — the standard plant. */
+const plant = (id: string, extra: string) => withTemplate(tree, id, prev => `${prev}\n${extra}\n`);
 
 describe('template lint — no duplicate snippet injection', () => {
   /**
@@ -85,27 +104,26 @@ describe('template lint — no duplicate snippet injection', () => {
 
   for (const variant of VARIANTS) {
     it(`composes each snippet at most once per template (${variant})`, async () => {
-      const findings = unallowed(await findDuplicateInjections(variant), ALLOWED);
+      const findings = unallowed(await findDuplicateInjections(variant, tree), ALLOWED);
       expect(findings, `unexpected duplicate snippet injections:\n${report(findings)}`).toEqual([]);
     });
   }
 
   it('detects a planted duplicate', async () => {
-    // Without this the check above is indistinguishable from one that never
-    // looks: plant a second injection of a snippet nothing else composes twice
-    // and require the lint to name it.
-    const target = path.join(snippetsTemplateDir, '..', 'agents', 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n{{>branch-policy}}\n{{>branch-policy}}\n`);
-    try {
-      const findings = await findDuplicateInjections('claude');
-      expect(findings).toContainEqual({
-        id: 'agents/smithy.maid.prompt',
-        detail: 'injects {{>branch-policy}} 2 times',
-      });
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant(PLANT_TARGET, '{{>branch-policy}}\n{{>branch-policy}}');
+    expect(await findDuplicateInjections('claude', planted)).toContainEqual({
+      id: PLANT_TARGET,
+      detail: 'injects {{>branch-policy}} 2 times',
+    });
+  });
+
+  it('counts an injection nested inside another snippet', async () => {
+    // `review-protocol` composes `kind-gate`; injecting the gate alongside it
+    // is a duplicate the sentinel sees only because nested partials still
+    // render and still emit their own marker.
+    const planted = plant(PLANT_TARGET, '{{>review-protocol}}\n{{>kind-gate}}');
+    const findings = await findDuplicateInjections('claude', planted);
+    expect(findings).toContainEqual({ id: PLANT_TARGET, detail: 'injects {{>kind-gate}} 2 times' });
   });
 });
 
@@ -131,7 +149,7 @@ describe('template lint — no restated protocol', () => {
 
   for (const variant of VARIANTS) {
     it(`carries canonical protocol text only where it is composed (${variant})`, async () => {
-      const findings = unallowed(await findRestatedProtocol(variant), ALLOWED);
+      const findings = unallowed(await findRestatedProtocol(variant, tree), ALLOWED);
       expect(findings, `protocol text restated instead of composed:\n${report(findings)}`).toEqual([]);
     });
   }
@@ -141,51 +159,68 @@ describe('template lint — no restated protocol', () => {
     // silently unprotected. Raw source rather than rendered text is what makes
     // this hold — a nested snippet would otherwise have every line claimed by
     // its parent as well.
-    const canaries = snippetCanaries();
-    const bare = snippetNames().filter(n => (canaries.get(n) ?? []).length === 0);
+    const canaries = snippetCanaries(tree);
+    const bare = snippetNames(tree).filter(n => (canaries.get(n) ?? []).length === 0);
     expect(bare, `snippets with no unique canary line: ${bare.join(', ')}`).toEqual([]);
   });
 
   it('detects a planted restatement', async () => {
-    const target = path.join(agentsTemplateDir, 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    const stolen = snippetCanaries().get('kind-gate')![0]!;
-    fs.writeFileSync(target, `${original}\n${stolen}\n`);
-    try {
-      const findings = await findRestatedProtocol('claude');
-      expect(findings.map(f => f.id)).toContain('agents/smithy.maid.prompt');
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant(PLANT_TARGET, snippetCanaries(tree).get('kind-gate')![0]!);
+    expect((await findRestatedProtocol('claude', planted)).map(f => f.id)).toContain(PLANT_TARGET);
+  });
+
+  it('stays silent when the same text arrives by composing the snippet', async () => {
+    // The count is per-snippet against its own injection count, not against
+    // zero — otherwise every legitimate consumer would be a finding.
+    const planted = plant(PLANT_TARGET, '{{>kind-gate}}');
+    expect((await findRestatedProtocol('claude', planted)).map(f => f.id)).not.toContain(PLANT_TARGET);
   });
 });
 
 describe('template lint — routing destinations exist', () => {
+  /**
+   * A destination that exists only in a routing table sends every finding of
+   * that kind nowhere — audit defect D2, where "Cross-Cutting Governance
+   * matrix" was named by five references and defined by no template.
+   */
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
+    // Both of these name a block the sub-agent is told to *emit* in its own
+    // response, not a section some template scaffolds: survey returns a
+    // `### Error` block when it cannot search, and prose appends
+    // `## Gaps / Missing Context` to what it drafts. The section exists at
+    // runtime, in the agent's output. Level-blind matching used to hide these
+    // by borrowing the other agent's heading at the wrong level.
+    ['agents/smithy.survey.prompt', /### Error/],
+    ['agents/smithy.prose.prompt', /## Gaps \/ Missing Context/],
+  ];
+
   it('routes findings only to sections some template emits', () => {
-    // Audit defect D2: "Cross-Cutting Governance matrix" was a routing
-    // destination defined in no template, so five references sent findings
-    // nowhere.
-    const findings = findDeadRoutingDestinations();
+    const findings = unallowed(findDeadRoutingDestinations(tree), ALLOWED);
     expect(findings, `findings routed to sections nothing produces:\n${report(findings)}`).toEqual([]);
   });
 
   it('detects a planted dead destination', () => {
-    const target = path.join(snippetsTemplateDir, 'kind-gate.md');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n\nRoute leftovers to \`## Cross-Cutting Governance matrix\`.\n`);
-    try {
-      expect(findDeadRoutingDestinations().map(f => f.detail))
-        .toContainEqual(expect.stringContaining('Cross-Cutting Governance matrix'));
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant('snippets/kind-gate.md', 'Route leftovers to `## Cross-Cutting Governance matrix`.');
+    expect(findDeadRoutingDestinations(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('Cross-Cutting Governance matrix'));
+  });
+
+  it('holds the destination to the heading level it names', () => {
+    // `## Error` and `### Error` are different insertion points, so one
+    // template's scaffold must not satisfy another's reference at the other
+    // level. `smithy.survey` makes the distinction explicitly in its own prose.
+    expect(emittedHeadings(tree).has('## Specification Debt')).toBe(true);
+    expect(emittedHeadings(tree).has('### Specification Debt')).toBe(false);
+
+    const planted = plant('snippets/kind-gate.md', 'File it under `#### Specification Debt`.');
+    expect(findDeadRoutingDestinations(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('#### Specification Debt'));
   });
 
   it('recognises a heading a scaffold only illustrates', () => {
     // Scaffolds are shown blockquoted, fenced, and indented; a destination that
     // resolves to one of those is live, not dead.
-    expect(emittedHeadings().has('Specification Debt')).toBe(true);
-    expect(emittedHeadings().has('Open Implementation Questions')).toBe(true);
+    expect(emittedHeadings(tree).has('## Open Implementation Questions')).toBe(true);
   });
 });
 
@@ -194,86 +229,96 @@ describe('template lint — agent tool grants cover what the body invokes', () =
     // Audit defect D3: smithy-prose was ordered to call
     // `Skill("smithy.helper-voice")` with a Read/Grep/Glob grant, so the voice
     // step silently could not happen.
-    const findings = findMissingToolGrants();
+    const findings = findMissingToolGrants(tree);
     expect(findings, `sub-agent bodies invoking ungranted tools:\n${report(findings)}`).toEqual([]);
   });
 
   it('detects a planted ungranted invocation', () => {
-    const target = path.join(agentsTemplateDir, 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n\nRun \`Bash\` to confirm the tree is clean.\n`);
-    try {
-      expect(findMissingToolGrants()).toContainEqual({
-        id: 'agents/smithy.maid.prompt',
-        detail: 'body invokes Bash but tools: grants only Read, Grep, Glob',
-      });
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant(PLANT_TARGET, 'Run `Bash` to confirm the tree is clean.');
+    expect(findMissingToolGrants(planted)).toContainEqual({
+      id: PLANT_TARGET,
+      detail: 'body invokes Bash but tools: grants only Read, Grep, Glob',
+    });
   });
 
-  it('reads a tools: grant off every sub-agent', () => {
-    // A parse that silently returned nothing would make the check above vacuous.
-    for (const agent of listAgentTemplates()) {
+  it('detects a planted Skill call with no Skill grant', () => {
+    // The exact shape of D3.
+    const planted = plant(PLANT_TARGET, 'Then call Skill("smithy.helper-voice") on the draft.');
+    expect(findMissingToolGrants(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('body invokes Skill'));
+  });
+
+  it('reads a tools: grant off every sub-agent, in both authored forms', () => {
+    // A parse that silently returned nothing would make the check above
+    // vacuous; `tools:` is written inline on one agent and as a block list on
+    // the rest.
+    for (const agent of listAgentTemplates(tree)) {
       expect(agent.name, agent.id).toMatch(/^smithy-/);
       expect(agent.tools.length, `${agent.id} grants no tools`).toBeGreaterThan(0);
+      expect(agent.tools, agent.id).toContain('Read');
     }
   });
 });
 
 describe('template lint — references resolve', () => {
   it('composes only snippets that exist and invokes only skills that exist', () => {
-    const findings = findUnresolvedReferences();
+    const findings = findUnresolvedReferences(tree);
     expect(findings, `unresolved snippet or skill references:\n${report(findings)}`).toEqual([]);
   });
 
   it('names only smithy identifiers that are deployed', () => {
-    const findings = findUnresolvedSmithyNames();
+    const findings = findUnresolvedSmithyNames(tree);
     expect(findings, `dispatch names matching nothing deployed:\n${report(findings)}`).toEqual([]);
   });
 
-  it('detects a planted dead dispatch', () => {
-    const target = path.join(agentsTemplateDir, 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n\nDispatch the **smithy-harmonize** sub-agent.\n`);
-    try {
-      expect(findUnresolvedSmithyNames()).toContainEqual({
-        id: 'agents/smithy.maid.prompt',
-        detail: 'names `smithy-harmonize`, which matches no deployed agent, command, or prompt',
-      });
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+  it('detects a planted dead dispatch in the dashed spelling', () => {
+    const planted = plant(PLANT_TARGET, 'Dispatch the **smithy-harmonize** sub-agent.');
+    expect(findUnresolvedSmithyNames(planted)).toContainEqual({
+      id: PLANT_TARGET,
+      detail: 'names `smithy-harmonize`, which matches no deployed agent, command, prompt, or skill',
+    });
+  });
+
+  it('detects a planted dead reference in the dotted spelling', () => {
+    // Claude names a command by its filename and a skill by its directory, so
+    // a rename can leave a broken `/smithy.…` instruction that the dashed
+    // Codex spelling never shows.
+    const planted = plant(PLANT_TARGET, 'Hand the result to `/smithy.harmonize` when finished.');
+    expect(findUnresolvedSmithyNames(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('smithy.harmonize'));
+  });
+
+  it('accepts both deployed spellings of a name that exists', () => {
+    const planted = plant(PLANT_TARGET, 'See `/smithy.forge`, smithy-forge, and Skill("smithy.status").');
+    expect(findUnresolvedSmithyNames(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
+  });
+
+  it('detects a planted dead snippet reference', () => {
+    const planted = plant(PLANT_TARGET, '{{>no-such-snippet}}');
+    expect(findUnresolvedReferences(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('no-such-snippet'));
   });
 });
 
 describe('template lint — portability (INV-2)', () => {
   it('ships no reference that resolves only inside SmithyCLI', () => {
-    const findings = findInternalReferences();
+    const findings = findInternalReferences(tree);
     expect(findings, `SmithyCLI-internal references in deployable text:\n${report(findings)}`).toEqual([]);
   });
 
   it('detects planted internal references', () => {
-    const target = path.join(agentsTemplateDir, 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n\nSee \`src/manifest.ts:38-43\` and issue #551 for the rationale.\n`);
-    try {
-      const details = findInternalReferences()
-        .filter(f => f.id === 'agents/smithy.maid.prompt')
-        .map(f => f.detail);
-      expect(details).toContainEqual(expect.stringContaining('source path with a line number'));
-      expect(details).toContainEqual(expect.stringContaining('SmithyCLI issue or PR number'));
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant(PLANT_TARGET, 'See `src/manifest.ts:38-43` and issue #551 for the rationale.');
+    const details = findInternalReferences(planted).filter(f => f.id === PLANT_TARGET).map(f => f.detail);
+    expect(details).toContainEqual(expect.stringContaining('source path with a line number'));
+    expect(details).toContainEqual(expect.stringContaining('SmithyCLI issue or PR number'));
   });
 
   it('leaves an illustrative example path alone', () => {
     // INV-2 exempts purely illustrative paths — an example is not an
     // instruction — so the lint must not fire on the tree's deliberate ones.
-    const spark = listDeployableTemplates().find(t => t.id === 'commands/smithy.spark.prompt')!;
+    const spark = tree.templates.find(t => t.id === 'commands/smithy.spark.prompt')!;
     expect(spark.source).toContain('src/templates/agent-skills/');
-    expect(findInternalReferences().some(f => f.id === 'commands/smithy.spark.prompt')).toBe(false);
+    expect(findInternalReferences(tree).some(f => f.id === 'commands/smithy.spark.prompt')).toBe(false);
   });
 });
 
@@ -291,14 +336,24 @@ describe('template lint — description budgets (P-1)', () => {
   ]);
 
   it('keeps every description inside its surface budget', () => {
-    const findings = findOverBudgetDescriptions(EXEMPT);
+    const findings = findOverBudgetDescriptions(EXEMPT, tree);
     expect(findings, `descriptions over budget or missing:\n${report(findings)}`).toEqual([]);
   });
 
   it('declares a description on every command, sub-agent, and skill', () => {
-    for (const t of listDescribedTemplates()) {
+    const described = listDescribedTemplates(tree);
+    expect(described.length).toBeGreaterThan(30);
+    for (const t of described) {
       expect(t.description, `${t.id} declares no description`).not.toBe('');
     }
+  });
+
+  it('detects a planted over-budget description', () => {
+    const bloat = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
+    const planted = withTemplate(tree, PLANT_TARGET, prev =>
+      prev.replace(/^description:.*$/m, `description: "${bloat}"`));
+    expect(findOverBudgetDescriptions(EXEMPT, planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('over the 40-word agents budget'));
   });
 
   it('budgets the always-advertised surfaces at least as tightly as the lazy one', () => {
@@ -315,13 +370,13 @@ describe('template lint — one enum per scale', () => {
     // The audit found Confidence incompatible across the pipeline. A template
     // stating a subset agrees; one offering an outside value has invented a
     // scale, which is what this rejects.
-    const findings = findEnumDrift();
+    const findings = findEnumDrift(tree);
     expect(findings, `grading scales stated with foreign values:\n${report(findings)}`).toEqual([]);
   });
 
   it('harvests the enumerations the tree actually carries', () => {
     // A harvest that matched nothing would make the check above vacuous.
-    const statements = listEnumStatements();
+    const statements = listEnumStatements(tree);
     expect(statements.length).toBeGreaterThan(5);
     for (const field of Object.keys(ENUM_SCALES)) {
       expect(statements.some(s => s.field === field), `no ${field} enumeration harvested`).toBe(true);
@@ -329,27 +384,21 @@ describe('template lint — one enum per scale', () => {
   });
 
   it('keeps debt-row-shape the canonical home of all three scales', () => {
-    const canonical = fs.readFileSync(path.join(snippetsTemplateDir, 'debt-row-shape.md'), 'utf8');
+    const canonical = tree.snippets.get('debt-row-shape.md')!;
     expect(canonical).toContain('`Critical` / `High` / `Medium` / `Low`');
     expect(canonical).toContain('`High` / `Medium` / `Low`');
     expect(canonical).toContain('`Critical` / `Important` / `Minor`');
   });
 
   it('detects a planted foreign value', () => {
-    const target = path.join(agentsTemplateDir, 'smithy.maid.prompt');
-    const original = fs.readFileSync(target, 'utf8');
-    fs.writeFileSync(target, `${original}\n\nGrade each **Impact** as Critical / Important / Minor.\n`);
-    try {
-      expect(findEnumDrift().map(f => f.detail))
-        .toContainEqual(expect.stringContaining('Important, Minor are not impact values'));
-    } finally {
-      fs.writeFileSync(target, original);
-    }
+    const planted = plant(PLANT_TARGET, 'Grade each **Impact** as Critical / Important / Minor.');
+    expect(findEnumDrift(planted).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('Important, Minor are not impact values'));
   });
 });
 
 describe('template lint — rosters match the tree', () => {
-  const agentNames = () => listAgentTemplates().map(a => a.name).sort();
+  const agentNames = () => listAgentTemplates(tree).map(a => a.name).sort();
 
   it('lists every sub-agent in agents/README.md and nothing else', () => {
     const readme = fs.readFileSync(path.join(agentsTemplateDir, 'README.md'), 'utf8');
@@ -365,7 +414,7 @@ describe('template lint — rosters match the tree', () => {
 
   it('matches the snippets README Used By column against actual composition', () => {
     const readme = fs.readFileSync(path.join(snippetsTemplateDir, 'README.md'), 'utf8');
-    const consumers = snippetConsumers();
+    const consumers = snippetConsumers(tree);
     const rows = [...readme.matchAll(/^\|\s*`([a-z0-9-]+)\.md`\s*\|[^|]*\|([^|]*)\|\s*$/gm)];
     expect(rows.length, 'snippets README has no Used By table').toBeGreaterThan(0);
 
@@ -400,7 +449,7 @@ describe('template lint — rosters match the tree', () => {
           .filter(s => /^[a-z]+$/.test(s)),
       );
       const actual = new Set(
-        listDeployableTemplates()
+        tree.templates
           .filter(t => t.category === 'commands' || t.category === 'agents')
           .filter(t => t.source.includes(`smithy.${promptName}`) || t.source.includes(`smithy-${promptName}`))
           .map(t => path.basename(t.id).replace(/^smithy\./, '').replace(/\.prompt$/, '')),

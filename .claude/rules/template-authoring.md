@@ -2,15 +2,18 @@
 paths:
   - "src/templates/**"
   - "src/template-lint.ts"
-  - ".claude/**"
+  - "src/template-lint.test.ts"
 ---
 
 # Authoring deployable templates
 
 These rules apply while you are editing anything under
 `src/templates/agent-skills/` — commands, sub-agents, skills, snippets, and
-the reference files a skill bundles. They load with the files rather than at
-session start, because they matter only here.
+the reference files a skill bundles — or the lint that enforces them. They
+load with those files rather than at session start, because they matter only
+here; the one rule that also binds a session touching `.claude/` without
+touching a template is the derived-artifact rule at the end, which CLAUDE.md
+carries unconditionally for that reason.
 
 Three engraved records govern this tree. Read the record when a rule below
 needs its reasoning; the summary here is what you act on.
