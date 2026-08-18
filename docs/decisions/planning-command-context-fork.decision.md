@@ -39,7 +39,7 @@ one-shot output block returns byte-identical.
 
 Two other findings decided the shape of the rule. A fork cannot see the
 conversation that preceded it. And `AskUserQuestion` is removed from every
-subagent unconditionally — `background: false` does not restore it — so a fork
+sub-agent unconditionally — `background: false` does not restore it — so a fork
 has no way to ask the user anything at all.
 
 The options were to fork every one-shot command on the strength of the token
