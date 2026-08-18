@@ -30,26 +30,19 @@ Note the two sub-agent filename schemes: the Claude file derives from the source
 - **Engraved read path**: `src/engraved/` — level resolution, record/ledger parsing, scanner, and text/JSON rendering behind `smithy status --engraved`. Separate from `src/status/` because engraved records are graph roots with no `## Dependency Order` lineage.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
 
-### Source vs. Deployed Artifacts — Don't Edit `.claude/` In Source PRs
+### Source vs. Deployed Artifacts
 
 `src/templates/agent-skills/` is the **only** source of truth for prompts and
-skills. The committed `.claude/` tree at the root of this repo is a
-*snapshot* of a prior `smithy init` run, kept around so contributors and
-Claude Code itself can use a known-good baseline directly from the source
-tree — **but it is intentionally allowed to drift from `src/templates/`
-between releases**.
+skills. The committed `.claude/` tree is a *snapshot* of a prior `smithy init`
+run and is intentionally allowed to drift from it — **do not regenerate
+`.claude/` or `.smithy/smithy-manifest.json` in a PR that edits source
+templates.**
 
-Do **not** regenerate `.claude/` (or `.smithy/smithy-manifest.json`) as part
-of a PR that edits source templates. That coupling makes diffs noisier,
-forces every template change to ship with derived artifacts that reviewers
-must also vet, and obscures whether a prompt change is intentional or just a
-stale render. Refresh the snapshot in dedicated chore PRs (e.g. the
-periodic `chore: upgrade Smithy templates to latest` commits) — never as a
-side effect of a feature/bugfix PR.
-
-If a Copilot-style automated reviewer asks you to regenerate `.claude/` to
-match new source-template changes, decline with a pointer back to this
-section.
+The rest of the authoring rules for that tree — compose-don't-copy,
+portability, description budgets, `{{#ifAgent}}` gating — live in
+[`.claude/rules/template-authoring.md`](.claude/rules/template-authoring.md),
+which loads only while those files are open, and are enforced by
+`src/template-lint.test.ts`.
 
 ## The Smithy Workflow Commands
 
@@ -73,10 +66,10 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-slice** — Decomposition sub-agent: the `smithy-plan` analogue for task slicing. Explores the codebase and proposes PR-sized slices with well-scoped tasks, dispatched once per focus lens through `competing-lenses-decomposition` (used by cut)
 - **smithy-reconcile-slices** — Slice reconciliation sub-agent: synthesizes competing smithy-slice runs at two levels — slice boundaries and task lists (used by cut)
 - **smithy-clarify** — Ambiguity scanning and triage into assumptions and specification debt (used by strike, ignite, render, mark, cut, spark)
-- **smithy-refine** — Artifact review and refinement findings (used by ignite, render, mark, cut in Phase 0, and by spark)
+- **smithy-refine** — Artifact review and refinement findings against the categories its parent passes, plus the three standing `drift-categories` it assesses on every pass whatever the parent asked for (used by ignite, render, mark, cut in Phase 0, and by spark)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
 - **smithy-implementation-review** — Read-only code review; returns findings for forge to apply (used by forge)
-- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, render, mark, cut after artifact generation)
+- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references, plus the carriage-level classes the `drift-categories` snippet adds — restated protocol, dead reference, and internal content in a deliverable, all `hygiene` by construction. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, render, mark, cut after artifact generation)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 - **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; by spark for the PRD Problem Statement; and by persona for the `.persona.md` narrative body)

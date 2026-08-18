@@ -130,8 +130,8 @@ The CLI's text renderer is authoritative.
    json`) only when the question actually requires done artifacts —
    "how many tasks are done?", "show me everything", "is X complete?".
 
-2. Parse the JSON. The payload follows the `StatusJsonPayload` contract from
-   `src/commands/status.ts`:
+2. Parse the JSON. The payload follows the `StatusJsonPayload` contract that
+   `smithy status --format json` emits:
    - `summary` — per-type counts (`rfc`, `features`, `spec`, `tasks`) of
      `done` / `in-progress` / `not-started` / `unknown`, plus
      `orphan_count`, `broken_link_count`, `parse_error_count`. **The

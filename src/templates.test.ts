@@ -106,7 +106,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(34);
+    expect(snippets.size).toBe(35);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -143,6 +143,7 @@ describe('loadSnippets', () => {
       'debt-grading.md',
       'debt-from-clarify.md',
       'plan-review-triage.md',
+      'drift-categories.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -397,7 +398,10 @@ describe('kind-gate snippet', () => {
     const content = loadSnippets().get('kind-gate.md')!;
     expect(content).toContain('## Open Implementation Questions');
     expect(content).toContain('### Functional Requirements');
-    expect(content).toContain('### Acceptance Scenarios');
+    // The spec scaffold writes acceptance scenarios as a bold label under the
+    // user story, not as a heading, so the routing table names it that way —
+    // `### Acceptance Scenarios` resolved to nothing any template emits.
+    expect(content).toContain('**Acceptance Scenarios**');
     expect(content).toContain('## Out of Scope');
     expect(content).toContain('## Assumptions');
     // Issue #554 D2: the routing table used to send dependency/coordination
@@ -452,6 +456,50 @@ describe('debt-row-shape snippet', () => {
     expect(content.replace(/\s+/g, ' ')).toContain(
       '`Medium` is produced only by clarification and refinement',
     );
+  });
+});
+
+describe('drift-categories snippet', () => {
+  // Issue #575: the review loop runs on every authoring pass but was not
+  // looking for the classes the audit found by hand — a protocol restated
+  // instead of cited, a reference that resolves to nothing, and content
+  // addressed to the artifact's authors rather than its readers.
+
+  it('is composed by both review agents rather than copied into either', async () => {
+    // The categories are shared, so they live in one snippet — the rule the
+    // categories themselves police.
+    const raw = loadSnippets().get('drift-categories.md')!;
+    for (const agent of ['smithy.plan-review.prompt', 'smithy.refine.prompt']) {
+      const source = fs.readFileSync(
+        path.join(skillsTemplateDir, '..', 'agents', agent), 'utf8',
+      );
+      expect(source, agent).toContain('{{>drift-categories}}');
+    }
+    const composed = await composeSnippet('drift-categories');
+    expect(composed).toContain('**Restated protocol**');
+    expect(composed).toContain('**Dead reference**');
+    expect(composed).toContain('**Internal content in a deliverable**');
+    expect(raw).not.toContain('{{#ifAgent');
+  });
+
+  it('routes all three through the kind gate as hygiene', () => {
+    // None of the three is a choice a human has to make, so none may reach
+    // the debt table; saying so in the snippet keeps the gate's answer from
+    // being re-derived at each review surface.
+    const content = loadSnippets().get('drift-categories.md')!.replace(/\s+/g, ' ');
+    expect(content).toContain('`hygiene` by construction');
+    expect(content).toContain('Run them through the kind gate');
+  });
+
+  it('reaches the degraded path, which loads no sub-agent', async () => {
+    // Gemini deploys no sub-agent files, so anything living only in an agent
+    // prompt never reaches it. refine composes the snippet in Step 1, which
+    // renders on every variant.
+    for (const variant of [undefined, 'claude', 'codex', 'gemini']) {
+      const composed = await getComposedTemplates(variant);
+      expect(composed.agents.get('smithy.refine.md'), String(variant))
+        .toContain('**Restated protocol**');
+    }
   });
 });
 

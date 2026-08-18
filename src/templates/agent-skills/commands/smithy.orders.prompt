@@ -228,9 +228,9 @@ Parse the feature map to extract:
        as-is.
     2. Otherwise treat it as a path **relative to the `.features.md` file's
        own directory** (not the current working directory). For example, if the
-       feature map is at `evals/fixture/rfcs/mark-eval/01-core.features.md`
-       and the field value is `mark-eval.rfc.md`, resolve to
-       `evals/fixture/rfcs/mark-eval/mark-eval.rfc.md`.
+       feature map is at `docs/rfcs/payments/01-core.features.md`
+       and the field value is `payments.rfc.md`, resolve to
+       `docs/rfcs/payments/payments.rfc.md`.
     If the field is absent or the resolved RFC path cannot be located on disk,
     keep parsing features but set the downstream `\{{features_path}}` value to
     empty string.

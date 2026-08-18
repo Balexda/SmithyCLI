@@ -138,7 +138,7 @@ export function loadSnippets(): Map<string, string> {
 /**
  * Build a partials map from snippet files, keyed by partial name (filename without .md).
  */
-function buildPartialsMap(snippets: Map<string, string>): Map<string, string> {
+export function buildPartialsMap(snippets: Map<string, string>): Map<string, string> {
   const partials = new Map<string, string>();
   for (const [filename, body] of snippets) {
     const name = filename.replace(/\.md$/, '');
@@ -291,28 +291,22 @@ export function getTemplateFilesByCategory(): Record<TemplateCategory, string[]>
 }
 
 /**
- * Reads all templates from their categorized subdirectories, resolves snippets
- * and Handlebars conditionals via Dotprompt's rendering pipeline.
+ * Build the Dotprompt renderer used to compose every template, with the
+ * snippet partials registered and the three Smithy block helpers defined.
  *
- * When a variant is specified (e.g. 'claude'), it registers an {{#ifAgent}}
- * block helper that renders the main block; without a variant, the {{else}}
- * branch renders instead. Variant-specific .prompt files also override
- * their base files.
- *
- * `artifactsRoot` is the prefix substituted into deployed prompts via the
- * `{{artifactsRoot}}` template variable. Templates write paths like
- * `{{artifactsRoot}}docs/rfcs/...`; with an empty prefix (in-repo mode) the
- * path renders as `docs/rfcs/...`, and with `~/.smithy/repos/<repo>/` (external
- * mode) it renders as `~/.smithy/repos/<repo>/docs/rfcs/...`. Implemented as a
- * zero-arg Handlebars helper so Dotprompt's `knownHelpersOnly` mode accepts
- * the reference (same plumbing pattern as `{{#ifAgent}}`).
+ * Exported, with the partials map overridable, so a consumer that needs to
+ * render templates the way the deploy path does gets identical semantics
+ * instead of a second copy of this setup drifting out of step with it. The
+ * template lint substitutes sentinel-wrapped partials to count injections
+ * exactly, letting Handlebars resolve the `{{#ifAgent}}` gating rather than
+ * re-implementing it.
  */
-export async function getComposedTemplates(
+export function createTemplateRenderer(
   variant?: string,
   artifactsRoot: string = '',
-): Promise<ComposedTemplates> {
-  const snippets = loadSnippets();
-  const renderer = new Dotprompt({ partials: Object.fromEntries(buildPartialsMap(snippets)) });
+  partials: Map<string, string> = buildPartialsMap(loadSnippets()),
+): Dotprompt {
+  const renderer = new Dotprompt({ partials: Object.fromEntries(partials) });
   // Which variants render the rich {{#ifAgent}} sub-agent branch (vs. the
   // {{else}} fallback). Claude and Codex both ship deployable sub-agent
   // definitions (.claude/agents/*.md and .codex/agents/*.toml respectively)
@@ -354,6 +348,32 @@ export async function getComposedTemplates(
     };
     return artifactsRoot.length > 0 ? options.fn(this) : options.inverse(this);
   });
+
+  return renderer;
+}
+
+/**
+ * Reads all templates from their categorized subdirectories, resolves snippets
+ * and Handlebars conditionals via Dotprompt's rendering pipeline.
+ *
+ * When a variant is specified (e.g. 'claude'), it registers an {{#ifAgent}}
+ * block helper that renders the main block; without a variant, the {{else}}
+ * branch renders instead. Variant-specific .prompt files also override
+ * their base files.
+ *
+ * `artifactsRoot` is the prefix substituted into deployed prompts via the
+ * `{{artifactsRoot}}` template variable. Templates write paths like
+ * `{{artifactsRoot}}docs/rfcs/...`; with an empty prefix (in-repo mode) the
+ * path renders as `docs/rfcs/...`, and with `~/.smithy/repos/<repo>/` (external
+ * mode) it renders as `~/.smithy/repos/<repo>/docs/rfcs/...`. Implemented as a
+ * zero-arg Handlebars helper so Dotprompt's `knownHelpersOnly` mode accepts
+ * the reference (same plumbing pattern as `{{#ifAgent}}`).
+ */
+export async function getComposedTemplates(
+  variant?: string,
+  artifactsRoot: string = '',
+): Promise<ComposedTemplates> {
+  const renderer = createTemplateRenderer(variant, artifactsRoot);
 
   const resolve = async (dir: string): Promise<Map<string, string>> => {
     const raw = readTemplateDir(dir, variant);

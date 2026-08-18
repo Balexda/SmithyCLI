@@ -48,6 +48,20 @@ audit criteria, assess it as one of:
 - **Weak** — some content exists but has gaps, inconsistencies, or unclear areas
 - **Gap** — missing, fundamentally incomplete, or contradicts other artifacts
 
+### Standing categories
+
+The parent supplies the categories that are specific to the artifact kind.
+These three are yours, and you assess them whatever the parent passed:
+
+{{>drift-categories}}
+
+
+Assess each of these on the same Sound / Weak / Gap scale and include them
+as rows in the summary table below, so the parent sees they were run even
+when all three come back Sound.
+
+---
+
 Record the findings as a summary table for inclusion in the returned `summary`:
 
 ```
@@ -136,8 +150,9 @@ same gate the clarification and review sub-agents apply:
 **How you route a finding the gate rejects.** You emit no `kind` field,
 so nothing the gate rejects is dropped — it becomes a `refinement`
 rather than a `debt_item`, with the `Target` pointed at the home the
-routing table names (`### Functional Requirements`, `### Acceptance
-Scenarios`, `## Out of Scope`, `## Dependency Order`, and so on). The
+routing table names (`### Functional Requirements`, the user story's
+`**Acceptance Scenarios**` list, `## Out of Scope`, `## Dependency Order`,
+and so on). The
 `Target` must name a section the artifact actually has — never a
 section you would have to invent for the finding to fit. The parent
 command applies the refinement to that section verbatim; the debt table
