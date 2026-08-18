@@ -1,3 +1,16 @@
+/**
+ * Shared permission data for every agent Smithy deploys to.
+ *
+ * **Grammar.** Every Bash rule in this file is written in the space-wildcard
+ * form — `git add *`, never `git add:*` and never `git add*`. Claude Code
+ * treats a trailing `:*` as equivalent to a trailing ` *`, but only at the end
+ * of a pattern, and a glued `ls*` drops the word boundary so it also matches
+ * `lsof`. One form, verified against the documented semantics, is what keeps
+ * the settings-level list and the skills' `allowed-tools` frontmatter
+ * readable against each other. The full rule set — coverage, wrapper
+ * stripping, what `*` does and does not span — is written up in
+ * [`docs/permission-grammar.md`](../docs/permission-grammar.md).
+ */
 export type PermissionEntry = string[] | Record<string, string[]>;
 
 export type LanguageToolchain = 'node' | 'java' | 'rust' | 'python';
@@ -167,14 +180,33 @@ export const permissions: Record<string, PermissionEntry> = {
 
   // --- Filesystem (read + create, no delete) ---
   // Flag variants are needed because Gemini CLI does not match flags with `*`.
+  // They are redundant under Claude's grammar, where `ls *` already covers
+  // `ls -la src`; `buildClaudeAllowList` prunes the covered variants back out
+  // rather than shipping seven spellings of one grant to Claude Code.
+  //
+  // Removing a flag variant is therefore also how a grant gets *narrowed* for
+  // Gemini: `sed *` covers `sed -i` for Claude (which is why the in-place
+  // forms are denied below) but not for Gemini, so dropping `sed -i *` from
+  // this table is what takes the in-place edit away there.
+  //
+  // `mv` and `tee` are deliberately absent. Both write over existing files,
+  // no shipped template invokes either, and a shell write bypasses the path
+  // protections the agent's own Edit/Write tools apply. Renames of tracked
+  // files go through `git mv` (above), where they stay recoverable.
   ls: ["*", "-l *", "-la *", "-al *", "-a *", "-lh *", "-R *"],
   cat: ["*", "-n *"],
   head: ["*", "-n *"],
   tail: ["*", "-n *", "-f *"],
   mkdir: ["*", "-p *"],
   cp: ["*", "-r *", "-R *", "-rp *"],
-  mv: ["*"],
   touch: ["*"],
+  // Unscoped on purpose: `find` is the directory-walking primitive the
+  // planning commands lean on, and its two destructive forms stay out of
+  // reach anyway. Claude Code refuses to auto-approve `find` with `-exec` or
+  // `-delete` from a prefix rule at all (and the deny list says so
+  // explicitly); Gemini gets there from the other side, since no `-exec` or
+  // `-delete` variant is listed here for a matcher that does not treat `*` as
+  // covering flags.
   find: ["*", "-name *", "-type *"],
   wc: ["*", "-l *", "-l"],
   sort: ["*", "-u *", "-n *", "-r *", "-k *"],
@@ -186,14 +218,15 @@ export const permissions: Record<string, PermissionEntry> = {
   pwd: [],
   dirname: ["*"],
   basename: ["*"],
-  tee: ["*", "-a *"],
   realpath: ["*"],
   readlink: ["*", "-f *"],
 
   // --- Text processing ---
   grep: ["*", "-r *", "-rn *", "-n *", "-i *", "-ri *", "-rni *", "-l *", "-rl *", "-c *"],
   rg: ["*"],
-  sed: ["*", "-i *", "-n *"],
+  // `-i` is absent: an in-place `sed` edits files without going through the
+  // agent's Edit tool. See the deny list for the Claude-side half of that.
+  sed: ["*", "-n *"],
   awk: ["*"],
   jq: ["*", "-r *"],
   cut: ["*", "-d *", "-f *"],
@@ -462,6 +495,24 @@ export const permissions: Record<string, PermissionEntry> = {
     "repo view": ["", "*"],
   },
 
+  // --- Smithy CLI ---
+  // `smithy status` only. It is the read path — the deterministic source of
+  // truth the `smithy.status` skill wraps — and the skill auto-activates on
+  // plain questions like "what's next?", so a permission prompt on every one
+  // of them defeats the point of shipping it as a skill. The skill's own
+  // `allowed-tools` grant covers the turn it is invoked in; this entry is the
+  // session-level belt-and-suspenders for hosts that do not apply frontmatter
+  // grants, mirroring what `extraPermissions` does for the script skills.
+  //
+  // `init`, `update`, and `uninit` are deliberately absent: they write into
+  // the target repo and are operator-driven, not agent-driven. `status *`
+  // also covers the bare `smithy status`, since a trailing ` *` matches at a
+  // word boundary *or* end-of-string — the bare spelling is listed anyway for
+  // Gemini, whose matcher has no such rule.
+  smithy: {
+    "status": ["", "*"],
+  },
+
   // --- Misc utilities ---
   echo: ["*"],
   printf: ["*"],
@@ -489,25 +540,43 @@ export const permissions: Record<string, PermissionEntry> = {
  * the `.claude/...` paths are Claude assets).
  */
 export const extraPermissions: string[] = [
-  // Smithy pr-review skill scripts — belt-and-suspenders for the skill's own
-  // `allowed-tools` frontmatter. We enumerate likely deployment paths because
-  // Claude Code's `*` wildcard doesn't reliably span `/` boundaries.
-  // Repo-level deploy invokes scripts via the relative path; user-level deploy
-  // invokes them via an absolute home path that no single pattern can match
-  // without env-var expansion.
+  // Smithy script-backed skills — belt-and-suspenders for each skill's own
+  // `allowed-tools` frontmatter. The frontmatter grants are written against
+  // `${CLAUDE_SKILL_DIR}`, which Claude Code expands to the skill's installed
+  // directory in both the rule and the body that names the script; these
+  // entries cover the hosts that don't apply a frontmatter grant at all, and
+  // the turns where a script runs without the skill having been invoked.
   //
-  // Issue #261 added the GitHub MCP tools as the preferred path for the skill;
-  // these script entries are the fallback (kept because the GitHub MCP server
-  // isn't always configured — claude.ai web, vanilla Claude Code installs,
-  // etc.). The skill chooses MCP-vs-script per operation at runtime.
+  // Two spellings per script. Repo-level deploy invokes scripts via the
+  // relative `.claude/skills/...` path; user-level deploy invokes them via an
+  // absolute home path, which the leading-`*` form matches. A single `*` does
+  // span `/`, so one pattern would do, but the anchored form keeps the
+  // narrower rule available to anyone reading the settings file.
+  //
+  // Issue #261 added the GitHub MCP tools as the preferred path for these
+  // skills; the script entries are the fallback (kept because the GitHub MCP
+  // server isn't always configured — claude.ai web, vanilla Claude Code
+  // installs, etc.). Each skill chooses MCP-vs-script per operation at
+  // runtime.
   ".claude/skills/smithy.pr-review/scripts/find-pr.sh",
-  ".claude/skills/smithy.pr-review/scripts/get-comments.sh:*",
-  ".claude/skills/smithy.pr-review/scripts/reply-comment.sh:*",
-  ".claude/skills/smithy.pr-review/scripts/add-comment.sh:*",
+  ".claude/skills/smithy.pr-review/scripts/get-comments.sh *",
+  ".claude/skills/smithy.pr-review/scripts/reply-comment.sh *",
+  ".claude/skills/smithy.pr-review/scripts/add-comment.sh *",
   "*/smithy.pr-review/scripts/find-pr.sh",
-  "*/smithy.pr-review/scripts/get-comments.sh:*",
-  "*/smithy.pr-review/scripts/reply-comment.sh:*",
-  "*/smithy.pr-review/scripts/add-comment.sh:*",
+  "*/smithy.pr-review/scripts/get-comments.sh *",
+  "*/smithy.pr-review/scripts/reply-comment.sh *",
+  "*/smithy.pr-review/scripts/add-comment.sh *",
+  // The gh-issue scripts are the issue-creation path for `smithy.orders` and
+  // `smithy.engrave`. Without these, every non-MCP host prompts once per
+  // issue — which, on an orders run over a feature map, is once per feature.
+  ".claude/skills/smithy.gh-issue/scripts/check-env.sh",
+  ".claude/skills/smithy.gh-issue/scripts/search-issues.sh *",
+  ".claude/skills/smithy.gh-issue/scripts/create-issue.sh *",
+  ".claude/skills/smithy.gh-issue/scripts/link-blocked-by.sh *",
+  "*/smithy.gh-issue/scripts/check-env.sh",
+  "*/smithy.gh-issue/scripts/search-issues.sh *",
+  "*/smithy.gh-issue/scripts/create-issue.sh *",
+  "*/smithy.gh-issue/scripts/link-blocked-by.sh *",
 ];
 
 /**
@@ -525,6 +594,65 @@ export const askPermissions: string[] = [];
  * Deny list — blocks dangerous subcommands even when the parent is allowed.
  * In Claude Code, deny takes precedence over allow.
  */
+/**
+ * `find` primaries that run a command or write a file. Everything else `find`
+ * does is a query.
+ *
+ * Enumerated rather than pattern-matched because a permission rule matches
+ * text, not option grammar. `-execdir`, `-ok`, and `-okdir` run a command
+ * exactly as `-exec` does; the `-fprint` family writes caller-controlled text
+ * to a caller-named path, which is a file write by another name.
+ */
+const FIND_DESTRUCTIVE_PRIMARIES = [
+  '-delete',
+  '-exec',
+  '-execdir',
+  '-ok',
+  '-okdir',
+  '-fprint',
+  '-fprint0',
+  '-fprintf',
+  '-fls',
+] as const;
+
+/**
+ * Deny rules for {@link FIND_DESTRUCTIVE_PRIMARIES}, in both positions the
+ * primary can occupy.
+ *
+ * GNU `find` defaults its path argument to the current directory, so
+ * `find -delete` and `find -exec rm {} \;` are valid with no path at all —
+ * and a rule shaped `find * -delete` needs a token before the primary, so it
+ * misses exactly those forms while the allow list's `find *` covers them.
+ * Hence the pathless pair as well as the trailing one.
+ */
+function findDenyRules(): string[] {
+  return FIND_DESTRUCTIVE_PRIMARIES.flatMap((primary) => [
+    `find ${primary}`,
+    `find ${primary} *`,
+    `find * ${primary}`,
+    `find * ${primary} *`,
+  ]);
+}
+
+/**
+ * Deny rules for `sed`'s in-place flags, in both positions.
+ *
+ * `sed` accepts its options in any order, so the in-place flag is not always
+ * the first token: `sed -E -i 's/x/y/' f` and `sed -e 's/x/y/' --in-place f`
+ * are both ordinary invocations. The glued `*` catches the suffix spelling
+ * (`sed -i.bak`) alongside bare `-i` and `-i ''`.
+ *
+ * Known gap: GNU `sed` also bundles short options, and no glob can pick `-i`
+ * out of `sed -ni'.bak'` without also matching the letter `i` inside a script
+ * argument. These rules are defense in depth for Claude; the control that
+ * does not depend on spelling is that no shipped template runs `sed -i` and
+ * that the flag is gone from the allow table — which is what removes it for
+ * Gemini, whose matcher does not reach flags through `*` at all.
+ */
+function sedDenyRules(): string[] {
+  return ['-i', '--in-place'].flatMap((flag) => [`sed ${flag}*`, `sed * ${flag}*`]);
+}
+
 export const denyPermissions: string[] = [
   // Git branch deletion
   "git branch -d *",
@@ -569,6 +697,16 @@ export const denyPermissions: string[] = [
   // npm publish — requires explicit approval
   "npm publish",
   "npm publish *",
+  // In-place `sed` — a file write that never passes the agent's Edit tool,
+  // which the allow list's `sed *` would otherwise cover.
+  ...sedDenyRules(),
+  // `find` forms that run a command or write a file. Claude Code's own
+  // carve-out refuses to prefix-approve `-exec` and `-delete`, but it is
+  // documented for those two only, so `-execdir` / `-ok` / `-okdir` and the
+  // `-fprint` family need saying out loud. Gemini reaches none of them
+  // through either list: this one is Claude-only, and `permissions.find`
+  // lists no primary for a matcher that does not treat `*` as covering flags.
+  ...findDenyRules(),
 ];
 
 /**
@@ -599,9 +737,13 @@ export const claudeToolPermissions: string[] = [
   "WebSearch",
   "WebFetch",
   "Write(/tmp/**)",
-  // Claude Code's current Skill permission grammar uses a space before the
-  // wildcard arguments segment, e.g. `Skill(name *)`. Keep the legacy colon
-  // wildcard below temporarily for older Claude versions that accepted it.
+  // Claude Code's Skill permission grammar has two documented forms:
+  // `Skill(name)` for an exact match and `Skill(name *)` for the name plus any
+  // arguments. Neither admits a wildcard inside the name, so the
+  // `Skill(smithy.*:*)` catch-all that used to close this list named no skill
+  // and granted nothing — it is gone, and every Smithy skill and command is
+  // spelled out instead. `src/agents/claude.test.ts` holds the list to the
+  // set the templates actually deploy, in both directions.
   "Skill(smithy.audit *)",
   "Skill(smithy.cut *)",
   "Skill(smithy.engrave *)",
@@ -623,7 +765,6 @@ export const claudeToolPermissions: string[] = [
   "Skill(smithy.spark *)",
   "Skill(smithy.status *)",
   "Skill(smithy.strike *)",
-  "Skill(smithy.*:*)",
   // GitHub MCP — exactly the tools the smithy templates invoke.
   "mcp__github__create_pull_request",
   "mcp__github__list_pull_requests",

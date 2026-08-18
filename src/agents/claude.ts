@@ -5,6 +5,7 @@ import picocolors from 'picocolors';
 import { getComposedTemplates, getTemplateFilesByCategory, stripFrontmatter } from '../templates.js';
 import { toClaudeAgentContent } from '../agent-models.js';
 import { toClaudeCommandContent } from '../command-frontmatter.js';
+import { translateSkillFrontmatter } from '../skill-frontmatter.js';
 import { flattenPermissions, claudeToolPermissions, askPermissions, denyPermissions, extraPermissions, type LanguageToolchain, type PlatformPackageManager } from '../permissions.js';
 import { hooksTemplateDir, removeIfExists } from '../utils.js';
 import { writeSkillResources } from './skill-resources.js';
@@ -88,9 +89,10 @@ export async function deploy(
     const skillDir = path.join(baseDir, '.claude', 'skills', skillName);
     if (!fs.existsSync(skillDir)) fs.mkdirSync(skillDir, { recursive: true });
 
-    // Write SKILL.md (frontmatter kept — Claude Code reads allowed-tools from it)
+    // Write SKILL.md (frontmatter kept — Claude Code reads allowed-tools from
+    // it; the Codex-only grant key is dropped on the way out)
     const skillMd = path.join(skillDir, 'SKILL.md');
-    fs.writeFileSync(skillMd, skill.prompt);
+    fs.writeFileSync(skillMd, translateSkillFrontmatter(skill.prompt, 'claude'));
     deployedFiles.push(path.relative(baseDir, skillMd));
 
     // Copy scripts into scripts/ subdirectory as executable files
@@ -153,6 +155,55 @@ export function removeLegacy(targetDir: string): number {
 }
 
 /**
+ * Drop every Bash rule another rule in the same list already covers.
+ *
+ * Claude Code reads a trailing ` *` as a wildcard at a word boundary: the
+ * prefix has to be followed by a space or the end of the command. So
+ * `Bash(ls *)` matches `ls`, `ls -la`, and `ls -la src` alike, and the six
+ * further `ls` spellings the shared table carries buy Claude nothing. They are
+ * there for Gemini, whose matcher does not treat `*` as covering a flag
+ * argument, which is why the pruning happens here and not in
+ * `flattenPermissions()`.
+ *
+ * A rule is covered when some *other* rule ends in ` *` and the text before
+ * that wildcard is either the whole rule or a prefix of it ending at a space.
+ * Comparing the literal text keeps the check sound in the presence of an
+ * interior wildcard — `git -C ~/.smithy/repos/* add -A` is dropped by
+ * `git -C ~/.smithy/repos/* add *` because the two agree character for
+ * character up to the wildcard. Coverage is transitive through prefixes, so a
+ * rule can never lose its only cover to this pass.
+ *
+ * Exact duplicates collapse to their first occurrence.
+ */
+export function pruneCoveredBashRules(rules: readonly string[]): string[] {
+  const prefixes = new Set<string>();
+  for (const rule of rules) {
+    if (rule.endsWith(' *')) prefixes.add(rule.slice(0, -2));
+  }
+
+  const isCovered = (rule: string): boolean => {
+    // A rule never covers itself: `ls *` owns the prefix `ls`.
+    const ownPrefix = rule.endsWith(' *') ? rule.slice(0, -2) : undefined;
+    // Whole-rule cover — `ls` is matched by `ls *`, which also matches at
+    // end-of-string.
+    if (ownPrefix === undefined && prefixes.has(rule)) return true;
+    // Prefix cover — `ls *` matches everything starting with `ls `.
+    for (let i = rule.indexOf(' '); i !== -1; i = rule.indexOf(' ', i + 1)) {
+      const candidate = rule.slice(0, i);
+      if (candidate !== ownPrefix && prefixes.has(candidate)) return true;
+    }
+    return false;
+  };
+
+  const seen = new Set<string>();
+  return rules.filter(rule => {
+    if (seen.has(rule)) return false;
+    seen.add(rule);
+    return !isCovered(rule);
+  });
+}
+
+/**
  * Build the Claude Code allow-list from the shared permissions.
  * Wraps each command in Bash(...) and appends Claude-specific tool permissions.
  * `extraPermissions` is Claude-only and intentionally lives here rather than
@@ -163,7 +214,7 @@ export function buildClaudeAllowList(
   platformManagers?: PlatformPackageManager[],
 ): string[] {
   const flat = [...flattenPermissions(languages, platformManagers), ...extraPermissions];
-  const bashPermissions = flat.map(cmd => `Bash(${cmd})`);
+  const bashPermissions = pruneCoveredBashRules(flat).map(cmd => `Bash(${cmd})`);
   return [...bashPermissions, ...claudeToolPermissions];
 }
 

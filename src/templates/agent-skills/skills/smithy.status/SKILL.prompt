@@ -1,7 +1,7 @@
 ---
 name: smithy.status
 description: "Smithy planning artifact and engraved-knowledge status. Use when asked about the state, progress, dependencies, or next actions of RFCs, feature maps, specs, user stories, or task slices, or which durable decisions, invariants, or principles apply here. Triggers on 'what's next?', 'what's left for this spec?', 'how many slices?', 'which user stories are blocked?', 'show me what's done', 'is X complete?', 'which global rules am I subject to?', 'what invariants apply to this repo?', and explicit `/smithy.status` invocations with CLI flags."
-allowed-tools: Bash(smithy status*)
+allowed-tools: Bash(smithy status *)
 ---
 # smithy.status
 

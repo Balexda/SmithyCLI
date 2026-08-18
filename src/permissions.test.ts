@@ -184,13 +184,88 @@ describe('flattenPermissions', () => {
     // script-path entries must stay in extraPermissions so the deployed
     // Claude allow list lets the scripts run without prompting.
     expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/find-pr.sh');
-    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh:*');
-    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh:*');
-    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/add-comment.sh:*');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/get-comments.sh *');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/reply-comment.sh *');
+    expect(extraPermissions).toContain('.claude/skills/smithy.pr-review/scripts/add-comment.sh *');
     expect(extraPermissions).toContain('*/smithy.pr-review/scripts/find-pr.sh');
-    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/get-comments.sh:*');
-    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/reply-comment.sh:*');
-    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/add-comment.sh:*');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/get-comments.sh *');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/reply-comment.sh *');
+    expect(extraPermissions).toContain('*/smithy.pr-review/scripts/add-comment.sh *');
+  });
+
+  it('gives the smithy.gh-issue scripts the same settings-level fallback (issue #559)', () => {
+    // Without these, `smithy.orders` and `smithy.engrave` hit a permission
+    // prompt per issue on any host that does not apply the skill's own
+    // `allowed-tools` grant.
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/check-env.sh');
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/search-issues.sh *');
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/create-issue.sh *');
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/link-blocked-by.sh *');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/check-env.sh');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/search-issues.sh *');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/create-issue.sh *');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/link-blocked-by.sh *');
+  });
+
+  it('grants `smithy status` and nothing else from the smithy CLI (issue #559)', () => {
+    // The smithy.status skill auto-activates on plain questions, so its read
+    // path needs a session-level grant; the write subcommands stay
+    // operator-driven.
+    const result = flattenPermissions();
+    expect(result).toContain('smithy status');
+    expect(result).toContain('smithy status *');
+    for (const sub of ['init', 'update', 'uninit']) {
+      expect(result.some(entry => entry.startsWith(`smithy ${sub}`))).toBe(false);
+    }
+  });
+
+  it('writes every Bash rule in the space-wildcard form (issue #559)', () => {
+    // One grammar across settings.json and the skills' allowed-tools: a
+    // trailing ` *`, never `:*` (a second spelling of the same thing) and
+    // never a `cmd*` glued to a command or flag token, which drops the word
+    // boundary and would match `cmdother`. A `*` after a path separator is a
+    // path glob, not a command wildcard, and is left alone. See
+    // docs/permission-grammar.md.
+    for (const rule of [...flattenPermissions(), ...extraPermissions]) {
+      expect(rule, rule).not.toContain(':*');
+      expect(rule, rule).not.toMatch(/[A-Za-z0-9_.-]\*/);
+    }
+    // The deny list is the one place a glued wildcard is deliberate: `sed -i*`
+    // has to catch the suffix form `sed -i.bak` as well as `sed -i`.
+    for (const rule of denyPermissions) {
+      expect(rule, rule).not.toContain(':*');
+    }
+  });
+
+  it('keeps the destructive shell primitives out of the allow list (issue #559)', () => {
+    const result = flattenPermissions();
+    // `mv` and `tee` overwrite files outside the agent's Edit/Write tools and
+    // no shipped template calls either; `git mv` covers the tracked rename.
+    expect(result.some(entry => entry === 'mv *' || entry.startsWith('mv '))).toBe(false);
+    expect(result.some(entry => entry.startsWith('tee'))).toBe(false);
+    expect(result).toContain('git mv *');
+    // `sed -i` is gone from the table (which is what removes it for Gemini)
+    // and denied outright (which is what removes it for Claude, where the
+    // bare `sed *` rule would otherwise cover the flag).
+    expect(result).toContain('sed *');
+    expect(result.some(entry => entry.startsWith('sed -i'))).toBe(false);
+    expect(denyPermissions).toContain('sed -i*');
+    expect(denyPermissions).toContain('sed --in-place*');
+    // `sed` takes its options in any order, so the in-place flag is not
+    // always the first token: `sed -E -i 's/x/y/' f` is an ordinary call.
+    expect(denyPermissions).toContain('sed * -i*');
+    expect(denyPermissions).toContain('sed * --in-place*');
+    // `find` stays broad, but not for any primary that runs a command or
+    // writes a file — in either position. GNU find defaults its path to the
+    // current directory, so `find -delete` is valid with no path at all and a
+    // `find * -delete` rule alone would miss it.
+    expect(result).toContain('find *');
+    for (const primary of ['-delete', '-exec', '-execdir', '-ok', '-okdir', '-fprint', '-fprintf', '-fls']) {
+      expect(denyPermissions, primary).toContain(`find ${primary}`);
+      expect(denyPermissions, primary).toContain(`find ${primary} *`);
+      expect(denyPermissions, primary).toContain(`find * ${primary}`);
+      expect(denyPermissions, primary).toContain(`find * ${primary} *`);
+    }
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

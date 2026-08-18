@@ -6,6 +6,7 @@ import { toCodexAgentToml } from '../agent-models.js';
 import { permissions, STORE_GIT_ARGS } from '../permissions.js';
 import { removeIfExists } from '../utils.js';
 import { writeSkillResources } from './skill-resources.js';
+import { translateSkillFrontmatter } from '../skill-frontmatter.js';
 
 const SMITHY_CODEX_RULES_BEGIN = '# BEGIN SMITHY CODEX RULES';
 const SMITHY_CODEX_RULES_END = '# END SMITHY CODEX RULES';
@@ -64,7 +65,9 @@ export async function deploy(
     const skillPath = path.join(skillsDir, skillName);
     if (!fs.existsSync(skillPath)) fs.mkdirSync(skillPath, { recursive: true });
     const dest = path.join(skillPath, 'SKILL.md');
-    fs.writeFileSync(dest, content);
+    // A template's `codex-allowed-tools` becomes this copy's `allowed-tools`;
+    // the Claude grant it replaces never ships here.
+    fs.writeFileSync(dest, translateSkillFrontmatter(content, 'codex'));
     deployedFiles.push(path.relative(targetDir, dest));
     return skillPath;
   };

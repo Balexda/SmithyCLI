@@ -1146,6 +1146,41 @@ describe('getComposedTemplates', () => {
     }
   });
 
+  it('every skill allowed-tools grant uses the one verified Bash grammar', () => {
+    // Three wildcard grammars used to coexist across the permission surfaces
+    // (issue #559). Bash rules are now written one way everywhere: a trailing
+    // ` *`, never `:*`, and never a `*` glued to a command token — which
+    // drops the word boundary, so `Bash(smithy status*)` also matched
+    // `smithy statusfoo`. See docs/permission-grammar.md.
+    for (const [name, skill] of claudeComposed.skills) {
+      const grant = skill.prompt.match(/^allowed-tools:(.*)$/m)?.[1];
+      if (grant === undefined) continue;
+      for (const rule of grant.matchAll(/Bash\(([^)]*)\)/g)) {
+        const pattern = rule[1]!;
+        expect(pattern, `${name}: ${pattern}`).not.toContain(':*');
+        expect(pattern, `${name}: ${pattern}`).not.toMatch(/[A-Za-z0-9_.-]\*/);
+      }
+    }
+  });
+
+  it('every skill reaches its bundled scripts through ${CLAUDE_SKILL_DIR}', () => {
+    // Claude Code expands the variable in the rule and in the body alike, so
+    // the grant matches the exact command the body names — no path-glob
+    // guessing about where the skill got installed (issue #559).
+    for (const [name, skill] of claudeComposed.skills) {
+      const grant = skill.prompt.match(/^allowed-tools:(.*)$/m)?.[1];
+      if (grant === undefined) continue;
+      for (const rule of grant.matchAll(/Bash\(([^)]*\.sh[^)]*)\)/g)) {
+        expect(rule[1], `${name}: ${rule[1]}`).toContain('${CLAUDE_SKILL_DIR}/scripts/');
+      }
+    }
+  });
+
+  it('smithy.status grants the CLI it wraps at a word boundary', () => {
+    const skill = claudeComposed.skills.get('smithy.status')!;
+    expect(skill.prompt).toContain('allowed-tools: Bash(smithy status *)');
+  });
+
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
     // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
@@ -1160,11 +1195,14 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('mcp__github__pull_request_read');
     expect(skill.prompt).toContain('mcp__github__add_reply_to_pull_request_comment');
     expect(skill.prompt).toContain('mcp__github__issue_write');
-    // gh-CLI script fallback (canonical `:*` argument-suffix form)
-    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/find-pr.sh)');
-    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/get-comments.sh:*)');
-    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/reply-comment.sh:*)');
-    expect(skill.prompt).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh:*)');
+    // gh-CLI script fallback. `${CLAUDE_SKILL_DIR}` is expanded by Claude
+    // Code in the rule and in the body that names the script, so the grant
+    // matches the exact command the skill tells the agent to run; the
+    // argument suffix is the space-wildcard form (issue #559).
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/find-pr.sh)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/get-comments.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/add-comment.sh *)');
   });
 
   it('smithy.pr-review documents PR comment operations and the MCP-first / script-fallback choice', () => {
@@ -1189,8 +1227,12 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/get-comments.sh');
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/reply-comment.sh');
     expect(skill.prompt).toContain('./.agents/skills/smithy.pr-review/scripts/add-comment.sh');
-    expect(skill.prompt).not.toContain('${CLAUDE_SKILL_DIR}');
     expect(skill.prompt).not.toContain('./.gemini/skills/smithy.pr-review');
+    // `${CLAUDE_SKILL_DIR}` survives composition in the shared frontmatter —
+    // the Codex deployer is what drops the Claude grant (see
+    // src/skill-frontmatter.ts and the codex deploy tests).
+    const codexBody = skill.prompt.replace(/^---\n[\s\S]*?\n---\n/, '');
+    expect(codexBody).not.toContain('${CLAUDE_SKILL_DIR}');
   });
 
   it('smithy.pr-review renders Codex GitHub app actions as the preferred review-thread path', () => {
@@ -1540,10 +1582,10 @@ describe('getComposedTemplates', () => {
     const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     expect(skill.prompt).toMatch(/^---\s*\n/);
     expect(skill.prompt).toContain('name: smithy.gh-issue');
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/check-env.sh)');
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/search-issues.sh *)');
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/create-issue.sh *)');
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/link-blocked-by.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *)');
   });
 
   it('smithy.gh-issue scripts start with bash shebang and set strict mode', () => {
@@ -5467,8 +5509,8 @@ describe('issue #554 — audit defects D1–D10', () => {
     expect(skill.prompt).toMatch(/\*\*Try MCP first\.\*\*/);
     expect(skill.prompt).toMatch(/\*\*Fall back to the script\*\*/);
     // The script fallbacks survive — MCP is preferred, not exclusive.
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/check-env.sh)');
-    expect(skill.prompt).toContain('Bash(*/smithy.gh-issue/scripts/create-issue.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
     expect(skill.scripts.size).toBe(4);
   });
 

@@ -1,7 +1,7 @@
 ---
 name: smithy.gh-issue
 description: "GitHub issue operations: validate environment, search issues, create issues from a body file, and link blocked-by relationships. Use when an agent needs to read or create issues in the current repo."
-allowed-tools: Bash(git config --get remote.origin.url) Bash(*/smithy.gh-issue/scripts/check-env.sh) Bash(*/smithy.gh-issue/scripts/search-issues.sh *) Bash(*/smithy.gh-issue/scripts/create-issue.sh *) Bash(*/smithy.gh-issue/scripts/link-blocked-by.sh *) mcp__github__issue_write mcp__github__search_issues
+allowed-tools: Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh) Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *) mcp__github__issue_write mcp__github__search_issues
 ---
 # smithy.gh-issue
 
