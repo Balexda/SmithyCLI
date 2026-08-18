@@ -47,9 +47,13 @@ explicitly: the Claude command path keeps `description`, `argument-hint`,
 `background`, and `hooks`; the sub-agent paths translate the provider-neutral
 `tier:` into Claude's `model:` and Codex's `model_reasoning_effort`; the skill
 paths pick the tool-grant key that belongs to the runtime being deployed to.
-Stripping the whole block stays correct on exactly one class of file —
-reference prompts, which neither runtime registers — and there it is a
-positive finding about the target, not the default.
+Stripping the whole block stays correct on exactly one kind of deploy: the
+raw reference-prompt copies written to `.claude/prompts/` and
+`tools/codex/prompts/`, which no runtime registers. The qualifier is the
+deploy path and not the source file — Codex registers each of those same
+prompts a second time as a skill under `.agents/skills/`, and that copy keeps
+its block because the skill loader reads it. Where stripping is correct it is
+a positive finding about one path, not a default that travels with the file.
 
 Unknown keys are dropped rather than rejected, which is what lets one source
 block carry the union of what all three targets need. The corollary is the
