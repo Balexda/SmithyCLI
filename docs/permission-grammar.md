@@ -1,6 +1,6 @@
 # Permission Grammar
 
-Smithy writes permission rules into three places, and until now each had
+Smithy writes permission rules into four places, and until now each had
 drifted into its own dialect:
 
 - `.claude/settings.json` — generated from [`src/permissions.ts`](../src/permissions.ts).
@@ -114,6 +114,29 @@ Everything above is current documented Claude Code behavior as of the
   `allowed-tools` fall through to the path-spelled `extraPermissions`
   entries, which is the second reason those exist.
 
-The deny list is unaffected by all of this and stays as written: deny beats
-allow, a broad deny cannot carry an allowlist exception, and the force-push
-taxonomy in `denyPermissions` is deliberate.
+## Denying a flag inside an allowed command
+
+Deny beats allow, a broad deny cannot carry an allowlist exception, and the
+force-push taxonomy in `denyPermissions` is deliberate. Three of those rules —
+`sed`'s in-place flags and `find`'s command-running and file-writing primaries
+— exist to carve a dangerous *flag* out of a command whose broad allow rule is
+worth keeping. That shape needs care, because a rule matches text, not option
+grammar:
+
+- **Enumerate both positions.** A tool that accepts its options in any order
+  can put the flag anywhere: `sed -E -i 's/x/y/' f` is not matched by
+  `sed -i*`. Every such rule is generated for the leading position *and* for
+  `cmd * -flag`.
+- **Watch for optional arguments.** GNU `find` defaults its path to the
+  current directory, so `find -delete` is a complete command — and `find *
+  -delete` requires a token before the primary, so it would miss precisely the
+  pathless form the allow rule covers.
+- **Cover the aliases.** `-execdir`, `-ok`, and `-okdir` run a command exactly
+  as `-exec` does; Claude Code's built-in carve-out is documented for `-exec`
+  and `-delete` only.
+- **Know what glob matching cannot reach.** GNU `sed` bundles short options,
+  and no pattern picks `-i` out of `sed -ni'.bak'` without also matching the
+  letter `i` inside a script argument. A flag-level deny is defense in depth;
+  the control that does not depend on spelling is keeping the flag out of the
+  allow table (which is what removes it for Gemini) and having no template
+  that calls it.

@@ -251,10 +251,21 @@ describe('flattenPermissions', () => {
     expect(result.some(entry => entry.startsWith('sed -i'))).toBe(false);
     expect(denyPermissions).toContain('sed -i*');
     expect(denyPermissions).toContain('sed --in-place*');
-    // `find` stays broad, but not for the two forms that run or delete.
+    // `sed` takes its options in any order, so the in-place flag is not
+    // always the first token: `sed -E -i 's/x/y/' f` is an ordinary call.
+    expect(denyPermissions).toContain('sed * -i*');
+    expect(denyPermissions).toContain('sed * --in-place*');
+    // `find` stays broad, but not for any primary that runs a command or
+    // writes a file — in either position. GNU find defaults its path to the
+    // current directory, so `find -delete` is valid with no path at all and a
+    // `find * -delete` rule alone would miss it.
     expect(result).toContain('find *');
-    expect(denyPermissions).toContain('find * -exec *');
-    expect(denyPermissions).toContain('find * -delete');
+    for (const primary of ['-delete', '-exec', '-execdir', '-ok', '-okdir', '-fprint', '-fprintf', '-fls']) {
+      expect(denyPermissions, primary).toContain(`find ${primary}`);
+      expect(denyPermissions, primary).toContain(`find ${primary} *`);
+      expect(denyPermissions, primary).toContain(`find * ${primary}`);
+      expect(denyPermissions, primary).toContain(`find * ${primary} *`);
+    }
   });
 
   it('filters to only node toolchain when languages=["node"]', () => {

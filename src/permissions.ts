@@ -594,6 +594,65 @@ export const askPermissions: string[] = [];
  * Deny list — blocks dangerous subcommands even when the parent is allowed.
  * In Claude Code, deny takes precedence over allow.
  */
+/**
+ * `find` primaries that run a command or write a file. Everything else `find`
+ * does is a query.
+ *
+ * Enumerated rather than pattern-matched because a permission rule matches
+ * text, not option grammar. `-execdir`, `-ok`, and `-okdir` run a command
+ * exactly as `-exec` does; the `-fprint` family writes caller-controlled text
+ * to a caller-named path, which is a file write by another name.
+ */
+const FIND_DESTRUCTIVE_PRIMARIES = [
+  '-delete',
+  '-exec',
+  '-execdir',
+  '-ok',
+  '-okdir',
+  '-fprint',
+  '-fprint0',
+  '-fprintf',
+  '-fls',
+] as const;
+
+/**
+ * Deny rules for {@link FIND_DESTRUCTIVE_PRIMARIES}, in both positions the
+ * primary can occupy.
+ *
+ * GNU `find` defaults its path argument to the current directory, so
+ * `find -delete` and `find -exec rm {} \;` are valid with no path at all —
+ * and a rule shaped `find * -delete` needs a token before the primary, so it
+ * misses exactly those forms while the allow list's `find *` covers them.
+ * Hence the pathless pair as well as the trailing one.
+ */
+function findDenyRules(): string[] {
+  return FIND_DESTRUCTIVE_PRIMARIES.flatMap((primary) => [
+    `find ${primary}`,
+    `find ${primary} *`,
+    `find * ${primary}`,
+    `find * ${primary} *`,
+  ]);
+}
+
+/**
+ * Deny rules for `sed`'s in-place flags, in both positions.
+ *
+ * `sed` accepts its options in any order, so the in-place flag is not always
+ * the first token: `sed -E -i 's/x/y/' f` and `sed -e 's/x/y/' --in-place f`
+ * are both ordinary invocations. The glued `*` catches the suffix spelling
+ * (`sed -i.bak`) alongside bare `-i` and `-i ''`.
+ *
+ * Known gap: GNU `sed` also bundles short options, and no glob can pick `-i`
+ * out of `sed -ni'.bak'` without also matching the letter `i` inside a script
+ * argument. These rules are defense in depth for Claude; the control that
+ * does not depend on spelling is that no shipped template runs `sed -i` and
+ * that the flag is gone from the allow table — which is what removes it for
+ * Gemini, whose matcher does not reach flags through `*` at all.
+ */
+function sedDenyRules(): string[] {
+  return ['-i', '--in-place'].flatMap((flag) => [`sed ${flag}*`, `sed * ${flag}*`]);
+}
+
 export const denyPermissions: string[] = [
   // Git branch deletion
   "git branch -d *",
@@ -638,22 +697,16 @@ export const denyPermissions: string[] = [
   // npm publish — requires explicit approval
   "npm publish",
   "npm publish *",
-  // In-place `sed` — a file write that never passes the agent's Edit tool.
-  // `sed *` in the allow list would otherwise cover it, since a trailing
-  // wildcard spans the flags too. Glued rather than space-separated so
-  // the suffix form (`sed -i.bak`) is denied along with `sed -i` and
-  // `sed -i ''`.
-  "sed -i*",
-  "sed --in-place*",
-  // `find` forms that run or delete. Claude Code already refuses to
-  // prefix-approve these; the rules are defense in depth, and they say in the
-  // settings file what the carve-out only implies. Gemini reaches them
-  // through neither list: this one is Claude-only, and no `-exec` / `-delete`
-  // variant is listed in `permissions.find` for a matcher that does not treat
-  // `*` as covering flags.
-  "find * -exec *",
-  "find * -delete",
-  "find * -delete *",
+  // In-place `sed` — a file write that never passes the agent's Edit tool,
+  // which the allow list's `sed *` would otherwise cover.
+  ...sedDenyRules(),
+  // `find` forms that run a command or write a file. Claude Code's own
+  // carve-out refuses to prefix-approve `-exec` and `-delete`, but it is
+  // documented for those two only, so `-execdir` / `-ok` / `-okdir` and the
+  // `-fprint` family need saying out loud. Gemini reaches none of them
+  // through either list: this one is Claude-only, and `permissions.find`
+  // lists no primary for a matcher that does not treat `*` as covering flags.
+  ...findDenyRules(),
 ];
 
 /**
