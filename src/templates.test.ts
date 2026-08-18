@@ -509,26 +509,41 @@ describe('plan-review-triage snippet', () => {
   // about 500 source lines — while the canonical copy sat in a snippet only
   // the child review agents composed. This is the parents' canonical home.
 
-  it('contains the kind × severity × confidence triage table', async () => {
+  it('maps each destination to one parent action', async () => {
+    // Issue #580: the parent used to receive three enum values and derive the
+    // action itself. The review agent already composes the gate and grades
+    // both scales, so it emits the routed `destination` and this snippet is
+    // the four-row consequence of that one field.
     const content = await composeSnippet('plan-review-triage');
-    expect(content).toContain('kind × severity ×');
-    expect(content).toMatch(/`steering`\s*\|\s*Critical or Important\s*\|\s*Any/);
-    expect(content).toMatch(/`implementation`\s*\|/);
-    expect(content).toMatch(/`hygiene`\s*\|/);
-    expect(content).toMatch(/Minor\s*\|\s*Any/);
+    for (const destination of ['apply', 'debt', 'iq', 'note']) {
+      expect(content, destination).toMatch(
+        new RegExp(`^\\|\\s*\`${destination}\`\\s*\\|`, 'm'),
+      );
+    }
     expect(content).toContain('## Specification Debt');
-    expect(content).toContain('Apply the `proposed_fix`');
+    expect(content).toContain('## Open Implementation Questions');
+    expect(content).toContain('`proposed_fix`');
   });
 
-  it('never lets a steering finding be auto-applied', () => {
+  it('leaves the kind × severity × confidence derivation to the agent', () => {
+    // The classification and its consequence now live in the same place —
+    // the agent-side snippet — so a parent can no longer restate a triage row
+    // and a `steering` finding cannot be spelled as an auto-apply at all.
     const content = loadSnippets().get('plan-review-triage.md')!;
-    expect(content).toContain(
-      '**A `steering` finding is never auto-applied, at any confidence.**',
-    );
-    expect(content).not.toMatch(/`steering`\s*\|[^|]*\|\s*High\s*\|/);
-    // The escape hatch is reclassification, not an override.
-    expect(content).toMatch(/finding is `hygiene`/);
-    expect(content).toMatch(/confidence is Low by\s+construction/);
+    expect(content).not.toContain('kind × severity ×');
+    expect(content).not.toMatch(/^\|\s*`?(steering|implementation|hygiene)`?\s*\|/m);
+    // The one steering rule the parent still needs: `debt` is never also a fix.
+    expect(content).toContain('Never apply the fix as well.');
+    // Grading vocabulary survives only as the fields the parent may cite.
+    expect(content).toContain('`kind`, `severity`, and `confidence`');
+  });
+
+  it('treats an absent or unknown destination as a note', () => {
+    // The routing is one enum crossing an agent boundary; a parent that
+    // silently dropped an unrecognized value would lose the finding.
+    const content = loadSnippets().get('plan-review-triage.md')!.replace(/\s+/g, ' ');
+    expect(content).toContain('A finding arriving with no `destination`');
+    expect(content).toContain('is a `note` — report it and change nothing');
   });
 
   it('names its two per-command destinations instead of hard-coding one', () => {
@@ -542,12 +557,15 @@ describe('plan-review-triage snippet', () => {
     expect(content).not.toMatch(/PR body/);
   });
 
-  it('carries one IQ row rule that covers tasks files and everything else', () => {
+  it('carries the IQ row shape without re-deciding when an IQ row applies', () => {
+    // Whether a target artifact can hold an `IQ-NNN` row at all is the
+    // agent's call, made when it chose `iq` over `note`; the parent only
+    // needs the shape of the row it writes.
     const content = loadSnippets().get('plan-review-triage.md')!;
     expect(content).toContain('`## Open Implementation Questions`');
-    expect(content).toContain('.tasks.md');
     expect(content).toContain('`IQ-NNN`');
-    expect(content).toContain('120 characters or fewer');
+    expect(content.replace(/\s+/g, ' ')).toContain('120 characters or fewer');
+    expect(content).not.toContain('.tasks.md');
   });
 
   it('composes the debt row shape rather than restating the enums', async () => {
@@ -583,25 +601,62 @@ describe('review-protocol snippet', () => {
     expect(content).toContain('`kind`');
     expect(content).toContain('`severity`');
     expect(content).toContain('`confidence`');
+    expect(content).toContain('`destination`');
     expect(content).toContain('`description`');
     expect(content).toContain('`artifact_path`');
     expect(content).toContain('`proposed_fix`');
   });
 
-  it('leaves the parent-side triage table to the parent, without dangling it', async () => {
-    // Issue #553: this snippet's old section 5 was titled "applied by the
-    // parent command, not by the review agent" and loaded nowhere a parent
-    // could see it, while all six parents hand-copied their own. The review
-    // agent needs to know its consequences exist, not to carry the table.
+  it('derives the routed destination here, where the gate already lives', async () => {
+    // Issue #580: the agent composed the gate, set `kind`, and graded both
+    // scales — then handed the parent three enums and a table to re-derive
+    // the action from. The classification and its consequence belong in the
+    // same place, which is also what makes the steering rule unrepresentable
+    // rather than merely stated.
     const content = await composeSnippet('review-protocol');
-    expect(content).toContain('### 5. Report; do not act');
-    expect(content).not.toMatch(/^\|\s*`?steering`?\s*\|.*Parent Action/m);
+    expect(content).toContain('### 5. Route the finding');
+    expect(content).toContain('kind × severity × confidence');
+    expect(content).toMatch(/`steering`\s*\|\s*Critical or Important\s*\|\s*Any\s*\|\s*`debt`/);
+    expect(content).toMatch(
+      /`implementation` or `hygiene`\s*\|\s*Critical or Important\s*\|\s*High\s*\|\s*`apply`/,
+    );
+    expect(content).toMatch(/`hygiene`\s*\|\s*Critical or Important\s*\|\s*Low\s*\|\s*`note`/);
+    expect(content).toMatch(/Minor\s*\|\s*Any\s*\|\s*`note`/);
+    // The `iq` cell is the reason the dispatch binds the target artifact:
+    // only a tasks file carries the section that persists the row.
+    expect(content).toMatch(/`iq` when the target artifact is a `\.tasks\.md`/);
+    expect(content).toContain('### 6. Report; do not act');
     expect(content).toContain('The parent command owns the consequences');
     // Two rules bind the agent because they are properties of what it emits.
     expect(content).toContain(
       '**A `steering` finding is never auto-applied, at any confidence.**',
     );
     expect(content).toContain('**A wrong table is a fix, not a question.**');
+  });
+
+  it('binds the two per-command terms rather than naming a surface', async () => {
+    // The agent resolves `iq` vs `note` itself, which it can only do knowing
+    // which artifact the parent records into. Both terms arrive in the
+    // dispatch; the snippet must not hard-code either, since strike and forge
+    // note findings in terminal output and the rest in a PR body.
+    const content = (await composeSnippet('review-protocol')).replace(/\s+/g, ' ');
+    expect(content).toMatch(/\*\*the target artifact\*\*/i);
+    expect(content).toMatch(/\*\*the review note surface\*\*/i);
+    expect(content).not.toMatch(/PR body/);
+    // A dispatch that binds nothing still has to route somewhere.
+    expect(content).toContain('When the dispatch named no target artifact, choose `note`.');
+  });
+
+  it('never lets a steering finding carry an apply destination', async () => {
+    // The point of moving the table: an agent that can only emit `debt` or
+    // `note` for a `steering` finding cannot express the contradiction the
+    // old parent-side table merely warned against.
+    const content = await composeSnippet('review-protocol');
+    const rows = content.split('\n').filter(l => /^\|\s*`?steering`?\s/.test(l));
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row, row).not.toContain('`apply`');
+    expect(content).not.toMatch(/`steering`[^|\n]*\|[^|\n]*\|\s*High\s*\|/);
+    expect(content.replace(/\s+/g, ' ')).toContain('It takes `debt`, never `apply`');
   });
 
   it('snippet carries the whole kind gate, not a pointer to an agent prompt', async () => {
@@ -643,7 +698,7 @@ describe('review-protocol snippet', () => {
     // The kind is set before severity × confidence are graded, matching the
     // order the agent applies them.
     const gateIdx = content.indexOf('### 4. Kind gate —');
-    const reportIdx = content.indexOf('### 5. Report; do not act');
+    const reportIdx = content.indexOf('### 6. Report; do not act');
     expect(gateIdx).toBeGreaterThan(-1);
     expect(reportIdx).toBeGreaterThan(gateIdx);
   });
@@ -3079,32 +3134,32 @@ describe('getComposedTemplates', () => {
     expect(cut).toContain('| ID | Question | Slice | Settled By | Origin |');
   });
 
-  it('cut routes plan-review findings by kind, not by confidence alone', () => {
+  it('cut acts on the routed destination rather than re-deriving it', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
-    // Both plan-review dispatch sites (Phase 0c and Phase 5) triage by kind.
-    // Each composes the canonical table, so the count also proves neither
-    // site went back to hand-copying it.
-    const kindTables = cut.match(/kind × severity ×\s+confidence/g) ?? [];
-    expect(kindTables.length).toBe(2);
-    expect(cut).toMatch(/\|\s*`implementation`\s*\|\s*Critical or Important\s*\|\s*Low/);
-    expect(cut).toMatch(/\|\s*`hygiene`\s*\|\s*Critical or Important\s*\|\s*Low/);
-    // Steering rows take `Any` confidence and never auto-apply: a High
-    // confidence score must not let the command pick for the human.
-    expect(cut).toMatch(/\|\s*`steering`\s*\|\s*Critical or Important\s*\|\s*Any/);
-    expect(cut).toContain('a steering finding is never auto-applied');
-    expect(cut).not.toMatch(/`steering`\s*\|[^|]*\|\s*High\s*\|/);
-    // Debt rows come only from steering findings now.
-    const debtRoutes = cut.match(/For each `steering` finding routed to debt/g) ?? [];
+    // Both plan-review dispatch sites (Phase 0c and Phase 5) compose the
+    // destination mapping, so the count also proves neither site went back to
+    // hand-copying a consequence table.
+    const mappings = cut.match(/^\|\s*`debt`\s*\|/gm) ?? [];
+    expect(mappings.length).toBe(2);
+    const debtRoutes = cut.match(/For each `debt` finding, append a row/g) ?? [];
     expect(debtRoutes.length).toBe(2);
+    const iqRoutes = cut.match(/For each `iq` finding, append a row/g) ?? [];
+    expect(iqRoutes.length).toBe(2);
+    // The grading axes reach cut only as fields it may cite, never as rows it
+    // triages on — that derivation belongs to smithy-plan-review now.
+    expect(cut).not.toContain('kind × severity ×');
+    expect(cut).not.toMatch(/^\|\s*`?(steering|implementation|hygiene)`?\s*\|/m);
   });
 
-  it('every review-dispatching command composes the canonical triage table', () => {
+  it('every review-dispatching command composes the destination mapping', () => {
     // Issue #553: the parent-side table was hand-copied twice each into mark,
     // cut, ignite and render and once each into strike and forge, and had
     // already diverged — ignite's Phase 0c mandated a debt "Description
     // column" the index has never had while its own second copy mandated the
     // detail-section shape. Composition is what makes that unrepresentable,
     // so assert on the source templates, not just the rendered output.
+    // Issue #580 shrank what those sites compose from the kind × severity ×
+    // confidence derivation to the four-row consequence of `destination`.
     const sources: Array<[string, string]> = [
       ['commands/smithy.mark.prompt', '2'],
       ['commands/smithy.cut.prompt', '2'],
@@ -3134,6 +3189,15 @@ describe('getComposedTemplates', () => {
       expect(src, `${file} still hand-copies a triage row`).not.toMatch(
         /^\|\s*`?(steering|implementation|hygiene)`?\s*\|/m,
       );
+      // Nor the derivation itself, which is the agent's job now.
+      expect(src, `${file} restates the triage derivation`).not.toContain(
+        'kind × severity ×',
+      );
+      // Both bindings ride the dispatch so the agent can resolve `iq` vs
+      // `note` before returning, rather than the parent resolving it after.
+      expect(flat, `${file} must pass the bindings to the agent`).toMatch(
+        /\*\*target_artifact\*\* and \*\*review_note_surface\*\*/,
+      );
     }
   });
 
@@ -3160,6 +3224,39 @@ describe('getComposedTemplates', () => {
       expect(body, `${name} lets a steering finding auto-apply`).not.toMatch(
         /`steering`\s*\|[^|]*\|\s*High\s*\|/,
       );
+      // Issue #580: the same rule, now enforced on the field the parent
+      // actually reads. No rendered site may pair `steering` with `apply`.
+      for (const line of body.split('\n')) {
+        if (!/`steering`/.test(line)) continue;
+        expect(line, `${name} routes a steering finding to apply`).not.toMatch(
+          /`apply`/,
+        );
+      }
+    }
+  });
+
+  it('every review surface routes a steering finding to debt, never apply', async () => {
+    // Issue #580: the guarantee is structural, not advisory — a `steering`
+    // finding has no `apply` cell to land in. Sweep the composed review
+    // agents as well as the commands, and both Gemini (no sub-agents, so the
+    // whole protocol renders inline in forge) and the sub-agent variants.
+    for (const variant of ['claude', 'gemini', 'codex']) {
+      const c = await getComposedTemplates(variant);
+      const bodies = [...c.commands, ...c.agents];
+      for (const [name, body] of bodies) {
+        const rows = body.split('\n').filter(l => /^\|\s*`?steering`?\s*\|/.test(l));
+        for (const row of rows) {
+          expect(row, `${name} (${variant}): ${row}`).not.toContain('`apply`');
+        }
+      }
+      // The routing table itself reaches every review surface: the two review
+      // agents always, and forge's command body only on the degraded branch,
+      // where Gemini has no sub-agent to compute the destination for it.
+      const routes = (body: string) =>
+        /^\|\s*`?steering`?\s*\|\s*Critical or Important\s*\|\s*Any\s*\|\s*`debt`/m.test(body);
+      expect(routes(c.agents.get('smithy.plan-review.md')!), variant).toBe(true);
+      expect(routes(c.agents.get('smithy.implementation-review.md')!), variant).toBe(true);
+      expect(routes(c.commands.get('smithy.forge.md')!), variant).toBe(variant === 'gemini');
     }
   });
 

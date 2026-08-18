@@ -86,11 +86,16 @@ is the command that later poses it.
 
 Two consequences worth keeping in mind when writing an agent prompt:
 
-- **Report, don't act.** The review agents (`smithy-plan-review`,
-  `smithy-implementation-review`) return findings; the parent applies them. The
-  shared rule lives in [`snippets/review-protocol.md`](../snippets/review-protocol.md),
-  and the parent-side consequence table in
+- **Report, don't act — but route.** The review agents (`smithy-plan-review`,
+  `smithy-implementation-review`) return findings and the `destination` each
+  one belongs at (`apply` / `debt` / `iq` / `note`); the parent carries that
+  out. The shared rule and the kind × severity × confidence derivation live in
+  [`snippets/review-protocol.md`](../snippets/review-protocol.md); what a
+  parent does with each destination is in
   [`snippets/plan-review-triage.md`](../snippets/plan-review-triage.md).
+  Resolving `iq` versus `note` needs to know which artifact the parent records
+  into, which is why the dispatch passes **target_artifact** and
+  **review_note_surface** alongside `artifact_paths`.
 - **Advisory, not blocking.** `smithy-recall` reports conflicts and hazards but
   never stops a run; escalation is keyed on the reported `severity` by the
   parent command.

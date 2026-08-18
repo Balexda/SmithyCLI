@@ -377,7 +377,9 @@ steering test (open question, named alternatives, human-only), the positive
 test that rejects directives, and the leak-kind routing table — lives in the
 `kind-gate` snippet, which every producer of a debt row composes:
 `smithy-clarify`, `smithy-refine`, and both review agents by way of
-`review-protocol`. The parent commands compose the consequence table from
+`review-protocol`. The review agents resolve the gate's output plus severity
+and confidence into a routed `destination` — `apply`, `debt`, `iq`, or `note` —
+and the parent commands compose what each destination means on disk from
 `plan-review-triage`. Everything the gate rejects has a home:
 
 | Kind | Home |

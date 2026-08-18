@@ -136,14 +136,15 @@ review of the refined artifact. Pass it:
 - **artifact_paths** — the repo-relative path to the refined feature map
   file (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
-
-For the triage below, **the target artifact** is the refined feature map —
-its `SD-NNN` numbering continues from whatever refine or prior clarify passes
-already wrote. **The review note surface** is the refinement PR body; a
-Low-confidence `implementation` finding goes there under an **Implementation
-questions** heading, since a feature map carries no `## Open Implementation
-Questions` section and `smithy.cut` re-derives the unknown from its own
-plan-review pass when the tasks file is authored.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the refined feature
+  map; its `SD-NNN` numbering continues from whatever refine or prior
+  clarify passes already wrote. **The review note surface** is the
+  refinement PR body; report a finding whose `kind` is `implementation`
+  there under an **Implementation questions** heading, since a feature map
+  carries no `## Open Implementation Questions` section and `smithy.cut`
+  re-derives the unknown from its own plan-review pass when the tasks file
+  is authored.
 
 {{>plan-review-triage}}
 
@@ -444,14 +445,14 @@ Pass it:
 - **artifact_paths** — the repo-relative path to the feature map file
   (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
-
-For the triage below, **the target artifact** is the feature map just
-written — its `SD-NNN` numbering continues from whatever clarify already
-wrote in Phase 2. **The review note surface** is the PR body; a
-Low-confidence `implementation` finding goes there under an **Implementation
-questions** heading, since a feature map carries no `## Open Implementation
-Questions` section and `smithy.cut` re-derives the unknown from its own
-plan-review pass when the tasks file is authored.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the feature map just
+  written; its `SD-NNN` numbering continues from whatever clarify already
+  wrote in Phase 2. **The review note surface** is the PR body; report a
+  finding whose `kind` is `implementation` there under an **Implementation
+  questions** heading, since a feature map carries no
+  `## Open Implementation Questions` section and `smithy.cut` re-derives the
+  unknown from its own plan-review pass when the tasks file is authored.
 
 {{>plan-review-triage}}
 
