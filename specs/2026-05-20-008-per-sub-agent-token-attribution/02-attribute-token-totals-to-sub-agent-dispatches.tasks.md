@@ -57,7 +57,7 @@
 
 ### Tasks
 
-- [ ] **Expose attribution totals on eval results**
+- [x] **Expose attribution totals on eval results**
 
   Extend the shared eval result types and `scenarioRunToResult` assembly path to accept optional `SubAgentTokenTotals[]` from the attribution extractor. Omit the result field when attribution is absent or empty, and preserve it for pass, fail, timeout, and error outcomes to satisfy AS 2.1-2.3.
 
@@ -68,7 +68,7 @@
   - Timeout and error results still carry supplied attribution rows.
   - Existing structural, sub-agent, baseline, and error result behavior remains unchanged.
 
-- [ ] **Wire attribution into runner report assembly**
+- [x] **Wire attribution into runner report assembly**
 
   Update the eval execution path that builds per-scenario results so it derives sub-agent token totals from each scenario's parsed stream events and passes them into result assembly. Keep the default formatted report shape unchanged until US3 adds nested row rendering.
 

@@ -18,6 +18,7 @@ import type {
   EvalResult,
   EvalScenario,
   RunOutput,
+  SubAgentTokenTotals,
 } from './types.js';
 
 /**
@@ -42,6 +43,7 @@ export function scenarioRunToResult(
   structuralChecks: CheckResult[],
   subAgentChecks?: CheckResult[],
   baselineChecks?: CheckResult[],
+  subAgentTokens?: SubAgentTokenTotals[],
 ): EvalResult {
   let status: EvalResult['status'];
   let error: string | undefined;
@@ -79,6 +81,10 @@ export function scenarioRunToResult(
 
   if (baselineChecks && baselineChecks.length > 0) {
     result.baseline_checks = baselineChecks;
+  }
+
+  if (subAgentTokens && subAgentTokens.length > 0) {
+    result.sub_agent_tokens = subAgentTokens;
   }
 
   if (error !== undefined) {

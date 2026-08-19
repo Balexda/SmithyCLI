@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import { preflight, resolveFixtureDir, runScenario } from './lib/runner.js';
 import { validateStructure, verifySubAgents } from './lib/structural.js';
 import { extractSubAgentDispatches } from './lib/parse-stream.js';
+import { extractSubAgentTokenTotals } from './lib/sub-agent-token-attribution.js';
 import { loadBaseline, compareToBaseline } from './lib/baseline.js';
 import { scenarioRunToResult, buildReport, formatReport } from './lib/report.js';
 import { loadScenarios } from './lib/scenario-loader.js';
@@ -388,7 +389,14 @@ for (const scenario of finalScenarios) {
   console.log('');
 
   results.push(
-    scenarioRunToResult(scenario, output, structuralChecks, subAgentChecks, baselineChecks),
+    scenarioRunToResult(
+      scenario,
+      output,
+      structuralChecks,
+      subAgentChecks,
+      baselineChecks,
+      extractSubAgentTokenTotals(output.stream_events),
+    ),
   );
 }
 

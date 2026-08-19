@@ -5,6 +5,7 @@ import type {
   EvalResult,
   EvalScenario,
   RunOutput,
+  SubAgentTokenTotals,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,15 @@ const failingCheck: CheckResult = {
   passed: false,
   actual: 'not found',
 };
+
+const subAgentTokens: SubAgentTokenTotals[] = [
+  {
+    agent: 'smithy-plan',
+    input: 123,
+    output: 45,
+    dispatch_count: 2,
+  },
+];
 
 // ---------------------------------------------------------------------------
 // scenarioRunToResult
@@ -232,6 +242,45 @@ describe('scenarioRunToResult', () => {
       expect(result.tokens).toEqual({ input: 123, output: 45 });
     });
 
+    it('omits sub_agent_tokens when not provided', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(scenario, output, [passingCheck]);
+
+      expect('sub_agent_tokens' in result).toBe(false);
+    });
+
+    it('omits sub_agent_tokens when provided as an empty array', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        undefined,
+        [],
+      );
+
+      expect('sub_agent_tokens' in result).toBe(false);
+    });
+
+    it('preserves sub_agent_tokens without changing pass status', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const result = scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        undefined,
+        subAgentTokens,
+      );
+
+      expect(result.status).toBe('pass');
+      expect(result.sub_agent_tokens).toEqual(subAgentTokens);
+    });
+
     it('preserves token totals across pass, fail, timeout, and error statuses', () => {
       const cases: Array<{
         name: string;
@@ -270,6 +319,48 @@ describe('scenarioRunToResult', () => {
         const result = scenarioRunToResult(makeScenario(), c.output, c.checks);
         expect(result.status).toBe(c.name);
         expect(result.tokens).toEqual(c.output.tokens);
+      }
+    });
+
+    it('preserves sub_agent_tokens across pass, fail, timeout, and error statuses', () => {
+      const cases: Array<{
+        name: EvalResult['status'];
+        output: RunOutput;
+        checks: CheckResult[];
+      }> = [
+        {
+          name: 'pass',
+          output: makeOutput(),
+          checks: [passingCheck],
+        },
+        {
+          name: 'fail',
+          output: makeOutput(),
+          checks: [failingCheck],
+        },
+        {
+          name: 'timeout',
+          output: makeOutput({ timed_out: true }),
+          checks: [passingCheck],
+        },
+        {
+          name: 'error',
+          output: makeOutput({ exit_code: 1 }),
+          checks: [passingCheck],
+        },
+      ];
+
+      for (const c of cases) {
+        const result = scenarioRunToResult(
+          makeScenario(),
+          c.output,
+          c.checks,
+          undefined,
+          undefined,
+          subAgentTokens,
+        );
+        expect(result.status).toBe(c.name);
+        expect(result.sub_agent_tokens).toEqual(subAgentTokens);
       }
     });
 
@@ -319,6 +410,22 @@ describe('scenarioRunToResult', () => {
       scenarioRunToResult(scenario, output, [passingCheck]);
       expect(JSON.stringify(scenario)).toBe(scenarioBefore);
       expect(JSON.stringify(output)).toBe(outputBefore);
+    });
+
+    it('does not mutate the sub_agent_tokens input array', () => {
+      const scenario = makeScenario();
+      const output = makeOutput();
+      const tokens = [...subAgentTokens];
+      const before = JSON.stringify(tokens);
+      scenarioRunToResult(
+        scenario,
+        output,
+        [passingCheck],
+        undefined,
+        undefined,
+        tokens,
+      );
+      expect(JSON.stringify(tokens)).toBe(before);
     });
   });
 });
@@ -429,6 +536,21 @@ describe('buildReport', () => {
       expect(report.results[0]?.scenario_name).toBe('first');
       expect(report.results[1]?.scenario_name).toBe('second');
       expect(report.results[2]?.scenario_name).toBe('third');
+    });
+
+    it('preserves result-level sub_agent_tokens without aggregating them', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'with-attribution',
+          sub_agent_tokens: subAgentTokens,
+        }),
+        makeResult({ scenario_name: 'without-attribution' }),
+      ];
+      const report = buildReport(results, 100);
+
+      expect(report.results[0]?.sub_agent_tokens).toEqual(subAgentTokens);
+      expect(report.results[1]?.sub_agent_tokens).toBeUndefined();
+      expect(report.tokens).toEqual({ input: 0, output: 0 });
     });
 
     it('sums token totals from every included result across mixed statuses', () => {
@@ -794,6 +916,28 @@ describe('formatReport', () => {
       );
       expect(lines.find((l) => l.includes('error-case'))).toBe(
         '  [ERROR] error-case (4000ms) input: 400, output: 40',
+      );
+    });
+
+    it('does not render sub-agent token rows before nested report support lands', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 123, output: 45 },
+          sub_agent_tokens: subAgentTokens,
+        }),
+      ];
+      const report = buildReport(results, 111);
+      const out = formatReport(report);
+
+      expect(out).toBe(
+        [
+          'Eval Summary',
+          '  [PASS] alpha (100ms) input: 123, output: 45',
+          '',
+          'Total elapsed: 111ms',
+          'Result: PASS (1/1 passed, 1 total)',
+        ].join('\n'),
       );
     });
 
