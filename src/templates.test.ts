@@ -1410,8 +1410,14 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain("Locate the RFC's `## Personas` section");
     expect(rfcMode).toContain('after that heading up to the next H2 heading');
     expect(rfcMode).toContain('Extract one persona candidate for each clearly named persona');
-    expect(rfcMode).toContain('explicit');
-    expect(rfcMode).toContain('bullet/list item, bold lead-in, or subheading');
+    expect(rfcMode).toContain('Recognize both bulleted persona entries and narrative-prose character');
+    expect(rfcMode).toContain('bullet/list item, bold lead-in, subheading, or narrative paragraph');
+    expect(rfcMode).toContain('opening sentence identifies a persona name or role');
+    expect(rfcMode).toContain('The compliance reviewer is a platform governance lead');
+    expect(rfcMode).toContain('A release manager coordinates rollout approvals');
+    expect(rfcMode).toContain('When the `## Personas` section uses narrative prose, split candidates');
+    expect(rfcMode).toContain('paragraph boundaries, bold lead-ins, and persona subheadings as');
+    expect(rfcMode).toContain('when a single paragraph names multiple distinct personas');
     expect(rfcMode).toContain('Keep the extracted candidate set as a structured list');
     expect(rfcMode).toContain('its source of truth rather than rereading unrelated input');
     expect(rfcMode).toContain('For each RFC persona candidate, derive the filename slug');
@@ -1423,9 +1429,34 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain('`rfc_file_path`: the resolved input RFC path');
     expect(rfcMode).toContain('Write one file per non-colliding candidate');
     expect(rfcMode).toContain('Each final file must contain exactly one persona');
-    expect(rfcMode).toContain('Do not infer personas from');
-    expect(rfcMode).toContain('narrative-only prose');
+    expect(rfcMode).toContain('Do not');
+    expect(rfcMode).toContain('infer personas from generic stakeholder prose with no named persona or role');
     expect(rfcMode).toContain('emit empty-section diagnostics');
+  });
+
+  it('smithy.persona protects narrative and bulleted RFC persona extraction examples', () => {
+    const persona = claudeComposed.commands.get('smithy.persona.md')!;
+    const rfcModeIdx = persona.indexOf('## RFC Mode');
+    const freeTextModeIdx = persona.indexOf('## Free-Text Mode');
+    const rfcMode = persona.slice(rfcModeIdx, freeTextModeIdx);
+
+    const bulletExampleIdx = rfcMode.indexOf('- `- Release Manager: ...`');
+    const boldBulletExampleIdx = rfcMode.indexOf('- `- **Support Engineer** — ...`');
+    const subheadingExampleIdx = rfcMode.indexOf('- `### Compliance Reviewer`');
+    const narrativeExampleIdx = rfcMode.indexOf(
+      '- `The compliance reviewer is a platform governance lead who ...`',
+    );
+    const roleNarrativeExampleIdx = rfcMode.indexOf(
+      '- `A release manager coordinates rollout approvals and ...`',
+    );
+
+    expect(bulletExampleIdx).toBeGreaterThan(-1);
+    expect(boldBulletExampleIdx).toBeGreaterThan(bulletExampleIdx);
+    expect(subheadingExampleIdx).toBeGreaterThan(boldBulletExampleIdx);
+    expect(narrativeExampleIdx).toBeGreaterThan(subheadingExampleIdx);
+    expect(roleNarrativeExampleIdx).toBeGreaterThan(narrativeExampleIdx);
+    expect(rfcMode).toContain('one candidate per named persona');
+    expect(rfcMode).toContain('the source excerpt or bullet/paragraph that describes that persona');
   });
 
   it('smithy.persona renders RFC-mode collision reporting and summary fields', () => {

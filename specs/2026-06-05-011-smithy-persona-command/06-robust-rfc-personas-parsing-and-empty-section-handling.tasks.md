@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Broaden RFC persona extraction**
+- [x] **Broaden RFC persona extraction**
 
   Update `src/templates/agent-skills/commands/smithy.persona.prompt` so RFC mode recognizes both bulleted persona entries and narrative-prose character sketches in the `## Personas` section. Keep extraction anchored to named personas and continue feeding the existing RFC persona candidates list consumed by the writer.
 
