@@ -132,7 +132,11 @@ Checks:
 
 Eval Summary
   [FAIL] strike-health-check (442502ms) input: 14820, output: 3003 baseline: FAIL
+    smithy-clarify: input: 1, output: 288
+    smithy-plan: input: 3, output: 1204
+    smithy-plan-review: input: 1, output: 502
   [FAIL] scout-fixture-shallow (27830ms) input: 5201, output: 980 baseline: n/a
+    smithy-scout: input: 1, output: 435
 
 Total elapsed: 471117ms
 Result: FAIL (0/2 passed, 2 total)
@@ -142,6 +146,15 @@ Status tokens: `PASS`, `FAIL`, `TIMEOUT`, `ERROR` (FR-009, AS 9.3). The
 per-case summary line also renders measured token totals as
 `input: <N>, output: <N>`. The `baseline:` marker appears only when at least
 one scenario has a baseline file (see [Baselines](#baselines)).
+
+Indented beneath a case line, one nested row per sub-agent renders that
+sub-agent's attributed token totals as
+`<agent>: input: <N>, output: <N>`. Rows appear only for cases whose stream
+carried dispatch-level usage, are aggregated per sub-agent type across every
+dispatch of that type in the run, and cover only the dispatched sub-agents —
+they are explanatory detail, not a decomposition that sums to the case totals.
+A case with no attributable dispatch renders no nested rows and keeps the
+per-case shape above unchanged.
 
 ## Layout
 
