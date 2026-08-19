@@ -225,7 +225,13 @@ When auditing an existing flow pair, flag any of the following:
       `<scope>-<element>[-<modifier>]` kebab-case naming.
 - [ ] Two test bodies share one `FlowId`, or one `FlowId` has no matching
       test body. Run `smithy flow-lint` for missing, orphaned, and duplicate
-      test-body pairings.
+      test-body pairings. A bare `smithy flow-lint` only finds **orphans** —
+      a test body no flow declares — when the flow-test directory resolves,
+      and it looks for `maestro/flows` by default. On any other layout
+      (`tests/e2e/`, `cypress/e2e/`, …) pass
+      `smithy flow-lint --flow-test-root <dir>`; without it the orphan scan
+      is skipped silently and a clean run does **not** mean orphan-free.
+      Missing and duplicate pairings are checked either way.
 
 Surface each as a finding for the parent command (`smithy.forge` review
 pass, `smithy.audit`, or `smithy flow-lint`) to act on. This skill itself

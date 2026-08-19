@@ -732,11 +732,12 @@ remains the job of `flow-lint`.
 ## Flow-Lint
 
 `smithy flow-lint` is the deterministic app-repo check for durable UI graph
-integrity. It scans `design/screens/*.design.md` screen annotations,
-`design/flows/*.flow.md` flow definitions, and the paired executable test bodies
-named by each flow's `test-body:` field. The command runs from a repo root or
-subpath, does not require `smithy.forge` or any Smithy runtime state to run
-first, and performs no agent work.
+integrity. It scans every `*.design.md` screen annotation under
+`design/screens/`, every `*.flow.md` flow definition under `design/flows/`, and
+the paired executable test bodies named by each flow's `test-body:` field. Both
+directories are walked recursively, so nested subfolders are included. The
+command runs from a repo root or subpath, does not require `smithy.forge` or
+any Smithy runtime state to run first, and performs no agent work.
 
 Use it locally before shipping UI graph changes, and wire the same command into
 app CI so broken product paths fail with a clear diagnostic:
@@ -769,8 +770,12 @@ when the project does not use the conventional `maestro/flows` location:
 smithy flow-lint --flow-test-root tests/e2e
 ```
 
-Without a resolvable flow-test root the orphan scan reports as not-run; every
-other check still runs.
+Without a resolvable flow-test root the orphan scan is **skipped silently** —
+every other check still runs, the command prints nothing, and CI sees the same
+clean exit it would get from a scan that found no orphans. Treat a passing run
+as covering orphans only when the flow-test root resolves, and prefer passing
+`--flow-test-root` explicitly in CI rather than relying on the conventional
+fallback.
 
 ## Sub-Agent Model Tiers
 
