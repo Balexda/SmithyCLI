@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Lock existing scenario default loading behavior**
+- [x] **Lock existing scenario default loading behavior**
 
   Extend existing scenario-loader coverage so current scenario YAML files that omit `fixture` still load with the same scenario names, ordering, required fields, optional fields, and structural expectations they had before fixture selection support. Keep the checks focused on compatibility for AS 4.1 and do not require current scenarios to declare fixture metadata.
 
@@ -29,7 +29,7 @@
   - Existing `model`, `timeout`, structural expectation, and sub-agent evidence fields remain compatible.
   - Coverage fails if a current scenario is moved, renamed, or semantically altered to satisfy the JVM fixture work.
 
-- [ ] **Exercise default-fixture runner and checksum compatibility**
+- [x] **Exercise default-fixture runner and checksum compatibility**
 
   Extend runner coverage around a default-fixture scenario so omitted fixture metadata continues to select the existing JavaScript fixture path and checksum validation still hashes the same selected source directory before and after execution. Preserve F1.5 temp-copy and git-initialization behavior while proving AS 4.2.
 
@@ -40,7 +40,7 @@
   - Source fixture mutation detection still fails for the default JavaScript fixture.
   - Existing temp-copy cleanup and git initialization behavior remain intact.
 
-- [ ] **Guard fixture filesystem boundaries**
+- [x] **Guard fixture filesystem boundaries**
 
   Add regression checks or repository guards that confirm the existing JavaScript fixture README and planted artifacts remain in place, while JVM fixture generated output is absent from committed state or ignored by fixture-local rules. Keep the guard limited to fixture filesystem boundaries for AS 4.3 and AS 4.4.
 
