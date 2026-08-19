@@ -32,11 +32,11 @@ The parent agent passes you:
    - Contracts (`.contracts.md`) — interfaces and API surface
 5. **Changed files** — list of files modified between BASE_SHA and HEAD.
 6. **Raw diff** — the full `git diff BASE_SHA HEAD` output.
-7. **target_artifact** — the slice's planning file, where `smithy.forge`
-   records any row your findings route there. It is a planning artifact,
-   never a source file, whatever a finding's `artifact_path` points at.
-8. **review_note_surface** — where `smithy.forge` reports a finding it does
-   not apply, in its own words.
+7. **target_artifact** — the slice's planning file, the one the parent
+   records rows into. It is a planning artifact, never a source file,
+   whatever a finding's `artifact_path` points at.
+8. **review_note_surface** — where the parent reports a finding it does not
+   apply, in its own words.
 
 The last two are the terms the routing step of the review protocol binds;
 you never write to either, you only name which one each finding is for.
