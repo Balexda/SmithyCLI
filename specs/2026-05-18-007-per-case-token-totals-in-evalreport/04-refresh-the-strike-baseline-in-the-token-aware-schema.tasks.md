@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Capture fresh strike baseline evidence**
+- [x] **Capture fresh strike baseline evidence**
 
   Run the `strike-health-check` scenario after the token-aware eval pipeline is present and record the successful text output plus the measured input and output token totals. Preserve the existing scenario setup and structural expectations so the refreshed data remains tied to the current strike eval case for AS 4.1 and AS 4.2.
 
@@ -28,7 +28,7 @@
   - The evidence is stored in the existing eval capture locations used by seeded-baseline tests.
   - The implementation PR documents the observed totals and the rationale for the initial envelope bounds.
 
-- [ ] **Refresh the strike baseline file**
+- [x] **Refresh the strike baseline file**
 
   Update `evals/baselines/strike-health-check.json` to include the optional token envelope defined by the F1.3a baseline schema. Keep the scenario name, captured timestamp, headings, and tables aligned with the refreshed known-good output so structural comparison continues to validate the same baseline contract.
 
@@ -39,7 +39,7 @@
   - The token envelope passes for the refreshed captured totals and is broad enough for normal provider variance.
   - Malformed token envelope behavior remains covered by the existing baseline-loader validation paths.
 
-- [ ] **Pin strike baseline comparison and report behavior**
+- [x] **Pin strike baseline comparison and report behavior**
 
   Extend seeded-baseline and report coverage so the refreshed strike baseline compares successfully against the captured output with live token totals, and so a token-envelope miss fails through the existing baseline check and report-marker path for AS 4.3.
 
