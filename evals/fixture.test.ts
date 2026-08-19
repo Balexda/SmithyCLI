@@ -9,35 +9,37 @@ const CLI = path.resolve('dist/cli.js');
 const FIXTURE_DIR = path.resolve('evals/fixture');
 const JVM_FIXTURE_DIR = path.join(FIXTURE_DIR, 'jvm');
 const CASES_DIR = path.resolve('evals/cases');
-const JS_FIXTURE_PLANTS = [
+/**
+ * Every tracked file in the JavaScript fixture, `evals/fixture/jvm/` excluded.
+ * This is the complete committed inventory rather than a sample, so deleting
+ * or relocating any existing fixture file fails the boundary guard.
+ */
+const JS_FIXTURE_TRACKED_FILES = [
+  '.gitignore',
   'README.md',
-  'package.json',
-  'src/index.ts',
-  'src/types.ts',
-  'src/routes/users.ts',
-  'issues/fix-from-issue-health-check.md',
   'ci-logs/fix-from-issue-health-check.log',
+  'issues/fix-from-issue-health-check.md',
+  'package.json',
+  'prds/ignite-eval/ignite-eval.prd.md',
+  'rfcs/mark-eval/01-core.features.md',
+  'rfcs/mark-eval/mark-eval.rfc.md',
+  'rfcs/render-eval/render-eval.rfc.md',
   'specs/audit-eval/audit-eval-flawed.spec.md',
   'specs/audit-voice/audit-voice-tagged.spec.md',
-  'specs/cut-eval/cut-eval.spec.md',
-  'specs/cut-eval/cut-eval.data-model.md',
   'specs/cut-eval/cut-eval.contracts.md',
-  'prds/ignite-eval/ignite-eval.prd.md',
-  'rfcs/mark-eval/mark-eval.rfc.md',
-  'rfcs/mark-eval/01-core.features.md',
-  'rfcs/render-eval/render-eval.rfc.md',
+  'specs/cut-eval/cut-eval.data-model.md',
+  'specs/cut-eval/cut-eval.spec.md',
+  'src/index.ts',
+  'src/routes/users.ts',
+  'src/types.ts',
+  'tsconfig.json',
 ] as const;
-const CURRENT_SCENARIO_FILES = [
-  'audit-flawed-spec.yaml',
-  'audit-voice-lint.yaml',
-  'cut-from-spec.yaml',
-  'fix-from-issue.yaml',
-  'ignite-from-prd.yaml',
-  'mark-from-features.yaml',
-  'render-from-rfc.yaml',
-  'spark-from-idea.yaml',
-  'strike-health-check.yaml',
-] as const;
+
+function trackedFiles(pathspec: string): string[] {
+  return execFileSync('git', ['ls-files', pathspec], { encoding: 'utf-8' })
+    .split('\n')
+    .filter(Boolean);
+}
 
 function hashDirectory(dirPath: string): string {
   const hash = crypto.createHash('sha256');
@@ -129,9 +131,12 @@ describe('evals/fixture deployment', () => {
 
     expect(readme).toContain('## Planted Inconsistencies');
     expect(readme).toContain('## Planted Parent Artifacts');
-    for (const fixturePath of JS_FIXTURE_PLANTS) {
-      expect(fs.existsSync(path.join(FIXTURE_DIR, fixturePath))).toBe(true);
-    }
+
+    const jsFixtureFiles = trackedFiles('evals/fixture')
+      .filter((file) => !file.startsWith('evals/fixture/jvm/'))
+      .map((file) => file.slice('evals/fixture/'.length))
+      .sort();
+    expect(jsFixtureFiles).toEqual([...JS_FIXTURE_TRACKED_FILES]);
     expect(readme).toContain('`evals/fixture/src/routes/users.ts`');
     expect(readme).toContain('`evals/fixture/specs/audit-eval/audit-eval-flawed.spec.md`');
     expect(readme).toContain('`evals/fixture/specs/cut-eval/`');
@@ -148,12 +153,15 @@ describe('evals/fixture deployment', () => {
   });
 
   it('keeps existing scenario YAML files fixture-less', () => {
+    // The exact scenario inventory is pinned in
+    // `evals/lib/scenario-loader.test.ts`; this guard only asserts that no
+    // current case was rewritten to point at the JVM fixture.
     const yamlFiles = fs.readdirSync(CASES_DIR)
       .filter((file) => file.endsWith('.yaml'))
       .sort();
 
-    expect(yamlFiles).toEqual([...CURRENT_SCENARIO_FILES]);
-    for (const file of CURRENT_SCENARIO_FILES) {
+    expect(yamlFiles.length).toBeGreaterThan(0);
+    for (const file of yamlFiles) {
       const yaml = fs.readFileSync(path.join(CASES_DIR, file), 'utf-8');
       expect(yaml).not.toMatch(/^fixture:/m);
     }
@@ -221,20 +229,16 @@ describe('evals/fixture deployment', () => {
 
     expect(ignoreRules).toEqual(expect.arrayContaining(['build/', '.gradle/', 'out/']));
 
-    const trackedFiles = execFileSync('git', ['ls-files', 'evals/fixture/jvm'], {
-      encoding: 'utf-8',
-    })
-      .split('\n')
-      .filter(Boolean);
+    const jvmTrackedFiles = trackedFiles('evals/fixture/jvm');
 
-    expect(trackedFiles).toEqual(expect.arrayContaining([
+    expect(jvmTrackedFiles).toEqual(expect.arrayContaining([
       'evals/fixture/jvm/settings.gradle',
       'evals/fixture/jvm/build.gradle',
       'evals/fixture/jvm/src/main/java/dev/smithy/fixture/GreetingService.java',
       'evals/fixture/jvm/src/test/java/dev/smithy/fixture/GreetingServiceTest.java',
     ]));
-    expect(trackedFiles.some((file) => file.includes('/build/'))).toBe(false);
-    expect(trackedFiles.some((file) => file.includes('/.gradle/'))).toBe(false);
-    expect(trackedFiles.some((file) => file.includes('/out/'))).toBe(false);
+    expect(jvmTrackedFiles.some((file) => file.includes('/build/'))).toBe(false);
+    expect(jvmTrackedFiles.some((file) => file.includes('/.gradle/'))).toBe(false);
+    expect(jvmTrackedFiles.some((file) => file.includes('/out/'))).toBe(false);
   });
 });

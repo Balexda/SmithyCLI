@@ -18,6 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadScenarios, loadScenarioFromFile } from './scenario-loader.js';
+import type { EvalScenario } from './types.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const realCasesDir = path.resolve(here, '..', 'cases');
@@ -34,17 +35,22 @@ const currentScenarioFiles = [
   'spark-from-idea.yaml',
   'strike-health-check.yaml',
 ] as const;
-const currentScenarioNames = [
-  'audit-flawed-spec',
-  'audit-voice-lint',
-  'cut-from-spec',
-  'fix-from-issue',
-  'ignite-from-prd',
-  'mark-from-features',
-  'render-from-rfc',
-  'spark-from-idea',
-  'strike-health-check',
-] as const;
+// Single-sourced from the filenames: `loadScenarios` sorts by filename and the
+// current cases all name their scenario after the file that carries it.
+const currentScenarioNames = currentScenarioFiles.map(
+  (file) => file.replace(/\.yaml$/, ''),
+);
+/**
+ * Committed shape of every current scenario as `loadScenarios` returns it,
+ * captured before per-scenario fixture selection existed. Regenerate only when
+ * a scenario is deliberately changed — never to make this test pass.
+ */
+const currentScenarioShapes = JSON.parse(
+  fs.readFileSync(
+    path.resolve(here, 'current-scenario-shapes.snapshot.json'),
+    'utf-8',
+  ),
+) as EvalScenario[];
 
 /**
  * Create an isolated temp directory under the OS temp root. Returns its path.
@@ -224,68 +230,21 @@ describe('loadScenarios', () => {
       expect(errSpy).not.toHaveBeenCalled();
     });
 
-    it('preserves representative loaded shapes for existing default-fixture scenarios', () => {
+    it('matches the committed shape snapshot for every current scenario', () => {
       const scenarios = loadScenarios(realCasesDir);
-      const byName = new Map(scenarios.map((scenario) => [scenario.name, scenario]));
 
-      expect(byName.get('strike-health-check')).toMatchObject({
-        name: 'strike-health-check',
-        skill: '/smithy.strike',
-        prompt: 'add a health check endpoint',
-        structural_expectations: {
-          required_headings: ['## Summary', '## Assumptions', '## Specification Debt', '## PR'],
-          required_patterns: ['\\*\\*Spec folder\\*\\*'],
-          forbidden_patterns: ["I'd be happy to help", "Sure, here's", '^---\\r?\\n'],
-        },
-        sub_agent_evidence: [
-          { agent: 'smithy-plan', pattern: '## Plan\\n\\n\\*\\*Directive\\*\\*' },
-          { agent: 'smithy-reconcile', pattern: '^[Rr]econcil' },
-          { agent: 'smithy-clarify', pattern: '^[Cc]larif' },
-        ],
-      });
+      // Compares all nine scenarios in full — skill, prompt, structural
+      // expectations, sub-agent evidence, local fixtures, model and timeout —
+      // so altering any one of them to suit the JVM fixture work fails here.
+      expect(scenarios).toEqual(currentScenarioShapes);
+      expect(scenarios.map((scenario) => scenario.name)).toEqual(currentScenarioNames);
 
-      expect(byName.get('fix-from-issue')).toMatchObject({
-        name: 'fix-from-issue',
-        skill: '/smithy.fix',
-        local_fixtures: {
-          issue: validIssueFixture,
-          ci_log: validCiLogFixture,
-        },
-        structural_expectations: {
-          required_headings: ['## Diagnosis'],
-        },
-      });
-      expect(byName.get('fix-from-issue')!.prompt).toContain('{{issue_path}}');
-      expect(byName.get('fix-from-issue')!.prompt).toContain('{{ci_log_path}}');
-      expect(byName.get('fix-from-issue')).not.toHaveProperty('fixture');
-      expect(byName.get('strike-health-check')).not.toHaveProperty('fixture');
-      expect(errSpy).not.toHaveBeenCalled();
-    });
-
-    it('preserves the declared optional model and timeout fields on current scenarios', () => {
-      const scenarios = loadScenarios(realCasesDir);
-      const byName = new Map(scenarios.map((scenario) => [scenario.name, scenario]));
-
-      // The four long-running planning scenarios are the only current cases
-      // that declare a timeout; the rest inherit the runner default.
-      expect(
-        Object.fromEntries(scenarios.map((scenario) => [scenario.name, scenario.timeout])),
-      ).toEqual({
-        'audit-flawed-spec': undefined,
-        'audit-voice-lint': undefined,
-        'cut-from-spec': 600,
-        'fix-from-issue': undefined,
-        'ignite-from-prd': 1500,
-        'mark-from-features': 900,
-        'render-from-rfc': 900,
-        'spark-from-idea': undefined,
-        'strike-health-check': undefined,
-      });
-
-      // No current scenario pins a model, so all of them stay on the
-      // agent-level default the runner supplies.
-      expect(scenarios.filter((scenario) => scenario.model !== undefined)).toEqual([]);
-      expect(byName.get('cut-from-spec')).not.toHaveProperty('fixture');
+      // `toEqual` treats an explicit `undefined` as absent, so the two
+      // absence contracts this story cares about are asserted separately.
+      for (const scenario of scenarios) {
+        expect(Object.hasOwn(scenario, 'fixture')).toBe(false);
+        expect(Object.hasOwn(scenario, 'model')).toBe(false);
+      }
       expect(errSpy).not.toHaveBeenCalled();
     });
   });

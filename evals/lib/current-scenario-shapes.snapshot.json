@@ -1,0 +1,298 @@
+[
+  {
+    "name": "audit-flawed-spec",
+    "skill": "/smithy.audit",
+    "prompt": "specs/audit-eval/audit-eval-flawed.spec.md",
+    "structural_expectations": {
+      "required_headings": [
+        "## Audit Report"
+      ],
+      "required_patterns": [
+        "Dependency Order",
+        "\\*{0,2}Critical\\*{0,2}",
+        "\\*\\*Executive Summary\\*\\*"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    }
+  },
+  {
+    "name": "audit-voice-lint",
+    "skill": "/smithy.audit",
+    "prompt": "specs/audit-voice/audit-voice-tagged.spec.md",
+    "structural_expectations": {
+      "required_headings": [
+        "## Audit Report"
+      ],
+      "required_patterns": [
+        "\\*{0,2}Critical\\*{0,2}",
+        "audiance",
+        "mermaid",
+        "\\*{0,2}Warning\\*{0,2}",
+        "\\*\\*Executive Summary\\*\\*"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    }
+  },
+  {
+    "name": "cut-from-spec",
+    "skill": "/smithy.cut",
+    "prompt": "evals/fixture/specs/cut-eval/cut-eval.spec.md 1",
+    "structural_expectations": {
+      "required_headings": [
+        "## Summary",
+        "## Assumptions",
+        "## Specification Debt",
+        "## PR"
+      ],
+      "required_patterns": [
+        "Origin: spec:SD-[0-9]{3}",
+        "\\*\\*Spec folder\\*\\*",
+        "https://github\\.com/\\S+/pull/[0-9]+|PR creation failed[^\\n]*artifacts are on disk at"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "timeout": 600,
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-scout",
+        "pattern": "^## Scout Report\\n\\n\\*\\*Depth\\*\\*"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      },
+      {
+        "agent": "smithy-plan-review",
+        "pattern": "^[Rr]eview|^[Pp]lan-review"
+      }
+    ]
+  },
+  {
+    "name": "fix-from-issue",
+    "skill": "/smithy.fix",
+    "prompt": "Diagnose and fix the failure using only the repository-local evidence below.\nIssue fixture: {{issue_path}}\nCI log fixture: {{ci_log_path}}\n\nRead those files from this temp fixture copy, identify the root cause, make the smallest code change, and run the relevant local verification.\n\nBegin your response with a `## Diagnosis` heading on a line by itself, then give the diagnosis.\n",
+    "structural_expectations": {
+      "required_headings": [
+        "## Diagnosis"
+      ],
+      "required_patterns": [
+        "\\*\\*Error\\*\\*",
+        "\\*\\*Cause\\*\\*",
+        "\\*\\*Fix\\*\\*",
+        "src/index\\.ts",
+        "/health",
+        "(npm run build|npm test|[Vv]erification)",
+        "([Pp]ass|[Pp]assed|[Pp]asses|successful|succeeded)"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "local_fixtures": {
+      "issue": "evals/fixture/issues/fix-from-issue-health-check.md",
+      "ci_log": "evals/fixture/ci-logs/fix-from-issue-health-check.log"
+    }
+  },
+  {
+    "name": "ignite-from-prd",
+    "skill": "/smithy.ignite",
+    "prompt": "prds/ignite-eval/ignite-eval.prd.md",
+    "structural_expectations": {
+      "required_headings": [
+        "## Summary",
+        "## Assumptions",
+        "## Specification Debt",
+        "## PR"
+      ],
+      "required_patterns": [
+        "\\*\\*Spec folder\\*\\*",
+        "https://github\\.com/\\S+/pull/[0-9]+|PR creation failed[^\\n]*artifacts are on disk at"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "timeout": 1500,
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-prose",
+        "pattern": "## Motivation"
+      },
+      {
+        "agent": "smithy-plan",
+        "pattern": "## Plan\\n\\n\\*\\*Directive\\*\\*"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      },
+      {
+        "agent": "smithy-plan-review",
+        "pattern": "(?=[\\s\\S]*\\bfindings\\b)(?=[\\s\\S]*\\bsummary\\b)"
+      }
+    ]
+  },
+  {
+    "name": "mark-from-features",
+    "skill": "/smithy.mark",
+    "prompt": "rfcs/mark-eval/01-core.features.md 1",
+    "structural_expectations": {
+      "required_headings": [
+        "## Summary",
+        "## Assumptions",
+        "## Specification Debt",
+        "## PR"
+      ],
+      "required_patterns": [
+        "\\*\\*Spec folder\\*\\*",
+        "https://github\\.com/\\S+/pull/[0-9]+|PR creation failed|[Pp]R (could not|cannot) be (created|opened)|does not appear to be a git repository"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "timeout": 900,
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-scout",
+        "pattern": "## Scout Report"
+      },
+      {
+        "agent": "smithy-plan",
+        "pattern": "## Plan\\n\\n\\*\\*Directive\\*\\*"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      },
+      {
+        "agent": "smithy-plan-review",
+        "pattern": "(?=[\\s\\S]*\\bfindings\\b)(?=[\\s\\S]*\\bsummary\\b)"
+      }
+    ]
+  },
+  {
+    "name": "render-from-rfc",
+    "skill": "/smithy.render",
+    "prompt": "rfcs/render-eval/render-eval.rfc.md",
+    "structural_expectations": {
+      "required_headings": [
+        "## Summary",
+        "## Assumptions",
+        "## Specification Debt",
+        "## PR"
+      ],
+      "required_patterns": [
+        "\\*\\*Spec folder\\*\\*",
+        "\\*\\*Artifacts produced\\*\\*:.*\\.features\\.md",
+        "https://github\\.com/\\S+/pull/\\d+|PR creation failed . artifacts are on disk at"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "timeout": 900,
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-scout",
+        "pattern": "^## Scout Report"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      },
+      {
+        "agent": "smithy-plan-review",
+        "pattern": "(?=[\\s\\S]*\\bfindings\\b)(?=[\\s\\S]*\\bsummary\\b)"
+      }
+    ]
+  },
+  {
+    "name": "spark-from-idea",
+    "skill": "/smithy.spark",
+    "prompt": "add a CLI flag to dump a scenario's runtime in CSV format",
+    "structural_expectations": {
+      "required_headings": [
+        "## Assumptions"
+      ],
+      "required_patterns": [
+        "docs/prds/",
+        "smithy\\.ignite docs/prds/"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-survey",
+        "pattern": "^[Ss]urvey"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      },
+      {
+        "agent": "smithy-prose",
+        "pattern": "^## Problem Statement"
+      }
+    ]
+  },
+  {
+    "name": "strike-health-check",
+    "skill": "/smithy.strike",
+    "prompt": "add a health check endpoint",
+    "structural_expectations": {
+      "required_headings": [
+        "## Summary",
+        "## Assumptions",
+        "## Specification Debt",
+        "## PR"
+      ],
+      "required_patterns": [
+        "\\*\\*Spec folder\\*\\*"
+      ],
+      "forbidden_patterns": [
+        "I'd be happy to help",
+        "Sure, here's",
+        "^---\\r?\\n"
+      ]
+    },
+    "sub_agent_evidence": [
+      {
+        "agent": "smithy-plan",
+        "pattern": "## Plan\\n\\n\\*\\*Directive\\*\\*"
+      },
+      {
+        "agent": "smithy-reconcile",
+        "pattern": "^[Rr]econcil"
+      },
+      {
+        "agent": "smithy-clarify",
+        "pattern": "^[Cc]larif"
+      }
+    ]
+  }
+]
