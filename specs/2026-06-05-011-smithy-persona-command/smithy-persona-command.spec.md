@@ -178,7 +178,7 @@ Recommended implementation sequence:
 | US4 | Ignite reuses existing persona files before generating new ones | US1 | specs/2026-06-05-011-smithy-persona-command/04-ignite-reuses-existing-persona-files-before-generating-new-ones.tasks.md |
 | US3 | Generate persona files from an RFC's `## Personas` section | US1, US2 | specs/2026-06-05-011-smithy-persona-command/03-generate-persona-files-from-an-rfcs-personas-section.tasks.md |
 | US5 | Harmonize preserves file-sourced persona content | US4 | specs/2026-06-05-011-smithy-persona-command/05-harmonize-preserves-file-sourced-persona-content.tasks.md |
-| US6 | Robust RFC `## Personas` parsing and empty-section handling | US3 | — |
+| US6 | Robust RFC `## Personas` parsing and empty-section handling | US3 | specs/2026-06-05-011-smithy-persona-command/06-robust-rfc-personas-parsing-and-empty-section-handling.tasks.md |
 
 ## Requirements *(mandatory)*
 
