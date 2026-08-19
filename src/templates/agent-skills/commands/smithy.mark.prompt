@@ -778,15 +778,15 @@ it:
   review only audits the new spec artifact set, not the parent feature
   map's dependency-order table.
 - **artifact_type** — `spec`.
-
-For the triage below, **the target artifact** is the spec artifact set just
-written — record every debt row in the `.spec.md` file, and apply fixes to
-whichever of the three files the finding's `artifact_path` names. **The
-review note surface** is the PR body; a Low-confidence `implementation`
-finding goes there under an **Implementation questions** heading, since a
-spec carries no `## Open Implementation Questions` section and `smithy.cut`
-re-derives the unknown from its own plan-review pass when the tasks file is
-authored.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the `.spec.md` file:
+  record every row there, while `apply` findings are fixed in whichever of
+  the three files the finding's `artifact_path` names. **The review note
+  surface** is the PR body; report a `note` finding whose `kind` is
+  `implementation` there under an **Implementation questions** heading,
+  since a spec carries no `## Open Implementation Questions` section and
+  `smithy.cut` re-derives the unknown from its own plan-review pass when the
+  tasks file is authored.
 
 {{>plan-review-triage}}
 
@@ -894,15 +894,14 @@ the spec artifact set. Pass it:
 - **artifact_paths** — the repo-relative paths to the refined spec artifacts
   (`<slug>.spec.md`, `<slug>.data-model.md`, `<slug>.contracts.md`).
 - **artifact_type** — `spec`.
-
-For the triage below, **the target artifact** is the refined spec artifact
-set — record every debt row in the `.spec.md` file, and apply fixes to
-whichever of the three files the finding's `artifact_path` names. **The
-review note surface** is the refinement PR body; a Low-confidence
-`implementation` finding goes there under an **Implementation questions**
-heading, since a spec carries no `## Open Implementation Questions` section
-and `smithy.cut` re-derives the unknown from its own plan-review pass when
-the tasks file is authored.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the refined `.spec.md`
+  file: record every row there, while `apply` findings are fixed in
+  whichever of the three files the finding's `artifact_path` names. **The
+  review note surface** is the refinement PR body; report a `note` finding whose `kind` is `implementation` there
+  under an **Implementation questions** heading, since a spec carries no `## Open Implementation Questions`
+  section and `smithy.cut` re-derives the unknown from its own plan-review
+  pass when the tasks file is authored.
 
 {{>plan-review-triage}}
 

@@ -69,7 +69,7 @@ Smithy provides a collection of workflow prompts, each for a different stage/sty
 - **smithy-refine** — Artifact review and refinement findings against the categories its parent passes, plus the three standing `drift-categories` it assesses on every pass whatever the parent asked for (used by ignite, render, mark, cut in Phase 0, and by spark)
 - **smithy-implement** — TDD implementation: failing test → code → commit (used by forge)
 - **smithy-implementation-review** — Read-only code review; returns findings for forge to apply (used by forge)
-- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references, plus the carriage-level classes the `drift-categories` snippet adds — restated protocol, dead reference, and internal content in a deliverable, all `hygiene` by construction. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. Returns findings; parent commands apply fixes. (used by strike, ignite, render, mark, cut after artifact generation)
+- **smithy-plan-review** — Read-only self-consistency review of planning artifacts: catches internal contradictions, logical gaps, assumption-output drift, debt completeness, and brittle references, plus the carriage-level classes the `drift-categories` snippet adds — restated protocol, dead reference, and internal content in a deliverable, all `hygiene` by construction. Every finding carries a `kind` (`steering` / `implementation` / `hygiene`) set *before* severity × confidence triage — only `steering` findings can become specification debt, and a steering finding is never auto-applied. The gate itself lives in the shared `review-protocol` snippet so every review surface gets it, including the Gemini/degraded inline paths that never load a sub-agent. That snippet also carries the kind × severity × confidence table the agent resolves into a routed `destination` (`apply` / `debt` / `iq` / `note`), so the parent acts on one field instead of re-deriving the routing — and a `steering` finding has no `apply` spelling to reach. Returns findings; parent commands carry out the destination. (used by strike, ignite, render, mark, cut after artifact generation)
 - **smithy-scout** — Pre-planning consistency scan (used by render, mark, cut)
 - **smithy-maid** — Post-implementation doc staleness scan (used by forge)
 - **smithy-prose** — Narrative/persuasive prose drafting for RFC sections and planning artifacts (used by ignite for Summary, Motivation, Personas; by spark for the PRD Problem Statement; and by persona for the `.persona.md` narrative body)
@@ -161,8 +161,12 @@ what gets built. Everything else the planning pass does not know has a
 different home, decided by the kind gate before any severity × confidence
 triage. The gate has one definition — `snippets/kind-gate.md` — composed by
 `smithy-clarify` (Step 3b), `smithy-refine`, and both review agents via
-`snippets/review-protocol.md`; the parent commands compose the consequence
-table from `snippets/plan-review-triage.md`. Only the reroute for a rejected
+`snippets/review-protocol.md`, which also resolves the gate's output plus
+severity and confidence into the `destination` a review finding carries
+(`apply` / `debt` / `iq` / `note`); the parent commands compose what each
+destination means on disk from `snippets/plan-review-triage.md`, and pass
+**target_artifact** and **review_note_surface** in the dispatch so the agent
+can settle `iq` versus `note` itself. Only the reroute for a rejected
 candidate differs by consumer: the review agents name a different `kind` and
 let the parent file it, while clarify (which emits no `kind`) routes to its
 assumption stream with a `[Critical Assumption]` annotation and refine routes

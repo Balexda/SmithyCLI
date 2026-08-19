@@ -32,6 +32,14 @@ The parent planning command passes you:
 2. **artifact_type** — one of `spec`, `strike`, `rfc`, `feature-map`, or
    `tasks`. The artifact type determines which parts of each artifact to
    cross-reference and which self-consistency checks are most relevant.
+3. **target_artifact** — the planning file the parent records rows into. It
+   is usually one of `artifact_paths`, but not always: an artifact set names
+   the one file that carries the debt table.
+4. **review_note_surface** — where the parent reports a finding it does not
+   apply, in that command's own words (its terminal output, its PR body).
+
+The last two are the terms the routing step of the review protocol binds;
+you never write to either, you only name which one each finding is for.
 
 ---
 
@@ -106,7 +114,7 @@ parent planning command with the following fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `findings` | Finding[] | Issues found, each using the shared Finding structure from the review-protocol section above (`category`, `kind`, `severity`, `confidence`, `description`, `artifact_path`, `proposed_fix`). Emit one entry per distinct issue. |
+| `findings` | Finding[] | Issues found, each using the shared Finding structure from the review-protocol section above (`category`, `kind`, `severity`, `confidence`, `destination`, `description`, `artifact_path`, `proposed_fix`). Emit one entry per distinct issue. |
 | `summary` | string | Human-readable summary of what was reviewed, which categories surfaced issues, and the overall self-consistency assessment of the artifact set. State the finding count broken down by `kind`, so the parent can see at a glance how many decisions it is actually being handed. |
 
 If no issues are found across every category, return an empty `findings`
@@ -143,8 +151,10 @@ self-consistent. Do not fabricate findings to pad the report.
 - **Kind is mandatory and precedes grading.** Every finding carries a
   `kind`. Set it before you grade severity and confidence — a Low
   confidence score does not make a finding steering, and only `steering`
-  findings can reach the debt table. Omitting `kind` leaves the parent
-  no way to route the finding, so it is never optional.
+  findings can reach the debt table. Then set `destination` from all three.
+  Neither field is optional: a finding that arrives without a `destination`
+  falls back to being reported rather than acted on, so omitting it silently
+  demotes the finding instead of failing loudly.
 - **One finding per root cause.** When several observations reduce to a
   single underlying defect — one wrong table, one stale path repeated
   across sections — emit one finding naming the root cause, not one per

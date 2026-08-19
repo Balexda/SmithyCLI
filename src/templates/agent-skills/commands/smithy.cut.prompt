@@ -91,9 +91,9 @@ sub-agent to perform a self-consistency review of the tasks file. Pass it:
   (`{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` or
   `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`).
 - **artifact_type** — `tasks`.
-
-For the triage below, **the target artifact** is the refined tasks file, and
-**the review note surface** is the refinement PR body.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the refined tasks
+  file, and **the review note surface** is the refinement PR body.
 
 {{>plan-review-triage}}
 
@@ -850,11 +850,11 @@ perform a self-consistency review. Pass it:
   review only audits the new tasks artifact, not the parent spec's
   dependency-order table.
 - **artifact_type** — `tasks`.
-
-For the triage below, **the target artifact** is the tasks file just
-written — its `SD-NNN` numbering continues from whatever it already carries,
-including debt inherited from the spec in Phase 1 and new items from cut's
-own clarify run. **The review note surface** is the PR body.
+- **target_artifact** and **review_note_surface** — the two terms the
+  routing below also uses. **The target artifact** is the tasks file just
+  written; its `SD-NNN` numbering continues from whatever it already
+  carries, including debt inherited from the spec in Phase 1 and new items
+  from cut's own clarify run. **The review note surface** is the PR body.
 
 {{>plan-review-triage}}
 
