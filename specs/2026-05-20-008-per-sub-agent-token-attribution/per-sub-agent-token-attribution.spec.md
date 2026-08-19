@@ -102,7 +102,7 @@ Recommended implementation sequence:
 |----|-------|------------|----------|
 | US1 | Verify Dispatch-Level Usage Evidence | — | specs/2026-05-20-008-per-sub-agent-token-attribution/01-verify-dispatch-level-usage-evidence.tasks.md |
 | US2 | Attribute Token Totals to Sub-Agent Dispatches | US1 | specs/2026-05-20-008-per-sub-agent-token-attribution/02-attribute-token-totals-to-sub-agent-dispatches.tasks.md |
-| US3 | Render Nested Sub-Agent Token Rows | US2 | — |
+| US3 | Render Nested Sub-Agent Token Rows | US2 | specs/2026-05-20-008-per-sub-agent-token-attribution/03-render-nested-sub-agent-token-rows.tasks.md |
 | US4 | Document Parent-Only Fallback | US1 | specs/2026-05-20-008-per-sub-agent-token-attribution/04-document-parent-only-fallback.tasks.md |
 
 ## Requirements *(mandatory)*
