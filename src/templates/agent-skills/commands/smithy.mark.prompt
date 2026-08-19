@@ -782,7 +782,7 @@ it:
   routing below also uses. **The target artifact** is the `.spec.md` file:
   record every row there, while `apply` findings are fixed in whichever of
   the three files the finding's `artifact_path` names. **The review note
-  surface** is the PR body; report a finding whose `kind` is
+  surface** is the PR body; report a `note` finding whose `kind` is
   `implementation` there under an **Implementation questions** heading,
   since a spec carries no `## Open Implementation Questions` section and
   `smithy.cut` re-derives the unknown from its own plan-review pass when the
@@ -898,9 +898,8 @@ the spec artifact set. Pass it:
   routing below also uses. **The target artifact** is the refined `.spec.md`
   file: record every row there, while `apply` findings are fixed in
   whichever of the three files the finding's `artifact_path` names. **The
-  review note surface** is the refinement PR body; report a finding whose
-  `kind` is `implementation` there under an **Implementation questions**
-  heading, since a spec carries no `## Open Implementation Questions`
+  review note surface** is the refinement PR body; report a `note` finding whose `kind` is `implementation` there
+  under an **Implementation questions** heading, since a spec carries no `## Open Implementation Questions`
   section and `smithy.cut` re-derives the unknown from its own plan-review
   pass when the tasks file is authored.
 

@@ -152,8 +152,9 @@ self-consistent. Do not fabricate findings to pad the report.
   `kind`. Set it before you grade severity and confidence — a Low
   confidence score does not make a finding steering, and only `steering`
   findings can reach the debt table. Then set `destination` from all three.
-  A finding missing either field leaves the parent no way to route it, so
-  neither is optional.
+  Neither field is optional: a finding that arrives without a `destination`
+  falls back to being reported rather than acted on, so omitting it silently
+  demotes the finding instead of failing loudly.
 - **One finding per root cause.** When several observations reduce to a
   single underlying defect — one wrong table, one stale path repeated
   across sections — emit one finding naming the root cause, not one per

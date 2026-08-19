@@ -3201,6 +3201,43 @@ describe('getComposedTemplates', () => {
     }
   });
 
+  it('scopes the Implementation questions heading to note-routed findings', () => {
+    // The artifacts that carry no `## Open Implementation Questions` section
+    // report the unknown in their PR body instead. That bucket is the `note`
+    // route specifically — a Critical `implementation` finding that was
+    // applied is also reported on the note surface, and filing it under
+    // "questions" would describe a landed fix as an open unknown.
+    for (const name of ['smithy.mark.md', 'smithy.render.md', 'smithy.ignite.md']) {
+      const body = composed.commands.get(name)!;
+      const headings = body.match(/\*\*Implementation questions\*\* heading/g) ?? [];
+      expect(headings.length, `${name} questions-heading sites`).toBe(2);
+      const flat = body.replace(/\s+/g, ' ');
+      const scoped = flat.match(
+        /report a `note` finding whose `kind` is `implementation` there under an \*\*Implementation questions\*\* heading/g,
+      ) ?? [];
+      expect(scoped.length, `${name} must scope the heading to note findings`).toBe(2);
+    }
+  });
+
+  it('passes strike its drift severity floor before the agent routes', () => {
+    // Strike floors assumption-output drift at Critical so it cannot be
+    // dismissed as a Minor note. Severity is now an input to the agent's
+    // destination derivation, so the floor has to reach the dispatch — left
+    // downstream of the composed mapping it would describe a re-derivation
+    // the parent is explicitly told not to perform.
+    const strike = composed.commands.get('smithy.strike.md')!;
+    const flat = strike.replace(/\s+/g, ' ');
+    expect(flat).toContain('**severity floor** — grade every assumption-output drift finding `Critical`');
+    // The floor is stated before the mapping, not as a second triage after it.
+    const floorIdx = strike.indexOf('**severity floor**');
+    const mappingIdx = strike.indexOf('| `destination` | This command does |');
+    expect(floorIdx).toBeGreaterThan(-1);
+    expect(mappingIdx).toBeGreaterThan(floorIdx);
+    // No leftover parent-side re-derivation of the drift consequence.
+    expect(flat).not.toContain('Treat drift findings as Critical for routing');
+    expect(flat).not.toMatch(/apply the fix only when confidence is High/);
+  });
+
   it('no command triage table lets a steering finding be auto-applied', () => {
     // The "steering is never auto-applied" rule has to hold at every rendered
     // site. It did not: forge's hand-copied table wrote its columns at a

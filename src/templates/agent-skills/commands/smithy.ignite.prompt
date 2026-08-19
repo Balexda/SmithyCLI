@@ -226,7 +226,7 @@ review of the refined artifact. Pass it:
   routing below also uses. **The target artifact** is the refined RFC file;
   its `SD-NNN` numbering continues from whatever refine or prior clarify
   passes already wrote. **The review note surface** is the refinement PR
-  body; report a finding whose `kind` is `implementation` there under an
+  body; report a `note` finding whose `kind` is `implementation` there under an
   **Implementation questions** heading, since an RFC carries no
   `## Open Implementation Questions` section and `smithy.cut` re-derives the
   unknown from its own plan-review pass when the tasks file is authored.
@@ -871,9 +871,8 @@ review. Pass it:
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the RFC file just
   written; its `SD-NNN` numbering continues from whatever clarify / Phase 3
-  already wrote. **The review note surface** is the PR body; report a
-  finding whose `kind` is `implementation` there under an **Implementation
-  questions** heading, since an RFC carries no
+  already wrote. **The review note surface** is the PR body; report a `note` finding whose `kind` is
+  `implementation` there under an **Implementation questions** heading, since an RFC carries no
   `## Open Implementation Questions` section and `smithy.cut` re-derives the
   unknown from its own plan-review pass when the tasks file is authored.
 
