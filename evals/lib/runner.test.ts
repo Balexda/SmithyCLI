@@ -170,6 +170,7 @@ function createFixtureWithLocalEvidence(): { dir: string; cleanup: () => void } 
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
+const defaultFixtureRoot = path.join(repoRoot, 'evals', 'fixture');
 
 // ---------------------------------------------------------------------------
 // Test setup
@@ -304,6 +305,17 @@ describe('resolveFixtureDir', () => {
     } finally {
       fixture.cleanup();
     }
+  });
+
+  it('uses the repository default JavaScript fixture for scenarios without fixture metadata', () => {
+    const scenario = makeScenario();
+
+    const resolved = resolveFixtureDir(scenario, defaultFixtureRoot, defaultFixtureRoot);
+
+    expect(resolved).toBe(defaultFixtureRoot);
+    expect(fs.existsSync(path.join(resolved, 'README.md'))).toBe(true);
+    expect(fs.existsSync(path.join(resolved, 'package.json'))).toBe(true);
+    expect(scenario).not.toHaveProperty('fixture');
   });
 
   it('rejects a scenario selector that escapes the fixture root through a symlink', () => {
@@ -572,6 +584,35 @@ describe('runScenario', () => {
     }
   });
 
+  it('runs a no-fixture scenario against the supplied global fixture directory', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+
+    let copiedGlobalFixture = false;
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], opts: { cwd?: string }) => {
+        const cwd = opts.cwd ?? '';
+        copiedGlobalFixture = fs.existsSync(path.join(cwd, 'global-only.txt'));
+        return child as never;
+      }) as never,
+    );
+
+    const fixture = createRealFixture();
+    fs.writeFileSync(path.join(fixture.dir, 'global-only.txt'), 'global');
+    try {
+      const scenario = makeScenario();
+      const effectiveFixtureDir = resolveFixtureDir(scenario, fixture.dir, defaultFixtureRoot);
+
+      await runScenario(scenario, effectiveFixtureDir);
+
+      expect(effectiveFixtureDir).toBe(fixture.dir);
+      expect(copiedGlobalFixture).toBe(true);
+      expect(scenario).not.toHaveProperty('fixture');
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
   it('renders the real fix-from-issue scenario from local evidence without credential requirements', async () => {
     const stdout = ndjsonLines(resultEvent('output'));
     const { child } = createMockChild(stdout, 0);
@@ -719,6 +760,31 @@ describe('runScenario', () => {
       await expect(
         runScenario(makeScenario({ fixture: 'jvm' }), effectiveFixtureDir),
       ).rejects.toThrow(/Source fixture directory was modified/);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('detects mutation of the default JavaScript source fixture directory', async () => {
+    const stdout = ndjsonLines(resultEvent('output'));
+    const { child } = createMockChild(stdout, 0);
+
+    const fixture = createRealFixture();
+    fs.writeFileSync(path.join(fixture.dir, 'package.json'), '{"type":"module"}\n');
+    vi.mocked(spawn).mockImplementation(
+      ((_cmd: string, _args: readonly string[], _opts: { cwd?: string }) => {
+        fs.writeFileSync(path.join(fixture.dir, 'file-a.txt'), 'mutated');
+        return child as never;
+      }) as never,
+    );
+
+    try {
+      const scenario = makeScenario();
+      const effectiveFixtureDir = resolveFixtureDir(scenario, fixture.dir, fixture.dir);
+
+      await expect(runScenario(scenario, effectiveFixtureDir)).rejects.toThrow(
+        /Source fixture directory was modified/,
+      );
     } finally {
       fixture.cleanup();
     }

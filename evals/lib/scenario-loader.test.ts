@@ -18,11 +18,39 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadScenarios, loadScenarioFromFile } from './scenario-loader.js';
+import type { EvalScenario } from './types.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const realCasesDir = path.resolve(here, '..', 'cases');
 const validIssueFixture = 'evals/fixture/issues/fix-from-issue-health-check.md';
 const validCiLogFixture = 'evals/fixture/ci-logs/fix-from-issue-health-check.log';
+const currentScenarioFiles = [
+  'audit-flawed-spec.yaml',
+  'audit-voice-lint.yaml',
+  'cut-from-spec.yaml',
+  'fix-from-issue.yaml',
+  'ignite-from-prd.yaml',
+  'mark-from-features.yaml',
+  'render-from-rfc.yaml',
+  'spark-from-idea.yaml',
+  'strike-health-check.yaml',
+] as const;
+// Single-sourced from the filenames: `loadScenarios` sorts by filename and the
+// current cases all name their scenario after the file that carries it.
+const currentScenarioNames = currentScenarioFiles.map(
+  (file) => file.replace(/\.yaml$/, ''),
+);
+/**
+ * Committed shape of every current scenario as `loadScenarios` returns it,
+ * captured before per-scenario fixture selection existed. Regenerate only when
+ * a scenario is deliberately changed — never to make this test pass.
+ */
+const currentScenarioShapes = JSON.parse(
+  fs.readFileSync(
+    path.resolve(here, 'current-scenario-shapes.snapshot.json'),
+    'utf-8',
+  ),
+) as EvalScenario[];
 
 /**
  * Create an isolated temp directory under the OS temp root. Returns its path.
@@ -180,6 +208,43 @@ describe('loadScenarios', () => {
       const scenarios = loadScenarios(dir);
       expect(scenarios).toHaveLength(1);
       expect(scenarios[0]!.fixture).toBe('jvm');
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('preserves the current fixture-less scenario inventory and ordering', () => {
+      const yamlFiles = fs.readdirSync(realCasesDir)
+        .filter((file) => file.endsWith('.yaml'))
+        .sort();
+
+      expect(yamlFiles).toEqual([...currentScenarioFiles]);
+      for (const filename of currentScenarioFiles) {
+        const contents = fs.readFileSync(path.join(realCasesDir, filename), 'utf-8');
+        expect(contents).not.toMatch(/^fixture:/m);
+      }
+
+      const scenarios = loadScenarios(realCasesDir);
+      expect(scenarios.map((scenario) => scenario.name)).toEqual([
+        ...currentScenarioNames,
+      ]);
+      expect(scenarios.every((scenario) => !Object.hasOwn(scenario, 'fixture'))).toBe(true);
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
+    it('matches the committed shape snapshot for every current scenario', () => {
+      const scenarios = loadScenarios(realCasesDir);
+
+      // Compares all nine scenarios in full — skill, prompt, structural
+      // expectations, sub-agent evidence, local fixtures, model and timeout —
+      // so altering any one of them to suit the JVM fixture work fails here.
+      expect(scenarios).toEqual(currentScenarioShapes);
+      expect(scenarios.map((scenario) => scenario.name)).toEqual(currentScenarioNames);
+
+      // `toEqual` treats an explicit `undefined` as absent, so the two
+      // absence contracts this story cares about are asserted separately.
+      for (const scenario of scenarios) {
+        expect(Object.hasOwn(scenario, 'fixture')).toBe(false);
+        expect(Object.hasOwn(scenario, 'model')).toBe(false);
+      }
       expect(errSpy).not.toHaveBeenCalled();
     });
   });
