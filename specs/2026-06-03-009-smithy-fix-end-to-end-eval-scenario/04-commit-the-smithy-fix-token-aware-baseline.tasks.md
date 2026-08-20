@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Capture a clean smithy.fix baseline run**
+- [x] **Capture a clean smithy.fix baseline run**
 
   Run the `fix-from-issue` scenario after US3's structural and helper checks are present, using the repository-local issue and CI-log fixtures. Record the structural baseline data and observed token totals from a clean run without relying on live GitHub credentials.
 
@@ -28,7 +28,7 @@
   - The run uses the local fixture evidence and remains compatible with machines that lack GitHub credentials.
   - Any calibration note needed for the initial token envelope is captured in the implementation PR rather than in deployed prompt templates.
 
-- [ ] **Commit the fix-from-issue baseline file**
+- [x] **Commit the fix-from-issue baseline file**
 
   Add the `fix-from-issue` baseline under the existing eval baseline directory using the F1.3a token-aware schema. Preserve the scenario name, structural expectations, and a conservative token envelope that passes for the clean captured run while still exposing material token drift.
 
@@ -38,7 +38,7 @@
   - The token envelope is compatible with the existing baseline loader and comparator.
   - Scenario name mismatches, malformed token envelopes, and missing baseline data continue to fail or skip according to the baseline contract.
 
-- [ ] **Pin baseline compatibility and report behavior**
+- [x] **Pin baseline compatibility and report behavior**
 
   Add focused coverage that proves the committed `fix-from-issue` baseline loads, compares successfully against the captured known-good output, and causes the eval report to show a passing baseline marker when the live run remains inside the envelope.
 

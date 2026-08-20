@@ -1,0 +1,7 @@
+## Diagnosis
+
+- **Error**: the smoke check receives 404 for GET /health.
+- **Cause**: src/index.ts mounts /api/users but no health endpoint.
+- **Fix**: add a minimal /health route in src/index.ts.
+
+Verification: npm run build passed.

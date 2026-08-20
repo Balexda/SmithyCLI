@@ -1,0 +1,18 @@
+{
+  "scenario_name": "fix-from-issue",
+  "captured_at": "2026-08-15T00:00:00Z",
+  "headings": [
+    "## Diagnosis"
+  ],
+  "tables": [],
+  "token_envelope": {
+    "input": {
+      "min": 30000,
+      "max": 90000
+    },
+    "output": {
+      "min": 500,
+      "max": 6000
+    }
+  }
+}
