@@ -165,6 +165,7 @@ function statusToken(status: EvalResult['status']): string {
  *
  *     Eval Summary
  *       [PASS] strike-health-check (1234ms) input: 1200, output: 345
+ *         smithy-plan: input: 900, output: 210
  *       [FAIL] plan-standalone (5678ms) input: 2300, output: 456
  *       [TIMEOUT] scout-standalone (120000ms) input: 3400, output: 567
  *       [ERROR] clarify-standalone (42ms) input: 4500, output: 678
@@ -185,6 +186,10 @@ function statusToken(status: EvalResult['status']): string {
  *
  *     Total elapsed: 127000ms
  *     Result: FAIL (1/3 passed, 3 total)
+ *
+ * Results with populated `sub_agent_tokens` emit nested attribution rows
+ * directly below their owning case line. Results without attribution data
+ * emit no nested rows.
  *
  * The function is pure: no I/O, no `console.log`, no mutation of `report`.
  * Per-case lines are emitted in `report.results` order so the output is
@@ -213,6 +218,14 @@ export function formatReport(report: EvalReport): string {
       line += ` baseline: ${baselineMarker(result)}`;
     }
     lines.push(line);
+
+    if (result.sub_agent_tokens && result.sub_agent_tokens.length > 0) {
+      for (const subAgentToken of result.sub_agent_tokens) {
+        lines.push(
+          `    ${subAgentToken.agent}: input: ${subAgentToken.input}, output: ${subAgentToken.output}`,
+        );
+      }
+    }
   }
 
   const overallToken = report.overall_status === 'pass' ? 'PASS' : 'FAIL';

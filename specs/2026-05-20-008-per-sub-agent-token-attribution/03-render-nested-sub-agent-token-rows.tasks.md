@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Render nested attribution rows in eval reports**
+- [x] **Render nested attribution rows in eval reports**
 
   Update the pure report formatter so each result with non-empty `sub_agent_tokens` emits one nested line per attributed sub-agent directly below that result's case line. Preserve existing case-line status, scenario name, duration, per-case input and output totals, baseline marker behavior, total elapsed line, and final result line for AS 3.1-3.3.
 
@@ -29,7 +29,7 @@
   - Existing per-case token totals, baseline markers, total elapsed, and final result rendering remain visible.
   - Scenario pass, fail, timeout, and error statuses are unchanged by attribution row rendering.
 
-- [ ] **Cover nested report formatting behavior**
+- [x] **Cover nested report formatting behavior**
 
   Update report formatter unit coverage for the US3 rendering path, replacing the pre-US3 expectation that `sub_agent_tokens` are ignored. Cover attributed, unattributed, and mixed reports in the same pure formatting layer so the behavior is deterministic without running the full eval CLI.
 
@@ -40,7 +40,7 @@
   - Unit tests cover interaction with baseline markers so FR-010 remains explicit.
   - Existing result assembly and report aggregation attribution tests continue to pass unchanged.
 
-- [ ] **Resolve the attribution-path RFC evidence debt**
+- [x] **Resolve the attribution-path RFC evidence debt**
 
   After nested report rows ship on the committed `dispatch_attributable` evidence path, update the token-savings RFC SD-001 row to record that the capture evidence supports per-dispatch attribution and that `EvalReport` / `formatReport` now expose the resulting per-sub-agent token rows. Do not apply the parent-only fallback language from US4.
 

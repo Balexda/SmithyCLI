@@ -919,12 +919,20 @@ describe('formatReport', () => {
       );
     });
 
-    it('does not render sub-agent token rows before nested report support lands', () => {
+    it('renders nested sub-agent token rows under a case with attribution data', () => {
       const results: EvalResult[] = [
         makeResult({
           scenario_name: 'alpha',
           tokens: { input: 123, output: 45 },
-          sub_agent_tokens: subAgentTokens,
+          sub_agent_tokens: [
+            ...subAgentTokens,
+            {
+              agent: 'smithy-clarify',
+              input: 0,
+              output: 8,
+              dispatch_count: 1,
+            },
+          ],
         }),
       ];
       const report = buildReport(results, 111);
@@ -934,11 +942,151 @@ describe('formatReport', () => {
         [
           'Eval Summary',
           '  [PASS] alpha (100ms) input: 123, output: 45',
+          '    smithy-plan: input: 123, output: 45',
+          '    smithy-clarify: input: 0, output: 8',
           '',
           'Total elapsed: 111ms',
           'Result: PASS (1/1 passed, 1 total)',
         ].join('\n'),
       );
+    });
+
+    it('renders nested rows only under attributed cases in a mixed report', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 100, output: 10 },
+          sub_agent_tokens: subAgentTokens,
+        }),
+        makeResult({
+          scenario_name: 'beta',
+          tokens: { input: 200, output: 20 },
+        }),
+        makeResult({
+          scenario_name: 'gamma',
+          tokens: { input: 300, output: 30 },
+          sub_agent_tokens: [
+            {
+              agent: 'smithy-review',
+              input: 77,
+              output: 12,
+              dispatch_count: 1,
+            },
+          ],
+        }),
+      ];
+      const report = buildReport(results, 600);
+      const out = formatReport(report);
+
+      expect(out).toBe(
+        [
+          'Eval Summary',
+          '  [PASS] alpha (100ms) input: 100, output: 10',
+          '    smithy-plan: input: 123, output: 45',
+          '  [PASS] beta (100ms) input: 200, output: 20',
+          '  [PASS] gamma (100ms) input: 300, output: 30',
+          '    smithy-review: input: 77, output: 12',
+          '',
+          'Total elapsed: 600ms',
+          'Result: PASS (3/3 passed, 3 total)',
+        ].join('\n'),
+      );
+    });
+
+    it('keeps unattributed per-case token report shape unchanged', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 123, output: 45 },
+          duration_ms: 111,
+        }),
+      ];
+      const report = buildReport(results, 111);
+      const out = formatReport(report);
+
+      expect(out).toBe(
+        [
+          'Eval Summary',
+          '  [PASS] alpha (111ms) input: 123, output: 45',
+          '',
+          'Total elapsed: 111ms',
+          'Result: PASS (1/1 passed, 1 total)',
+        ].join('\n'),
+      );
+    });
+
+    it('renders nested rows without removing baseline markers', () => {
+      const baselineCheck: CheckResult = {
+        check_name: 'token baseline within envelope',
+        passed: true,
+      };
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'alpha',
+          tokens: { input: 123, output: 45 },
+          baseline_checks: [baselineCheck],
+          sub_agent_tokens: subAgentTokens,
+        }),
+      ];
+      const report = buildReport(results, 111);
+      const out = formatReport(report);
+
+      expect(out).toBe(
+        [
+          'Eval Summary',
+          '  [PASS] alpha (100ms) input: 123, output: 45 baseline: PASS',
+          '    smithy-plan: input: 123, output: 45',
+          '',
+          'Total elapsed: 111ms',
+          'Result: PASS (1/1 passed, 1 total)',
+        ].join('\n'),
+      );
+    });
+
+    it('keeps pass, fail, timeout, and error status tokens unchanged when attribution rows render', () => {
+      const results: EvalResult[] = [
+        makeResult({
+          scenario_name: 'pass-case',
+          status: 'pass',
+          sub_agent_tokens: subAgentTokens,
+        }),
+        makeResult({
+          scenario_name: 'fail-case',
+          status: 'fail',
+          sub_agent_tokens: subAgentTokens,
+        }),
+        makeResult({
+          scenario_name: 'timeout-case',
+          status: 'timeout',
+          error: 'timed out',
+          sub_agent_tokens: subAgentTokens,
+        }),
+        makeResult({
+          scenario_name: 'error-case',
+          status: 'error',
+          error: 'exit 1',
+          sub_agent_tokens: subAgentTokens,
+        }),
+      ];
+      const report = buildReport(results, 400);
+      const out = formatReport(report);
+      const lines = out.split('\n');
+
+      expect(lines.find((l) => l.includes('pass-case'))).toBe(
+        '  [PASS] pass-case (100ms) input: 0, output: 0',
+      );
+      expect(lines.find((l) => l.includes('fail-case'))).toBe(
+        '  [FAIL] fail-case (100ms) input: 0, output: 0',
+      );
+      expect(lines.find((l) => l.includes('timeout-case'))).toBe(
+        '  [TIMEOUT] timeout-case (100ms) input: 0, output: 0',
+      );
+      expect(lines.find((l) => l.includes('error-case'))).toBe(
+        '  [ERROR] error-case (100ms) input: 0, output: 0',
+      );
+      expect(
+        lines.filter((l) => l === '    smithy-plan: input: 123, output: 45'),
+      ).toHaveLength(4);
     });
 
     it('keeps Total elapsed: and Result: summary lines unchanged when token totals are present', () => {
