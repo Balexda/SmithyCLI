@@ -49,9 +49,10 @@ documentation, validation, and PR creation stay the same as ordinary work.
     implementation dialect and project conventions. When no bundle is attached,
     fall back to the design skill and `.design.md` intent instead of stopping
     the slice.
-  - Do not ask reviewers to judge visual fidelity. Review remains structural:
-    project conventions, design-system tokens/components, accessible structure,
-    gated behavior, mock-data coverage, and every named brief state.
+  - Request the `ui-structural` implementation review profile after the slice
+    is built, and pass the task plan's `**Node ID**` and `**Durable Artifact**`
+    values with it. The checks are defined once under **UI Structural Review**
+    below.
   - Refuse to author a new `.design.md` from scratch, and do not modify
     `.design.md` or `.flow.md` files as part of screen-build work. Those durable
     artifacts originate at `mark`; `forge` consumes them.
@@ -86,6 +87,10 @@ documentation, validation, and PR creation stay the same as ordinary work.
     the project's existing UI driver and stable test IDs, accessibility IDs, or
     semantic tags; never rely on visible text, layout position, or prose copied
     into the `.flow.md`.
+  - Request the `ui-structural` implementation review profile after the slice
+    is built, and pass the task plan's `**Node ID**`, `**Durable Artifact**`,
+    and `**Test Body**` values with it. The checks are defined once under
+    **UI Structural Review** below.
   - Run the paired flow test body as a validation gate when the repository has a
     supported command for that driver. If no targeted flow-test command exists,
     run the closest project test gate and report the validation limitation.
@@ -99,3 +104,7 @@ documentation, validation, and PR creation stay the same as ordinary work.
   mechanics, skip the ordinary spec/data-model/contracts intake, or introduce
   screen-build or flow-wire requirements. Backend-story work must not author
   `.design.md` or `.flow.md` files.
+
+#### UI Structural Review
+
+{{>ui-structural-review}}

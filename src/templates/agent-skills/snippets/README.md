@@ -31,6 +31,7 @@ its contents. The snippet file itself is never deployed.
 | `guidance-shell.md` | Shell environment guidance | smithy.guidance (the prompt); smithy.implement |
 | `tdd-protocol.md` | TDD workflow protocol | smithy.implement; smithy.forge (degraded branch) |
 | `typed-ui-build-profiles.md` | Per-stack build/test/lint profiles for typed UI slices, so the implementer and its orchestrator agree on what "green" means without either restating the commands | smithy.implement, smithy.forge |
+| `ui-structural-review.md` | The `ui-structural` implementation-review checklist: the additive rule (every ordinary review category still applies to UI node work), the screen-build / flow-wire / shared structural checks, and the always-out-of-scope visual-fidelity list. Shared because the reviewer agent and the build profile both state it and neither owns it | smithy.implementation-review; typed-ui-build-profiles |
 | `competing-lenses-decomposition.md` | Competing slice lenses for decomposition planning: dispatches `smithy-slice` per lens, then `smithy-reconcile-slices` | smithy.cut |
 | `competing-lenses-implementation.md` | Competing plan lenses for implementation planning (3 lenses: Simplification, Separation of Concerns, Robustness), then `smithy-reconcile` | smithy.strike |
 | `competing-lenses-scoping.md` | Competing plan lenses for scoping (4 lenses: Scope Minimalism, Completeness, Coherence, Parallelism), then `smithy-reconcile` | smithy.ignite, smithy.render, smithy.mark |
