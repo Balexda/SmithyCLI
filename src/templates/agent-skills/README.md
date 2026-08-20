@@ -696,7 +696,9 @@ cannot drift.
 `smithy.audit` routes `design/screens/<ScreenId>.design.md` targets to that
 helper's review checklist. The audit is structural: it checks the front-matter
 contract, including `component-path` and `design_system`, and the rationale-only
-body rule. Visual fidelity stays out of scope for audit.
+body rule. Visual fidelity stays out of scope for audit. `smithy-plan-review`
+does not review screen artifacts directly; it reviews planning artifacts that
+reference them and leaves this helper-contract check to `smithy.audit`.
 
 ## Flow Definitions
 
@@ -727,7 +729,10 @@ intentionally does not duplicate the schema so the two cannot drift.
 `smithy.audit` routes `design/flows/<FlowId>.flow.md` targets to that helper's
 review checklist. The audit checks the `screens` references, `test-body` path,
 and intent-only body rule; executable path consistency across the full app tree
-remains the job of `flow-lint`.
+remains the job of `flow-lint`. `smithy-plan-review` does not review flow
+artifacts or executable test bodies directly; it reviews planning artifacts that
+reference them and leaves helper-contract and graph-pair validation to
+`smithy.audit` and `flow-lint`.
 
 ## Flow-Lint
 
@@ -818,7 +823,7 @@ Sub-agents are invoked by parent commands, not directly by users:
 | smithy-reconcile-slices | Synthesize competing smithy-slice outputs (slice boundaries + task lists) | cut |
 | smithy-clarify | Ambiguity scanning and triage (assumptions + specification debt) | strike, ignite, render, mark, cut, spark |
 | smithy-refine | Artifact review and refinement | ignite, render, mark, cut (Phase 0), spark |
-| smithy-plan-review | Read-only self-consistency review of planning artifacts; returns structured findings | strike, ignite, render, mark, cut (after artifact generation, before PR) |
+| smithy-plan-review | Read-only self-consistency review of planning artifacts; durable screen/flow artifacts route to `smithy.audit` and `flow-lint`; returns structured findings | strike, ignite, render, mark, cut (after artifact generation, before PR) |
 | smithy-implement | TDD implementation (test → code → commit) | forge |
 | smithy-implementation-review | Read-only code review; returns findings for forge to apply | forge |
 | smithy-recall | Read-only engraved-knowledge recall across the user / repo / project levels; advisory only | strike, ignite, render, mark, cut (scan phase) |

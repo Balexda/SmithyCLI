@@ -111,7 +111,7 @@
 
 ### Tasks
 
-- [ ] **Choose the plan-review UI artifact boundary**
+- [x] **Choose the plan-review UI artifact boundary**
 
   Update `smithy-plan-review` guidance to either accept `screen` and `flow` artifact types or explicitly route durable UI artifact review to `smithy.audit` and `flow-lint`. The chosen boundary should be consistent with the review categories plan-review already owns and with AS 7.4.
 
@@ -122,7 +122,7 @@
   - Plan-review remains read-only and non-interactive
   - Existing planning artifact review modes remain supported
 
-- [ ] **Align callers and docs with the plan-review boundary**
+- [x] **Align callers and docs with the plan-review boundary**
 
   Update any command or template text that invokes plan-review so UI artifact sets are routed according to the chosen boundary. If screen/flow modes are added, callers can pass those artifact types; if audit/flow-lint own them, callers should not imply plan-review will inspect durable UI files.
 

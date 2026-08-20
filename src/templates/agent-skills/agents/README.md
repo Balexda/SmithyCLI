@@ -34,7 +34,7 @@ leaves the list by composing it.
 | `smithy-reconcile-slices` | Synthesize competing `smithy-slice` outputs, reconciling both slice boundaries and task lists | cut (`competing-lenses-decomposition`) | deep |
 | `smithy-implement` | TDD implementation: failing test → code → commit | forge (per task) | deep |
 | `smithy-implementation-review` | Read-only code review; returns findings for forge to apply | forge (after implementation) | deep |
-| `smithy-plan-review` | Read-only self-consistency review of planning artifacts; returns structured findings for the parent command to apply | strike, ignite, render, mark, cut (after artifact generation, before PR) | deep |
+| `smithy-plan-review` | Read-only self-consistency review of planning artifacts; durable screen/flow artifacts route to `smithy.audit` and `flow-lint`; returns structured findings for the parent command to apply | strike, ignite, render, mark, cut (after artifact generation, before PR) | deep |
 | `smithy-recall` | Read-only engraved-knowledge recall across the user / repo / project levels; ranks level-tagged records, flags candidate invariant exceptions with their ledger severity, reports declared vs. undeclared cross-level conflicts, and flags retired-decision citation hazards | strike, ignite, render, mark, cut (`engraved-recall-dispatch`, scan phase) | standard |
 | `smithy-scout` | Pre-planning consistency scan | render, mark, cut | standard |
 | `smithy-maid` | Post-implementation doc staleness scan | forge (after review) | standard |
