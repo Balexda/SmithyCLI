@@ -23,7 +23,7 @@ this skill when:
   step-leakage from the executable test body into prose.
 - Emitting a mark-owned flow artifact and paired stub test body for a UI wire
   feature.
-- Validating cross-references during `flow-lint`.
+- Validating screen/flow/test graph cross-references with `smithy flow-lint`.
 
 Do **not** load this skill for backend features, for screen-only work
 (`smithy.helper-screen-design` covers screens), or for general prose work
@@ -63,8 +63,8 @@ Three keys, all required:
 | Key | Required | Notes |
 |-----|----------|-------|
 | `id` | Yes | Flat, stable `FlowId` (e.g. `AddTitle`). Matches the `.flow.md` filename stem and the paired executable test body named by `test-body`, plus the `flows:` list of the originating UI feature in `.features.md`. Never reused across flows. |
-| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must appear in some feature's `screens:` field; cross-file resolution is enforced by `flow-lint`. |
-| `test-body` | Yes | Repo-relative path to the paired executable test body in the project's UI driver (for example `maestro/flows/AddTitle.yaml` for Maestro, or `tests/e2e/add-title.spec.ts` for Playwright/Cypress). The path is the contract; renaming the test without updating this field is a `flow-lint` failure. |
+| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must appear in some feature's `screens:` field; cross-file resolution is enforced by `smithy flow-lint`. |
+| `test-body` | Yes | Repo-relative path to the paired executable test body in the project's UI driver (for example `maestro/flows/AddTitle.yaml` for Maestro, or `tests/e2e/add-title.spec.ts` for Playwright/Cypress). The path is the contract; renaming the test without updating this field is a `smithy flow-lint` failure. |
 
 No other keys. In particular, **no `feature:` or `kind:` field here** — flow
 membership is declared on the originating feature in `.features.md`;
@@ -176,9 +176,9 @@ against; the schema and body rules above are the authority.
   path-encoded hierarchy. `FlowId`s are never reused.
 - **`screens` is a list, in entry order.** A flow traverses more than one
   screen (that's what makes it a flow); listing them in entry order
-  makes the resolution at `flow-lint` time deterministic.
+  makes the resolution at `smithy flow-lint` time deterministic.
 - **`test-body` is a path, not a derived convention or driver-specific field.**
-  Renaming the executable test without updating the field is a `flow-lint`
+  Renaming the executable test without updating the field is a `smithy flow-lint`
   failure — the path is the contract, not a derived guess.
 
 ---
@@ -201,13 +201,14 @@ When auditing an existing flow pair, flag any of the following:
       `test-body`).
 - [ ] `test-body:` path does not resolve to an existing file in the repo.
 - [ ] `id` does not match the originating feature's `flows:` list, or is
-      reused across flows.
+      reused across flows. Run `smithy flow-lint` for repo-wide flow ID
+      uniqueness.
 - [ ] `screens:` is empty, not a list, contains non-string values, or
       references a `ScreenId` with no matching
       `design/screens/<ScreenId>.design.md` annotation. A direct review of
       this pair checks only that each referenced annotation file **exists**;
       whether that `ScreenId` is declared by some feature — and the rest of
-      the screen/flow/test graph — stays with `flow-lint`.
+      the screen/flow/test graph — stays with `smithy flow-lint`.
 - [ ] `.flow.md` body contains a `## Steps`, `## Walkthrough`, `## Flow`,
       or `## Path` section.
 - [ ] `.flow.md` body contains click/tap sequences, selectors, assertions,
@@ -223,8 +224,15 @@ When auditing an existing flow pair, flag any of the following:
 - [ ] testID referenced in the test body does not follow
       `<scope>-<element>[-<modifier>]` kebab-case naming.
 - [ ] Two test bodies share one `FlowId`, or one `FlowId` has no matching
-      test body.
+      test body. Run `smithy flow-lint` for missing, orphaned, and duplicate
+      test-body pairings. A bare `smithy flow-lint` only finds **orphans** —
+      a test body no flow declares — when the flow-test directory resolves,
+      and it looks for `maestro/flows` by default. On any other layout
+      (`tests/e2e/`, `cypress/e2e/`, …) pass
+      `smithy flow-lint --flow-test-root <dir>`; without it the orphan scan
+      is skipped silently and a clean run does **not** mean orphan-free.
+      Missing and duplicate pairings are checked either way.
 
 Surface each as a finding for the parent command (`smithy.forge` review
-pass, `smithy.audit`, or `flow-lint`) to act on. This skill itself does
-not modify files.
+pass, `smithy.audit`, or `smithy flow-lint`) to act on. This skill itself
+does not modify files.

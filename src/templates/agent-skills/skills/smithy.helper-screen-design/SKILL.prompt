@@ -15,7 +15,7 @@ deliberately chosen, what was deferred. Load this skill when:
   re-description.
 - Emitting a screen annotation from `smithy.mark` for a UI feature's typed
   ledger.
-- Validating cross-references during `flow-lint`.
+- Validating screen/flow/test graph cross-references with `smithy flow-lint`.
 
 Do **not** load this skill for backend features or for general voice/audience
 prose work — `smithy.helper-voice` covers the latter, and `kind: backend`
@@ -113,7 +113,8 @@ following:
       `design_system`).
 - [ ] `component-path:` path does not resolve to an existing file in the repo.
 - [ ] `id` does not match the feature's `screens:` list, or is reused
-      across screens.
+      across screens. Run `smithy flow-lint` for repo-wide screen ID
+      uniqueness and flow `screens:` cross-reference validation.
 - [ ] `design_system:` empty even when a `bundle:` is set (bundle without
       skill is invalid — skill is source of truth).
 - [ ] Body contains a `## Layout`, `## States`, `## Flow`, `## Steps`, or
@@ -128,5 +129,5 @@ following:
       present but key omitted).
 
 Surface each as a finding for the parent command (`smithy.forge` review
-pass, `smithy.audit`, or `flow-lint`) to act on. This skill itself does not
-modify files.
+pass, `smithy.audit`, or `smithy flow-lint`) to act on. This skill itself
+does not modify files.
