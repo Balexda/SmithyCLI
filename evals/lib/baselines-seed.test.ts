@@ -1,13 +1,13 @@
 /**
  * Tests for the seeded baseline file `evals/baselines/strike-health-check.json`.
  *
- * These tests pin the committed baseline against the checked-in spike capture
- * (`evals/spike/output-strike.txt`) and the strike YAML scenario's structural
+ * These tests pin the committed baseline against the checked-in capture
+ * (`evals/captures/strike-health-check.txt`) and the strike YAML scenario's structural
  * expectations, so drift in any of the three surfaces fails immediately under
  * `npm run test:evals`:
  *   - the on-disk baseline JSON,
  *   - `strike-health-check.yaml`'s `required_headings`,
- *   - the spike capture.
+ *   - the capture.
  *
  * The baseline is data, not code — it is expected to be regenerated manually
  * when the strike template legitimately changes.
@@ -25,7 +25,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compareToBaseline, loadBaseline } from './baseline.js';
+import { buildReport, formatReport, scenarioRunToResult } from './report.js';
 import { loadScenarioFromFile } from './scenario-loader.js';
+import { extractTokenTotals, parseStreamString } from './parse-stream.js';
 
 // Resolve paths relative to this source file so tests pass regardless of cwd
 // (same approach used in strike-scenario.ts and strike-scenario.test.ts).
@@ -48,6 +50,15 @@ const captureOutputPath = path.resolve(
   'captures',
   'strike-health-check.txt',
 );
+const captureEventsPath = path.resolve(
+  repoEvalsDir,
+  'captures',
+  'strike-health-check.events.jsonl',
+);
+const captureEvents = parseStreamString(
+  fs.readFileSync(captureEventsPath, 'utf8'),
+);
+const captureTokens = extractTokenTotals(captureEvents);
 
 describe('strike-health-check baseline seed', () => {
   it('exists on disk at evals/baselines/strike-health-check.json', () => {
@@ -94,12 +105,12 @@ describe('strike-health-check baseline seed', () => {
     }
   });
 
-  it('compareToBaseline against the spike capture produces an all-pass result (AS 10.1)', () => {
+  it('compareToBaseline against the capture produces an all-pass result (AS 10.1)', () => {
     const baseline = loadBaseline('strike-health-check', baselinesDir);
     expect(baseline).not.toBeNull();
 
     const captureOutput = fs.readFileSync(captureOutputPath, 'utf8');
-    const results = compareToBaseline(captureOutput, baseline!);
+    const results = compareToBaseline(captureOutput, baseline!, captureTokens);
 
     const failed = results.filter((r) => !r.passed);
     expect(
@@ -115,12 +126,109 @@ describe('strike-health-check baseline seed', () => {
     expect(summary!.passed).toBe(true);
   });
 
+  it('includes a token envelope containing the checked-in capture totals', () => {
+    const baseline = loadBaseline('strike-health-check', baselinesDir);
+    expect(baseline).not.toBeNull();
+
+    expect(captureTokens).toEqual({ input: 3329, output: 17135 });
+    expect(baseline!.token_envelope).toEqual({
+      input: { min: 1, max: 20000 },
+      output: { min: 1, max: 35000 },
+    });
+
+    const captureOutput = fs.readFileSync(captureOutputPath, 'utf8');
+    const results = compareToBaseline(captureOutput, baseline!, captureTokens);
+    const tokenCheck = results.find((r) => r.check_name === 'token envelope');
+    expect(tokenCheck).toEqual({
+      check_name: 'token envelope',
+      passed: true,
+      expected: 'input 1-20000, output 1-35000',
+      actual: 'input 3329, output 17135',
+    });
+  });
+
+  it('fails the strike token baseline check and report marker when live totals exceed the envelope', () => {
+    const baseline = loadBaseline('strike-health-check', baselinesDir);
+    const strikeScenario = loadScenarioFromFile(strikeCasePath);
+    expect(baseline).not.toBeNull();
+
+    const captureOutput = fs.readFileSync(captureOutputPath, 'utf8');
+    const driftedTokens = {
+      input: 20001,
+      output: captureTokens.output,
+    };
+    const results = compareToBaseline(captureOutput, baseline!, {
+      input: driftedTokens.input,
+      output: driftedTokens.output,
+    });
+    const tokenCheck = results.find((r) => r.check_name === 'token envelope');
+
+    expect(tokenCheck).toMatchObject({
+      passed: false,
+      expected: 'input 1-20000, output 1-35000',
+      actual: 'input 20001, output 17135',
+    });
+
+    const result = scenarioRunToResult(
+      strikeScenario,
+      {
+        extracted_text: captureOutput,
+        stream_events: captureEvents,
+        tokens: driftedTokens,
+        duration_ms: 491307,
+        exit_code: 0,
+        timed_out: false,
+      },
+      [{ check_name: 'seeded strike structure', passed: true }],
+      undefined,
+      results,
+    );
+    const report = buildReport([result], 491307);
+
+    expect(result.status).toBe('fail');
+    expect(formatReport(report)).toContain(
+      '[FAIL] strike-health-check (491307ms) input: 20001, output: 17135 baseline: FAIL',
+    );
+  });
+
+  it('formats the strike report with capture token totals and a passing baseline marker (AS 4.1)', () => {
+    const baseline = loadBaseline('strike-health-check', baselinesDir);
+    const strikeScenario = loadScenarioFromFile(strikeCasePath);
+    const captureOutput = fs.readFileSync(captureOutputPath, 'utf8');
+    expect(baseline).not.toBeNull();
+
+    const baselineChecks = compareToBaseline(
+      captureOutput,
+      baseline!,
+      captureTokens,
+    );
+    const result = scenarioRunToResult(
+      strikeScenario,
+      {
+        extracted_text: captureOutput,
+        stream_events: captureEvents,
+        tokens: captureTokens,
+        duration_ms: 491307,
+        exit_code: 0,
+        timed_out: false,
+      },
+      [{ check_name: 'seeded strike structure', passed: true }],
+      undefined,
+      baselineChecks,
+    );
+    const report = buildReport([result], 491307);
+
+    expect(formatReport(report)).toContain(
+      '[PASS] strike-health-check (491307ms) input: 3329, output: 17135 baseline: PASS',
+    );
+  });
+
   it('each baseline table entry matches a row in the spike output', () => {
     const baseline = loadBaseline('strike-health-check', baselinesDir);
     expect(baseline).not.toBeNull();
 
     const captureOutput = fs.readFileSync(captureOutputPath, 'utf8');
-    const results = compareToBaseline(captureOutput, baseline!);
+    const results = compareToBaseline(captureOutput, baseline!, captureTokens);
 
     const tableChecks = results.filter((r) =>
       r.check_name.startsWith('has baseline table with columns:'),

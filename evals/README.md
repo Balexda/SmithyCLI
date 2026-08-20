@@ -275,13 +275,19 @@ emitted. Detect content drift on top of structural checks.
   checks (AS 10.3). Malformed file → hard error.
 - **Format**: see `evals/baselines/strike-health-check.json` for the canonical
   shape — `scenario_name` (must match), `captured_at` (ISO 8601), `headings`
-  (string array), `tables` (`[{ columns: [...] }]`, optional).
+  (string array), `tables` (`[{ columns: [...] }]`, optional), and optional
+  `token_envelope` bounds.
 - **Semantics**: regression signal, not a content lock. Headings/tables present
   in output but absent from the baseline are neutral; only items in the
-  baseline that disappear from output flag drift.
+  baseline that disappear from output flag drift. Token envelopes compare live
+  `input` and `output` totals against inclusive min/max ranges when present.
 - **Updating**: manual. After a deliberate template change that shifts output
   structure, capture the new headings/tables and rewrite the JSON file. There
   is no auto-generation tool by design (out of scope, see spec §Out of Scope).
+  The initial `strike-health-check` token envelope was calibrated from the
+  checked-in capture's terminal usage totals (`input: 3329`, `output: 17135`)
+  with broad bounds (`input: 1-20000`, `output: 1-35000`) to tolerate provider
+  variance while still catching missing usage data and material drift.
 
 ## Maintenance — when patterns drift
 
