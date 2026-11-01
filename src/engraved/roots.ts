@@ -143,12 +143,52 @@ export function listProjectSlugs(): string[] {
   return entries
     .filter(
       (entry) =>
-        entry.isDirectory() &&
         entry.name !== DEFAULT_PROJECT &&
-        isValidProjectSlug(entry.name),
+        isValidProjectSlug(entry.name) &&
+        isDirectoryEntry(dir, entry),
     )
     .map((entry) => entry.name)
     .sort();
+}
+
+/**
+ * Whether a `projects/` entry is a directory once symlinks are followed.
+ * `Dirent.isDirectory()` is false for a symlink, and a linked project store
+ * (`smithy project link`) is exactly that — a symlink at
+ * `~/.smithy/projects/<slug>` pointing at a working tree the user keeps
+ * elsewhere. A dangling link reads as absent rather than throwing.
+ */
+function isDirectoryEntry(dir: string, entry: fs.Dirent): boolean {
+  if (entry.isDirectory()) return true;
+  if (!entry.isSymbolicLink()) return false;
+  try {
+    return fs.statSync(path.join(dir, entry.name)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether a named project store exists on disk — a directory, or a symlink
+ * to one. `default` is not a named project and never resolves here.
+ */
+export function projectStoreExists(slug: string): boolean {
+  if (!isValidProjectSlug(slug) || slug === DEFAULT_PROJECT) return false;
+  try {
+    return fs.statSync(projectRoot(slug)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** The reserved slug of the shared cross-repo store, which is not a named project. */
+export function isDefaultProjectSlug(slug: string): boolean {
+  return slug === DEFAULT_PROJECT;
+}
+
+/** Tilde form of a named project store's root, with a trailing slash — the prefix prompts use. */
+export function projectStorePrefixFor(slug: string): string {
+  return `~/.smithy/${PROJECTS_DIR}/${slug}/`;
 }
 
 /**

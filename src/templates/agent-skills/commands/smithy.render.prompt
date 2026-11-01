@@ -330,6 +330,7 @@ are shown to illustrate the seam):
 **Source RFC**: `<{{artifactsRoot}}docs/rfcs/YYYY-NNN-slug/slug.rfc.md>`
 **Milestone**: <N> — <Milestone Title>
 **Created**: YYYY-MM-DD
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 
 ## Features
 <!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->

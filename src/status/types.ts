@@ -226,6 +226,15 @@ export interface ArtifactRecord {
    */
   repo?: string;
   /**
+   * The named project store this artifact belongs to — declared by its
+   * `**Project**:` header (stamped by the authoring commands whenever a
+   * run resolved a project), or, under `smithy status --project`, the
+   * store it was scanned from. Absent for artifacts at an install root
+   * that never named a project, which is the common single-repo case.
+   * Reported verbatim; `smithy root` is what checks a slug against disk.
+   */
+  project?: string;
+  /**
    * Repo-relative path to the parent artifact. `null` means "no parent"
    * (top-level RFCs, orphans); an omitted field means "unknown".
    */

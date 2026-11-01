@@ -54,15 +54,26 @@ Where an external store lands depends on whether you ran `smithy init` inside a 
 
 | Where you run it | Order tried |
 |---|---|
-| Inside a repo, `artifactsLocation: repo` | the repo |
-| Inside a repo, `artifactsLocation: external` | the repo → `~/.smithy/repos/<repoKey>/` → `~/.smithy/projects/default/` |
-| Outside a repo | `~/.smithy/projects/default/` → the working directory |
+| Inside a repo, `artifactsLocation: repo` | the repo → the one named project store, when exactly one exists |
+| Inside a repo, `artifactsLocation: external` | the repo → `~/.smithy/repos/<repoKey>/` → the one named project store → `~/.smithy/projects/default/` |
+| Outside a repo | the one named project store → `~/.smithy/projects/default/` → the working directory |
 
-Passing `--root <path>` skips the cascade entirely and scans exactly that path. When discovery lands anywhere other than the working directory, `smithy status` prints the store it used, and `--format json` reports it as `scan_root`.
+Passing `--root <path>` skips the cascade entirely and scans exactly that path, and `--project <slug>` scans exactly that named store (`--project all` scans every one, tagging each record with its `project`). When discovery lands anywhere other than the working directory, `smithy status` prints the store it used, and `--format json` reports it as `scan_root`.
+
+### Named project stores
+
+One root per install is right for one workstream per install. When two workstreams run on one machine, or one project spans several repos, give each its own store:
+
+```bash
+smithy project init 007-persona-profiles     # ~/.smithy/projects/007-persona-profiles/, its own git repository
+/smithy.mark --project 007-persona-profiles "<feature>"
+```
+
+Every planning command resolves its root once, at the start, with `smithy root`: an explicit `--project` wins, else the project the input artifact declares (its `**Project**` header, or the store it lives in), else the install root. Reads such as `smithy status` may also take the single named store when exactly one exists; writes never guess. Artifacts written into a project store carry a `**Project**` header so the next command in the pipeline — `smithy.cut` from the spec, `smithy.forge` from the tasks file, from any directory — lands in the same store. See [docs/project-stores.md](docs/project-stores.md).
 
 ### External stores are git repositories
 
-`smithy init` runs `git init` on the store it creates and makes one initial commit. That history is the only record these artifacts have — nothing else tracks them — so if an agent overwrites or deletes one, `git restore` brings it back. Re-running `init` or `update` never touches an existing store's history.
+`smithy init` runs `git init` on the store it creates and makes one initial commit, and `smithy project init` does the same for a named project store. That history is the only record these artifacts have — nothing else tracks them — so if an agent overwrites or deletes one, `git restore` brings it back. Re-running `init` or `update` never touches an existing store's history.
 
 Nothing is pushed anywhere. To sync a store between machines, attach a remote yourself:
 

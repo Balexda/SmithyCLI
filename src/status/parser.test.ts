@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 // assertion that the barrel re-exports the parser correctly.
 import {
   extractImplementationRepo,
+  extractProjectHeader,
   parseArtifact,
   parseDependencyTable,
   parseFeatures,
@@ -1058,6 +1059,30 @@ Just prose.
     expect(record.slices).toBeUndefined();
   });
 });
+describe('extractProjectHeader', () => {
+  it('reads a backticked header and ignores trailing narrative', () => {
+    expect(extractProjectHeader('**Project**: `pedregal` — the persona workstream\n')).toBe(
+      'pedregal',
+    );
+    expect(extractProjectHeader('**Project**: pedregal')).toBe('pedregal');
+  });
+
+  it('accepts a project: frontmatter key as the second spelling, header winning', () => {
+    expect(extractProjectHeader('---\nid: D-1\nproject: "web-next"\n---\n# R\n')).toBe('web-next');
+    expect(extractProjectHeader('---\nproject: web-next\n---\n\n**Project**: `pedregal`\n')).toBe(
+      'pedregal',
+    );
+  });
+
+  it('returns null when absent or empty — the common single-root case', () => {
+    expect(extractProjectHeader('# Spec\n\n**Created**: 2026-11-01\n')).toBeNull();
+    expect(extractProjectHeader('**Project**:')).toBeNull();
+    expect(extractProjectHeader('**Project**: ``')).toBeNull();
+    // A `project:` line outside the frontmatter block is prose, not a key.
+    expect(extractProjectHeader('# Spec\n\nproject: not-a-key\n')).toBeNull();
+  });
+});
+
 describe('extractImplementationRepo', () => {
   it('reads a backticked declaration and ignores trailing narrative', () => {
     expect(

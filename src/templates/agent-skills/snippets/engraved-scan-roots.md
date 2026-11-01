@@ -36,6 +36,7 @@ already live, and moving them would break every citation that names one.
 Missing roots are normal at every level. A level with no store on disk is
 scanned-and-empty, never an error.
 
-{{>engraved-project-resolution}}
-
-With no project resolved, scan `user` + `repo` only.
+Which project is in play is settled by whoever invokes these rules — the
+planning command's artifact-root resolution step, or the slug a dispatch
+passes in — never by the working directory name. With no project resolved,
+scan `user` + `repo` only.

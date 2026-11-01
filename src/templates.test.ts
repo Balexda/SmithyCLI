@@ -134,7 +134,7 @@ describe('loadSnippets', () => {
       'engraved-recall-dispatch.md',
       'engraved-levels.md',
       'engraved-scan-roots.md',
-      'engraved-project-resolution.md',
+      'artifact-root-resolution.md',
       'spec-debt-section.md',
       'open-implementation-questions.md',
       'typed-ui-build-profiles.md',
@@ -2853,7 +2853,7 @@ describe('getComposedTemplates', () => {
         // What the parent genuinely owns on the dispatch side: resolving the
         // project, which is the one input recall cannot see for itself.
         expect(dispatch, commandName).toContain('**Project**');
-        expect(dispatch, commandName).toContain('--project <slug>');
+        expect(dispatch, commandName).toContain('smithy root');
         // What it does not: the store-root tables. Those belong to recall (and
         // to the degraded branch, which has no sub-agent to delegate to).
         expect(dispatch, commandName).not.toContain('~/.smithy/decisions/');
@@ -3353,7 +3353,9 @@ describe('getComposedTemplates', () => {
     // visible, but each carries the condition inline: a single-repo or
     // monorepo tasks file should come out with neither.
     const cut = composed.commands.get('smithy.cut.md')!;
-    expect(cut).toContain('**Story Number**: <NN>\n**Implementation repo**: `<repo>`');
+    expect(cut).toContain(
+      '**Story Number**: <NN>\n**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*\n**Implementation repo**: `<repo>`',
+    );
     expect(cut).toContain('cross-repo project stores only');
     expect(cut).toContain('**Repo**: `<repo>`');
   });
@@ -5583,7 +5585,10 @@ describe('getComposedTemplates artifactsRoot', () => {
   it('includes the store commit protocol only in external mode', async () => {
     // In repo mode the same instructions would tell the agent to commit the
     // *code* repo mid-plan, so the block has to be genuinely absent — not
-    // merely prefaced with a condition the agent is trusted to evaluate.
+    // merely prefaced with a condition the agent is trusted to evaluate. The
+    // repo-mode branch keeps only the project-store variant, whose `git -C`
+    // names a literal `~/.smithy/projects/<slug>/` path that can never
+    // resolve to the code repo.
     const external = await getComposedTemplates('claude', '~/.smithy/myrepo/');
     const strike = external.commands.get('smithy.strike.md')!;
     expect(strike).toContain('### Committing artifacts to the store');
@@ -5597,7 +5602,9 @@ describe('getComposedTemplates artifactsRoot', () => {
     const inRepo = await getComposedTemplates('claude');
     const repoStrike = inRepo.commands.get('smithy.strike.md')!;
     expect(repoStrike).not.toContain('### Committing artifacts to the store');
-    expect(repoStrike).not.toContain('git -C ');
+    expect(repoStrike).toContain('### Committing to a resolved project store');
+    expect(repoStrike).toContain('git -C ~/.smithy/projects/<slug>/ add -A');
+    expect(repoStrike.match(/git -C (?!~\/\.smithy\/projects\/<slug>\/)/g)).toBeNull();
     expect(repoStrike).not.toContain('{{#ifExternalArtifacts}}');
   });
 

@@ -21,9 +21,12 @@ export {
 
 export {
   displayPath,
+  isDefaultProjectSlug,
   isValidProjectSlug,
   listProjectSlugs,
   projectRoot,
+  projectStoreExists,
+  projectStorePrefixFor,
   resolveEngravedRoots,
   resolveProject,
   userEngravedRoot,

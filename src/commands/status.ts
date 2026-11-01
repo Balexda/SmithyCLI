@@ -69,7 +69,12 @@ import {
 } from '../manifest.js';
 import {
   isValidProjectSlug,
+  listProjectSlugs,
+  projectRoot,
+  projectStoreExists,
+  projectStorePrefixFor,
   renderEngraved,
+  resolveProject,
   scanEngraved,
   serializeEngravedForJson,
 } from '../engraved/index.js';
@@ -212,10 +217,18 @@ export interface StatusOptions {
    */
   engraved?: boolean;
   /**
-   * Project slug naming the workstream whose engraved store to include.
-   * Without it, the project level is included only when exactly one named
-   * store exists — an ambiguous guess would silently apply another
-   * workstream's rules. Only meaningful with `--engraved`.
+   * Project slug naming a workstream's store under `~/.smithy/projects/`.
+   *
+   * Planning view: scan that store and nothing else, with paths rendered in
+   * its tilde form; `all` scans every named store and tags each record with
+   * its `project`. Without it, the discovery cascade still appends the one
+   * named store when exactly one exists — a read, so the single-store rule
+   * applies — after the install's own roots.
+   *
+   * Engraved view: include that project level. Without it, the level is
+   * included only when exactly one named store exists; an ambiguous guess
+   * would silently apply another workstream's rules. `all` is not accepted
+   * here.
    */
   project?: string;
 }
@@ -263,7 +276,8 @@ export interface StatusJsonPayload {
   /**
    * The root discovery settled on — the working directory, or the tilde form
    * of an external store (`~/.smithy/repos/<repoKey>/`,
-   * `~/.smithy/projects/default/`). Additive field: it tells a consumer which
+   * `~/.smithy/projects/<slug>/`, `~/.smithy/projects/default/`; the parent
+   * `~/.smithy/projects/` under `--project all`). Additive field: it tells a consumer which
    * of the cascade's candidates won, so "why is this empty?" is answerable
    * without re-deriving the resolution rules.
    */
@@ -314,21 +328,38 @@ export function statusAction(opts: StatusOptions = {}): void {
       process.exitCode = 2;
       return;
     }
-  } else if (opts.project !== undefined) {
-    process.stderr.write(
-      `smithy status: --project requires --engraved (it selects which workstream's engraved store to include).\n`,
-    );
-    process.exitCode = 2;
-    return;
+    if (opts.project === 'all') {
+      process.stderr.write(
+        `smithy status: --project all is a planning-view option; --engraved takes one project slug.\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
   }
 
   // The slug is joined into a filesystem path, so it has to be one plain
   // segment. Rejecting loudly beats dropping the project level silently — the
   // user asked for a workstream and would otherwise get a user+repo answer
-  // that looks complete.
-  if (opts.project !== undefined && !isValidProjectSlug(opts.project)) {
+  // that looks complete. `all` is the one non-slug the planning view reads.
+  if (
+    opts.project !== undefined &&
+    opts.project !== 'all' &&
+    (!isValidProjectSlug(opts.project) || opts.project === 'default')
+  ) {
     process.stderr.write(
-      `smithy status: invalid --project value '${opts.project}'. Expected a single path segment (letters, digits, '.', '_', '-').\n`,
+      `smithy status: invalid --project value '${opts.project}'. Expected a single path segment (letters, digits, '.', '_', '-'), and not 'default'.\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+  // A named store that is not there is a typo, not an empty workstream.
+  if (
+    opts.project !== undefined &&
+    opts.project !== 'all' &&
+    !projectStoreExists(opts.project)
+  ) {
+    process.stderr.write(
+      `smithy status: no project store named '${opts.project}'. Create one with: smithy project init ${opts.project}\n`,
     );
     process.exitCode = 2;
     return;
@@ -532,10 +563,19 @@ export function statusAction(opts: StatusOptions = {}): void {
   // rather than a store-relative path the user can't act on.
   //
   // Explicit `--root` always wins, so power users can scan an arbitrary path.
+  //
+  // `--project <slug>` names one store and scans only it; `--project all`
+  // scans every named store and labels each record with its project, which
+  // is the fleet view across workstreams. Both are explicit, so like
+  // `--root` they bypass the cascade.
   const { records, scanRoot } =
-    opts.root === undefined
-      ? scanWithCascade(resolvedRoot)
-      : { records: scan(resolvedRoot), scanRoot: resolvedRoot };
+    opts.project === 'all'
+      ? scanAllProjects()
+      : opts.project !== undefined
+        ? scanProjectStore(opts.project)
+        : opts.root === undefined
+          ? scanWithCascade(resolvedRoot)
+          : { records: scan(resolvedRoot), scanRoot: resolvedRoot };
   // US6: apply the `--status` / `--type` filters to the classified
   // record set before it reaches `buildTree` / the JSON emitter.
   // Ancestor retention inside `filterRecords` preserves AS 6.1 / AS
@@ -983,14 +1023,25 @@ function artifactScanCandidates(resolvedRoot: string): ScanCandidate[] {
     prefix: projectStorePrefix(),
   };
 
+  // The one named project store, when exactly one exists. A read may apply
+  // the single-store rule (`smithy root` applies it for reads too); it trails
+  // the install's own roots so a repo with artifacts of its own still shows
+  // them, and leads only the shared `default` store, which is where planning
+  // lands when nothing more specific was named.
+  const named = resolveProject();
+  const namedStore: ScanCandidate[] =
+    named === null
+      ? []
+      : [{ root: projectRoot(named), prefix: projectStorePrefixFor(named) }];
+
   if (!isInsideGitRepo(resolvedRoot)) {
-    return [projects, { root: resolvedRoot, prefix: '' }];
+    return [...namedStore, projects, { root: resolvedRoot, prefix: '' }];
   }
 
   const manifest =
     readManifest(resolvedRoot, 'repo') ?? readManifest(resolvedRoot, 'user');
   if ((manifest?.artifactsLocation ?? 'repo') !== 'external') {
-    return [{ root: resolvedRoot, prefix: '' }];
+    return [{ root: resolvedRoot, prefix: '' }, ...namedStore];
   }
 
   return [
@@ -999,8 +1050,35 @@ function artifactScanCandidates(resolvedRoot: string): ScanCandidate[] {
       root: resolveArtifactsRoot(resolvedRoot, 'external'),
       prefix: templateArtifactsPrefix(resolvedRoot, 'external'),
     },
+    ...namedStore,
     projects,
   ];
+}
+
+/**
+ * Scan one named project store, re-prefixed to its tilde form and with every
+ * record tagged `project`. The store's existence was checked at option
+ * validation, so an empty result here means an empty store.
+ */
+function scanProjectStore(slug: string): { records: ArtifactRecord[]; scanRoot: string } {
+  const prefix = projectStorePrefixFor(slug);
+  const records = scan(projectRoot(slug));
+  applyExternalPrefix(records, prefix);
+  for (const record of records) record.project = slug;
+  return { records, scanRoot: prefix };
+}
+
+/**
+ * The fleet view: every named store, concatenated in slug order. Paths carry
+ * each store's prefix and every record carries its `project`, so the one
+ * payload answers "what is in flight across all my workstreams?".
+ */
+function scanAllProjects(): { records: ArtifactRecord[]; scanRoot: string } {
+  const records: ArtifactRecord[] = [];
+  for (const slug of listProjectSlugs()) {
+    records.push(...scanProjectStore(slug).records);
+  }
+  return { records, scanRoot: '~/.smithy/projects/' };
 }
 
 /**

@@ -352,6 +352,13 @@ export function parseArtifact(
     warnings,
   };
 
+  // Which named project store the artifact belongs to, when it says. Every
+  // artifact type can carry the header — the authoring commands stamp it on
+  // whatever they write into a project store — so it is read before the
+  // per-type branches. Absent for the common single-root install.
+  const project = extractProjectHeader(content);
+  if (project !== null) record.project = project;
+
   if (type === 'tasks') {
     // Which repo the slices land in, when the artifact says. Only
     // cross-repo project stores declare this: a single-repo or monorepo
@@ -794,6 +801,41 @@ export function extractImplementationRepo(content: string): string | null {
   const match = /^\s*\*\*Implementation repo\*\*\s*:\s*(.*)$/im.exec(content);
   if (match === null) return null;
   return normalizeRepoValue(match[1] ?? '');
+}
+
+/**
+ * Extract the project slug declared by the canonical `**Project**:` header,
+ * which the authoring commands stamp on every planning artifact written
+ * into a named project store (`~/.smithy/projects/<slug>/`):
+ *
+ * ```
+ * **Project**: `007-de-persona-profiles`
+ * ```
+ *
+ * A `project:` key in a leading YAML frontmatter block is accepted as the
+ * second spelling, so a record that carries frontmatter rather than a bold
+ * header block resolves the same way. The header wins when both appear.
+ *
+ * Returns `null` when neither is present — the common case for a
+ * single-repo install, where every artifact lives at the install root and
+ * nothing needs to say so. The value is returned verbatim; whether a store
+ * with that slug exists is for `smithy root` to check. Never throws.
+ */
+export function extractProjectHeader(content: string): string | null {
+  const header = /^\s*\*\*Project\*\*\s*:\s*(.*)$/im.exec(content);
+  if (header !== null) {
+    const value = normalizeRepoValue(header[1] ?? '');
+    if (value !== null) return value;
+  }
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
+  if (frontmatter !== null) {
+    const key = /^project\s*:\s*(.*)$/m.exec(frontmatter[1] ?? '');
+    if (key !== null) {
+      const raw = (key[1] ?? '').trim().replace(/^["']|["']$/g, '');
+      return raw.length === 0 ? null : raw;
+    }
+  }
+  return null;
 }
 
 /**

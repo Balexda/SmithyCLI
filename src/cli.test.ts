@@ -1482,10 +1482,20 @@ describe('CLI status', () => {
       expect(stderr).toContain("invalid --project value");
     });
 
-    it('rejects --project without --engraved', () => {
-      const { stderr, status } = runEngraved(['--project', 'discount-engine', '--root', tmpDir]);
+    it('accepts --project on the planning view, failing loudly on a store that is not there', () => {
+      // Formerly `--project` required `--engraved`. Named project stores now
+      // hold planning artifacts too, so the planning view takes the flag —
+      // and a slug with no store behind it is a typo, not an empty scan.
+      const { stderr, status } = runEngraved(['--project', 'no-such-project', '--root', tmpDir]);
       expect(status).toBe(2);
-      expect(stderr).toContain('--project requires --engraved');
+      expect(stderr).toContain("no project store named 'no-such-project'");
+      expect(stderr).toContain('smithy project init no-such-project');
+    });
+
+    it('rejects --project all under --engraved', () => {
+      const { stderr, status } = runEngraved(['--engraved', '--project', 'all', '--root', tmpDir]);
+      expect(status).toBe(2);
+      expect(stderr).toContain('--project all is a planning-view option');
     });
   });
 

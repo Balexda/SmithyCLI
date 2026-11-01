@@ -7,6 +7,12 @@ import { uninitAction } from './commands/uninit.js';
 import { updateAction, type UpdateOptions } from './commands/update.js';
 import { statusAction, type StatusOptions } from './commands/status.js';
 import { flowLintAction, type FlowLintOptions } from './commands/flow-lint.js';
+import { rootAction, type RootOptions } from './commands/root.js';
+import {
+  projectInitAction,
+  projectLinkAction,
+  projectListAction,
+} from './commands/project.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -107,13 +113,48 @@ program
   // principles — records with no dependency lineage, so none of the filter or
   // graph flags above apply to it. `statusAction` rejects the combinations.
   .option('--engraved', 'Inventory engraved knowledge (decisions, invariants, principles) by level')
-  .option('--project <slug>', 'With --engraved: include the named project level')
+  .option('--project <slug>', 'Scan the named project store (or `all` for every named store); with --engraved, include that project level')
   .option('--no-color', 'Suppress ANSI color output')
   .option('--ascii', 'Use ASCII tree connectors and icons (auto when terminal is not UTF-8)')
   .action((opts: Record<string, unknown>) => {
     const statusOpts: StatusOptions = { ...opts } as StatusOptions;
     return statusAction(statusOpts);
   });
+
+program
+  .command('root')
+  .description('Report the planning-artifact root for this run (project store or install root)')
+  .option('--project <slug>', 'Resolve to the named project store')
+  .option('--from <artifact-path>', 'Resolve from the project the given artifact declares or lives in')
+  .option('--write', 'Resolve for a write: never pick the only named store by itself')
+  .addOption(
+    new Option('--format <format>', 'Output format')
+      .choices(['text', 'json'])
+      .default('text'),
+  )
+  .option('-d, --target-dir <path>', 'Install directory to read the manifest from (defaults to cwd)')
+  .action((opts: Record<string, unknown>) => rootAction(opts as RootOptions));
+
+const project = program
+  .command('project')
+  .description('Manage named project stores under ~/.smithy/projects/');
+project
+  .command('init <slug>')
+  .description('Create a git-backed project store')
+  .action((slug: string) => projectInitAction(slug));
+project
+  .command('link <slug> <path>')
+  .description('Link a project store to a directory you already keep')
+  .action((slug: string, target: string) => projectLinkAction(slug, target));
+project
+  .command('list')
+  .description('List named project stores')
+  .addOption(
+    new Option('--format <format>', 'Output format')
+      .choices(['text', 'json'])
+      .default('text'),
+  )
+  .action((opts: Record<string, unknown>) => projectListAction(opts as { format?: 'text' | 'json' }));
 
 program
   .command('flow-lint')
