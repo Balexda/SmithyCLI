@@ -504,13 +504,20 @@ export const permissions: Record<string, PermissionEntry> = {
   // session-level belt-and-suspenders for hosts that do not apply frontmatter
   // grants, mirroring what `extraPermissions` does for the script skills.
   //
-  // `init`, `update`, and `uninit` are deliberately absent: they write into
-  // the target repo and are operator-driven, not agent-driven. `status *`
-  // also covers the bare `smithy status`, since a trailing ` *` matches at a
-  // word boundary *or* end-of-string — the bare spelling is listed anyway for
+  // `smithy root` is the other read path: every planning command runs it once
+  // to learn which store this run writes to, so a prompt on it would fire on
+  // every invocation. `smithy project list` is read-only too.
+  //
+  // `init`, `update`, `uninit`, and `project init` / `link` are deliberately
+  // absent: they write into the target repo or create stores in the user's
+  // home, and are operator-driven, not agent-driven. `status *` also covers
+  // the bare `smithy status`, since a trailing ` *` matches at a word
+  // boundary *or* end-of-string — the bare spelling is listed anyway for
   // Gemini, whose matcher has no such rule.
   smithy: {
     "status": ["", "*"],
+    "root": ["", "*"],
+    "project list": ["", "*"],
   },
 
   // --- Misc utilities ---

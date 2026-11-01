@@ -148,6 +148,7 @@ with this format:
 # Strike: <Title>
 
 **Date:** YYYY-MM-DD  |  **Branch:** <resolved-branch>  |  **Status:** Ready
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 
 ## Summary
 <!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->

@@ -46,6 +46,10 @@ If the input is empty or you cannot determine the mode, ask:
 
 ---
 
+{{>artifact-location-policy}}
+
+---
+
 ## The engraved-knowledge schema
 
 ### Kinds at a glance
@@ -176,9 +180,10 @@ For **create** modes:
 
 3. Default to `repo` if the user declines to choose.
 
-When the resolved level is `project`, resolve the project slug too, using the
-resolution order in the levels section. If no slug resolves, stop and ask for
-one — a project-level record has nowhere to go without it.
+When the resolved level is `project`, the project slug is whatever the
+artifact-root resolution step returned (`smithy root --write`, with the
+`--project <slug>` token when one was passed). If no slug resolved, stop and
+ask for one — a project-level record has nowhere to go without it.
 
 ---
 

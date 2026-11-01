@@ -434,6 +434,7 @@ Before any sub-phase begins, create the RFC folder and file:
 # RFC: <Title>
 
 **Created**: YYYY-MM-DD  |  **Status**: Draft
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 ```
 
 Do not add a template skeleton or empty section placeholders. Each sub-phase
@@ -756,6 +757,7 @@ duplicates the debt table in a less structured format.
 # RFC: <Title>
 
 **Created**: YYYY-MM-DD  |  **Status**: Draft
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 
 ## Summary
 <!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->

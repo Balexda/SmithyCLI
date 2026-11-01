@@ -26,6 +26,7 @@ Note the two sub-agent filename schemes: the Claude file derives from the source
 - **Templates**: `src/templates/agent-skills/{commands,prompts,agents}/*.prompt` — categorized by deployment target. Uses [Dotprompt](https://firebase.google.com/docs/genkit/dotprompt)'s native `.prompt` extension with YAML frontmatter (`name`, `description`). Dotprompt handles Handlebars rendering at deploy time — resolving partials (`{{>snippet-name}}`), conditionals (`{{#ifAgent}}...{{/ifAgent}}`), and other expressions. Frontmatter is kept verbatim for Gemini/Codex skills; on the Claude path, command frontmatter is *translated* to Claude's vocabulary (`src/command-frontmatter.ts`) and prompt frontmatter is stripped. Deployed files are translated to `.md`. See `src/templates/agent-skills/README.md` for full conventions.
 - **Snippets**: `src/templates/agent-skills/snippets/*.md` — shared Markdown fragments injected via `{{>partial-name}}` Handlebars partials. Resolved by Dotprompt at deploy time; not deployed as standalone files.
 - **Orders body templates**: `src/orders-templates.ts` — exports the four canonical default body strings (`rfc` / `features` / `spec` / `tasks`) plus the `provisionOrdersTemplates` function that `smithy init` calls to write them under `<manifestDir>/templates/orders/<type>.md`. The same defaults double as the built-in fallback bodies in `smithy.orders` (parity asserted in `src/templates.test.ts`).
+- **Project stores**: `src/project-store.ts` — run-time resolution of the planning-artifact root (`smithy root`, `src/commands/root.ts`) across named project stores under `~/.smithy/projects/<slug>/`, managed by `smithy project init|link|list` (`src/commands/project.ts`). See the Project Stores section below.
 - **Manifest**: `src/manifest.ts` — tracks deployed files in `.smithy/smithy-manifest.json` for reliable cleanup and upgrades.
 - **Engraved read path**: `src/engraved/` — level resolution, record/ledger parsing, scanner, and text/JSON rendering behind `smithy status --engraved`. Separate from `src/status/` because engraved records are graph roots with no `## Dependency Order` lineage.
 - **Build**: `tsup` bundles to `dist/cli.js` (ESM). Run `npm run build` to compile.
@@ -184,6 +185,41 @@ when inheriting a spec's debt, so a legacy spec's implementation unknowns are
 demoted to `IQ` rows rather than re-inherited as debt into every tasks file.
 Full schema in `src/templates/agent-skills/README.md`.
 
+### Project Stores (named artifact roots)
+
+`smithy init` renders one artifact root into every prompt through
+`{{artifactsRoot}}`. A **named project store** — `~/.smithy/projects/<slug>/`,
+its own git repository, created by `smithy project init <slug>` (or linked to
+a directory the user already keeps with `smithy project link`) — can be the
+root for one workstream instead, so parallel workstreams never share a
+checkout or a branch and a multi-repo project has one home keyed to no repo.
+The rendered root stays as the fallback; installs that never name a project
+behave as before.
+
+Resolution is the CLI's job, not the agent's. Every command that composes
+`artifact-location-policy` (which nests `snippets/artifact-root-resolution.md`,
+the rule's one home) runs `smithy root --format json` once per run. First
+match wins: `--project <slug>` in the arguments; the project the input artifact
+declares (`**Project**` header, `project:` frontmatter, or the named store it
+physically lives in — `smithy root --from <path>`); **reads only**, the single
+named store on the machine; else the install root. Writes pass `--write`, never
+take the single-store rule, and get a `warning` when they fall through while
+named stores exist. The working directory's name is never a signal (D-5 /
+INV-4). The result carries `prefix` and `rendered_prefix`, so the agent's part
+is a literal replacement of the leading prefix at every artifact path the
+prompt names.
+
+Every artifact written into a project store carries `**Project**: \`<slug>\``
+directly after its Created / Status header line, omitted when no project
+resolved; `src/status/parser.ts` reads it as `project` on every record.
+Engraved records never carry it and no engraved level moves: the repo level
+stays at the rendered root, the project level in the store's record
+directories. `smithy status --project <slug>` scans one named store,
+`--project all` every one. Nothing under `~/.smithy/projects/` is ever added
+to a manifest, so `uninit` cannot reach a project store and `update` never
+stamps or moves user-authored artifacts. Operator guide:
+[docs/project-stores.md](docs/project-stores.md).
+
 ### Implementation Repo Declaration
 
 Every slice must be implementable in exactly one repository — `smithy.forge`
@@ -269,6 +305,8 @@ npm run test:evals   # Run evals unit tests (structural, parse-stream, runner, f
 node dist/cli.js init    # Test init flow
 node dist/cli.js uninit  # Test uninit flow
 node dist/cli.js update  # Test update flow
+node dist/cli.js root --format json          # Which store this run would use, and why
+node dist/cli.js project init <slug>         # Create a named project store
 ```
 
 **Important:** Always use `npm run` / `npm test` scripts for building, typechecking, and testing. Do not use `npx tsx`, `npx vitest`, or similar direct invocations — they require extra approvals and waste time.

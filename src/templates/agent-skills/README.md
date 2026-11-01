@@ -401,6 +401,39 @@ steering rows carry down as debt, implementation unknowns arrive here as
 never writes back to the parent — reclassification changes what the child
 carries, not what the parent recorded.
 
+## Project Declaration
+
+Planning artifacts have one root per install, rendered into every prompt at
+`smithy init`. A **named project store** — `~/.smithy/projects/<slug>/`, its
+own git repository — can be the root for one workstream instead, so parallel
+workstreams never share a checkout or a branch and a project spanning several
+repos has one home. Which root a run uses is resolved by `smithy root`, not by
+the agent: an explicit `--project <slug>`, else the project the input artifact
+declares, else (reads only) the single named store on the machine, else the
+install root. The working directory's name is never a signal.
+
+Every artifact written into a project store says so:
+
+```markdown
+# Feature Specification: Add-Title
+
+**Created**: 2026-06-06
+**Status**: Draft
+**Project**: `007-de-persona-profiles`
+```
+
+| Field | Where | Rule |
+|-------|-------|------|
+| `**Project**` | Header block of any planning artifact — PRD, RFC, feature map, spec, tasks, strike, persona — directly after the Created / Status line | The slug of the named store the artifact lives in. **Present only when a project resolved**; absent means the install root, never "guess". Engraved records do not carry it — their level is the store they sit in. |
+
+**Resolution**: `smithy root --from <artifact>` reads this header (a `project:`
+frontmatter key is the second spelling) and falls back to the store the file
+physically lives in, which is how a downstream command — `smithy.cut` from a
+spec, `smithy.forge` from a tasks file inside a code worktree — lands in the
+same store the upstream command wrote to. `smithy status` reports the header
+verbatim as `project` on each record, and `--project <slug>` / `--project all`
+scan one named store or every one of them.
+
 ## Implementation Repo Declaration (`.tasks.md`)
 
 **Most tasks files carry none of this.** A single-repo or monorepo install has

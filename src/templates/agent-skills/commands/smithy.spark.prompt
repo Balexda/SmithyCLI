@@ -196,6 +196,7 @@ taxonomy here.
 # PRD: <Title>
 
 **Created**: YYYY-MM-DD  |  **Status**: Draft
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 ```
 
 Do not add a template skeleton or empty section placeholders. Each sub-phase
@@ -398,6 +399,7 @@ path to trigger another Phase 0 review loop.
 # PRD: <Title>
 
 **Created**: YYYY-MM-DD  |  **Status**: Draft
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 
 ## Problem Statement
 <!-- audience: stakeholder; mode: explanation; length: 2-3 paragraphs; diagram: optional; examples: discouraged -->

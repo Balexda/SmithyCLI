@@ -172,6 +172,19 @@ describe('engraved level roots', () => {
     // which is worse than planning with no project level at all.
     expect(resolveProject('pedregal')).toBe('pedregal');
   });
+
+  it('discovers a linked project store and ignores a dangling link', () => {
+    // `smithy project link` makes `projects/<slug>` a symlink; a Dirent does
+    // not report a symlink as a directory, so discovery has to follow it.
+    const projects = path.join(fakeHome, '.smithy', 'projects');
+    const target = path.join(workdir, 'coord-planning');
+    fs.mkdirSync(target, { recursive: true });
+    fs.mkdirSync(projects, { recursive: true });
+    fs.symlinkSync(target, path.join(projects, 'coord'), 'dir');
+    fs.symlinkSync(path.join(workdir, 'gone'), path.join(projects, 'dangling'), 'dir');
+    expect(listProjectSlugs()).toEqual(['coord']);
+    expect(resolveProject()).toBe('coord');
+  });
 });
 
 describe('engraved id levels', () => {

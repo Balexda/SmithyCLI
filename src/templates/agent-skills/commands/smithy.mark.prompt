@@ -283,6 +283,7 @@ run, but can be the orchestrator's pre-staged branch when mark is
 invoked inside a linked worktree)*
 **Created**: YYYY-MM-DD
 **Status**: Draft
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 **Input**: <source — user description or RFC path with summary>
 **Source Feature Map**: `<path-to-.features.md>` — Feature <N>: <Title> *(include only when input is a `.features.md`)*
 

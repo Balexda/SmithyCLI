@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-import { ensureArtifactStore } from './artifact-store.js';
+import { ensureArtifactStore, ensureStoreRepo } from './artifact-store.js';
 
 /** Read the store's commit subjects, newest first. */
 function gitLog(root: string): string[] {
@@ -151,5 +151,40 @@ describe('ensureArtifactStore', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe('ensureStoreRepo', () => {
+  let scratch: string;
+
+  beforeEach(() => {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-storerepo-'));
+    vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
+    vi.stubEnv('GIT_CONFIG_SYSTEM', '/dev/null');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(scratch, { recursive: true, force: true });
+  });
+
+  it('by default nests a repository even inside an enclosing one, so stores stay independent', () => {
+    // A dotfiles checkout spanning the home directory must not swallow every
+    // store under it: each store is its own repository.
+    execFileSync('git', ['init', '-q'], { cwd: scratch, stdio: 'ignore' });
+    const root = path.join(scratch, 'store');
+    const result = ensureStoreRepo(root);
+    expect(result.gitInitialized).toBe(true);
+    expect(fs.existsSync(path.join(root, '.git'))).toBe(true);
+  });
+
+  it('with acceptEnclosingRepo, a root inside a working tree is left to that tree', () => {
+    execFileSync('git', ['init', '-q'], { cwd: scratch, stdio: 'ignore' });
+    const root = path.join(scratch, 'planning');
+    const result = ensureStoreRepo(root, { acceptEnclosingRepo: true });
+    expect(result.createdDir).toBe(true);
+    expect(result.gitInitialized).toBe(false);
+    expect(result.warning).toBeUndefined();
+    expect(fs.existsSync(path.join(root, '.git'))).toBe(false);
   });
 });

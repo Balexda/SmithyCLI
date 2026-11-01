@@ -448,6 +448,7 @@ Draft the tasks file with this structure:
 **Data Model**: `{{artifactsRoot}}specs/<folder>/<slug>.data-model.md`
 **Contracts**: `{{artifactsRoot}}specs/<folder>/<slug>.contracts.md`
 **Story Number**: <NN>
+**Project**: `<slug>` *(only when a project resolved — omit this line otherwise)*
 **Implementation repo**: `<repo>` _(cross-repo project stores only — omit this line in a single-repo or monorepo install)_
 
 ---

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import type { ArtifactsLocation } from './interactive.js';
-import { resolveArtifactsRoot } from './manifest.js';
+import { isInsideGitRepo, resolveArtifactsRoot } from './manifest.js';
 
 /**
  * Git-backed external artifact stores.
@@ -70,9 +70,10 @@ function storeReadme(root: string): string {
   return `# Smithy artifact store
 
 Smithy planning artifacts (RFCs, feature maps, specs, tasks, strikes, PRDs)
-for an install configured with \`artifactsLocation: external\`. Smithy created
-this directory and initialized it as a git repository so the artifacts have a
-history — if an agent overwrites or deletes one, \`git restore\` brings it
+kept outside any code repository — an install configured with
+\`artifactsLocation: external\`, or a named project store created with
+\`smithy project init\`. Smithy created this directory and initialized it as a
+git repository so the artifacts have a history — if an agent overwrites or deletes one, \`git restore\` brings it
 back.
 
     ${root}
@@ -111,9 +112,36 @@ export function ensureArtifactStore(
   location: ArtifactsLocation,
 ): EnsureArtifactStoreResult | null {
   if (location !== 'external') return null;
+  return ensureStoreRepo(resolveArtifactsRoot(targetDir, 'external'));
+}
 
-  const root = resolveArtifactsRoot(targetDir, 'external');
+export interface EnsureStoreRepoOptions {
+  /**
+   * Treat a root that sits anywhere inside an existing git working tree as
+   * already versioned, instead of requiring a `.git` entry at the root
+   * itself. Off by default: a dotfiles checkout spanning `~/` would
+   * otherwise swallow every `~/.smithy/repos/<key>/` store, and each store
+   * is meant to be its own repository. On for a *linked* project store,
+   * whose target is a working tree the user already keeps elsewhere — the
+   * point of linking is to ride that tree's history, not to nest a second
+   * repository inside it.
+   */
+  acceptEnclosingRepo?: boolean;
+}
 
+/**
+ * Ensure `root` exists and is git-backed, seeding a README and an initial
+ * commit when this call creates the repository. The shared engine behind
+ * {@link ensureArtifactStore} (repo-keyed and `default` stores) and
+ * `smithy project init` / `link` (named project stores): one store, one
+ * repository, whichever path created it.
+ *
+ * Never throws; see {@link ensureArtifactStore} for why.
+ */
+export function ensureStoreRepo(
+  root: string,
+  opts: EnsureStoreRepoOptions = {},
+): EnsureArtifactStoreResult {
   let createdDir = false;
   try {
     createdDir = !fs.existsSync(root);
@@ -127,7 +155,12 @@ export function ensureArtifactStore(
     };
   }
 
+  // `.git` may be a directory (a plain repository) or a file (a linked
+  // worktree or a submodule); both mean the root is already versioned.
   if (fs.existsSync(path.join(root, '.git'))) {
+    return { root, createdDir, gitInitialized: false };
+  }
+  if (opts.acceptEnclosingRepo === true && isInsideGitRepo(root)) {
     return { root, createdDir, gitInitialized: false };
   }
 
