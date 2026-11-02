@@ -352,6 +352,19 @@ export function statusAction(opts: StatusOptions = {}): void {
     process.exitCode = 2;
     return;
   }
+  // `--root` and `--project` each name the one place to scan; honoring one
+  // and silently dropping the other would hide a contradiction, so reject
+  // the pair the way the other contradictory flag pairs are rejected. The
+  // engraved view is different: there `--root` anchors the repo level and
+  // `--project` adds the project level, so both are meaningful together.
+  if (opts.engraved !== true && opts.project !== undefined && opts.root !== undefined) {
+    process.stderr.write(
+      `smithy status: --project cannot be combined with --root (each names the one place to scan).\n`,
+    );
+    process.exitCode = 2;
+    return;
+  }
+
   // A named store that is not there is a typo, not an empty workstream.
   if (
     opts.project !== undefined &&

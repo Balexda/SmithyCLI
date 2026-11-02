@@ -1074,6 +1074,20 @@ describe('extractProjectHeader', () => {
     );
   });
 
+  it('accepts the colon-inside-bold spelling the strike header uses for its other fields', () => {
+    expect(extractProjectHeader('# Strike: X\n\n**Date:** 2026-11-01\n**Project:** `pedregal`\n')).toBe(
+      'pedregal',
+    );
+  });
+
+  it('reads only the header block — never a fenced example or body prose', () => {
+    const documented =
+      '# Spec\n\n**Status**: Draft\n\n## Conventions\n\n```markdown\n**Project**: `<slug>`\n```\n\nA Project entity has a **Project**: owner field.\n';
+    expect(extractProjectHeader(documented)).toBeNull();
+    const fencedInHeader = '# Spec\n\n```\n**Project**: `<slug>`\n```\n**Project**: `real`\n\n## Body\n';
+    expect(extractProjectHeader(fencedInHeader)).toBe('real');
+  });
+
   it('returns null when absent or empty — the common single-root case', () => {
     expect(extractProjectHeader('# Spec\n\n**Created**: 2026-11-01\n')).toBeNull();
     expect(extractProjectHeader('**Project**:')).toBeNull();

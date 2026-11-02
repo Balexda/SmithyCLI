@@ -109,7 +109,10 @@ export function userEngravedRoot(): string {
  * anything that is not one plain segment is rejected rather than normalized.
  */
 export function isValidProjectSlug(slug: string): boolean {
-  return /^[A-Za-z0-9._-]+$/.test(slug) && slug !== '.' && slug !== '..';
+  // No leading dot: `.git` under `projects/` would make the directory read
+  // as a repository, and `.`/`..` are not names at all. `all` is the
+  // fleet keyword of `smithy status --project` and can never name one store.
+  return /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/.test(slug) && slug !== 'all';
 }
 
 /**

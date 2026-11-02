@@ -252,6 +252,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     languages,
     platforms: platformManagers,
     artifactsLocation,
+    artifactsRoot,
     files: deployedFiles,
   });
 

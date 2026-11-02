@@ -125,6 +125,13 @@ describe('statusAction --project (planning view)', () => {
       statusAction({ engraved: true, project: 'all' });
       expect(process.exitCode).toBe(2);
       expect(String(errSpy.mock.calls.at(-1)![0])).toContain('planning-view option');
+
+      // `--root` and `--project` each name the one place to scan.
+      process.exitCode = undefined;
+      fs.mkdirSync(path.join(projectsDir(), 'pedregal'), { recursive: true });
+      statusAction({ format: 'json', project: 'pedregal', root: workdir });
+      expect(process.exitCode).toBe(2);
+      expect(String(errSpy.mock.calls.at(-1)![0])).toContain('--project cannot be combined with --root');
     } finally {
       errSpy.mockRestore();
     }

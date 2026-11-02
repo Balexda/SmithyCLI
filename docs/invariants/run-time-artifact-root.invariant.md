@@ -30,13 +30,16 @@ A guessed root scatters one workstream's artifacts across two stores, or
 redirects every workstream on a machine into whichever project was created
 last — both silent, both found only when a downstream command cannot find its
 input. The establishing decision (D-5) records the observed failure and why
-the alternatives that infer from the current directory were rejected.
+the alternatives that infer from the current directory were rejected. An
+artifact's own location is a declaration in the rule's sense — a `--from`
+path inside `~/.smithy/projects/<slug>/` names that project, and one inside
+the install root names no project — because it is the artifact's residence,
+not the shell's, and it is what lets an unstamped legacy artifact resolve.
 
 ## Known Exceptions
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `src/project-store.ts` (`projectContaining`) | A `--from` path physically inside `~/.smithy/projects/<slug>/` resolves that project even without a `**Project**` header | Accepted: this is the artifact's own location, not the shell's — the signal the rule names, in its second spelling — and it is what lets an unstamped legacy artifact in a project store still resolve | — | low |
 
 ## Citations
 

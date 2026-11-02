@@ -61,6 +61,16 @@ export interface SmithyManifest {
    * `manifest.artifactsLocation ?? 'repo'`.
    */
   artifactsLocation?: ArtifactsLocation;
+  /**
+   * The exact `{{artifactsRoot}}` prefix rendered into this install's prompts
+   * (`~/.smithy/repos/<repoKey>/`, `~/.smithy/projects/default/`). Written
+   * only for external installs, so legacy and in-repo manifests stay
+   * byte-identical. `smithy root` reads it back rather than recomputing it
+   * from the current directory: a user-level install renders once, from
+   * wherever `init` ran, and a recomputation from another repo would name a
+   * prefix the deployed prompts never contained.
+   */
+  artifactsRoot?: string;
   files: Record<string, string[]>;  // agent name → relative file paths
 }
 
@@ -202,6 +212,15 @@ export function isInsideGitRepo(dir: string): boolean {
 }
 
 /**
+ * Absolute path of the working tree that contains `dir`, or `null` outside
+ * any git repo (or without git). A repo-level manifest lives at the
+ * toplevel's `.smithy/`, so a command run from a subdirectory finds it here.
+ */
+export function repoToplevel(dir: string): string | null {
+  return gitCapture(dir, ['rev-parse', '--show-toplevel']);
+}
+
+/**
  * The path segments under `~/.smithy/` naming the external artifact store
  * that serves `targetDir`:
  *   - inside a git repo → `repos/<repoKey(targetDir)>`
@@ -328,6 +347,8 @@ export interface WriteManifestOptions {
    * field out of the manifest entirely — legacy manifests stay byte-identical.
    */
   artifactsLocation?: ArtifactsLocation;
+  /** The rendered `{{artifactsRoot}}` prefix; persisted when non-empty. */
+  artifactsRoot?: string;
   files: Record<string, string[]>;
 }
 
@@ -352,6 +373,9 @@ export function writeManifest(opts: WriteManifestOptions): void {
     // byte-identical, which matters for the .smithy/smithy-manifest.json
     // diff noise teams see in source control.
     ...(opts.artifactsLocation === 'external' ? { artifactsLocation: 'external' as const } : {}),
+    ...(opts.artifactsRoot !== undefined && opts.artifactsRoot.length > 0
+      ? { artifactsRoot: opts.artifactsRoot }
+      : {}),
     files: opts.files,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));

@@ -12,8 +12,9 @@ artifact — `.rfc.md`, `.features.md`, `.spec.md`, `.tasks.md`, `.strike.md`,
 `.prd.md`, `.persona.md`, `.data-model.md`, `.contracts.md`, and the
 repo-level engraved records `.decision.md`, `.invariant.md`, and the principle
 files under `constitution/` — is already prefixed with it. Unless the
-resolution step above substituted a project store's prefix, do not strip,
-override, or rewrite the prefix. Treat the resolved path as authoritative:
+resolution step above substituted a project store's prefix for a
+planning-artifact path, do not strip, override, or rewrite the prefix; the
+engraved records keep it in every case (see below). Treat the resolved path as authoritative:
 agents (Claude Code, Gemini CLI, Codex) expand `~` at tool-call time, so the
 path is portable across team members even when this prompt is committed to
 source control.
@@ -64,9 +65,10 @@ a code worktree — resolves the same store with `smithy root --from <path>`:
 ```
 
 Place it in the artifact's header block, directly after the Created / Status
-line, with the slug `smithy root` returned. Omit the line entirely when no
-project resolved — absence means absence, never "guess". Engraved records do
-not carry it: their level is the store they sit in.
+line, with the slug `smithy root` returned, colon outside the bold exactly as
+shown even where the surrounding header writes `**Field:**`. Omit the line
+entirely when no project resolved — absence means absence, never "guess".
+Engraved records do not carry it: their level is the store they sit in.
 
 ### Scope of the policy
 
@@ -95,10 +97,11 @@ commit your work there.
 After you finish writing or updating artifacts — once the artifact is
 complete, not after every partial write. The store path below is the rendered
 root; when the resolution step substituted a project store, use its `prefix`
-here too:
+here too. The trailing `.` stages only the store's own tree, which matters
+when a linked store sits inside a checkout that holds other work:
 
 ```bash
-git -C {{artifactsRoot}} add -A
+git -C {{artifactsRoot}} add -A .
 git -C {{artifactsRoot}} commit --no-gpg-sign -m "<command>: <what changed>"
 ```
 
@@ -124,10 +127,10 @@ need nothing here. The one exception is a run whose resolution step
 substituted a project store: `smithy project init` made that store a **git
 repository**, and its history is the only record those artifacts have. Once
 the artifact is complete — not after every partial write — commit it there,
-and only there:
+and only there (the trailing `.` stages only the store's own tree):
 
 ```bash
-git -C ~/.smithy/projects/<slug>/ add -A
+git -C ~/.smithy/projects/<slug>/ add -A .
 git -C ~/.smithy/projects/<slug>/ commit --no-gpg-sign -m "<command>: <what changed>"
 ```
 

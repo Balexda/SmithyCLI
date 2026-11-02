@@ -63,6 +63,7 @@ export function formatRootText(r: ResolvedArtifactRoot): string {
     `kind:     ${r.kind}${r.store ? ' (git-backed store)' : ''}`,
     `rule:     ${r.rule} — ${RULE_LABELS[r.rule]}`,
     `project:  ${r.project ?? '(none)'}`,
+    `recall:   ${r.recall_project ?? '(none)'}`,
     `rendered: ${r.rendered_prefix === '' ? '.' : r.rendered_prefix}`,
   ];
   if (r.warning !== undefined) lines.push(`warning:  ${r.warning}`);

@@ -12,10 +12,10 @@ import {
 } from './engraved/roots.js';
 import type { ArtifactsLocation } from './interactive.js';
 import {
-  isInsideGitRepo,
   readManifest,
-  resolveArtifactsRoot,
+  repoToplevel,
   templateArtifactsPrefix,
+  type SmithyManifest,
 } from './manifest.js';
 import { extractProjectHeader } from './status/parser.js';
 
@@ -45,8 +45,11 @@ import { extractProjectHeader } from './status/parser.js';
  *   2. The artifact being worked on names a project — a `**Project**:` header
  *      (or `project:` frontmatter), or the file physically lives inside a
  *      named store. This is what lets `smithy.forge`, standing in a code
- *      worktree, find the store its tasks file came from.
- *   3. **Reads only:** exactly one named store exists.
+ *      worktree, find the store its tasks file came from. An artifact that
+ *      lives in no named store settles the run on the install root: the
+ *      artifact's own location outranks any guess.
+ *   3. **Reads only, and only when no artifact anchored the run:** exactly
+ *      one named store exists.
  *   4. The install-time root.
  *
  * Rule 3 is skipped for writes on purpose. Recall or status guessing the one
@@ -79,7 +82,11 @@ export interface ResolvedArtifactRoot {
    * `{{artifactsRoot}}` renders to, so substitution is a literal replacement.
    */
   prefix: string;
-  /** What `smithy init` baked into the deployed prompts for this install. */
+  /**
+   * What `smithy init` baked into the deployed prompts for this install —
+   * read from the manifest it wrote, so it is the string the prompts really
+   * contain rather than a recomputation from wherever this command runs.
+   */
   rendered_prefix: string;
   /** Absolute filesystem path of the resolved root. */
   path: string;
@@ -90,6 +97,15 @@ export interface ResolvedArtifactRoot {
   rule: ArtifactRootRule;
   /** The resolved project slug, or `null` when no project is in play. */
   project: string | null;
+  /**
+   * The project whose engraved level this run should *read*. Equal to
+   * {@link project} whenever one resolved. In write mode it additionally
+   * names the single named store when exactly one exists: a read may take
+   * that store even though the write may not, and recall is a read — without
+   * this field a planning run on a single-store machine would lose the
+   * project rules it consulted before writes stopped guessing.
+   */
+  recall_project: string | null;
   mode: 'read' | 'write';
   /** Set when a write fell through to the install root although named stores exist. */
   warning?: string;
@@ -100,7 +116,7 @@ export interface ResolveArtifactRootOptions {
   targetDir?: string;
   /** Rule 1: an explicit slug. */
   project?: string | undefined;
-  /** Rule 2: the artifact being worked on. */
+  /** Rule 2: the artifact (or spec folder) being worked on. */
   from?: string | undefined;
   /** `write` skips rule 3. Defaults to `read`. */
   mode?: 'read' | 'write';
@@ -125,35 +141,39 @@ export function resolveArtifactRoot(
 ): ResolvedArtifactRoot {
   const targetDir = path.resolve(opts.targetDir ?? process.cwd());
   const mode = opts.mode ?? 'read';
-  const location = installArtifactsLocation(targetDir);
-  const rendered = templateArtifactsPrefix(targetDir, location);
+  const install = resolveInstallRoot(targetDir);
+
+  const slugs = listProjectSlugs();
 
   const finish = (
     project: string | null,
     rule: ArtifactRootRule,
+    anchored: boolean,
     warning?: string,
   ): ResolvedArtifactRoot => {
     if (project !== null) {
       return {
         prefix: projectStorePrefixFor(project),
-        rendered_prefix: rendered,
+        rendered_prefix: install.rendered,
         path: projectRoot(project),
         kind: 'project',
         store: true,
         rule,
         project,
+        recall_project: project,
         mode,
       };
     }
-    const kind = installRootKind(targetDir, location);
     const result: ResolvedArtifactRoot = {
-      prefix: rendered,
-      rendered_prefix: rendered,
-      path: resolveArtifactsRoot(targetDir, location),
-      kind,
-      store: kind !== 'in-repo',
+      prefix: install.rendered,
+      rendered_prefix: install.rendered,
+      path: install.path,
+      kind: install.kind,
+      store: install.kind !== 'in-repo',
       rule,
       project: null,
+      // What a read would have settled on under rule 3.
+      recall_project: !anchored && slugs.length === 1 ? (slugs[0] as string) : null,
       mode,
     };
     if (warning !== undefined) result.warning = warning;
@@ -162,21 +182,25 @@ export function resolveArtifactRoot(
 
   // Rule 1.
   if (opts.project !== undefined && opts.project.length > 0) {
-    return finish(requireNamedStore(opts.project, '--project'), 1);
+    return finish(requireNamedStore(opts.project, '--project'), 1, true);
   }
 
-  // Rule 2.
+  // Rule 2. An artifact that was read successfully anchors the run even when
+  // it names no project: it lives at the install root, and that is where the
+  // run belongs. Rule 3 would otherwise send a read against an in-repo spec
+  // off to whichever named store happens to be the only one.
+  let anchored = false;
   if (opts.from !== undefined && opts.from.length > 0) {
     const declared = projectDeclaredBy(opts.from);
+    anchored = true;
     if (declared !== null) {
-      return finish(requireNamedStore(declared, `the artifact ${opts.from}`), 2);
+      return finish(requireNamedStore(declared, `the artifact ${opts.from}`), 2, true);
     }
   }
 
-  // Rule 3 — reads only.
-  const slugs = listProjectSlugs();
-  if (mode === 'read' && slugs.length === 1) {
-    return finish(slugs[0] as string, 3);
+  // Rule 3 — reads only, unanchored runs only.
+  if (mode === 'read' && !anchored && slugs.length === 1) {
+    return finish(slugs[0] as string, 3, false);
   }
 
   // Rule 4.
@@ -184,16 +208,91 @@ export function resolveArtifactRoot(
     mode === 'write' && slugs.length > 0
       ? `${slugs.length} named project store${slugs.length === 1 ? '' : 's'} exist${slugs.length === 1 ? 's' : ''} (${slugs.join(', ')}) but none was named; writing to the install root. Pass --project <slug> to target one.`
       : undefined;
-  return finish(null, 4, warning);
+  return finish(null, 4, anchored, warning);
+}
+
+/** The install-time root, as the deployed prompts of this install know it. */
+export interface InstallRoot {
+  location: ArtifactsLocation;
+  /** The `{{artifactsRoot}}` prefix the prompts contain; `""` in repo mode. */
+  rendered: string;
+  /** Absolute path of that root. */
+  path: string;
+  kind: Exclude<ArtifactRootKind, 'project'>;
+}
+
+/**
+ * Find the install that governs `targetDir` and the root it rendered.
+ *
+ * The manifest is looked up at `targetDir`, then at the git toplevel (a
+ * repo-level manifest lives in the toplevel's `.smithy/`, and planning
+ * commands run from subdirectories), then at the user level. The rendered
+ * prefix comes from the manifest's `artifactsRoot` when it recorded one;
+ * only a manifest written before that field existed falls back to
+ * recomputing it, anchored at the manifest's own repo rather than the
+ * current directory.
+ */
+export function resolveInstallRoot(targetDir: string): InstallRoot {
+  const found = findInstallManifest(targetDir);
+  const manifest = found?.manifest ?? null;
+  const anchor = found?.anchor ?? targetDir;
+  const location: ArtifactsLocation = manifest?.artifactsLocation ?? 'repo';
+  const rendered =
+    location === 'external'
+      ? manifest?.artifactsRoot ?? templateArtifactsPrefix(anchor, 'external')
+      : '';
+  if (rendered === '') {
+    return { location, rendered, path: anchor, kind: 'in-repo' };
+  }
+  const kind: InstallRoot['kind'] = rendered.startsWith('~/.smithy/projects/')
+    ? 'default-store'
+    : 'repo-store';
+  return { location, rendered, path: expandHome(rendered).replace(/[\\/]+$/, ''), kind };
+}
+
+function findInstallManifest(
+  targetDir: string,
+): { manifest: SmithyManifest; anchor: string } | null {
+  const toplevel = repoToplevel(targetDir);
+  const repoDirs = toplevel !== null && toplevel !== targetDir ? [targetDir, toplevel] : [targetDir];
+  for (const dir of repoDirs) {
+    const manifest = readManifest(dir, 'repo');
+    if (manifest !== null) return { manifest, anchor: dir };
+  }
+  const user = readManifest(targetDir, 'user');
+  if (user !== null) return { manifest: user, anchor: toplevel ?? targetDir };
+  return null;
 }
 
 /**
  * The project an artifact declares: its `**Project**:` header or `project:`
- * frontmatter, else the named store it physically lives in. `null` when
- * neither applies. Throws when the path cannot be read.
+ * frontmatter, else the named store it physically lives in. A spec *folder*
+ * is accepted too — it is `smithy.cut`'s primary input — and declares what
+ * its single `.spec.md` declares, else where it lives. `null` when neither
+ * applies. Throws when the path cannot be read.
  */
 export function projectDeclaredBy(artifactPath: string): string | null {
   const abs = path.resolve(expandHome(artifactPath));
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(abs);
+  } catch (err) {
+    throw new ArtifactRootError(
+      `cannot read --from path ${artifactPath}: ${(err as Error).message}`,
+    );
+  }
+
+  if (stat.isDirectory()) {
+    const specs = fs.readdirSync(abs).filter((name) => name.endsWith('.spec.md'));
+    if (specs.length === 1) {
+      const header = extractProjectHeader(
+        fs.readFileSync(path.join(abs, specs[0] as string), 'utf8'),
+      );
+      if (header !== null) return header;
+    }
+    return projectContaining(abs);
+  }
+
   let content: string;
   try {
     content = fs.readFileSync(abs, 'utf8');
@@ -210,22 +309,27 @@ export function projectDeclaredBy(artifactPath: string): string | null {
 /**
  * The named project whose store contains `abs`, or `null`. Resolved through
  * the real path so a linked store (a symlink under `projects/`) matches
- * whichever spelling of the path the caller used.
+ * whichever spelling of the path the caller used. When link targets nest,
+ * the most specific store — the longest matching root — wins.
  */
 export function projectContaining(abs: string): string | null {
   const projectsDir = path.join(os.homedir(), '.smithy', 'projects');
   const candidates = [abs, safeRealpath(abs)].filter(
     (p, i, all): p is string => p !== null && all.indexOf(p) === i,
   );
+  let best: { slug: string; depth: number } | null = null;
   for (const slug of listProjectSlugs()) {
     const root = projectRoot(slug);
     const roots = [root, safeRealpath(root)].filter((r): r is string => r !== null);
     for (const candidate of candidates) {
       for (const r of roots) {
-        if (candidate === r || candidate.startsWith(r + path.sep)) return slug;
+        if (candidate === r || candidate.startsWith(r + path.sep)) {
+          if (best === null || r.length > best.depth) best = { slug, depth: r.length };
+        }
       }
     }
   }
+  if (best !== null) return best.slug;
   // A path under `projects/<slug>/` whose store has since vanished still
   // names its project; let `requireNamedStore` report that it is gone.
   const rel = path.relative(projectsDir, abs);
@@ -241,7 +345,7 @@ export function projectContaining(abs: string): string | null {
 function requireNamedStore(slug: string, source: string): string {
   if (!isValidProjectSlug(slug) || isDefaultProjectSlug(slug)) {
     throw new ArtifactRootError(
-      `invalid project slug '${slug}' from ${source}. Expected a single path segment (letters, digits, '.', '_', '-'), and not 'default'.`,
+      `invalid project slug '${slug}' from ${source}. Expected a single path segment (letters, digits, '.', '_', '-'), not starting with '.', and not 'default' or 'all'.`,
     );
   }
   if (!projectStoreExists(slug)) {
@@ -252,18 +356,9 @@ function requireNamedStore(slug: string, source: string): string {
   return slug;
 }
 
-/** The install's `artifactsLocation`, from either manifest location; `repo` when there is no manifest. */
+/** The install's `artifactsLocation`; `repo` when there is no manifest. */
 export function installArtifactsLocation(targetDir: string): ArtifactsLocation {
-  const manifest = readManifest(targetDir, 'repo') ?? readManifest(targetDir, 'user');
-  return manifest?.artifactsLocation ?? 'repo';
-}
-
-function installRootKind(
-  targetDir: string,
-  location: ArtifactsLocation,
-): Exclude<ArtifactRootKind, 'project'> {
-  if (location !== 'external') return 'in-repo';
-  return isInsideGitRepo(targetDir) ? 'repo-store' : 'default-store';
+  return resolveInstallRoot(targetDir).location;
 }
 
 function expandHome(p: string): string {

@@ -56,10 +56,63 @@ describe('smithy project', () => {
     projectInitAction('default');
     expect(process.exitCode).toBe(2);
     expect(String(errSpy.mock.calls[0]![0])).toContain("'default'");
-    process.exitCode = undefined;
-    projectInitAction('../elsewhere');
-    expect(process.exitCode).toBe(2);
+    for (const bad of ['../elsewhere', 'all', '.git']) {
+      process.exitCode = undefined;
+      projectInitAction(bad);
+      expect(process.exitCode, bad).toBe(2);
+    }
     expect(fs.existsSync(projectsDir())).toBe(false);
+  });
+
+  it('init on an already-linked slug leaves the user\'s checkout alone', () => {
+    const coord = path.join(scratch, 'coord');
+    fs.mkdirSync(path.join(coord, 'planning'), { recursive: true });
+    execFileSync('git', ['init', '-q'], { cwd: coord, stdio: 'ignore' });
+    projectLinkAction('coord', path.join(coord, 'planning'));
+    logSpy.mockClear();
+
+    projectInitAction('coord');
+    expect(process.exitCode).toBeUndefined();
+    expect(logged()).toContain('already linked');
+    // No nested repository inside the linked worktree.
+    expect(fs.existsSync(path.join(coord, 'planning', '.git'))).toBe(false);
+  });
+
+  it('init on a dangling link fails loudly instead of reporting the store ready', () => {
+    fs.mkdirSync(projectsDir(), { recursive: true });
+    fs.symlinkSync(path.join(scratch, 'gone'), path.join(projectsDir(), 'dang'), 'dir');
+    projectInitAction('dang');
+    expect(process.exitCode).toBe(2);
+    expect(String(errSpy.mock.calls[0]![0])).toContain('does not exist');
+    expect(logged()).not.toContain('Project store ready');
+  });
+
+  it('link never commits what is already in a non-empty plain directory', () => {
+    const plain = path.join(scratch, 'plain');
+    fs.mkdirSync(plain);
+    fs.writeFileSync(path.join(plain, 'creds.env'), 'secret=1\n');
+    projectLinkAction('plain', plain);
+    expect(process.exitCode).toBeUndefined();
+    // Linked, but left unversioned with a warning — the user's files were
+    // not swept into a Smithy commit.
+    expect(fs.lstatSync(path.join(projectsDir(), 'plain')).isSymbolicLink()).toBe(true);
+    expect(fs.existsSync(path.join(plain, '.git'))).toBe(false);
+    expect(logged()).toContain('left unversioned');
+  });
+
+  it('link refuses the home directory, the filesystem root, and anything in or above ~/.smithy', () => {
+    fs.mkdirSync(projectsDir(), { recursive: true });
+    for (const target of [fakeHome, path.join(fakeHome, '.smithy'), projectsDir(), path.parse(fakeHome).root]) {
+      process.exitCode = undefined;
+      errSpy.mockClear();
+      projectLinkAction('loop', target);
+      expect(process.exitCode, target).toBe(2);
+      expect(String(errSpy.mock.calls[0]![0]), target).toMatch(/home directory|contains ~\/.smithy\/projects|inside ~\/.smithy/);
+      expect(fs.existsSync(path.join(projectsDir(), 'loop')), target).toBe(false);
+    }
+    // Nothing under ~/.smithy/ was turned into a repository.
+    expect(fs.existsSync(path.join(projectsDir(), '.git'))).toBe(false);
+    expect(fs.existsSync(path.join(fakeHome, '.smithy', '.git'))).toBe(false);
   });
 
   it('link points the store at an existing directory and rides its enclosing repository', () => {

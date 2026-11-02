@@ -183,15 +183,19 @@ For **create** modes:
 When the resolved level is `project`, the project slug is whatever the
 artifact-root resolution step returned (`smithy root --write`, with the
 `--project <slug>` token when one was passed). If no slug resolved, stop and
-ask for one — a project-level record has nowhere to go without it.
+ask for one — a project-level record has nowhere to go without it — and then
+run `smithy root --write --project <slug>` with the answer so the resolution
+holds for the rest of the run.
 
 ---
 
 ## Where "commit" lands, per level
 
-Every create and update phase below ends with *commit and report*. Which
-repository that means depends on the level, and only the repo level is the one
-the artifact-location policy already covers:
+Every create and update phase below ends with *commit and report*. The
+artifact-location policy's store-commit step applies to planning artifacts;
+for engraved records the table below is authoritative, and it stages only the
+record files you touched — never `add -A`, which in a shared store would sweep
+uncommitted planning artifacts into an engrave commit:
 
 | Level | Store | What to commit |
 |-------|-------|----------------|

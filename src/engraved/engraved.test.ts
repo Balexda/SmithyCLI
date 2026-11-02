@@ -142,7 +142,7 @@ describe('engraved level roots', () => {
     // The slug is joined into a filesystem path: `../repos/foo` would resolve
     // a store outside ~/.smithy/projects entirely, and `team/foo` would nest
     // one where discovery could never find it.
-    for (const bad of ['../repos/foo', 'team/foo', '..', '.', '', 'a\\b']) {
+    for (const bad of ['../repos/foo', 'team/foo', '..', '.', '', 'a\\b', 'all', '.git']) {
       expect(isValidProjectSlug(bad), bad).toBe(false);
       expect(resolveProject(bad), bad).toBeNull();
     }

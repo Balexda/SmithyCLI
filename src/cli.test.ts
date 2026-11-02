@@ -1486,7 +1486,9 @@ describe('CLI status', () => {
       // Formerly `--project` required `--engraved`. Named project stores now
       // hold planning artifacts too, so the planning view takes the flag —
       // and a slug with no store behind it is a typo, not an empty scan.
-      const { stderr, status } = runEngraved(['--project', 'no-such-project', '--root', tmpDir]);
+      // No `--root`: on the planning view the two flags each name the one
+      // place to scan and are rejected together.
+      const { stderr, status } = runEngraved(['--project', 'no-such-project']);
       expect(status).toBe(2);
       expect(stderr).toContain("no project store named 'no-such-project'");
       expect(stderr).toContain('smithy project init no-such-project');

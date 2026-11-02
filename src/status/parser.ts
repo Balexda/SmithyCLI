@@ -822,7 +822,13 @@ export function extractImplementationRepo(content: string): string | null {
  * with that slug exists is for `smithy root` to check. Never throws.
  */
 export function extractProjectHeader(content: string): string | null {
-  const header = /^\s*\*\*Project\*\*\s*:\s*(.*)$/im.exec(content);
+  // Only the header block counts — everything before the first `## `
+  // heading, with fenced code removed — so a spec that *documents* the
+  // convention in a code block, or a body paragraph about a "Project", is
+  // not read as a declaration. Both colon spellings are accepted because
+  // the strike header writes its other fields as `**Field:**`.
+  const headerBlock = stripFences(content.split(/^##\s/m, 1)[0] ?? '');
+  const header = /^\s*\*\*Project(?:\*\*\s*:|:\*\*)\s*(.*)$/im.exec(headerBlock);
   if (header !== null) {
     const value = normalizeRepoValue(header[1] ?? '');
     if (value !== null) return value;
@@ -836,6 +842,11 @@ export function extractProjectHeader(content: string): string | null {
     }
   }
   return null;
+}
+
+/** Remove fenced code blocks (``` or ~~~) so their contents are never read as headers. */
+function stripFences(text: string): string {
+  return text.replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '');
 }
 
 /**

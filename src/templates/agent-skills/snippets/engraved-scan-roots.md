@@ -37,6 +37,7 @@ Missing roots are normal at every level. A level with no store on disk is
 scanned-and-empty, never an error.
 
 Which project is in play is settled by whoever invokes these rules — the
-planning command's artifact-root resolution step, or the slug a dispatch
-passes in — never by the working directory name. With no project resolved,
+`recall_project` the planning command's artifact-root resolution step
+returned, the slug a dispatch passes in, or the level a record is being
+written to — never by the working directory name. With no project resolved,
 scan `user` + `repo` only.

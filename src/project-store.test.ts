@@ -10,6 +10,7 @@ import {
   projectDeclaredBy,
   resolveArtifactRoot,
 } from './project-store.js';
+import { writeManifest as writeSmithyManifest } from './manifest.js';
 import { rootAction } from './commands/root.js';
 
 describe('resolveArtifactRoot', () => {
@@ -108,6 +109,129 @@ describe('resolveArtifactRoot', () => {
     expect(() => resolveArtifactRoot({ targetDir: workdir, project: '../repos/x' })).toThrow(
       /invalid project slug/,
     );
+    // `all` is the status fleet keyword; a leading dot would make the store
+    // directory read as something else (`.git`).
+    for (const reserved of ['all', '.git', '.hidden']) {
+      expect(() => resolveArtifactRoot({ targetDir: workdir, project: reserved }), reserved).toThrow(
+        /invalid project slug/,
+      );
+    }
+  });
+
+  it('rule 2: a spec folder resolves like the single spec inside it', () => {
+    makeStore('pedregal');
+    makeStore('web-next');
+    // Cut's primary input is the folder, and `smithy status` suggests it.
+    const folder = path.join(workdir, 'specs', '2026-11-01-007-persona');
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(
+      path.join(folder, 'persona.spec.md'),
+      '# Feature Specification: P\n\n**Status**: Draft\n**Project**: `pedregal`\n',
+    );
+    fs.writeFileSync(path.join(folder, 'persona.data-model.md'), '# Data Model\n');
+    expect(resolveArtifactRoot({ targetDir: workdir, from: folder, mode: 'write' })).toMatchObject({
+      rule: 2,
+      project: 'pedregal',
+    });
+
+    // A folder inside a named store resolves by location when the spec says nothing.
+    const stored = path.join(projectsDir(), 'web-next', 'specs', 'x');
+    fs.mkdirSync(stored, { recursive: true });
+    fs.writeFileSync(path.join(stored, 'x.spec.md'), '# X\n');
+    expect(resolveArtifactRoot({ targetDir: workdir, from: stored }).project).toBe('web-next');
+
+    // A folder at the install root with no declaration anchors the run there.
+    const plain = path.join(workdir, 'specs', 'plain');
+    fs.mkdirSync(plain, { recursive: true });
+    expect(resolveArtifactRoot({ targetDir: workdir, from: plain }).rule).toBe(4);
+  });
+
+  it('rule 3 never overrides where a --from artifact actually lives', () => {
+    makeStore('solo');
+    const spec = path.join(workdir, 'in-repo.spec.md');
+    fs.writeFileSync(spec, '# Spec\n\n**Status**: Draft\n');
+    // A read anchored on an in-repo artifact stays at the install root even
+    // though exactly one named store exists; audit/orders on a legacy spec
+    // must not be told the run belongs to `solo`.
+    const r = resolveArtifactRoot({ targetDir: workdir, from: spec });
+    expect(r).toMatchObject({ rule: 4, project: null, recall_project: null });
+    // Unanchored, the same read takes the lone store (rule 3).
+    expect(resolveArtifactRoot({ targetDir: workdir })).toMatchObject({ rule: 3, project: 'solo' });
+  });
+
+  it('recall_project carries the read-mode answer alongside a write that refused to guess', () => {
+    makeStore('solo');
+    const write = resolveArtifactRoot({ targetDir: workdir, mode: 'write' });
+    // The write lands at the install root (and warns), but engraved recall —
+    // a read — may still consult the single named project's rules.
+    expect(write).toMatchObject({ rule: 4, project: null, recall_project: 'solo' });
+    expect(write.warning).toContain('solo');
+
+    makeStore('duo');
+    expect(resolveArtifactRoot({ targetDir: workdir, mode: 'write' }).recall_project).toBeNull();
+    expect(
+      resolveArtifactRoot({ targetDir: workdir, project: 'duo', mode: 'write' }).recall_project,
+    ).toBe('duo');
+  });
+
+  it('rule 2: nested link targets resolve to the most specific store', () => {
+    const outer = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-root-outer-'));
+    try {
+      const inner = path.join(outer, 'sub');
+      fs.mkdirSync(inner);
+      fs.mkdirSync(projectsDir(), { recursive: true });
+      fs.symlinkSync(outer, path.join(projectsDir(), 'a'), 'dir');
+      fs.symlinkSync(inner, path.join(projectsDir(), 'b'), 'dir');
+      const tasks = path.join(inner, 't.tasks.md');
+      fs.writeFileSync(tasks, '# T\n');
+      expect(projectContaining(tasks)).toBe('b');
+      expect(projectContaining(path.join(outer, 'o.spec.md'))).toBe('a');
+    } finally {
+      fs.rmSync(outer, { recursive: true, force: true });
+    }
+  });
+
+  it('rendered_prefix is what the install rendered, read from its manifest', () => {
+    // A user-level install run from `~/Projects` baked `~/.smithy/repos/Projects/`
+    // into every prompt. Resolving from some other repo must report *that*
+    // string — recomputing from the current repo would name a prefix the
+    // prompts never contained, and the literal substitution would no-op.
+    writeSmithyManifest({
+      targetDir: workdir,
+      location: 'user',
+      agents: ['claude'],
+      permissions: false,
+      artifactsLocation: 'external',
+      artifactsRoot: '~/.smithy/repos/Projects/',
+      files: { claude: [] },
+    });
+    makeStore('alpha');
+    const r = resolveArtifactRoot({ targetDir: workdir, project: 'alpha', mode: 'write' });
+    expect(r.rendered_prefix).toBe('~/.smithy/repos/Projects/');
+    expect(r.prefix).toBe('~/.smithy/projects/alpha/');
+    // A write with no declaration lands on the install root, spelled as the
+    // prompts spell it (a read would take the lone store under rule 3).
+    const plain = resolveArtifactRoot({ targetDir: workdir, mode: 'write' });
+    expect(plain).toMatchObject({
+      prefix: '~/.smithy/repos/Projects/',
+      path: path.join(fakeHome, '.smithy', 'repos', 'Projects'),
+      kind: 'repo-store',
+    });
+  });
+
+  it('finds a repo-level manifest from a subdirectory and anchors a legacy prefix at the toplevel', () => {
+    writeManifest('external'); // legacy: no artifactsRoot recorded
+    const sub = path.join(workdir, 'src', 'deep');
+    fs.mkdirSync(sub, { recursive: true });
+    const key = path.basename(workdir);
+    const r = resolveArtifactRoot({ targetDir: sub });
+    expect(r.rendered_prefix).toBe(`~/.smithy/repos/${key}/`);
+    expect(r.kind).toBe('repo-store');
+
+    // In-repo mode from a subdirectory anchors paths at the toplevel too.
+    fs.rmSync(path.join(workdir, '.smithy'), { recursive: true, force: true });
+    writeManifest();
+    expect(resolveArtifactRoot({ targetDir: sub })).toMatchObject({ prefix: '', path: workdir, kind: 'in-repo' });
   });
 
   it('rule 2: the artifact being worked on names the project through its header', () => {

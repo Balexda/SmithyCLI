@@ -46,8 +46,8 @@ Every planning command resolves the root once, at the start, by calling
 | # | Rule | Who it serves |
 |---|------|---------------|
 | 1 | `--project <slug>` in the invoking arguments | Orchestrators: `/smithy.cut --project 007-persona-profiles <spec> 3` |
-| 2 | The artifact being worked on names a project — its `**Project**` header, or the store it physically lives in | Downstream commands. Forge in a code worktree receives a tasks path, and that path resolves the store; the working directory never matters. |
-| 3 | **Reads only:** exactly one named store exists | `smithy status` and engraved recall on a machine with one active project |
+| 2 | The artifact (or spec folder) being worked on names a project — its `**Project**` header, or the store it physically lives in. An artifact outside every named store settles the run on the install root. | Downstream commands. Forge in a code worktree receives a tasks path, and that path resolves the store; the working directory never matters. |
+| 3 | **Reads only, when no artifact anchored the run:** exactly one named store exists | `smithy status` and engraved recall on a machine with one active project |
 | 4 | The install-time root (repo-keyed store, `default`, or in-repo) | Everyone who never creates a project. Behaviour is unchanged. |
 
 Rule 3 is skipped for writes on purpose. A read that guesses the one named
@@ -70,13 +70,21 @@ find-and-replace, not an inference:
   "store": true,
   "rule": 2,
   "project": "007-persona-profiles",
+  "recall_project": "007-persona-profiles",
   "mode": "write"
 }
 ```
 
+`recall_project` is the project whose engraved level the run should *read*.
+It equals `project` whenever one resolved; in write mode it also names the
+single named store when exactly one exists, because recall is a read and may
+take that store even though the write may not.
+
 When `prefix` and `rendered_prefix` differ, the agent uses `prefix` wherever
-the prompt names `rendered_prefix`. When they are equal, the prompt is already
-correct. `smithy root` exits 2 on an invalid slug or a project with no store on
+the prompt names a planning-artifact path with `rendered_prefix`. When they are
+equal, the prompt is already correct. `rendered_prefix` is read from the
+manifest the install wrote, so it is the string the prompts really contain even
+when the command runs from another repo or a subdirectory. `smithy root` exits 2 on an invalid slug or a project with no store on
 disk, because silently falling back is exactly how a spec lands in the wrong
 place.
 

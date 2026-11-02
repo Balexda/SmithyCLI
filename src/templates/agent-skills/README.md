@@ -419,7 +419,7 @@ Every artifact written into a project store says so:
 
 **Created**: 2026-06-06
 **Status**: Draft
-**Project**: `007-de-persona-profiles`
+**Project**: `007-persona-profiles`
 ```
 
 | Field | Where | Rule |

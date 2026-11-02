@@ -99,6 +99,7 @@ working directory.
 INV-1 (the resolution rule is composed from one snippet, never restated).
 INV-2 (`smithy root` prints tilde-form prefixes, so no expanded home path
 reaches a deployed prompt). P-1 (the rule costs one read-only call per run
-and one extra snippet in the policy every command already composes). Evidence
-and alternatives: the 2026-11-01 project-scoped artifact roots proposal, and
+and one extra snippet in the policy every command already composes). The
+rule as deployed: `src/templates/agent-skills/snippets/artifact-root-resolution.md`;
+the operator guide, including the alternatives considered:
 `docs/project-stores.md`.
