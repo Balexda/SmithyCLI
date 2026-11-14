@@ -31,7 +31,7 @@ The goal is one model for where planning artifacts and engraved records live, ho
 - **Changes to the engraved record schema, its edges, or its levels.** Only where records live changes. Their frontmatter, citation edges and the user/repo/project level model stay as they are.
 - **Remote sync or push of stores.** The CLI commits locally and never pushes or syncs with a remote. Sharing a store across machines would need its own design and a separate effort.
 - **Guessing a store from the working directory or a walk-up marker search.** Using the working directory as a signal is ruled out. A walk-up marker was already rejected because forge runs in the code worktree, so the artifact or the invocation has to declare the project.
-- **Rebuilding PR #610's prefix-substitution mechanism.** The logical-place model replaces run-time prefix substitution; it is not reimplemented. Whether #610's user-facing pieces survive as compatibility surfaces is settled by the open choice on that PR (SD-001), not by this exclusion.
+- **Rebuilding PR #610's prefix-substitution mechanism.** The logical-place model replaces run-time prefix substitution; it is not reimplemented. #610's user-facing pieces (named project stores, `smithy status --project`, the `**Project**` header) carry over; whether `smithy root`'s prefix output and `--from` survive as compatibility surfaces is settled by the open choice on that PR (SD-001), not by this exclusion.
 
 ## Personas
 
@@ -113,6 +113,8 @@ The second experiment runs on the phase-1 branch, which ties it to SD-001. PR #6
 
 ## Specification Debt
 
+SD-001 to SD-005 are carried down from the parent PRD, `docs/prds/2026-002-planning-artifact-location.prd.md`; their detail sections live there and are not repeated here.
+
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
 | SD-001 | phase-1-pr-610-supersede-or-build-on | Solution Intent | High | Medium | prd:SD-001 |
@@ -182,7 +184,7 @@ Who owns the project entity that the resolver reads? Unresolved choice between (
 
 ### Milestone 5: Parallel Workstreams and Forge From Any Worktree
 
-**Description**: Checks the whole model end to end against the 2026-11-01 scenario as its acceptance test, once the location-free templates and store continuity are both in place. This milestone carries the forge store-identity experiment, which tests whether a tasks path plus the existing `**Project**` header is enough for forge to find and commit to the right store. It depends on Milestones 3 and 4.
+**Description**: Checks the whole model end to end against the 2026-11-01 scenario as its acceptance test, once the location-free templates and store continuity are both in place. This milestone carries the forge store-identity experiment, which tests whether a tasks path plus the existing `**Project**` header is enough for forge to find and commit to the right store. It depends on Milestones 3 and 4. The experiment runs on the phase-1 branch, so this milestone is also gated by SD-001 (supersede or build on PR #610).
 
 **Success Criteria**:
 - On one machine, two specs in different projects are cut and forged in parallel, and they never share a store checkout or a branch.
