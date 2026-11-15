@@ -29,7 +29,7 @@ kind: backend
   - refusing, and naming both values, when `--project` and the `**Project**` header disagree;
   - reading the `**Project**` header from an input artifact;
   - one shared definition of the project helpers that planning status and engraved status both use;
-  - retiring today's implicit pick of a lone named project store, subject to SD-001.
+  - retiring today's implicit pick of a lone named project store, and the legacy `project:` field, as project signals.
 - Excludes: mapping a project to locations (Feature 2); reaching today's repo-keyed and `default` stores through their reserved names (Milestone 4); any project registry; any working-directory or walk-up signal.
 
 ### Feature 2: Workspace Location Query
@@ -72,7 +72,7 @@ kind: backend
   - `--project` accepted without `--engraved`, showing the declared project's planning artifacts;
   - engraved status taking all three levels from the query's answer;
   - refusals, candidate lists and absent stores shown as the query reports them;
-  - in-repo installs producing identical text and JSON output before and after for both inventories, including in a directory that is not a git repository, checked against output captured from `master`. The exceptions are the outcomes Feature 1 introduces (invalid-slug refusal, reserved-name refusal, candidate listing with two or more named stores, and refusal when `--project` and `**Project**` disagree), and the exactly-one-named-store case, which SD-001 governs.
+  - in-repo installs producing identical text and JSON output before and after for both inventories, including in a directory that is not a git repository, checked against output captured from `master`. The exceptions are the outcomes Feature 1 introduces (invalid-slug refusal, reserved-name refusal, candidate listing with two or more named stores, refusal when `--project` and `**Project**` disagree, and no project level appearing unless one is declared).
 - Excludes: changes to how artifacts are parsed or how dependency order is computed; the `smithy.status` skill's prompt text (Milestone 3); showing the contents of today's `default` store to out-of-repo installs under a reserved name (Milestone 4).
 
 ### Feature 4: Engraved Recall on the Declared Project Rule
@@ -100,16 +100,19 @@ kind: backend
 
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
-| SD-001 | repo-mode-implicit-project-vs-parity | Integration Points | High | Medium | local |
 | SD-002 | recall-consumption-out-of-repo-in-m1 | Scope Within the Milestone | High | Medium | local |
-
-### SD-001 — repo-mode-implicit-project-vs-parity
-
-The Milestone 1 criterion "Only declared inputs decide which project is in play" says only `--project` and the `**Project**` header decide the project. The criterion "Repo-mode installs see identical status, engraved status and recall output before and after" says that output stays identical. Today a repo-mode install with exactly one named dir under `~/.smithy/projects/` gets a project level by auto-pick, and the prompt rule also honours a legacy `project:` field. Which way? (a) Drop both auto-pick and `project:` everywhere; parity is measured only for invocations that declare a project or have no named stores. (b) Keep auto-pick and `project:` in repo mode only, so repo mode keeps a second project rule. (c) Read `project:` as an alias for `**Project**` and drop auto-pick everywhere.
 
 ### SD-002 — recall-consumption-out-of-repo-in-m1
 
 What does the Milestone 1 criterion "Status, engraved status and engraved recall return the same locations as the query" require of M1 on out-of-repo installs? (a) The same rule and the same roots now, with recall literally consuming the query's answer deferred to M3's template rewrite. (b) M1 edits the five planning commands so the parent calls the query and fills recall's Scan roots. (c) M1 edits only the recall sub-agent so it calls the query itself on out-of-repo installs, with no change to the planning commands. The choice decides whether F4 is a snippet-only feature or also touches dispatch templates. It also decides whether the out-of-repo render of the project-resolution text points at the query's answer in M1, or whether both renders carry the same declared-only prose rule until M3, as option (a) implies.
+
+### Resolved
+
+#### SD-001 — repo-mode-implicit-project-vs-parity
+
+**Question:** The Milestone 1 criterion "Only declared inputs decide which project is in play" says only `--project` and the `**Project**` header decide the project. The criterion "Repo-mode installs see identical status, engraved status and recall output before and after" says that output stays identical. Today a repo-mode install with exactly one named dir under `~/.smithy/projects/` gets a project level by auto-pick, and the prompt rule also honours a legacy `project:` field. Which way? (a) Drop both auto-pick and `project:` everywhere; parity is measured only for invocations that declare a project or have no named stores. (b) Keep auto-pick and `project:` in repo mode only, so repo mode keeps a second project rule. (c) Read `project:` as an alias for `**Project**` and drop auto-pick everywhere.
+
+**Answer:** Resolved 2026-11-15 — option (a). The implicit pick of a lone named project store and the legacy `project:` field are dropped everywhere; only `--project` and the `**Project**` header decide the project. An in-repo install does not need the CLI, so the change costs it nothing it depends on. Any install outside plain repo mode that relied on either signal may break, and that is accepted: in practice those setups were largely broken already.
 
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
