@@ -84,7 +84,7 @@ Recommended specification sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| F1 | Per-Runtime Permission Probe | — | — |
+| F1 | Per-Runtime Permission Probe | — | specs/2026-11-15-013-per-runtime-permission-probe/ |
 | F2 | Explicit-Store Write Command | F1 | — |
 | F3 | Path-Free CLI Grants on Every Runtime | F1, F2 | — |
 | F4 | Retire Store-Path Git Grants | F3 | — |
