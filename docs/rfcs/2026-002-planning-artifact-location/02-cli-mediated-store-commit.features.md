@@ -46,8 +46,8 @@ kind: backend
 **User-Facing Value**: An agent on any runtime can call the store write without an approval prompt, and on Codex that now reaches project stores, which have no grant today.
 
 **Scope Boundaries**:
-- Includes: a grant narrowed to the write subcommand, never all of `smithy`, on Claude, Gemini and Codex; the location-query grant, pending SD-001; a Known Exceptions row under INV-3 for each runtime whose emitted permission metadata diverges because it failed the probe; a store-grant section in `docs/permission-grammar.md`, which documents no store rules today, carrying Feature 1's per-runtime results; a statement that the Codex grant widens from the install's one store to every Smithy store.
-- Excludes: removing any existing permission rule (Feature 4); any grant for `smithy init`, `update` or `uninit`; prompt edits (Milestone 3).
+- Includes: a grant narrowed to the write subcommand, never all of `smithy`, on Claude, Gemini and Codex; a Known Exceptions row under INV-3 for each runtime whose emitted permission metadata diverges because it failed the probe; a store-grant section in `docs/permission-grammar.md`, which documents no store rules today, carrying Feature 1's per-runtime results; a statement that the Codex grant widens from the install's one store to every Smithy store.
+- Excludes: the location-query grant, which the first milestone that needs it emits from Feature 1's probe result (SD-001); removing any existing permission rule (Feature 4); any grant for `smithy init`, `update` or `uninit`; prompt edits (Milestone 3).
 
 ### Feature 4: Retire Store-Path Git Grants
 
@@ -68,11 +68,14 @@ kind: backend
 
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
-| SD-001 | location-query-grant-owner | Cross-Milestone Boundaries | Medium | Medium | local |
 
-### SD-001 — location-query-grant-owner
+### Resolved
 
-Which milestone emits the permission grant for the location query? Unresolved choice between (a) M2's F3, which emits it next to the write grant: M2's description puts the location call in the probe, and F3 already touches the emission machinery, but F3 then carries a soft dependency on a verb name M1 has not fixed; and (b) M1, which emits it when it introduces the query, using F1's probe result: this keeps M2 to the write alone, but leaves M1 owning permission machinery that none of its success criteria mention. The RFC names no owner, and the pick decides whether F3's scope and acceptance scenarios include the query grant.
+#### SD-001 — location-query-grant-owner
+
+**Question:** Which milestone emits the permission grant for the location query? Unresolved choice between (a) M2's F3, which emits it next to the write grant: M2's description puts the location call in the probe, and F3 already touches the emission machinery, but F3 then carries a soft dependency on a verb name M1 has not fixed; and (b) M1, which emits it when it introduces the query, using F1's probe result: this keeps M2 to the write alone, but leaves M1 owning permission machinery that none of its success criteria mention. The RFC names no owner, and the pick decides whether F3's scope and acceptance scenarios include the query grant.
+
+**Answer:** Resolved 2026-11-15 by the maintainer — neither option as posed: the first milestone that needs the grant emits it. Nothing in this milestone calls the location query, so Feature 3 grants the store write only, and the query grant is emitted by whichever milestone first has a caller for it, using Feature 1's probe result.
 
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
@@ -93,7 +96,7 @@ Direction must be either `depends on` or `depended upon by`.
 
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
-| Milestone 1: Workspace Location Contract and Read Path | depended upon by | The query's permission grant uses Feature 1's probe result. Which milestone emits that grant is SD-001. This milestone does not wait on Milestone 1: the write takes an explicit store. |
+| Milestone 1: Workspace Location Contract and Read Path | depended upon by | Feature 1's probe result is the input for the location query's permission grant, which the first milestone that needs the grant emits (SD-001); this milestone does not emit it. This milestone does not wait on Milestone 1: the write takes an explicit store. |
 | Milestone 3: Location-Free Templates | depended upon by | Its prompts call Feature 2's write, read its enumerated result, and rely on Feature 3's grant. It replaces two commit sites: the whole-store commit in the shared location policy and the path-scoped record commit in `smithy.engrave`, which also reaches the user store. |
 | Milestone 3: Location-Free Templates | depends on | Release ordering only, for Feature 4: retiring the store-path git rules before the prompts stop issuing store `git` commands would put an approval prompt on every external-store commit. Features 1 to 3 carry no such constraint. |
 | Milestone 5: Parallel Workstreams and Forge From Any Worktree | depended upon by | Its forge-from-worktree and parallel-workstream acceptance runs use Feature 2's write. |
