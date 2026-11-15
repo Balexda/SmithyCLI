@@ -1464,14 +1464,20 @@ describe('getComposedTemplates', () => {
     const geminiComposed = await getComposedTemplates('gemini');
     for (const templates of [claudeComposed, codexComposed, geminiComposed]) {
       const persona = templates.commands.get('smithy.persona.md')!;
-      const rfcMode = persona.slice(persona.indexOf('## RFC Mode'), persona.indexOf('## Free-Text Mode'));
+      const rfcStart = persona.indexOf('## RFC Mode');
+      const rfcEnd = persona.indexOf('## Free-Text Mode');
+      expect(rfcStart).toBeGreaterThan(-1);
+      expect(rfcEnd).toBeGreaterThan(rfcStart);
+      const rfcMode = persona.slice(rfcStart, rfcEnd);
       const guard = rfcMode.indexOf('Filter out template placeholders');
       expect(guard).toBeGreaterThan(-1);
       for (const action of ['derive the filename slug', 'dispatch **smithy-prose** with:',
         'Create the', 'Write one file per non-colliding candidate']) {
         expect(guard).toBeLessThan(rfcMode.indexOf(action));
       }
-      const zeroBranch = rfcMode.slice(guard, rfcMode.indexOf('8. For each RFC persona candidate'));
+      const zeroBranchEnd = rfcMode.indexOf('derive the filename slug');
+      expect(zeroBranchEnd).toBeGreaterThan(guard);
+      const zeroBranch = rfcMode.slice(guard, zeroBranchEnd);
       for (const rule of [
         '<Persona 1 ...>', '<Persona 1 — role and how they benefit from this RFC>',
         'TBD', 'TODO', 'discard placeholders and continue with the real candidates',
@@ -1482,7 +1488,9 @@ describe('getComposedTemplates', () => {
         'file for this zero-candidate branch', 'fall back to free-text mode or invent personas',
       ]) expect(zeroBranch).toContain(rule);
       expect(rfcMode).not.toContain('suppress placeholders beyond');
-      const summary = persona.slice(persona.indexOf('For **RFC mode**, report only this block'));
+      const summaryStart = persona.indexOf('For **RFC mode**, report only this block');
+      expect(summaryStart).toBeGreaterThan(-1);
+      const summary = persona.slice(summaryStart);
       expect(summary).toContain('state that no persona files were written instead');
       expect(summary).toContain('**Diagnostic** — for the zero-candidate branch');
       expect(summary).toContain('personas were found and include the diagnostic recorded in RFC mode');
