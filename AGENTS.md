@@ -93,6 +93,32 @@ IDs are `M<N>` / `F<N>` / `US<N>` / `S<N>` (no leading zeros). Use the 4-column
 table (`ID | Title | Depends On | Artifact`) — **no checkboxes** in Dependency
 Order sections. Full schema in `src/templates/agent-skills/README.md`.
 
+## Code Review Rules
+
+For automated reviewers. Path-scoped detail lives in `.github/instructions/`,
+review procedures in `.github/skills/`, and
+[`docs/reviewer-instructions.md`](docs/reviewer-instructions.md) explains the
+layout. The rules that matter most:
+
+- **Review against the plan.** A pull request implements one slice of one
+  `.tasks.md` file. Read that slice before commenting. Do not request work a
+  later slice or an open `SD-NNN` row already covers; if merging this slice
+  alone leaves `master` broken, say so once as a merge-ordering risk.
+- **Templates are read in other repositories.** Under
+  `src/templates/agent-skills/`, flag references to source-only paths, issue
+  numbers, or unbuilt work (INV-2), and protocol text re-typed instead of
+  composed from its snippet (INV-1).
+- **Never ask for the snapshot to be regenerated.** `.claude/`, `.agents/`,
+  `.codex/`, `tools/codex/`, and the manifest drift from `src/templates/` on
+  purpose.
+- **The three deployers move together.** A change to what `claude.ts`,
+  `gemini.ts`, or `codex.ts` deploys needs the matching change in the others,
+  or a stated reason it does not apply.
+- **Planted flaws under `evals/fixture/` are intentional** and listed in its
+  README.
+- **Begin a comment with "Steering question:"** when it asks for a choice
+  only a person can make, and leave it as a question.
+
 ## Development
 
 ```bash
