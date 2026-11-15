@@ -42,7 +42,7 @@
 
 ### Tasks
 
-- [ ] **Reject empty or placeholder-only Personas sections**
+- [x] **Reject empty or placeholder-only Personas sections**
 
   Update `src/templates/agent-skills/commands/smithy.persona.prompt` so RFC mode treats missing substantive persona content, including template placeholder literals, as a zero-write outcome. The command should emit a diagnostic summary for this branch and must not dispatch `smithy-prose` or create target files when there are no real candidates.
 
