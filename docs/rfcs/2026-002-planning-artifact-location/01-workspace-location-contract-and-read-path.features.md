@@ -15,7 +15,7 @@ Terms used below: an **in-repo install** keeps planning artifacts in the reposit
 kind: backend
 ```
 
-**Description**: The CLI decides which project is in play from declared inputs only: the invocation's `--project` or the input artifact's `**Project**` header. Every case it cannot answer comes back as a named outcome, so no caller keeps a project rule of its own.
+**Description**: The CLI decides which project is in play from the invocation's `--project` or the input artifact's `**Project**` header, and with neither on an out-of-repo install the project inherits the repository's name. Every case it cannot answer comes back as a named outcome, so no caller keeps a project rule of its own.
 
 **User-Facing Value**: A maintainer running several workstreams gets the same project answer from every command and every working directory, and a wrong or missing declaration is refused with a message instead of landing work in the wrong store.
 
@@ -24,13 +24,14 @@ kind: backend
   - the working directory's name never deciding the project;
   - a project existing exactly when its directory exists under `~/.smithy/projects/`;
   - refusing an invalid slug with a message naming the problem;
-  - a fixed set of reserved store names (`default`, plus one new name for the repo-keyed store) refused as user project slugs, which ends today's acceptance of `--project default`;
-  - listing named project stores by name, and picking none, when no project is declared and several exist;
+  - on an out-of-repo install with no declared project, the project inheriting the repository's name, taken from the key that already locates the install's store and identical from every worktree;
+  - the reserved store name `default` refused as a user project slug, which ends today's acceptance of `--project default`;
+  - listing named project stores by name, and picking none, when no project is declared, none is inherited, and several exist;
   - refusing, and naming both values, when `--project` and the `**Project**` header disagree;
   - reading the `**Project**` header from an input artifact;
   - one shared definition of the project helpers that planning status and engraved status both use;
   - retiring today's implicit pick of a lone named project store, and the legacy `project:` field, as project signals.
-- Excludes: mapping a project to locations (Feature 2); reaching today's repo-keyed and `default` stores through their reserved names (Milestone 4); any project registry; any working-directory or walk-up signal.
+- Excludes: mapping a project to locations (Feature 2); reaching today's shared `default` store through its reserved name (Milestone 4); any project registry; any working-directory or walk-up signal.
 
 ### Feature 2: Workspace Location Query
 
@@ -46,15 +47,15 @@ kind: backend
 - Includes:
   - planning places, and engraved places at the user, repo and project levels;
   - a declared project's store at `~/.smithy/projects/<slug>/`, belonging to no repository and identical from every repository in the project;
-  - the install's own store reported at the path it has today;
+  - an out-of-repo install's own store addressed as the project named after its repository, at the path it has today, with its records staying repo-level;
   - a form of the query that takes an input artifact and resolves from what it declares;
-  - the answer for a write with no declared project on an out-of-repo install: the install's own store when no named project stores exist, and a refusal naming `--project` when they do; an in-repo install's undeclared write always resolves to the repository;
+  - with no declared project, an out-of-repo install's reads and writes resolving to that store, and an in-repo install's resolving to the repository;
   - a missing store reported absent and never created;
   - a normal answer for a store that is not a git repository;
   - a code worktree resolving to the same store as its main checkout;
   - a machine-readable answer whose vocabulary of logical places, rules, refusals and candidate lists is fixed for Milestone 3 to build on;
   - the layout of a named project store, with planning places and project-level engraved records side by side at its root.
-- Excludes: writing or committing to a store (Milestone 2); any prompt or template that calls the query (Milestone 3); addressing today's repo-keyed and `default` stores under reserved names (Milestone 4); asking the user anything.
+- Excludes: writing or committing to a store (Milestone 2); any prompt or template that calls the query (Milestone 3); addressing today's shared `default` store under its reserved name, and verifying that existing stores' links and record levels survive (Milestone 4); asking the user anything.
 
 ### Feature 3: Status on the Location Answer
 
@@ -87,24 +88,19 @@ kind: backend
 
 **Scope Boundaries**:
 - Includes:
-  - the one shared project-resolution text dropping its "exactly one named store" step and taking its artifact-side signal from the `**Project**` header;
+  - the one shared project-resolution text dropping its "exactly one named store" step, taking its artifact-side signal from the `**Project**` header, and stating that an out-of-repo install with no declared project uses its repository's own project;
   - that same edit reaching `smithy.engrave` and the inline recall path used where no sub-agent is available, as intended;
   - in-repo prompts keeping fixed repository paths and gaining no CLI call;
   - confirming that recall's existing scan-roots input can carry the query's engraved locations unchanged;
   - recall's scanned levels and locations matching the query's answer for the same declared inputs;
   - removing the clash between the `**Project**` artifact header and the same label on recall's dispatch field.
-- Excludes: planning commands calling the query and handing recall its answer on out-of-repo installs (Milestone 3, subject to SD-002); removing `{{artifactsRoot}}` sites and the shared location fragment (Milestone 3); any change to the engraved record schema, edges or levels.
+- Excludes: planning commands calling the query and handing recall its answer on out-of-repo installs (Milestone 3); removing `{{artifactsRoot}}` sites and the shared location fragment (Milestone 3); any change to the engraved record schema, edges or levels.
 
 ## Specification Debt
 <!-- audience: reviewer; mode: reference; length: index table + 1-3 sentences per item; diagram: optional; examples: discouraged -->
 
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
-| SD-002 | recall-consumption-out-of-repo-in-m1 | Scope Within the Milestone | High | Medium | local |
-
-### SD-002 — recall-consumption-out-of-repo-in-m1
-
-What does the Milestone 1 criterion "Status, engraved status and engraved recall return the same locations as the query" require of M1 on out-of-repo installs? (a) The same rule and the same roots now, with recall literally consuming the query's answer deferred to M3's template rewrite. (b) M1 edits the five planning commands so the parent calls the query and fills recall's Scan roots. (c) M1 edits only the recall sub-agent so it calls the query itself on out-of-repo installs, with no change to the planning commands. The choice decides whether F4 is a snippet-only feature or also touches dispatch templates. It also decides whether the out-of-repo render of the project-resolution text points at the query's answer in M1, or whether both renders carry the same declared-only prose rule until M3, as option (a) implies.
 
 ### Resolved
 
@@ -112,7 +108,13 @@ What does the Milestone 1 criterion "Status, engraved status and engraved recall
 
 **Question:** The Milestone 1 criterion "Only declared inputs decide which project is in play" says only `--project` and the `**Project**` header decide the project. The criterion "Repo-mode installs see identical status, engraved status and recall output before and after" says that output stays identical. Today a repo-mode install with exactly one named dir under `~/.smithy/projects/` gets a project level by auto-pick, and the prompt rule also honours a legacy `project:` field. Which way? (a) Drop both auto-pick and `project:` everywhere; parity is measured only for invocations that declare a project or have no named stores. (b) Keep auto-pick and `project:` in repo mode only, so repo mode keeps a second project rule. (c) Read `project:` as an alias for `**Project**` and drop auto-pick everywhere.
 
-**Answer:** Resolved 2026-11-15 — option (a). The implicit pick of a lone named project store and the legacy `project:` field are dropped everywhere; only `--project` and the `**Project**` header decide the project. An in-repo install does not need the CLI, so the change costs it nothing it depends on. Any install outside plain repo mode that relied on either signal may break, and that is accepted: in practice those setups were largely broken already.
+**Answer:** Resolved 2026-11-15 — option (a). The implicit pick of a lone named project store and the legacy `project:` field are dropped everywhere; only `--project` and the `**Project**` header decide the project (SD-002's answer later adds the one inherited case, an out-of-repo install's own repository). An in-repo install does not need the CLI, so the change costs it nothing it depends on. Any install outside plain repo mode that relied on either signal may break, and that is accepted: in practice those setups were largely broken already.
+
+#### SD-002 — recall-consumption-out-of-repo-in-m1
+
+**Question:** What does the Milestone 1 criterion "Status, engraved status and engraved recall return the same locations as the query" require of M1 on out-of-repo installs? (a) The same rule and the same roots now, with recall literally consuming the query's answer deferred to M3's template rewrite. (b) M1 edits the five planning commands so the parent calls the query and fills recall's Scan roots. (c) M1 edits only the recall sub-agent so it calls the query itself on out-of-repo installs, with no change to the planning commands. The choice decides whether F4 is a snippet-only feature or also touches dispatch templates. It also decides whether the out-of-repo render of the project-resolution text points at the query's answer in M1, or whether both renders carry the same declared-only prose rule until M3, as option (a) implies.
+
+**Answer:** Resolved 2026-11-15 — option (a). In Milestone 1 recall follows the same rule and scans the same locations as the query; planning commands calling the query and handing recall its answer waits for Milestone 3. The rule recall states is deterministic because an out-of-repo install with no declared project inherits its repository's name, so both renders of the shared text can carry it in prose.
 
 ## Dependency Order
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
@@ -136,6 +138,6 @@ Direction must be either `depends on` or `depended upon by`.
 | Dependency | Direction | Notes |
 |------------|-----------|-------|
 | Milestone 3: Location-Free Templates | depended upon by | Builds on Feature 2's answer vocabulary, and replaces the interim project-resolution text Feature 4 leaves in out-of-repo prompts with the query call; in-repo prompts keep Feature 4's short prose rule. |
-| Milestone 4: Existing-Store Continuity | depended upon by | Reuses Feature 1's reserved-name set to make today's repo-keyed and `default` stores reachable. Between this milestone and that one, out-of-repo installs lose sight of the `default` store and of artifacts still in the repository, because Feature 3 retires the fallback that found them. |
+| Milestone 4: Existing-Store Continuity | depended upon by | Builds on Feature 1's rule that a repo-keyed store is the project named after its repository, and on the reserved `default` name, to keep existing stores reachable. Between this milestone and that one, out-of-repo installs lose sight of the `default` store and of artifacts still in the repository, because Feature 3 retires the fallback that found them. |
 
 Milestone 2 (CLI-Mediated Store Commit) takes an explicit store and shares no dependency with this milestone in either direction.
