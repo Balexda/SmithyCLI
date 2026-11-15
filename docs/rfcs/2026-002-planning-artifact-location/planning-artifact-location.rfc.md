@@ -10,9 +10,9 @@ This RFC makes Smithy's CLI the single owner of where planning artifacts and eng
 
 On 1 November 2026 the maintainer could not cut spec 007, a project that spans four repositories, because the one out-of-repo store the install provides was taken up by spec 001. It was checked out on 001's branch, it held five uncommitted 001 files, and four 001 forge sessions were still running against it. Neither spec had done anything wrong. Two workstreams simply cannot share one checkout. The same design fails in two more ways. A project spanning several repositories has no home of its own, because the store belongs to a single repository. And forge, running in a code worktree, follows a fixed path back to the shared store, but the progress it records there is committed in the code worktree instead. That is how uncommitted planning files pile up behind a running workstream. This is one incident, and nobody has measured how often such collisions happen. The case for fixing it rests on the structure: while location has no single owner, this class of failure stays reachable.
 
-All three failures come from one cause. The location of planning documents is written into prompt text once, at install time, in 97 places across 17 templates. Every later answer to "where do artifacts live" has been added as another layer on that fixed location: in-repo versus external, per-repository versus shared, named projects, worktrees, and cross-repository slices. Each layer has meant agent-side path rewriting, a status lookup that tries several stores in turn, commit instructions inside prompts that are specific to one store, or permission lists that name store paths. The stopgap now under review, PR #610, lets commands choose a store at run time. That unblocks the incident, but it puts a second resolution mechanism on top of the first. Reviews of that work found the rule for "which project is in play" implemented in three places. They also found that the location instructions every planning command loads had grown from 13 lines to 115, a context cost paid even by teams who keep planning in their repository and never touch an external store. Now is the time to act because each further layer makes the next one harder to remove. Whether this model supersedes PR #610 or builds on it is one of the open choices this RFC carries.
+All three failures come from one cause. The location of planning documents is written into prompt text once, at install time, in 97 places across 17 templates. Every later answer to "where do artifacts live" has been added as another layer on that fixed location: in-repo versus external, per-repository versus shared, named projects, worktrees, and cross-repository slices. Each layer has meant agent-side path rewriting, a status lookup that tries several stores in turn, commit instructions inside prompts that are specific to one store, or permission lists that name store paths. A stopgap, PR #610, let commands choose a store at run time. That would have unblocked the incident, but it put a second resolution mechanism on top of the first, and it was closed unmerged. Reviews of that work found the rule for "which project is in play" implemented in three places. They also found that the location instructions every planning command loads had grown from 13 lines to 115, a context cost paid even by teams who keep planning in their repository and never touch an external store. Now is the time to act because each further layer makes the next one harder to remove. This model is built from `master` and replaces that stopgap instead of building on it.
 
-The goal is one model for where planning artifacts and engraved records live, how every command finds them, and how they are committed. Under that model, prompts carry no filesystem location. The decision about which project is in play is made in exactly one place, and the working directory's name is never treated as a signal for it. Store kinds collapse to two: in the repository, or a project store. Today's repo-keyed and shared default stores are addressed as projects under reserved names that no user project can claim, and readdressing them never changes the level of the records they hold. Repo-mode installs see no change. How location-free prompts behave on a machine with no `smithy` binary is still an open choice, and the promise does not yet extend to that case. When this is done, two workstreams on one machine never share a checkout or a branch, a multi-repo project has one home tied to none of its repositories, and forge leaves its progress in the store it belongs to, whatever worktree it runs in.
+The goal is one model for where planning artifacts and engraved records live, how every command finds them, and how they are committed. Under that model, prompts carry no filesystem location. The decision about which project is in play is made in exactly one place, and the working directory's name is never treated as a signal for it. Store kinds collapse to two: in the repository, or a project store. Today's repo-keyed and shared default stores are addressed as projects under reserved names that no user project can claim, and readdressing them never changes the level of the records they hold. Repo-mode installs see no change, and that holds on a machine with no `smithy` binary too: prompts carry the in-repo layout as their default, and the CLI only redirects when it is present. When this is done, two workstreams on one machine never share a checkout or a branch, a multi-repo project has one home tied to none of its repositories, and forge leaves its progress in the store it belongs to, whatever worktree it runs in.
 
 ## Goals
 
@@ -24,14 +24,17 @@ The goal is one model for where planning artifacts and engraved records live, ho
 - **Writes to a store go through the CLI.** Prompts carry no store `git` commands. The CLI's commit tolerates a store with no git history: it skips the commit with a notice and never runs `git init` or pushes.
 - **Location text goes back to its original size.** The location instructions each planning command loads shrink from the stopgap's 115 lines back to roughly the 13 lines repo mode carries today.
 - **Store kinds collapse to two.** A store is either in the repository or a project store. Today's repo-keyed and shared `default` stores are addressed as projects under reserved names that no user project can take. Readdressing a store this way never changes the level of the records it holds.
-- **Repo-mode installs behave exactly as they do today.** Teams that keep planning in their repository see no observable change. What happens on a machine with no current `smithy` binary on PATH depends on how the open choice on that question (SD-005) is resolved. This RFC does not promise unchanged behaviour in that case until the choice is made.
+- **Repo-mode installs behave exactly as they do today.** Teams that keep planning in their repository see no observable change. That includes a machine with no current `smithy` binary on PATH: prompts carry the in-repo layout as the default for logical places, and the CLI call only redirects when it is available.
 
 ## Out of Scope
 
 - **Changes to the engraved record schema, its edges, or its levels.** Only where records live changes. Their frontmatter, citation edges and the user/repo/project level model stay as they are.
 - **Remote sync or push of stores.** The CLI commits locally and never pushes or syncs with a remote. Sharing a store across machines would need its own design and a separate effort.
 - **Guessing a store from the working directory or a walk-up marker search.** Using the working directory as a signal is ruled out. A walk-up marker was already rejected because forge runs in the code worktree, so the artifact or the invocation has to declare the project.
-- **Rebuilding PR #610's prefix-substitution mechanism.** The logical-place model replaces run-time prefix substitution; it is not reimplemented. #610's user-facing pieces (named project stores, `smithy status --project`, the `**Project**` header) carry over; whether `smithy root`'s prefix output and `--from` survive as compatibility surfaces is settled by the open choice on that PR (SD-001), not by this exclusion.
+- **Rebuilding PR #610's prefix-substitution mechanism.** PR #610 was closed unmerged and this work starts from `master`. The logical-place model replaces run-time prefix substitution, and `smithy root`'s prefix output is not built. Named project stores, `smithy status --project` and the `**Project**` header are built as part of this model.
+- **Intra-project concurrency tools beyond the commit.** Atomic single-cell edits of a Dependency Order row and story-scoped debt ids are not delivered. Orchestrators keep the rest of the parallel-cut preamble (edit only your own row, reserved debt-id ranges), and the Specification Debt content model is unchanged.
+- **Physically importing existing stores.** Today's repo-keyed and `default` stores are readdressed where they sit. No command moves them into named project stores or rewrites their Artifact cells.
+- **A per-machine project registry.** A project exists because its directory exists. No registry file lists projects, member repositories or aliases.
 
 ## Personas
 
@@ -39,7 +42,7 @@ The goal is one model for where planning artifacts and engraved records live, ho
 - **Teams with repo-level installs** — Keep their planning inside the repository and never touch an external store. They notice nothing today and must notice nothing afterwards, so they are a hard compatibility constraint, not a group gaining features. What they get is negative space: they stop paying context for location policy built for stores they don't use, as the location text each command loads shrinks from the stopgap's 115 lines back toward its 13-line repo-mode size.
 - **Template authors** — Maintain one template source for three agent runtimes and pay context budget for every line of location text. Today 97 sites across 17 templates name a root, and the stopgap grows location policy to 115 lines in every composing command. With the CLI as the only owner of location, templates refer to artifacts by logical place, carry no store `git` commands, and have no filesystem root left that a prefix-mismatch bug could get wrong.
 - **The orchestrator that hands forge a tasks path** — A non-human stakeholder: an agent-session orchestrator that pre-stages worktrees and launches forge with a tasks file path, in environments where IDE and agent-deck launches do not reliably carry a per-session environment. It benefits when forge can find the right store, and commit its progress there instead of in the code worktree, from that input alone with no per-session setup. Whether the tasks path alone is enough, or the tasks file must also carry a store identity, is settled by experiment during this work.
-- **The teammate using committed prompts with no `smithy` binary installed** — A member of a repo-mode team who uses the prompts committed to the repository without installing Smithy. Whether their experience stays the same is contingent on SD-005 (behaviour without the binary). If prompts keep the in-repo layout as the default and call the CLI only when it is present, they see no change. If every mode requires the CLI, they get an install message instead. This RFC does not yet promise either outcome.
+- **The teammate using committed prompts with no `smithy` binary installed** — A member of a repo-mode team who uses the prompts committed to the repository without installing Smithy. Their experience stays the same. Prompts carry the in-repo layout as the default and call the CLI only when it is present, so nothing they do today starts requiring an install.
 
 ## Proposal
 
@@ -68,27 +71,28 @@ A run asks the location query once, at the start, and gets every location it nee
 | This repo's decisions | `~/.smithy/repos/<key>/docs/decisions/` | Legacy repo-keyed store addressed under a reserved name; records stay repo-level |
 | User-level invariants | `~/.smithy/invariants/` | Fixed user store, never managed by an install |
 
-The store write follows "explicit store in, commit out". It works from any working directory, so a forge session in a code worktree commits its progress to the store the tasks file belongs to, not to the code checkout. Commits from parallel workstreams to their own stores do not collide. Prompts no longer carry store `git` commands. If a store has no git history, the write leaves the files in place, skips the commit and prints a notice. It never runs `git init` and never pushes. A CLI commit on its own retires only the index-lock and no-push rules of today's parallel-cut preamble. Whether this work also covers the other intra-project concurrency tools is SD-002.
+The store write follows "explicit store in, commit out". It works from any working directory, so a forge session in a code worktree commits its progress to the store the tasks file belongs to, not to the code checkout. Commits from parallel workstreams to their own stores do not collide. Prompts no longer carry store `git` commands. If a store has no git history, the write leaves the files in place, skips the commit and prints a notice. It never runs `git init` and never pushes. A CLI commit on its own retires only the index-lock and no-push rules of today's parallel-cut preamble. The other intra-project concurrency tools are out of scope, so orchestrators keep the rest of that preamble.
 
-Store kinds collapse to two: in the repository, or a project store. Today's repo-keyed store and the shared `default` store become project stores addressed under reserved names, and no user project slug can take those names. A store's role decides the level of its records, and the name used to address it does not, so readdressing a store never changes the level of what it holds. `smithy init` no longer writes a location into prompts, and the install-time external-artifacts gate goes away along with the fixed root. `smithy update` re-renders prompts and never touches stores. Teams with repo-mode installs see no change, subject to the open choice on machines without a binary (SD-005).
+Store kinds collapse to two: in the repository, or a project store. Today's repo-keyed store and the shared `default` store become project stores addressed under reserved names where they sit: no files move, and no user project slug can take those names. A named project exists because its directory exists under the projects store; there is no registry. A store's role decides the level of its records, and the name used to address it does not, so readdressing a store never changes the level of what it holds. `smithy init` no longer writes a location into prompts, and the install-time external-artifacts gate goes away along with the fixed root. `smithy update` re-renders prompts and never touches stores. Teams with repo-mode installs see no change, including on machines without a `smithy` binary, because the in-repo layout is the default a prompt uses when the CLI is absent.
 
 The query reports its edge cases as outcomes, not guesses:
 
 - **Invalid project slug:** refused, with a message naming the problem.
-- **More than one candidate project:** the answer names the candidates and never picks one by name. What a write does when no project is declared is SD-003.
+- **More than one candidate project:** the answer names the candidates and never picks one by name.
+- **No project declared for a write:** an in-repo install writes to the repository as it does today. An external-store install writes to its own store when no named project stores exist, and refuses when they do, with a message naming `--project`. It never asks and never guesses.
 - **Store path missing:** reported as absent. The query does not create it.
 - **Store is not a git repository:** the query answers normally, and the write skips its commit with a notice.
 - **Code worktree:** it resolves to the same project store as its main checkout, so mark in one and forge in the other see one store.
 
 ## Design Considerations
 
-**The working directory is never a signal, and forked commands cannot ask.** The project in play comes only from what the invocation or the input artifact declares. It never comes from the working directory's name or from searching upward for a marker file. Forge runs in a code worktree whose path says nothing about the planning store, so any rule based on the working directory would send it to the wrong store. This interacts with D-4: mark, cut and render may run forked, and a forked command cannot stop to ask the user. So the query has to be answerable from the invocation and the input artifact alone. When those leave the project undeclared and named project stores exist, the write must either fall through to the install's store with a warning or refuse with a message naming `--project`. That choice is SD-003. Asking is ruled out by the one-shot contract in both cases.
+**The working directory is never a signal, and forked commands cannot ask.** The project in play comes only from what the invocation or the input artifact declares. It never comes from the working directory's name or from searching upward for a marker file. Forge runs in a code worktree whose path says nothing about the planning store, so any rule based on the working directory would send it to the wrong store. This interacts with D-4: mark, cut and render may run forked, and a forked command cannot stop to ask the user. So the query has to be answerable from the invocation and the input artifact alone. When those leave the project undeclared, an in-repo install writes to its repository, which is the home it chose at install. An external-store install refuses the write when named project stores exist, with a message naming `--project`: a refusal is visible, while a fall-through risks one project's specs scattering silently across two stores. Asking is ruled out by the one-shot contract.
 
-**Level follows the store's role, not its address.** Today, repo-level engraved records sit under a store's `docs/decisions/`, `docs/invariants/` and `docs/constitution/`, while project-level records sit directly under `~/.smithy/projects/<slug>/`. Addressing a repo-keyed or `default` store as a reserved-name project must not turn its repo-level records into project-level ones. If it did, record ids, precedence, and the legality of `excepts` and supersession edges would all shift without anyone editing a record. How this constraint is kept depends on SD-004. If existing stores are reinterpreted in place, the reserved-name mapping keeps the `docs/` segment and the repo level as a permanent rule of the query. If they are physically imported into named project stores, each record's level has to be decided at import, along with rewritten Artifact cells and a tombstone. `smithy update` cannot do either one on its own, because it never moves user-authored artifacts or manages the home-level store.
+**Level follows the store's role, not its address.** Today, repo-level engraved records sit under a store's `docs/decisions/`, `docs/invariants/` and `docs/constitution/`, while project-level records sit directly under `~/.smithy/projects/<slug>/`. Addressing a repo-keyed or `default` store as a reserved-name project must not turn its repo-level records into project-level ones. If it did, record ids, precedence, and the legality of `excepts` and supersession edges would all shift without anyone editing a record. Existing stores are reinterpreted in place, so the reserved-name mapping keeps the `docs/` segment and the repo level as a permanent rule of the query. No files move and no Artifact cell is rewritten. That leaves `smithy update` nothing to migrate, which matters because it never moves user-authored artifacts or manages the home-level store.
 
-**Who owns the project entity is open (SD-006).** A project can exist because its directory exists under the projects store, which is how projects are listed today. Or it can exist because an explicit per-machine registry names it. The directory layout needs no new state, but it gives reserved names, multi-repo membership and aliases nowhere to live except naming conventions. A registry can hold all of those and lets the CLI refuse to guess by name. The cost is a new piece of per-machine state that sits outside every manifest, alongside the user store that Smithy deliberately never manages. Whichever owner is chosen, the query is its only reader. No prompt or status path consults it directly.
+**The directory layout owns the project entity.** A project exists because its directory exists under the projects store, which is how projects are listed today. This adds no per-machine state beside the user store that Smithy deliberately never manages. Reserved names are a fixed rule of the CLI, and a repository learns its project from what the invocation or the artifact declares, so membership needs no stored map. The cost is that per-project metadata has nowhere to live. An explicit registry was considered and set aside because no stated requirement needs that metadata. The query is the only reader of the layout. No prompt or status path consults it directly.
 
-**No binary, INV-2 and SD-005.** INV-2 requires every actionable reference in a deployed template to resolve when the template is rendered into a fresh repository. The location call is an actionable reference. If SD-005 makes the in-repo layout the logical default, with the CLI call only redirecting when a binary is present, templates still resolve where Smithy is not installed, and the promise that repo-mode teams see no change holds for teammates using committed prompts. If SD-005 makes every mode require the CLI, the call does not resolve on those machines. That makes a medium-severity candidate conflict with INV-2 real, and it would need an accepted exception in INV-2's ledger. So "no change without a binary" is conditional on SD-005, and the RFC does not promise it until that choice is made.
+**No binary and INV-2.** INV-2 requires every actionable reference in a deployed template to resolve when the template is rendered into a fresh repository. The location call is an actionable reference. Prompts therefore carry the in-repo layout as the default meaning of each logical place, as relative paths and never a home-anchored root, and the CLI call only redirects when a binary is present. Templates still resolve where Smithy is not installed, the promise that repo-mode teams see no change holds for teammates using committed prompts, and INV-2 needs no exception. The cost is that the in-repo layout stays in prompt text, inside the one shared location fragment, and has to fit its budget. A run that declares a project does need the CLI. If the binary is absent, that run stops with an install message and writes nothing into the repository.
 
 **Context budget and one canonical home.** P-1 treats always-loaded context as a budget. The target is for each command's location text to shrink back to roughly the 13 lines repo mode carries today. That only works if prompts describe how to call the query and the write and how to read the answer, and never restate the precedence the CLI applies. Under INV-1, those instructions live in one shared fragment that every consuming template composes. The rule for which project is in play lives only in the CLI. The answer reports the rule that chose each location, so a prompt never needs its own copy of the rule to explain a result. The three-places finding from the stopgap's review is the failure this rules out.
 
@@ -97,42 +101,75 @@ The query reports its edge cases as outcomes, not guesses:
 - **Per-runtime permissions.** Under D-3 and INV-3, the deployers emit whatever permission metadata each runtime actually reads. A probe has to show whether Gemini CLI and Codex can grant the location call and the CLI-mediated commit without their permission files listing store paths, as they do today.
 - **Forge store identity.** The question is whether a tasks path handed over by an orchestrator, together with the existing `**Project**` header, is enough for forge to find and commit to the right store, or whether the tasks file needs an explicit store identity.
 
-The second experiment runs on the phase-1 branch, which ties it to SD-001. PR #610's user-facing pieces carry over: named project stores, `smithy status --project` and the `**Project**` header. Its prefix-substitution mechanism is superseded. SD-001 leaves the order open: land #610 and migrate off its mechanism, close it and build from `master`, or rework the branch in place. That choice also decides whether `smithy root`'s prefix output and `--from` remain as compatibility surfaces users can still see.
+PR #610 was closed unmerged, so this work starts from `master`. Named project stores, `smithy status --project` and the `**Project**` header are built as part of the location contract, and the forge experiment runs against that implementation, not the closed branch. The prefix-substitution mechanism and `smithy root`'s prefix output are not built. Resolving the store from an input artifact, which #610 exposed as `--from`, is a capability of the location query; the shape of that surface is left to the spec.
 
 ## Decisions
 
 - **Build the location model in the CLI; adopt no external tool.** The PRD's survey found one close analogue, OpenSpec Stores, which is a rival workflow that cannot be embedded, never commits, and allows one checkout per store. Its precedence-with-provenance answer and its refusal to guess a store by name are borrowed as design references.
 - **Two contracts, not one.** Location query and store write are separate because they carry different unknowns: the write has permission and concurrency concerns the query does not. Because the write takes an explicit store, it does not need the query to exist first.
-- **The five PRD debt items carry down undecided.** SD-001 to SD-005 are steering choices for a human. The RFC names what each one gates and designs around both outcomes; it resolves none of them.
+- **All six steering choices are resolved in this RFC.** The five carried from the PRD and the one found here were decided on 2026-11-15 and are recorded under Specification Debt. None is passed down to the feature maps as open debt.
+- **Build from `master`.** PR #610 was closed unmerged. Its user-facing surfaces are built fresh inside the location contract, and its prefix substitution is not.
+- **The commit is the only concurrency tool.** Atomic cell edits and story-scoped debt ids stay out, which leaves the Specification Debt grammar that resolve, audit and the status parser rely on untouched.
+- **Undeclared writes refuse, except in-repo.** A refusal is loud and a scattered spec is silent, but refusing inside a repo-mode install would break the promise that those teams see no change.
+- **Existing stores are reinterpreted in place.** No files move, which keeps every record's level and every citation intact.
+- **The directory layout owns the project entity.** It needs no new per-machine state, and no stated requirement needs per-project metadata.
 - **The two PRD open questions are experiments, not debt.** The per-runtime permission probe and the forge store-identity question are settled by running them, so they are written as criteria on the work they gate. If the permission probe fails for a runtime, the choice that follows is recorded as new debt at that point.
 - **Level follows the store's role.** Readdressing a repo-keyed or `default` store under a reserved name never changes its records' level, which follows from leaving the engraved level model untouched. Reserved names are rejected as user project slugs.
 - **The working-directory rule is stated here in prose.** The PRD cites it as "D-5 / INV-4", but no engraved record with either id exists; the rule lives only in the project-resolution text the planning commands compose. This RFC states the rule directly and cites neither id. Engraving it is a follow-up for `smithy.engrave`.
-- **The no-binary promise is conditional.** The PRD lists unchanged repo-mode behaviour without a `smithy` binary as a success signal, which presupposes one option of SD-005. The RFC commits to repo-mode parity and leaves the no-binary case to that choice.
-- **Existing-store continuity is its own body of work.** It is gated by a different open choice (SD-004) than the location contract, and separating it keeps repo-mode users from waiting on a migration decision that only affects external stores.
+- **The no-binary promise holds.** Prompts carry the in-repo layout as the default and the CLI only redirects when present, so repo-mode behaviour is unchanged without a `smithy` binary and INV-2 needs no exception.
+- **Existing-store continuity is its own body of work.** It affects only external-store users, and separating it keeps the location contract small and lets continuity proceed alongside the templates.
 - **The 2026-11-01 scenario is the acceptance test.** It needs the query, the write, location-free templates and store continuity together, so it is verified once, end to end, after the rest.
 
 ## Specification Debt
 
-SD-001 to SD-005 are carried down from the parent PRD, `docs/prds/2026-002-planning-artifact-location.prd.md`; their detail sections live there and are not repeated here.
+All six items are resolved. SD-001 to SD-005 were carried down from the parent PRD, `docs/prds/2026-002-planning-artifact-location.prd.md`, which still lists them as open.
 
 | ID | Title | Source Category | Impact | Confidence | Origin |
 |----|-------|-----------------|--------|------------|--------|
-| SD-001 | phase-1-pr-610-supersede-or-build-on | Solution Intent | High | Medium | prd:SD-001 |
-| SD-002 | intra-project-concurrency-in-scope | Scope Edges | Medium | Medium | prd:SD-002 |
-| SD-003 | undeclared-project-write-fallback | Solution Intent | High | Medium | prd:SD-003 |
-| SD-004 | existing-store-migration-shape | Scope Edges | High | Medium | prd:SD-004 |
-| SD-005 | behaviour-without-smithy-binary | Solution Intent | High | Medium | prd:SD-005 |
-| SD-006 | project-entity-ownership | Constraints | High | Medium | local |
 
-### SD-006 — project-entity-ownership
+### Resolved
 
-Who owns the project entity that the resolver reads? Unresolved choice between (a) the directory layout, where a project exists iff `~/.smithy/projects/<slug>/` exists, as `listProjectSlugs()` treats it today, and (b) an explicit per-machine registry file (OpenSpec-style) that lists projects and their metadata, such as member repos and reserved-name aliases for legacy stores. Option (a) adds no new state but cannot hold per-project metadata. Option (b) adds a file the CLI must create and keep consistent, and it must stay outside any manifest because the user store is unmanaged. A manifest-owned option is effectively ruled out for that same reason.
+#### SD-001 — phase-1-pr-610-supersede-or-build-on
+
+**Question:** Unresolved choice between landing PR #610 as-is and migrating off its prefix-substitution mechanism afterwards, closing it and building the model from `master`, or reworking the branch in place before merging. The choice decides whether `smithy root`'s prefix output, the `**Project**` header, and `--from` remain as compatibility surfaces users can observe.
+
+**Answer:** Resolved 2026-11-15 — build from `master`. PR #610 was closed unmerged on 2026-11-11 and stays closed. `smithy status --project` and the `**Project**` header are built fresh as part of the location contract; `smithy root`'s prefix output and prefix substitution are not built.
+
+#### SD-002 — intra-project-concurrency-in-scope
+
+**Question:** Unresolved choice between including the proposal's other phase-3 tools (atomic single-cell edits of a Dependency Order row, story-scoped debt ids) and limiting scope to the CLI commit operation while orchestrators keep the rest of the parallel-cut preamble. Scoped debt ids would change the Specification Debt content model, which this PRD otherwise leaves untouched.
+
+**Answer:** Resolved 2026-11-15 — the CLI commit only. The other tools are out of scope for this RFC, orchestrators keep the rest of the parallel-cut preamble, and the Specification Debt content model is unchanged.
+
+#### SD-003 — undeclared-project-write-fallback
+
+**Question:** What should a planning write do when named project stores exist but no project is declared, by `--project` or by the input artifact? Unresolved choice between falling through to the install root with a warning (the phase-1 behaviour, which risks one project's specs scattering across two stores) and refusing the write with a message naming `--project`. Asking is ruled out by the one-shot contract.
+
+**Answer:** Resolved 2026-11-15 — refuse, except in-repo. An external-store install refuses the write with a message naming `--project`. An in-repo install keeps writing to its repository, so repo-mode teams see no change.
+
+#### SD-004 — existing-store-migration-shape
+
+**Question:** Unresolved choice between reinterpreting today's repo-keyed and `default` stores in place (same paths, addressed as projects under reserved names, no files move) and physically importing them into named project stores through an explicit `project import` that rewrites Artifact cells and leaves a tombstone. `smithy update` cannot move them on its own, because it never moves user-authored artifacts or manages the home-level store.
+
+**Answer:** Resolved 2026-11-15 — reinterpret in place. Same paths, addressed as projects under reserved names; no files move and record levels and citations are untouched. A physical import is out of scope.
+
+#### SD-005 — behaviour-without-smithy-binary
+
+**Question:** Should location-free templates work when no current `smithy` binary is on PATH, as for teammates of a repo-mode install who use committed prompts without installing Smithy? Unresolved choice between prompts carrying the in-repo layout as the logical-name default with the CLI call only redirecting when available, and every mode requiring the CLI and failing with an install message when it is absent. The first keeps the "repo-mode teams see no change" promise; the second is purer but breaks it.
+
+**Answer:** Resolved 2026-11-15 — the in-repo layout is the default. Prompts carry it as the default meaning of each logical place, and the CLI call only redirects when available. Repo-mode teams see no change and INV-2 needs no exception.
+
+#### SD-006 — project-entity-ownership
+
+**Question:** Who owns the project entity that the resolver reads? Unresolved choice between (a) the directory layout, where a project exists iff `~/.smithy/projects/<slug>/` exists, as `listProjectSlugs()` treats it today, and (b) an explicit per-machine registry file (OpenSpec-style) that lists projects and their metadata, such as member repos and reserved-name aliases for legacy stores. Option (a) adds no new state but cannot hold per-project metadata. Option (b) adds a file the CLI must create and keep consistent, and it must stay outside any manifest because the user store is unmanaged. A manifest-owned option is effectively ruled out for that same reason.
+
+**Answer:** Resolved 2026-11-15 — the directory layout. A project exists if its directory exists under `~/.smithy/projects/`; reserved names are a fixed rule of the CLI and there is no registry file.
 
 ## Milestones
 
 ### Milestone 1: Workspace Location Contract and Read Path
 
-**Description**: Introduces the CLI location query, which answers once per run every location a command may touch, each paired with the rule that chose it, and decides in one place which project is in play. Status discovery, engraved status and engraved recall move onto that answer so none of them resolves location for itself. A declared project gets its own store keyed to no repository. This milestone is gated by SD-001 (supersede or build on PR #610), SD-003 (what a write does when no project is declared) and SD-006 (who owns the project entity).
+**Description**: Introduces the CLI location query, which answers once per run every location a command may touch, each paired with the rule that chose it, and decides in one place which project is in play. Status discovery, engraved status and engraved recall move onto that answer so none of them resolves location for itself. A declared project gets its own store keyed to no repository. It is built from `master`, takes `--project` and the `**Project**` header as its declared inputs, and treats a project as existing when its directory exists.
 
 **Success Criteria**:
 - One CLI call per run returns every logical place the run needs, each with a concrete location in portable tilde form and the rule that produced it.
@@ -141,24 +178,24 @@ Who owns the project entity that the resolver reads? Unresolved choice between (
 - A declared project resolves to a store that belongs to no single repository, and each repository in that project resolves to the same store.
 - Each edge case comes back as an outcome, not a guess. An invalid slug is refused with a message naming the problem. Several candidate projects are listed by name and none is picked. A missing store is reported absent and not created. A store that is not a git repository gets a normal answer. A code worktree resolves to the same store as its main checkout.
 - Reserved store names are rejected when used as user project slugs.
+- A write with no declared project resolves to the repository on an in-repo install. On an external-store install it resolves to the install's own store when no named project stores exist, and is refused with a message naming `--project` when they do. The query never asks.
 - Repo-mode installs see identical status, engraved status and recall output before and after.
 
 ### Milestone 2: CLI-Mediated Store Commit
 
-**Description**: Introduces the store write contract: it takes an explicit store and returns a commit, so it does not wait for the location query and can start alongside Milestone 1. Before work starts, the permission probe has to show whether Gemini CLI and Codex can grant the CLI commit and the location call without their permission files listing store paths. A runtime that fails the probe is recorded as new debt. This milestone is gated by SD-001, and its scope widens if SD-002 brings the other intra-project concurrency tools into this work.
+**Description**: Introduces the store write contract: it takes an explicit store and returns a commit, so it does not wait for the location query and can start alongside Milestone 1. Before work starts, the permission probe has to show whether Gemini CLI and Codex can grant the CLI commit and the location call without their permission files listing store paths. A runtime that fails the probe is recorded as new debt. The scope is the commit alone; the other intra-project concurrency tools are out of scope.
 
 **Success Criteria**:
-- The permission probe has been run against Gemini CLI and Codex, and its result is recorded for each runtime before the write ships.
+- The permission probe has been run against Gemini CLI and Codex, and its result is recorded for each runtime before work on the write starts.
 - A commit made from any working directory, including a code worktree, lands in the store it names and nowhere else.
 - Commits made in parallel to different stores all succeed without index-lock collisions or interleaved changes.
 - When a store has no git history, its files stay in place, no commit is made and a notice is printed. The write never initialises a repository and never pushes.
 - Permission files no longer list store paths on any runtime where the probe shows the grant works without them.
 - Repo-mode commits behave exactly as before.
-- If SD-002 brings the other concurrency tools into scope, each tool it names has a criterion of its own here.
 
 ### Milestone 3: Location-Free Templates
 
-**Description**: Moves every deployed prompt onto the location query and the store write, so prompts name artifacts by logical place and carry no filesystem root and no store `git` commands. The location instructions shrink into one shared fragment of roughly the 13 lines repo mode carries today, and the install-time external-artifacts gate is retired. This milestone depends on Milestones 1 and 2 and is gated by SD-005 (behaviour without a `smithy` binary).
+**Description**: Moves every deployed prompt onto the location query and the store write, so prompts name artifacts by logical place and carry no filesystem root and no store `git` commands. The location instructions shrink into one shared fragment of roughly the 13 lines repo mode carries today, and the install-time external-artifacts gate is retired. Prompts carry the in-repo layout as the default meaning of each logical place, so they still work where no `smithy` binary is installed. This milestone depends on Milestones 1 and 2.
 
 **Success Criteria**:
 - None of the 97 `{{artifactsRoot}}` sites across the 17 templates remain.
@@ -168,23 +205,22 @@ Who owns the project entity that the resolver reads? Unresolved choice between (
 - A given invocation resolves and commits to the same locations on Claude, on Gemini's inline path and on Codex.
 - The install-time external-artifacts gate is gone, and installing no longer writes a location into prompts.
 - `smithy update` re-renders prompts and leaves every store's contents and git state untouched.
-- Repo-mode installs see no observable change. The no-binary case behaves the way SD-005 decides, and either outcome holds without an unrecorded INV-2 conflict.
+- Repo-mode installs see no observable change, including on a machine with no `smithy` binary on PATH, and INV-2 holds without an exception.
+- A run that declares a project on a machine with no `smithy` binary stops with an install message and writes nothing into the repository.
 
 ### Milestone 4: Existing-Store Continuity
 
-**Description**: Keeps today's repo-keyed and shared `default` stores reachable as project stores under reserved names, in whatever shape SD-004 picks: reinterpreted in place or imported. Records keep their level and existing artifact links keep resolving. Users of PR #610's mechanism get a stated path off it. This milestone depends on Milestone 1 and is gated by SD-004 (migration shape) and SD-003 (undeclared-project write fallback).
+**Description**: Keeps today's repo-keyed and shared `default` stores reachable as project stores under reserved names, reinterpreted in place: same paths, no files moved. Records keep their level and existing artifact links keep resolving. This milestone depends on Milestone 1.
 
 **Success Criteria**:
-- Every existing repo-keyed and `default` store can be reached through its reserved name in the shape SD-004 picks.
+- Every existing repo-keyed and `default` store can be reached through its reserved name at its existing path, with no file moved or rewritten.
 - No engraved record changes level: ids, precedence, and the legality of `excepts` and supersession edges are the same before and after.
 - No artifact is lost, and every Artifact cell in an existing `## Dependency Order` table still resolves to a file or folder that exists.
-- A write with no declared project does what SD-003 decides (falls through with a warning, or refuses with a message naming `--project`), and it never asks the user.
-- Anyone who used PR #610's prefix-substitution mechanism has a documented path off it that keeps their stores reachable.
 - Migrating or readdressing stores never modifies the user-level store, and `smithy update` never moves user-authored artifacts.
 
 ### Milestone 5: Parallel Workstreams and Forge From Any Worktree
 
-**Description**: Checks the whole model end to end against the 2026-11-01 scenario as its acceptance test, once the location-free templates and store continuity are both in place. This milestone carries the forge store-identity experiment, which tests whether a tasks path plus the existing `**Project**` header is enough for forge to find and commit to the right store. It depends on Milestones 3 and 4. The experiment runs on the phase-1 branch, so this milestone is also gated by SD-001 (supersede or build on PR #610).
+**Description**: Checks the whole model end to end against the 2026-11-01 scenario as its acceptance test, once the location-free templates and store continuity are both in place. This milestone carries the forge store-identity experiment, which tests whether a tasks path plus the existing `**Project**` header is enough for forge to find and commit to the right store. It depends on Milestones 3 and 4.
 
 **Success Criteria**:
 - On one machine, two specs in different projects are cut and forged in parallel, and they never share a store checkout or a branch.
