@@ -5,7 +5,7 @@
 **Created**: 2026-11-15
 
 ## Features
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: metadata block + short fields per feature; diagram: optional; examples: discouraged -->
 
 Terms used below: an **in-repo install** keeps planning artifacts in the repository and an **out-of-repo install** keeps them in a store under `~/.smithy/`. Neither is the engraved `repo` level, which names the scope of a record. A **named project store** is a directory under `~/.smithy/projects/` other than the reserved ones.
 
