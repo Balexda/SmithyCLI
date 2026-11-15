@@ -43,7 +43,7 @@ As a maintainer, I want isolated stand-in operations and a fixed pass definition
 **Acceptance Scenarios**:
 
 1. **Given** neither production command exists, **When** the probe is prepared, **Then** a stand-in callable as `smithy` exposes separate query and write subcommands; the query returns the selected store and the write creates a local commit containing a fixture change in that store.
-2. **Given** an isolated runtime configuration, **When** a candidate runs, **Then** the evidence records runtime version, platform, executable identity, working directory, effective permission and sandbox settings, literal command text, resulting argument tokens, outputs, rule decisions, approval observations, and before/after commit ids.
+2. **Given** an isolated runtime configuration, **When** a candidate runs, **Then** the evidence records runtime version, platform, executable identity, working directory, effective permission and sandbox settings, literal command text, resulting argument tokens, outputs, rule decisions, approval observations, and before/after commit IDs.
 3. **Given** a candidate subcommand grant, **When** an unrelated stand-in subcommand is evaluated, **Then** that grant does not authorize it; any broader pre-existing permission that would mask this result is absent from the isolated configuration.
 4. **Given** Claude as the control, **When** both operations run with narrow path-free grants, **Then** their observed results are recorded with the same evidence, including any failure.
 
