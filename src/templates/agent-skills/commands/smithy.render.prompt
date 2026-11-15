@@ -332,7 +332,7 @@ are shown to illustrate the seam):
 **Created**: YYYY-MM-DD
 
 ## Features
-<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+<!-- audience: reviewer; mode: reference; length: metadata block + short fields per feature; diagram: optional; examples: discouraged -->
 
 ### Feature 1: <Title>
 
