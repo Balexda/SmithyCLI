@@ -98,7 +98,8 @@ Order sections. Full schema in `src/templates/agent-skills/README.md`.
 For automated reviewers. Path-scoped detail lives in `.github/instructions/`,
 review procedures in `.github/skills/`, and
 [`docs/reviewer-instructions.md`](docs/reviewer-instructions.md) explains the
-layout. The rules that matter most:
+layout. `.coderabbit.yaml` points CodeRabbit at the same files. The rules that
+matter most:
 
 - **Review against the plan.** A pull request implements one slice of one
   `.tasks.md` file. Read that slice before commenting. Do not request work a
