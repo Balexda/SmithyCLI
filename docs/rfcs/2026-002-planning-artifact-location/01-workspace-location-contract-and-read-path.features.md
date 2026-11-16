@@ -123,7 +123,7 @@ Recommended specification sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| F1 | Declared Project Resolution | — | — |
+| F1 | Declared Project Resolution | — | specs/2026-11-15-013-declared-project-resolution/ |
 | F2 | Workspace Location Query | F1 | — |
 | F3 | Status on the Location Answer | F2 | — |
 | F4 | Engraved Recall on the Declared Project Rule | F2 | — |
