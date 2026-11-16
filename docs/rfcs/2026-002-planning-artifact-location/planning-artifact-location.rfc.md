@@ -236,7 +236,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| M1 | Workspace Location Contract and Read Path | — | — |
+| M1 | Workspace Location Contract and Read Path | — | docs/rfcs/2026-002-planning-artifact-location/01-workspace-location-contract-and-read-path.features.md |
 | M2 | CLI-Mediated Store Commit | — | — |
 | M3 | Location-Free Templates | M1, M2 | — |
 | M4 | Existing-Store Continuity | M1 | — |
