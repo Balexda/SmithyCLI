@@ -277,6 +277,10 @@ node dist/cli.js update  # Test update flow
 
 Dependency updates run hands-off via Dependabot, with GitHub Copilot Coding Agent as a fallback when CI fails on a Dependabot PR. See [docs/automated-dependency-updates.md](docs/automated-dependency-updates.md) for the flow, the one-time repo settings needed, and how to replicate the pattern in other repos.
 
+## Reviewer Instructions
+
+Copilot and Codex review pull requests here using instruction files this repository ships: path-scoped rules under `.github/instructions/`, on-demand review skills under `.github/skills/`, and the `## Code Review Rules` section of `AGENTS.md`. Files named `smithy.*` or `smithy-*` are the Smithy-general layer and name nothing specific to this repository; the rest are SmithyCLI's own rules, projected from `.claude/rules/template-authoring.md` and the engraved records. See [docs/reviewer-instructions.md](docs/reviewer-instructions.md) for the layout, how a rule gets added, and the manual Copilot-approval setup. `src/reviewer-instructions.test.ts` guards the files' shape, size, and the general/repository boundary.
+
 ## Testing
 
 Smithy has three testing tiers, each tested differently:
