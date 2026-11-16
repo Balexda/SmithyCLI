@@ -1460,8 +1460,7 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain('the source excerpt or bullet/paragraph that describes that persona');
   });
 
-  it('smithy.persona guards empty and placeholder RFC sections across agents', async () => {
-    const geminiComposed = await getComposedTemplates('gemini');
+  it('smithy.persona guards empty and placeholder RFC sections across agents', () => {
     for (const templates of [claudeComposed, codexComposed, geminiComposed]) {
       const persona = templates.commands.get('smithy.persona.md')!;
       const rfcStart = persona.indexOf('## RFC Mode');
