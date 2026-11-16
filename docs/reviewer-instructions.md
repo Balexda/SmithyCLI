@@ -195,7 +195,6 @@ why the stance file sets a bar for what is worth posting.
 - Pushes after a review are not reviewed again here unless a review is
   requested. A pull request therefore keeps reading "changes recommended"
   after its finding is fixed. Accepted for now, to be revisited.
-- The audit checklists lag the templates in two places: they describe only the
-  four-column table for a spec, and they ask for a debt index table without
-  mentioning its two empty forms. The planning reading file states the valid
-  forms for both until the checklists do.
+- The audit checklists lag the templates in one place: they describe only the
+  four-column table for a spec. The planning reading file states the valid
+  forms until the checklists do.

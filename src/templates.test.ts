@@ -872,6 +872,38 @@ describe('spec-debt-section snippet', () => {
     expect(result).toContain('| ID | Title | Source Category | Impact | Confidence | Origin |');
     expect(result).not.toContain('{{>spec-debt-section}}');
   });
+
+  it.each([
+    ['audit-checklist-rfc.md'],
+    ['audit-checklist-features.md'],
+    ['audit-checklist-spec.md'],
+    ['audit-checklist-tasks.md'],
+    ['audit-checklist-strike.md'],
+  ])('%s accepts both empty forms of the section', file => {
+    const snippets = loadSnippets();
+    // Read the literal off the snippet that defines it rather than typing it
+    // again here, so a checklist cannot go on accepting a line the authoring
+    // commands have stopped writing.
+    const emptyState = snippets.get('spec-debt-section.md')!.match(/^_None — .+\._$/m)?.[0];
+    expect(emptyState).toBeDefined();
+
+    const row = snippets
+      .get(file)!
+      .split('\n')
+      .find(line => line.startsWith('| **Specification Debt** |'));
+    expect(row).toBeDefined();
+    // An artifact that never recorded debt carries that one line and no
+    // table, because that is what the snippet tells the authoring commands to
+    // write. A row asking only "is it an index table?" lets anything that
+    // applies it literally report that correct section as a missing table.
+    expect(row).toContain(
+      `Is it either the single empty-state line \`${emptyState}\` or an index table with columns`,
+    );
+    // The other empty form is the table itself, left with no rows once every
+    // item is resolved. Naming the line alone would invite the opposite false
+    // finding: a header-only table reported as "should be the line".
+    expect(row).toContain('Neither the empty-state line nor a table with no rows is a finding.');
+  });
 });
 
 describe('open-implementation-questions snippet', () => {
