@@ -10,6 +10,12 @@
  * Smithy-general layer (`smithy.*`, `smithy-*`) and this repository's own
  * rules. The layout is described in `docs/reviewer-instructions.md`.
  *
+ * CodeRabbit does not read the files the way Copilot does: it applies an
+ * instruction file only inside its own directory unless `.coderabbit.yaml`
+ * says which paths it governs, and it never discovers the skills. That file
+ * therefore repeats each rule file's path and scope, and the last block here
+ * holds the two copies together.
+ *
  * Every check is paired with a planted-defect test, as in
  * `template-lint.test.ts`: a guard that stopped looking passes exactly like a
  * clean tree. The plants are in-memory strings, so nothing in the tracked
@@ -18,6 +24,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import { splitFrontmatter } from './frontmatter.js';
 import { DESCRIPTION_BUDGETS } from './template-lint.js';
 import { templatesBaseDir } from './utils.js';
@@ -26,6 +33,7 @@ const repoRoot = path.resolve(templatesBaseDir, '..', '..');
 const githubDir = path.join(repoRoot, '.github');
 const instructionsDir = path.join(githubDir, 'instructions');
 const skillsDir = path.join(githubDir, 'skills');
+const codeRabbitConfigPath = path.join(repoRoot, '.coderabbit.yaml');
 
 /** GitHub's guidance for a custom instruction file read during code review. */
 const INSTRUCTION_CHAR_BUDGET = 4000;
@@ -101,6 +109,86 @@ function findRepoSpecificReferences(label: string, content: string): string[] {
 /** Skill names an instruction file sends the reviewer to, as `` `name` skill ``. */
 function referencedSkills(content: string): string[] {
   return [...content.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)*)`\s+skill\b/g)].map((m) => m[1] as string);
+}
+
+const instructionPath = (fileName: string) => `.github/instructions/${fileName}`;
+const skillPath = (dirName: string) => `.github/skills/${dirName}/SKILL.md`;
+
+/** Every key in a parsed YAML document, at any depth. */
+function allKeys(node: unknown): string[] {
+  if (Array.isArray(node)) return node.flatMap(allKeys);
+  if (node === null || typeof node !== 'object') return [];
+  return Object.entries(node).flatMap(([key, value]) => [key, ...allKeys(value)]);
+}
+
+/**
+ * Problems with `.coderabbit.yaml`, given the instruction files and skills it
+ * should point at (file or directory name → content). The config may only
+ * point: every rule file a reviewer reads is listed once with the paths it
+ * governs, and no rule text is written inline.
+ */
+function checkCodeRabbitConfig(
+  configText: string,
+  instructions: ReadonlyMap<string, string>,
+  skills: ReadonlyMap<string, string>,
+): string[] {
+  const problems: string[] = [];
+  const config = parseYaml(configText) as
+    | { knowledge_base?: { code_guidelines?: { enabled?: boolean; filePatterns?: unknown[] } } }
+    | null;
+  const guidelines = config?.knowledge_base?.code_guidelines;
+
+  if (guidelines?.enabled === false) {
+    problems.push('code_guidelines is disabled — CodeRabbit would read none of the rule files');
+  }
+  const inline = allKeys(config).filter((key) => key === 'instructions' || key.endsWith('_instructions'));
+  if (inline.length > 0) {
+    problems.push(`${[...new Set(inline)].join(', ')}: rule text belongs in a rule file, not inline in the config`);
+  }
+
+  const scopes = new Map<string, string>();
+  for (const entry of guidelines?.filePatterns ?? []) {
+    const { files, applyTo } = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<string, unknown>;
+    if (typeof files !== 'string' || typeof applyTo !== 'string') {
+      problems.push(`${JSON.stringify(entry)}: an entry needs files and applyTo — without applyTo a file is applied only inside its own directory`);
+    } else if (scopes.has(files)) {
+      problems.push(`${files}: listed twice`);
+    } else {
+      scopes.set(files, applyTo);
+    }
+  }
+
+  const applyToOf = (content: string) => frontmatterValue(splitFrontmatter(content).frontmatter, 'applyTo');
+  const expected = new Map<string, string[]>();
+  for (const [fileName, content] of instructions) {
+    const reviewsCode = frontmatterValue(splitFrontmatter(content).frontmatter, 'excludeAgent') !== 'code-review';
+    if (reviewsCode) {
+      expected.set(instructionPath(fileName), [applyToOf(content) ?? '']);
+    } else if (scopes.has(instructionPath(fileName))) {
+      problems.push(`${instructionPath(fileName)}: excluded from code review, so it is not a reviewer rule`);
+    }
+  }
+  for (const dirName of skills.keys()) {
+    const senders = [...instructions.values()].filter((content) => referencedSkills(content).includes(dirName));
+    expected.set(skillPath(dirName), senders.map((content) => applyToOf(content) ?? ''));
+  }
+
+  for (const [file, allowed] of expected) {
+    const scope = scopes.get(file);
+    if (scope === undefined) {
+      problems.push(`${file}: not listed — CodeRabbit would not apply it`);
+    } else if (allowed.length === 0) {
+      problems.push(`${file}: no instruction file sends a reviewer to this skill, so it has no paths to copy`);
+    } else if (!allowed.includes(scope)) {
+      problems.push(`${file}: applyTo "${scope}" does not match "${allowed.join('" or "')}"`);
+    }
+  }
+  for (const file of scopes.keys()) {
+    if (!expected.has(file) && !problems.some((p) => p.startsWith(`${file}:`))) {
+      problems.push(`${file}: not an instruction file or review skill in this repository`);
+    }
+  }
+  return problems;
 }
 
 const instructionFiles = fs.existsSync(instructionsDir)
@@ -195,6 +283,81 @@ describe('reviewer instructions — the Smithy-general layer stays general', () 
   it('leaves artifact vocabulary alone', () => {
     const clean = '---\napplyTo: "**"\n---\nAn open `SD-003` row, `AS 2.1`, `FR-006`, and `.claude/commands/smithy.audit.md`.';
     expect(findRepoSpecificReferences('clean', clean)).toEqual([]);
+  });
+});
+
+describe('reviewer instructions — CodeRabbit config', () => {
+  const instructions = new Map(instructionFiles.map((f) => [f, readInstruction(f)] as const));
+  const skills = new Map(skillDirs.map((d) => [d, readSkill(d)] as const));
+  const config = fs.readFileSync(codeRabbitConfigPath, 'utf-8');
+
+  const entry = (files: string, applyTo: string) => `      - files: "${files}"\n        applyTo: "${applyTo}"\n`;
+  const plantConfig = (entries: string, extra = '') =>
+    `${extra}knowledge_base:\n  code_guidelines:\n    filePatterns:\n${entries}`;
+  const plantInstructions = new Map([
+    ['plant.instructions.md', '---\napplyTo: "src/**"\n---\nLoad the `review-plant` skill.'],
+  ]);
+  const plantSkills = new Map([['review-plant', '']]);
+  const cleanEntries =
+    entry('.github/instructions/plant.instructions.md', 'src/**') +
+    entry('.github/skills/review-plant/SKILL.md', 'src/**');
+
+  it('lists every reviewer rule file once, with the paths the file itself declares', () => {
+    expect(checkCodeRabbitConfig(config, instructions, skills)).toEqual([]);
+  });
+
+  it('accepts a planted config that only points', () => {
+    expect(checkCodeRabbitConfig(plantConfig(cleanEntries), plantInstructions, plantSkills)).toEqual([]);
+  });
+
+  it('detects a planted instruction file the config does not list', () => {
+    const plant = plantConfig(entry('.github/skills/review-plant/SKILL.md', 'src/**'));
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects a planted skill the config does not list', () => {
+    const plant = plantConfig(entry('.github/instructions/plant.instructions.md', 'src/**'));
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects a planted applyTo that drifted from the file', () => {
+    const plant = plantConfig(
+      entry('.github/instructions/plant.instructions.md', '**') +
+        entry('.github/skills/review-plant/SKILL.md', 'src/**'),
+    );
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects a planted entry with no applyTo', () => {
+    const plant = plantConfig(`${cleanEntries}      - "docs/standards.md"\n`);
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects a planted entry for a file that is not a reviewer rule', () => {
+    const plant = plantConfig(cleanEntries + entry('.github/instructions/gone.instructions.md', '**'));
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects a planted entry for a file excluded from code review', () => {
+    const withAgentFile = new Map([
+      ...plantInstructions,
+      ['agent.instructions.md', '---\napplyTo: "**"\nexcludeAgent: "code-review"\n---\nbody'],
+    ]);
+    const plant = plantConfig(cleanEntries + entry('.github/instructions/agent.instructions.md', '**'));
+    expect(checkCodeRabbitConfig(plant, withAgentFile, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects planted inline rule text', () => {
+    const plant = plantConfig(
+      cleanEntries,
+      'reviews:\n  path_instructions:\n    - path: "src/**"\n      instructions: "Flag everything."\n',
+    );
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
+  });
+
+  it('detects planted disabled guidelines', () => {
+    const plant = plantConfig(cleanEntries).replace('filePatterns:', 'enabled: false\n    filePatterns:');
+    expect(checkCodeRabbitConfig(plant, plantInstructions, plantSkills)).toHaveLength(1);
   });
 });
 

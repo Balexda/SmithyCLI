@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit reads the same reviewer rules as Copilot and Codex. This file
+# holds no rule text: each entry points at a rule file and repeats the paths
+# that file governs. Layout and reasoning: docs/reviewer-instructions.md.
+# src/reviewer-instructions.test.ts fails when an entry and its file disagree.
+#
+# CodeRabbit finds AGENTS.md, CLAUDE.md, .claude/rules/ and
+# .github/copilot-instructions.md on its own. The entries below add what it
+# would otherwise miss or scope wrongly:
+#   - an instruction file is applied only inside its own directory unless the
+#     entry says which paths it governs, so each `applyTo` here is copied from
+#     the file's own frontmatter;
+#   - the review skills under .github/skills/ are not discovered at all, so
+#     each is listed with the `applyTo` of the instruction file that sends a
+#     reviewer to it.
+#
+# Automatic review is left at CodeRabbit's default. The alternatives are in
+# docs/reviewer-instructions.md under "CodeRabbit".
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - files: ".github/instructions/smithy.review-stance.instructions.md"
+        applyTo: "**"
+      - files: ".github/instructions/smithy.planning-artifacts.instructions.md"
+        applyTo: "**/*.rfc.md,**/*.features.md,**/*.spec.md,**/*.data-model.md,**/*.contracts.md,**/*.tasks.md,**/*.strike.md,**/*.prd.md"
+      - files: ".github/skills/smithy-review-planning/SKILL.md"
+        applyTo: "**/*.rfc.md,**/*.features.md,**/*.spec.md,**/*.data-model.md,**/*.contracts.md,**/*.tasks.md,**/*.strike.md,**/*.prd.md"
+      - files: ".github/instructions/planning-artifacts.instructions.md"
+        applyTo: "specs/**,docs/rfcs/**,docs/prds/**"
+      - files: ".github/instructions/templates.instructions.md"
+        applyTo: "src/templates/**"
+      - files: ".github/skills/smithycli-review-templates/SKILL.md"
+        applyTo: "src/templates/**"
+      - files: ".github/instructions/deployed-snapshot.instructions.md"
+        applyTo: ".claude/commands/**,.claude/prompts/**,.claude/agents/**,.claude/hooks/**,.claude/skills/smithy*/**,.agents/skills/**,.codex/agents/**,tools/codex/**,.smithy/smithy-manifest.json"
+      - files: ".github/instructions/cli-source.instructions.md"
+        applyTo: "src/**/*.ts"
+      - files: ".github/instructions/evals.instructions.md"
+        applyTo: "evals/**"

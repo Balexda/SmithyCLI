@@ -2,7 +2,8 @@
 
 Automated reviewers read instruction files from this repository as their
 prompt. This page says which files exist, who reads them, how they are
-layered, how a rule gets added, and how Copilot approvals are switched on.
+layered, how a rule gets added, how CodeRabbit is pointed at the same files,
+and how Copilot approvals are switched on.
 
 The files here were placed by hand to get started. Deploying the general
 layer through `smithy init`, and moving mechanical checks into a deterministic
@@ -14,7 +15,7 @@ command, is tracked in [#622](https://github.com/Balexda/SmithyCLI/issues/622).
 |----------|-------|
 | Copilot code review | `.github/copilot-instructions.md`; every `.github/instructions/*.instructions.md` whose `applyTo` matches a changed file; `.github/skills/*/SKILL.md` on demand; `AGENTS.md` and `CLAUDE.md` |
 | Codex code review | The `## Code Review Rules` section of `AGENTS.md` |
-| CodeRabbit (not enabled here) | `AGENTS.md`, `CLAUDE.md`, and `.claude/rules/` by default |
+| CodeRabbit | `AGENTS.md`, `CLAUDE.md`, `.claude/rules/`, and `.github/copilot-instructions.md` on its own; the instruction files and skills through `.coderabbit.yaml` (see [CodeRabbit](#coderabbit)) |
 
 Copilot reads these from the pull request's own branch. A change to an
 instruction file is therefore reviewed under the changed version, which makes
@@ -25,7 +26,7 @@ a rule easy to try and means a pull request can alter its own reviewer.
 | Layer | Files | Says |
 |-------|-------|------|
 | Smithy-general | `.github/instructions/smithy.*.instructions.md`, `.github/skills/smithy-*/` | How Smithy artifacts and Smithy-pipeline pull requests work in any repository |
-| Repository | Everything else under `.github/instructions/` and `.github/skills/`, and the `AGENTS.md` section | SmithyCLI's own rules |
+| Repository | Everything else under `.github/instructions/` and `.github/skills/`, the `AGENTS.md` section, and `.coderabbit.yaml` | SmithyCLI's own rules |
 
 General-layer files name nothing that exists only in this repository, so they
 can later be deployed elsewhere unchanged. `src/reviewer-instructions.test.ts`
@@ -78,6 +79,9 @@ maintainer comment restating a convention.
 3. **Otherwise** add one bullet to the narrowest file that covers it. Say what
    to flag and name the exception.
 
+A new instruction file or skill, or a changed `applyTo`, also needs its entry
+in `.coderabbit.yaml`. The test fails until the two agree.
+
 Phrase a "do not flag" rule as how to weigh a finding, and keep the case that
 still deserves a comment. Later-slice work is out of scope for a slice, for
 example, but a slice that leaves `master` broken until the next one merges is
@@ -117,6 +121,80 @@ Each rule traces to pull requests or issues in this repository.
 | The three deployers move together | #57, #55 |
 | One permission grammar | #16, #323 |
 | Planted fixture flaws are intentional | #328, #336 |
+
+## CodeRabbit
+
+CodeRabbit is enabled on this repository. It reads the same rule files as
+Copilot; `.coderabbit.yaml` holds pointers to them and no rule text.
+
+### What the config adds
+
+| Rule file | Without the config | Entry in `.coderabbit.yaml` |
+|-----------|--------------------|-----------------------------|
+| `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` | Read, applied to the whole repository | none |
+| `.claude/rules/*.md` | Read, scoped by its `paths` frontmatter | none |
+| `.github/instructions/*.instructions.md` | Read, but a guideline file with no path mapping applies only inside its own directory | `files` plus the `applyTo` copied from the file's frontmatter |
+| `.github/skills/*/SKILL.md` | Not read | `files` plus the `applyTo` of the instruction file that sends a reviewer to the skill |
+| `coding-agent.instructions.md` | Read as above | none: it is excluded from code review |
+
+Each entry sits under `knowledge_base.code_guidelines.filePatterns`. Entries
+there add to CodeRabbit's default patterns. They do not replace them.
+
+A skill is loaded on demand by Copilot and for every matching change by
+CodeRabbit, which has no on-demand step. The cost is bounded by the entry's
+`applyTo`.
+
+`reviews.path_instructions` is not used. It takes rule text inline, up to
+20,000 characters per entry, which would be a second copy of the rules.
+`src/reviewer-instructions.test.ts` rejects any `instructions` key in the
+config, an entry with no `applyTo`, a rule file with no entry, and an
+`applyTo` that differs from the file's own.
+
+### Requesting a review
+
+A comment on the pull request, with nothing else on the line:
+
+| Comment | Does |
+|---------|------|
+| `@coderabbitai review` | Reviews the commits not yet reviewed |
+| `@coderabbitai full review` | Reviews the whole pull request again from scratch |
+| `@coderabbitai pause` / `@coderabbitai resume` | Stops and restarts automatic review on this pull request; a manual request still works while paused |
+
+Both review commands work whether or not automatic review is on.
+
+### Automatic review
+
+`.coderabbit.yaml` sets nothing under `reviews.auto_review`, so CodeRabbit's
+defaults apply: it reviews a pull request when it is opened and reviews each
+later push incrementally. Manual requests work in every row below.
+
+| Wanted | Setting |
+|--------|---------|
+| Review every pull request and every push (current) | nothing |
+| Review on open, then only on request | `reviews.auto_review.auto_incremental_review: false` |
+| Review only on request | `reviews.auto_review.enabled: false`, with `labels` and `description_keyword` left empty |
+| Review only labelled pull requests | `enabled: false` and `reviews.auto_review.labels: ["<label>"]` |
+| Skip pull requests from an author | `reviews.auto_review.ignore_usernames: ["<login>"]` |
+
+Reviews are rate-limited per hour on the free plan. If automatic reviews of
+every push use up the allowance that requested reviews need, switch to one of
+the on-request rows.
+
+### How this was established
+
+CodeRabbit's documentation site and schema could not be opened from the
+session that wrote this section. The key names and shapes were read from
+CodeRabbit's published config types (`@coderabbitai/config` 3.1.0 on npm).
+Everything about behaviour comes from search results quoting these pages, and
+is unconfirmed until a review here shows it:
+
+| Claim | Page |
+|-------|------|
+| Files read by default; a file with no mapping applies only in its own directory; `files` / `applyTo` entries; entries add to the defaults | <https://docs.coderabbit.ai/knowledge-base/code-guidelines> |
+| `.claude/rules/` is read and `paths` scopes it | <https://docs.coderabbit.ai/changelog> |
+| `path_instructions` shape and length limit | <https://docs.coderabbit.ai/reference/configuration> |
+| Review commands | <https://docs.coderabbit.ai/reference/review-commands> |
+| Automatic review settings | <https://docs.coderabbit.ai/configuration/auto-review> |
 
 ## Copilot approvals
 
@@ -182,6 +260,14 @@ why the stance file sets a bar for what is worth posting.
   the skills under `.claude/skills/` plus the ones under `.agents/skills/`
   that neither repeat a name nor set `disable-model-invocation`. A skill
   there whose description fits a review can be loaded by one.
+- The CodeRabbit behaviour above is unconfirmed here. Still open: whether
+  CodeRabbit reads an instruction file's own `applyTo` frontmatter (if it
+  does, the entries are redundant, not wrong); whether it reads rule files
+  from the pull request's branch or the default branch; whether a review
+  command posted by a bot account is acted on; and which features the free
+  plan for public repositories includes once the trial ends. The first
+  CodeRabbit review after this lands should be checked for guideline sources
+  it reports as skipped.
 - Reviewers have not historically reviewed pull requests opened by bots here.
   A change of pull request identity needs a test pull request first.
 - Codex reads only `AGENTS.md`, so its copy of the rules is a short list and a
