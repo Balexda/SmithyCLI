@@ -28,9 +28,9 @@ Header normalization: trim surrounding whitespace and remove one enclosing backt
 | selected | slug, source: option / artifact / agreement / repository | Resolved identity |
 | none | none | No declared/inherited project and fewer than two candidates |
 | candidates | names | Two or more named stores; no selected project |
-| invalid-project | value, source, reason | Invalid syntax or reserved name |
+| invalid-project | value, source: option / artifact / repository, reason | Invalid syntax or reserved name; `repository` is an invalid inherited key |
 | project-conflict | optionValue, artifactValue | Valid declarations disagree |
-| project-missing | slug, source | Declared named directory does not exist |
+| project-missing | slug, source: option / artifact / agreement | Declared named directory absent, or the path exists but is not a directory; never reached by inheritance |
 | invalid-artifact | artifact, reason | Unreadable artifact or malformed/duplicate header |
 
 All entities are transient; no persisted schema or registry is introduced. Directory existence, rather than git history or contents, defines a named project's existence. Inherited identity is not subject to the named-directory existence check and does not change engraved scope.
