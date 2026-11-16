@@ -20,8 +20,12 @@ complete, not whether the prose is polished.
 | `.tasks.md` | slices, inline | `S1`, `S2` | `smithy.cut` |
 
 - A parent links to its children through a `## Dependency Order` table with
-  exactly four columns: `ID | Title | Depends On | Artifact`. That table is
-  the link, not filenames, prose, or folder layout.
+  four columns: `ID | Title | Depends On | Artifact`. That table is the link,
+  not filenames, prose, or folder layout.
+- A spec for a UI feature uses a six-column typed ledger in that section
+  instead: `ID | Kind | Title | Depends On | Design | Artifact`, with `SC<N>`
+  screen rows, `FL<N>` flow rows, and `US<N>` story rows. Both shapes are
+  valid. Do not ask for one to be converted to the other.
 - `Depends On` lists IDs from the same table, or `—`. `Artifact` is a
   repo-relative path to the child, or `—` when it does not exist yet. Slice
   rows always use `—`. Checkboxes are not valid in this table.
@@ -34,12 +38,12 @@ complete, not whether the prose is polished.
 | Command | Expected change |
 |---------|-----------------|
 | `render` | One new `.features.md`, and the milestone's `Artifact` cell in the RFC |
-| `mark` | A new spec folder, and the feature's `Artifact` cell in the feature map |
+| `mark` | A new spec folder, and the feature's `Artifact` cell in the feature map. For a UI feature, also its `.design.md` and `.flow.md` files and one stub test body per flow |
 | `cut` | One new `.tasks.md`, and the story's `Artifact` cell in the spec |
 
 Corrections written back to the parent artifact are normal. Flag a planning
-pull request that also changes source code, tests, or configuration, and flag
-a new child artifact whose parent row still shows `—`.
+pull request that changes source code, configuration, or tests beyond those
+stubs, and flag a new child artifact whose parent row still shows `—`.
 
 ## What deserves a comment
 

@@ -73,6 +73,10 @@ own instructions name a newer source for the same checklists, prefer it.
 
 - The `AS N.M` shorthand, the `—` placeholder, or slices living inline in the
   tasks file.
+- A UI spec's six-column typed ledger
+  (`ID | Kind | Title | Depends On | Design | Artifact`, with `SC<N>`, `FL<N>`,
+  and `US<N>` rows) where a backend spec has the four-column table. The spec
+  checklist describes the backend shape; both are valid.
 - Older table shapes or headings in files the change did not touch, and
   completed tasks files that no longer match later work.
 - Wording preferences, where the meaning is unambiguous to the next command.
