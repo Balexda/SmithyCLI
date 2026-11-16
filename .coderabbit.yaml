@@ -11,12 +11,16 @@
 #   - an instruction file is applied only inside its own directory unless the
 #     entry says which paths it governs, so each `applyTo` here is copied from
 #     the file's own frontmatter;
-#   - the review skills under .github/skills/ are not discovered at all, so
-#     each is listed with the `applyTo` of the instruction file that sends a
-#     reviewer to it.
+#   - the review skills under .github/skills/ are discovered as Agent Skills
+#     but carry no path scope of their own, so each is listed with the
+#     `applyTo` of the instruction file that sends a reviewer to it.
 #
-# Automatic review is left at CodeRabbit's default. The alternatives are in
-# docs/reviewer-instructions.md under "CodeRabbit".
+# Keys this file leaves out (auto-review, tone, summaries) come from the
+# repository and organization settings in the CodeRabbit app, not from schema
+# defaults. The auto-review options are in docs/reviewer-instructions.md
+# under "CodeRabbit".
+inheritance: true
+
 knowledge_base:
   code_guidelines:
     enabled: true
