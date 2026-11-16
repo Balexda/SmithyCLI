@@ -83,7 +83,7 @@ still deserves a comment. Later-slice work is out of scope for a slice, for
 example, but a slice that leaves `master` broken until the next one merges is
 still worth saying once.
 
-## Where the first rules came from
+## Where the rules came from
 
 Each rule traces to pull requests or issues in this repository.
 
@@ -97,6 +97,7 @@ Each rule traces to pull requests or issues in this repository.
 | No support for paths or headings no template writes | #235, #287 |
 | Read the current head and description | #431 |
 | No speculative performance work | #266 |
+| Post only what would hold the merge | #616, #617 |
 | Never ask for the snapshot to be regenerated; one finding per source | #298, #258, #240 |
 | Deployed templates stay generic | #258 |
 | Portability and no narration of unbuilt work | #456, #428 |
@@ -108,6 +109,7 @@ Each rule traces to pull requests or issues in this repository.
 | Altitude of features and stories; stories backed by contracts | #351, #441 |
 | Smithy plans only for what it owns | #440, #464 |
 | A plan must not silently settle open debt | #449 |
+| An empty debt section is not a missing table | #617, #618 |
 | Dependencies declared in tasks appear in the spec's table | #495 |
 | A planning pull request carries no source changes | #461 |
 | `smithy status` surfaces agree | #499, #500, #286, #308 |
@@ -154,14 +156,46 @@ separately.
 An approval is dismissed when new commits are pushed. For it to return
 without a manual request, enable automatic review with "Review new pushes".
 
+## Checking what a review used
+
+Each Copilot review runs as an Actions job named
+`copilot-pull-request-reviewer`, in the workflow "Running Copilot Code
+Review". Its log shows what the review was given and what it did with it:
+
+| Log line | Says |
+|----------|------|
+| `[customInstructions] Built N custom instruction(s) … names=[…]` | The instruction files loaded for the changed paths |
+| `[skills] … invoked: name="…"` | Each skill a reviewer loaded |
+| `Comment stored (… file=…, start=…, end=…)` | Each comment a reviewer filed, before any is dropped |
+
+As observed in November 2026, one review is three reviewers working
+separately. A low- or medium-severity comment is posted only when two of them
+file it, and Copilot approves only when no comment is left open, whatever its
+severity. One low-severity comment therefore withholds an approval, which is
+why the stance file sets a bar for what is worth posting.
+
 ## Known gaps
 
-- It is unverified whether Copilot code review loads skills from
-  `.claude/skills/` or `.agents/skills/` as well as `.github/skills/`.
+- Copilot catalogs skills from `.claude/skills/` and `.agents/skills/` as well
+  as `.github/skills/`: its log counted 11 skills in two directories before
+  `.github/skills/` existed here, and 13 in three after. Those counts match
+  the skills under `.claude/skills/` plus the ones under `.agents/skills/`
+  that neither repeat a name nor set `disable-model-invocation`. A skill
+  there whose description fits a review can be loaded by one.
 - Reviewers have not historically reviewed pull requests opened by bots here.
   A change of pull request identity needs a test pull request first.
 - Codex reads only `AGENTS.md`, so its copy of the rules is a short list and a
   pointer to the files above.
 - The read/review split relies on a reviewer loading a skill when an
-  instruction file tells it to. If that proves unreliable, the most valuable
-  checks move back into the always-loaded files.
+  instruction file tells it to. On the first four pull requests reviewed
+  under these files (#615 to #618), all three reviewers loaded the planning
+  skill on the three planning changes and the templates skill on the template
+  change. If that stops holding, the most valuable checks move back into the
+  always-loaded files.
+- Pushes after a review are not reviewed again here unless a review is
+  requested. A pull request therefore keeps reading "changes recommended"
+  after its finding is fixed. Accepted for now, to be revisited.
+- The audit checklists lag the templates in two places: they describe only the
+  four-column table for a spec, and they ask for a debt index table without
+  mentioning its two empty forms. The planning reading file states the valid
+  forms for both until the checklists do.
