@@ -9,3 +9,6 @@ dist
 .gemini/
 .claude/local/
 .claude/settings.local.json
+
+# Smithy: clarify-log scratch files (per-RFC append-only working memory)
+.smithy/clarify-logs/

@@ -3953,6 +3953,10 @@ describe('getComposedTemplates', () => {
     expectAudienceTagPerH2(fence, 'smithy.render');
     // Issue #422 mapping: Cross-Milestone Deps → diagram: recommended.
     expect(fence).toMatch(/## Cross-Milestone Dependencies\n+<!-- audience: reviewer; mode: reference;[^>]*diagram: recommended/);
+    // `## Features` holds a typed metadata block plus prose fields and scope
+    // bullets per feature — never a table — so its length budget must not
+    // claim `tables only`, which the audit's voice-tag lint would flag.
+    expect(fence).not.toMatch(/## Features\n+<!--[^>]*length: tables only/);
   });
 
   it('mark spec template tags every ## section with an audience comment (issue #422)', () => {
