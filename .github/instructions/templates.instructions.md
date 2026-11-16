@@ -6,14 +6,17 @@ excludeAgent: "coding-agent"
 
 Everything under `src/templates/agent-skills/` is rendered by `smithy init`
 and dropped into **other people's repositories** as runtime instructions for
-an agent. Review each change as that agent would read it there.
+an agent. Review each change as that agent would read it there. Before
+commenting, load the `smithycli-review-templates` skill and follow it: it
+holds the per-file procedure and the judgement calls. This file states only
+the rules a change can break.
 
 The authoring rules are in `.claude/rules/template-authoring.md`, with the
 reasoning in the engraved records it cites. `src/template-lint.test.ts`
 enforces most of them, so do not repeat what a failing test already reports.
-Spend your comments on what the lint cannot judge, and cite the record ID.
+Cite the record ID when you raise one.
 
-## Check
+## Rules
 
 - **Portability (INV-2).** Every path, document, or issue the text tells an
   agent to read must exist in a target repository. `AGENTS.md`, `CLAUDE.md`,
@@ -25,27 +28,14 @@ Spend your comments on what the lint cannot judge, and cite the record ID.
   The template describes what it does today.
 - **One home per protocol (INV-1).** A table, gate, enum, or contract shape a
   snippet already defines is composed with `{{>snippet}}`, never re-typed or
-  "adapted". Flag near-identical blocks added to several templates in one
-  change, and a snippet injected twice into one template.
-- **A snippet earns its file.** A new snippet with a single consumer is
-  usually better inline.
+  "adapted".
 - **Agent gating lives in the consumer.** No `{{#ifAgent}}` and no "if you are
   Claude" prose inside a snippet. When behaviour differs per agent there is
-  one snippet per branch and the command picks. Check both branches: Gemini
-  gets no sub-agents, so an `{{else}}` branch must not dispatch one.
+  one snippet per branch and the command picks.
 - **Context budget (P-1).** Descriptions are dispatch triggers: 40 words for
   commands and sub-agents, 55 for skills. Material needed only sometimes goes
   in a skill's `references/` file, linked with a sentence saying when to read
-  it. Question always-loaded text that does not change what the agent does
-  next, and any sentence that restates one already present.
-- **Instructions that change nothing.** Flag steps telling an agent to do what
-  it already does, such as "detect the language", with no new contract or
-  observable output.
-- **Consistency with sibling templates.** New commands and sub-agents use the
-  established patterns: competing lenses for planning, the shared review
-  protocol, `{{artifactsRoot}}` on every artifact path.
-- **Older artifacts.** When a template starts reading a new field, section, or
-  heading, ask what happens for artifacts written before it existed.
+  it.
 
 ## Do not ask for
 
@@ -55,5 +45,3 @@ Spend your comments on what the lint cannot judge, and cite the record ID.
   It must stay generic.
 - A compatibility shim for an artifact format that the tasks file says a
   later slice migrates.
-
-For the per-file procedure, use the `smithycli-review-templates` skill.

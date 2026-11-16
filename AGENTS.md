@@ -118,6 +118,13 @@ layout. The rules that matter most:
   README.
 - **Begin a comment with "Steering question:"** when it asks for a choice
   only a person can make, and leave it as a question.
+- **Planning artifacts and templates have their own files.** Before
+  commenting on a `.rfc.md`, `.features.md`, `.spec.md`, or `.tasks.md` file,
+  read `.github/instructions/smithy.planning-artifacts.instructions.md` (how
+  to read one) and `.github/skills/smithy-review-planning/SKILL.md` (how to
+  review one). For `src/templates/`, read
+  `.github/instructions/templates.instructions.md` and
+  `.github/skills/smithycli-review-templates/SKILL.md`.
 
 ## Development
 

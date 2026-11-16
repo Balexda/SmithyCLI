@@ -4,9 +4,9 @@ description: "Review procedure for pull requests that change SmithyCLI's deploya
 ---
 # Reviewing a template change in SmithyCLI
 
-A template is a prompt that runs in someone else's repository. The questions
-are always the same: does the rendered text read correctly there, and does
-each sentence change what the agent does?
+Work through each changed file. The questions are always the same: does the
+rendered text read correctly in a target repository, and does each sentence
+change what the agent does?
 
 ## 1. Classify each changed file
 
@@ -49,8 +49,8 @@ you to read, never fine for a template to cite.
 - **Skills** declare `name` and `description`. A tool grant is written twice
   on purpose: `allowed-tools` in Claude's grammar, `codex-allowed-tools` for
   Codex. Helper skills are named `smithy.helper-<topic>`.
-- Descriptions are triggers. A description that explains instead of saying
-  when to dispatch is spending the always-loaded budget (P-1).
+- A description inside its word budget can still fail: one that explains the
+  template, where it should say when to dispatch it.
 
 ## 4. Judgement the lint cannot make
 
@@ -63,8 +63,9 @@ Look instead for:
 - **Paraphrased duplication.** The same rule written three ways in one
   template, or the same block added to several commands in one change, when
   one snippet would do (INV-1).
-- **A snippet that should not exist.** One consumer, or content that restates
-  what a sub-agent's own prompt already says.
+- **A snippet that should not exist.** A new snippet with a single consumer is
+  usually better inline. One that restates what a sub-agent's own prompt
+  already says should not exist at all.
 - **Sentences that do not steer.** Preamble, restated context, and steps that
   describe what any agent does unprompted.
 - **Load placement.** Detail every run pays for that only some runs need. It
@@ -89,7 +90,6 @@ Look instead for:
 - `evals/baselines/` when a command's output structure changes.
 - `CLAUDE.md` when a command, sub-agent, or skill is added, renamed, or
   changes its role.
-- Not `.claude/`, `.agents/`, `.codex/`, `tools/codex/`, or the manifest.
 
 ## 6. Records to cite
 

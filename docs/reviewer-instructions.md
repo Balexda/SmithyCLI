@@ -47,9 +47,14 @@ enforces that, along with the shape each reviewer requires and a
 
 ## What goes where
 
-- **Instruction files** hold what a reviewer needs on every matching change.
-  Keep them short and scope `applyTo` as narrowly as the rule allows.
-- **Skills** hold procedures and checklists needed only sometimes.
+- **Instruction files say how to read.** What the files are, the conventions
+  that are not defects, the rules a change can break, and which skill to
+  load. They are always loaded for the paths they match, so they stay short
+  and scope `applyTo` as narrowly as the content allows.
+- **Skills say how to review.** The procedure, the checks, and the judgement
+  calls. They load on demand.
+- **Nothing is stated in both.** A line that fits either belongs in the
+  skill.
 - **Cite, do not copy.** A rule with a canonical home is referenced, not
   restated:
 
@@ -157,3 +162,6 @@ without a manual request, enable automatic review with "Review new pushes".
   A change of pull request identity needs a test pull request first.
 - Codex reads only `AGENTS.md`, so its copy of the rules is a short list and a
   pointer to the files above.
+- The read/review split relies on a reviewer loading a skill when an
+  instruction file tells it to. If that proves unreliable, the most valuable
+  checks move back into the always-loaded files.
