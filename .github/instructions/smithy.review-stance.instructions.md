@@ -44,6 +44,12 @@ change cites, a stale path — is an ordinary finding with a concrete fix.
 
 ## Before you post
 
+- Post a finding only if you would hold the merge for it: behaviour that is
+  wrong, a contradiction with the plan or a source the change cites, a breach
+  of a rule in these instructions, a choice only a person can make, or
+  something the next command or reader will trip over. Tidier tests, naming,
+  capitalisation, and wording preferences are not findings. When polish hides
+  a real defect, such as a test that cannot fail, report the defect.
 - Check formatting claims against the file, never the diff. Diff prefixes and
   table pipes are not file content: do not report doubled leading pipes,
   changed list indentation, or `\|` inside a table cell (that escape is

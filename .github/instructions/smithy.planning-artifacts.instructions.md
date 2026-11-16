@@ -39,4 +39,8 @@ correctly.
 - `SD-NNN` rows under `## Specification Debt` are choices waiting on a
   person. `IQ-NNN` rows under `## Open Implementation Questions` are unknowns
   the implementer settles by building.
+- An empty `## Specification Debt` section takes one of two forms, and
+  neither is a missing table. With no item ever recorded it is the single
+  line `_None — no specification debt was recorded._`. Once every item is
+  resolved it is the index table with no rows, above `### Resolved`.
 - Older table shapes in files the change did not touch are not findings.
