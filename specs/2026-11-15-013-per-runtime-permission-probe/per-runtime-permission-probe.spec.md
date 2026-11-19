@@ -27,7 +27,7 @@
 | RFC | Planning Artifact Location Model |
 | Milestone | M2: CLI-Mediated Store Commit |
 | Feature | F1: Per-Runtime Permission Probe |
-| Children | US1–US3 below; tasks remain uncut. |
+| Children | US1–US3 below; US1 is cut into `01-establish-a-reproducible-probe.tasks.md`, US2–US3 remain uncut. |
 
 ## User Scenarios & Testing
 <!-- audience: builder+ai-input; mode: reference; length: structured scenarios; diagram: optional; examples: optional -->
@@ -91,7 +91,7 @@ As a maintainer, I want results for every runtime so that downstream work starts
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Establish a Reproducible Probe | — | — |
+| US1 | Establish a Reproducible Probe | — | specs/2026-11-15-013-per-runtime-permission-probe/01-establish-a-reproducible-probe.tasks.md |
 | US2 | Verify Gemini and Codex Execution | US1 | — |
 | US3 | Publish the Decision Evidence | US1, US2 | — |
 
