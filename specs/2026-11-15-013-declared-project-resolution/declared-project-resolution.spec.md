@@ -92,7 +92,7 @@ As a maintainer, I want CLI consumers to share one project policy so that invent
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Resolve explicit declarations safely | — | — |
+| US1 | Resolve explicit declarations safely | — | specs/2026-11-15-013-declared-project-resolution/01-resolve-explicit-declarations-safely.tasks.md |
 | US2 | Inherit the repository identity | US1 | — |
 | US3 | Report undeclared candidates consistently | US1, US2 | — |
 
