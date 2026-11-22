@@ -77,7 +77,7 @@ Validation rules:
 | `endMarker` | `'<!-- smithy:review:end -->'` | Yes | Exact line. |
 | `content` | `string` | Yes | Byte-identical to `ReviewRulesBlockSource`, preceded inside the markers by the `## Code Review Rules` heading only when Smithy had to add it. |
 
-Ownership of the heading is positional and recorded by the markers alone. A heading inside the markers is Smithy's and is removed with the block. A heading outside them belongs to the repository and is always kept.
+Ownership of the heading is positional and recorded by the markers alone. A heading inside the markers is Smithy's and is removed with the block. A heading outside them belongs to the repository and is always kept. The block carries the heading only when no `## Code Review Rules` heading sits directly above its begin marker. A repository that adds its own heading there (for example, before adding repository pointers) therefore takes ownership on the next write.
 
 Validation rules:
 - At most one marker pair per file. A lone marker, reversed markers, or two pairs make the file malformed.

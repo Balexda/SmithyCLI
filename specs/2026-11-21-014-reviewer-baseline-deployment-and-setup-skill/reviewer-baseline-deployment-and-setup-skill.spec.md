@@ -228,7 +228,7 @@ checks.
 
 1. **Given** a request to add a rule, **When** the agent writes it, **Then** the file name does not begin with the reserved `smithy.` or `smithy-` prefixes and the file passes every shape rule (see Requirements).
 2. **Given** a new instruction file or review skill, **When** the agent registers it, **Then** `.coderabbit.yaml` gains one entry outside the owned entries whose `applyTo` is copied from the file (or from each instruction file that sends a reviewer to the skill).
-3. **Given** a rule Codex should see, **When** the agent registers it, **Then** a pointer bullet is added to `## Code Review Rules` outside the marked block.
+3. **Given** a rule Codex should see, **When** the agent registers it, **Then** a pointer bullet is added to `## Code Review Rules` outside the marked block. If the only heading is the Smithy-owned one inside the markers, the agent first adds a repository-owned `## Code Review Rules` heading directly above the begin marker and runs `smithy update`, which drops the inner copy, so the pointer keeps its heading after uninit.
 4. **Given** a request to change a baseline rule, **When** the agent responds, **Then** it does not edit a `smithy.*` or `smithy-*` file or the marked block, and instead adds a repository-layer rule or says the change belongs upstream in Smithy.
 5. **Given** an existing rule that is mechanical (checkable by a test or lint), **When** the agent is asked to add it, **Then** it says so before writing a reviewer rule.
 
@@ -305,7 +305,7 @@ Recommended implementation sequence:
 
 **AGENTS.md block**
 
-- **FR-013**: Smithy MUST maintain one `<!-- smithy:review:begin -->` / `<!-- smithy:review:end -->` block holding the baseline rules. It sits under `## Code Review Rules` when that heading exists. Otherwise it is appended with the heading placed inside the markers, so ownership of the heading is recorded by the markers alone. When `AGENTS.md` is absent, Smithy creates the file with only that block. Creating the file is a deliberate departure from the engraved block's manage-existing-files-only rule. (US3)
+- **FR-013**: Smithy MUST maintain one `<!-- smithy:review:begin -->` / `<!-- smithy:review:end -->` block holding the baseline rules. It sits under `## Code Review Rules` when that heading exists. Otherwise it is appended with the heading placed inside the markers, so ownership of the heading is recorded by the markers alone. On every write, the block carries the heading only when no `## Code Review Rules` heading sits directly above its begin marker. When `AGENTS.md` is absent, Smithy creates the file with only that block. Creating the file is a deliberate departure from the engraved block's manage-existing-files-only rule. (US3)
 - **FR-014**: Marker handling MUST follow the engraved block's rules: with no markers insert, with one pair replace between them, and with malformed or duplicated markers warn and leave the file unchanged. Repeat runs MUST be byte-identical, and the engraved block MUST be unaffected. (US3)
 - **FR-015**: Uninit MUST remove the block and its markers, including any heading inside them, MUST keep a heading that sits outside the markers, and MUST delete `AGENTS.md` only when nothing but whitespace would remain. (US3)
 
@@ -325,7 +325,7 @@ Recommended implementation sequence:
 - **FR-021**: Smithy MUST deploy a model-invocable `smithy.setup` skill to every agent that receives skills. (US5, US6, US7)
 - **FR-022**: The skill's description MUST stay within the skill description budget, be framed around installing and configuring Smithy, and contain no review vocabulary. (US5)
 - **FR-023**: The skill MUST read current settings from the manifest and change them only through `smithy init` / `smithy update`, never by editing the manifest. (US5)
-- **FR-024**: The skill MUST direct new review rules to non-reserved names, apply the FR-019 shape rules, register each rule in `.coderabbit.yaml` outside the owned entries and in `AGENTS.md` outside the marked block, and refuse to edit baseline files or the block. (US6)
+- **FR-024**: The skill MUST direct new review rules to non-reserved names, apply the FR-019 shape rules, register each rule in `.coderabbit.yaml` outside the owned entries and in `AGENTS.md` outside the marked block, give a repository pointer a repository-owned heading when the only heading is inside the markers, and refuse to edit baseline files or the block. (US6)
 - **FR-025**: The skill MUST describe the existing user-level surfaces and the mechanism that changes each, and MUST NOT create a user-level config file. (US7)
 - **FR-026**: The skill body MUST stay a router. Procedure detail needed only for one job (extending review rules, the user-level surface map) lives in bundled reference files that the body links to and says when to read. (US5, US6, US7)
 

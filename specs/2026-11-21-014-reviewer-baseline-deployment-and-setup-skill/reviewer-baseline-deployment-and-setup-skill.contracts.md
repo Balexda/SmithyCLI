@@ -123,7 +123,7 @@ When no heading exists, Smithy places the heading inside the markers:
 | file absent | Create with the block, heading inside the markers | Deliberate departure from the engraved rule. |
 | no markers, heading present | Insert block under heading | The heading stays repository-owned. |
 | no markers, no heading | Append the block, heading inside the markers | |
-| exactly one pair | Replace between markers | Idempotent. |
+| exactly one pair | Replace between markers | Idempotent. The inner heading is written only when no `## Code Review Rules` heading sits directly above the begin marker. |
 | lone, reversed, or duplicated markers | Warn; file unchanged | Same rule as the engraved block. |
 | uninit, file reduces to whitespace | Delete file | FR-015. |
 
