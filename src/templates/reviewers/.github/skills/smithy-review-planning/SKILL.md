@@ -24,7 +24,8 @@ complete, not whether the prose is polished. Work through the steps in order.
 
 The checklists are maintained in one place: Smithy's audit command, which
 `smithy init` deploys into the repository. Open whichever of these exists and
-find the table headed `Audit Checklist (<suffix>)`:
+find the table headed `Audit Checklist (<suffix>)`. A `.data-model.md` or
+`.contracts.md` change uses the `.spec.md` table, which covers both companions:
 
 - `.claude/commands/smithy.audit.md`
 - `.agents/skills/smithy-audit/SKILL.md`
@@ -68,9 +69,16 @@ stubs.
 An open `SD-NNN` row says a person must choose before the work can go on.
 Rows added in follow-up commits that answer review comments are the ones most
 likely to fail that bar. Check every open row the pull request adds or edits,
-including the rows' detail sections, against the gate in the deployed
-`smithy-plan-review` agent: "The steering test", "Alternatives that do not
-count", and "Recommend first". Flag the row when:
+including the rows' detail sections, against the deployed kind gate:
+"The steering test", "Alternatives that do not count", and "Recommend first".
+The gate ships in whichever of these exists:
+
+- `.claude/agents/smithy.plan-review.md`
+- `.codex/agents/smithy-plan-review.toml`
+- `.gemini/skills/smithy-forge/SKILL.md`, which inlines the gate because
+  Gemini installs no sub-agents
+
+Flag the row when:
 
 - **One option keeps the defect.** An alternative is "document current
   behavior", "accept the attempted semantics", or "leave as shipped" for code
@@ -104,7 +112,7 @@ in one top-level comment and name the rows that fail the gate.
 - **A choice only a person can make.** Phrase it so it can be answered in one
   sitting without opening an editor, name the alternatives, and say which you
   would pick and why. The full test is under "The steering test" in the
-  deployed `smithy-plan-review` agent.
+  deployed kind gate (step 5 lists where it ships).
 - **An unknown that building, testing, or reading the code will settle** is
   not debt. In a tasks file it belongs under
   `## Open Implementation Questions`.
