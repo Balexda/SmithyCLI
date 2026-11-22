@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+root=$(mktemp -d "${TMPDIR:-/tmp}/smithy-probe.XXXXXXXX")
+root=$(cd -- "$root" && pwd -P)
+mkdir -p "$root"/{bin,home,no-hooks,checkout,store}
+install -m 755 "$source_dir/smithy" "$root/bin/smithy"
+
+probe_git() {
+  env -i PATH="$PATH" HOME="$root/home" GIT_CONFIG_NOSYSTEM=1 \
+    git -C "$root/$repo" -c core.hooksPath="$root/no-hooks" "$@"
+}
+
+for repo in checkout store; do
+  probe_git init --quiet --template=
+  probe_git symbolic-ref HEAD refs/heads/probe
+  probe_git config --local core.hooksPath "$root/no-hooks"
+  probe_git config --local user.name 'Smithy Probe'
+  probe_git config --local user.email 'probe@example.invalid'
+  printf '%s\n' 'fixture baseline' > "$root/$repo/probe.txt"
+  probe_git add -- probe.txt
+  probe_git commit --quiet -m "Seed probe $repo"
+done
+touch "$root/store/.smithy-probe-store"
+printf '%s\n' "$root"
