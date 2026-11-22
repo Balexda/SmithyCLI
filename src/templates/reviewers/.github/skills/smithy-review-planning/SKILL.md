@@ -16,7 +16,8 @@ complete, not whether the prose is polished. Work through the steps in order.
 |--------------|----------------|
 | `.rfc.md` | a `.prd.md`, when the header names one |
 | `.features.md` | the RFC named in its header |
-| `.spec.md`, `.data-model.md`, `.contracts.md` | the feature map and RFC named in its header |
+| `.spec.md` | the feature map and RFC named in its header |
+| `.data-model.md`, `.contracts.md` | the sibling `.spec.md` in the same folder, then the feature map and RFC named in the spec's header |
 | `.tasks.md` | the spec named on its `**Source**:` line |
 | `.strike.md` | none; it is one self-contained slice |
 
@@ -24,15 +25,17 @@ complete, not whether the prose is polished. Work through the steps in order.
 
 The checklists are maintained in one place: Smithy's audit command, which
 `smithy init` deploys into the repository. Open whichever of these exists and
-find the table headed `Audit Checklist (<suffix>)`. A `.data-model.md` or
-`.contracts.md` change uses the `.spec.md` table, which covers both companions:
+find the table headed `Audit Checklist (<suffix>)`:
 
 - `.claude/commands/smithy.audit.md`
 - `.agents/skills/smithy-audit/SKILL.md`
 - `.gemini/skills/smithy-audit/SKILL.md`
 
-Apply every row of that table to the changed artifact. When the repository's
-own instructions name a newer source for the same checklists, prefer it. The
+Apply every row of that table to the changed artifact. A `.data-model.md` or
+`.contracts.md` change uses the `.spec.md` table: apply its Cross-Document
+Consistency, Data Model Integrity, and Contract Completeness rows to the
+companion, read against the sibling spec, and apply the other rows only when
+the pull request also changes the spec. When the repository's own instructions name a newer source for the same checklists, prefer it. The
 spec checklist describes the backend table; a UI spec's typed ledger
 satisfies the same row.
 
