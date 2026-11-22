@@ -119,6 +119,12 @@ matter most:
   README.
 - **Begin a comment with "Steering question:"** when it asks for a choice
   only a person can make, and leave it as a question.
+- **Hold new `SD-NNN` rows to the steering bar.** In a planning pull request,
+  flag an added debt row that keeps a defect as an option, reopens a choice
+  the artifact already made, defers to the slice, has no
+  `**Recommendation:**`, or is a task. A gap between shipped code and the
+  plan is a requirement with a fix; never suggest recording it as debt.
+  `.github/skills/smithy-review-planning/SKILL.md` §5 has the checks.
 - **Planning artifacts and templates have their own files.** Before
   commenting on a `.rfc.md`, `.features.md`, `.spec.md`, or `.tasks.md` file,
   read `.github/instructions/smithy.planning-artifacts.instructions.md` (how

@@ -63,11 +63,48 @@ Corrections written back to the parent artifact are normal. Flag a planning
 pull request that changes source code, configuration, or tests beyond those
 stubs.
 
-## 5. Weigh what you found
+## 5. Audit every debt row the change adds
 
+An open `SD-NNN` row says a person must choose before the work can go on.
+Rows added in follow-up commits that answer review comments are the ones most
+likely to fail that bar. Check every open row the pull request adds or edits,
+including the rows' detail sections, against the gate in the deployed
+`smithy-plan-review` agent: "The steering test", "Alternatives that do not
+count", and "Recommend first". Flag the row when:
+
+- **One option keeps the defect.** An alternative is "document current
+  behavior", "accept the attempted semantics", or "leave as shipped" for code
+  that is broken or contradicts the artifact. Ask for a requirement that
+  states the target behavior and names the recommended fix.
+- **The artifact already decided.** Another requirement, contract,
+  assumption, or `### Resolved` item in the same artifact picks one of the
+  options. Ask for the row to be resolved and the disagreeing text aligned.
+- **It defers to the slice.** "The slice must decide …" with no reason only a
+  person can weigh. It is an `IQ-NNN` row, settled by building, or it needs a
+  recommendation.
+- **It has no recommendation.** The detail section has no
+  `**Recommendation:**` line naming the pick, why, and what keeps it open.
+- **It is a task.** "The slice must separate X from Y" or "the slice
+  implements the split" is work for a slice, not a question.
+
+Flag hedged requirements and success criteria the same way: "target
+contract, not current behavior", "accepted but ignored until `SD-NNN`", or a
+success criterion that asserts the broken current behavior. The requirement
+states the target, and the gap in current code is noted once in
+`## Dependency Order` or the slice notes.
+
+More than a handful of open rows on one artifact is itself a finding. Say so
+in one top-level comment and name the rows that fail the gate.
+
+## 6. Weigh what you found
+
+- **A gap between shipped code and the artifact** is a requirement, not debt.
+  Phrase the suggestion as the requirement and its fix ("add FR: X MUST …;
+  the slice fixes Y"). Never suggest recording it as specification debt.
 - **A choice only a person can make.** Phrase it so it can be answered in one
-  sitting without opening an editor, and name the alternatives. The full test
-  is under "The steering test" in the deployed `smithy-plan-review` agent.
+  sitting without opening an editor, name the alternatives, and say which you
+  would pick and why. The full test is under "The steering test" in the
+  deployed `smithy-plan-review` agent.
 - **An unknown that building, testing, or reading the code will settle** is
   not debt. In a tasks file it belongs under
   `## Open Implementation Questions`.

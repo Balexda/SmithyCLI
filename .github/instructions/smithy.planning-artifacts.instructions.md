@@ -38,7 +38,8 @@ correctly.
   that ID on purpose.
 - `SD-NNN` rows under `## Specification Debt` are choices waiting on a
   person. `IQ-NNN` rows under `## Open Implementation Questions` are unknowns
-  the implementer settles by building.
+  the implementer settles by building. A row the change adds must meet that
+  bar; a defect in shipped code is a requirement, never a debt row.
 - An empty `## Specification Debt` section takes one of two forms, and
   neither is a missing table. With no item ever recorded it is the single
   line `_None — no specification debt was recorded._`. Once every item is
