@@ -21,6 +21,11 @@ complete, not whether the prose is polished. Work through the steps in order.
 | `.tasks.md` | the spec named on its `**Source**:` line |
 | `.strike.md` | none; it is one self-contained slice |
 
+When a header names no parent, for example a spec marked from a direct
+description or an RFC with no PRD, skip step 3 for the missing levels and
+review against the checklist alone. A missing parent is not a finding. Step 3
+still applies to any parent the header does name.
+
 ## 2. Load the checklist for that artifact type
 
 The checklists are maintained in one place: Smithy's audit command, which
@@ -42,7 +47,10 @@ satisfies the same row.
 ## 3. Check the artifact against its parent
 
 - **The link exists.** The parent's row for this child has its `Artifact`
-  cell set to this file or folder, in the same pull request.
+  cell set to this file or folder, in the same pull request. A
+  `.data-model.md` or `.contracts.md` has no `Artifact` row. It links to its
+  spec by sitting in the spec's folder under the same file stem, so check that
+  instead and compare its content against the sibling spec.
 - **Nothing is widened.** No requirement, story, or slice appears without a
   parent row behind it. Narrowing is fine when the parent's out-of-scope
   section or debt table records it.
