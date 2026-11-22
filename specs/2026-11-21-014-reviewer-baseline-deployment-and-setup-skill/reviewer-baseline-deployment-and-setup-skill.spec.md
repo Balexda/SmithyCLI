@@ -272,7 +272,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|-----------|----------|
-| US1 | Deploy the Baseline Reviewer Files | — | — |
+| US1 | Deploy the Baseline Reviewer Files | — | specs/2026-11-21-014-reviewer-baseline-deployment-and-setup-skill/01-deploy-the-baseline-reviewer-files.tasks.md |
 | US7 | Locate and Manage User-Level Smithy State | — | — |
 | US2 | Register the Baseline with CodeRabbit | US1 | — |
 | US3 | Maintain the General Review Rules in AGENTS.md | US1 | — |
