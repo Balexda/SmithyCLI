@@ -120,6 +120,13 @@ A debt item is valid only if a human could resolve it by picking
 between the named alternatives — not by writing code, writing a test,
 waiting for another artifact, or by being told the answer.
 
+**Recommend before you defer.** Every candidate that survives the gate
+must carry a `recommendation`: the option you would pick and why, and
+what only a human can weigh. If the codebase or the artifact already
+justifies your pick, or you cannot say what keeps it unsettled, the
+candidate failed the gate: route it to `assumptions` with
+`[Critical Assumption]`, phrased as the recommended answer.
+
 ### Edge cases
 
 - If no candidates qualify as assumptions, skip the assumptions block entirely.
@@ -167,10 +174,12 @@ Assumptions block contains one item. Debt list contains two items.
 | "Auth provider" — inferred from existing OAuth setup | High | not applied (Step 3a) | Assumption |
 | "Mitigation: pin the stub string in both the survey template and the eval scenario" | Medium | **fails** — phrasable only as a directive, and it names no alternatives | Assumption with `[Critical Assumption]` — the parent will lift it into `### Functional Requirements` |
 | "Whether scenarios that create a PR need `gh` stub credentials, regex alternation, or assertion against the failure branch" | Medium | **passes** — open question, three named paths, human-only | Debt item |
+| "The shipped removal helper swallows `docker rm` failures; decide whether to change the helper, wrap it with verification, or document 'attempted' semantics" | Medium | **fails** — "document 'attempted' semantics" keeps a defect, and the other two options are both "fix it" | Assumption with `[Critical Assumption]` recommending the fix (surface every failure other than "no such container", verify removal) — the parent lifts it into `### Functional Requirements` |
+| "Whether the force guard reads the preserved pre-teardown status or checks container liveness", when the artifact already makes the pre-teardown snapshot write-once for exactly this purpose | Medium | **fails** — already decided elsewhere in the artifact | Assumption with `[Critical Assumption]` naming the snapshot, so the parent aligns the requirement |
 
-The assumptions block contains two items; one is a true high-confidence
-inference and one is a Critical-flagged leak that the parent must route
-to its proper section. Debt list contains one steering need.
+The assumptions block contains four items; one is a true high-confidence
+inference and three are Critical-flagged leaks that the parent must route
+to their proper sections. Debt list contains one steering need.
 
 ### Bail-out assessment
 
@@ -203,7 +212,9 @@ re-run." The debt table is already in `debt_items` — do not duplicate it in
      sequential), Title (a slug of 40 characters or fewer naming the
      unresolved choice), Description (the full statement, 1–3 sentences —
      this becomes the item's detail section, not a table cell), Source
-     Category, Impact, Confidence, and Origin, each on the scale defined
+     Category, Impact, Confidence, Recommendation (the option you would
+     pick, why, and what keeps it unsettled; this goes in the detail
+     section), and Origin, each on the scale defined
      under Step 2 (`Origin` is always `local` — everything you produce is
      discovered in the artifact being authored). There is no Status or
      Resolution field: an item's lifecycle is carried structurally by the

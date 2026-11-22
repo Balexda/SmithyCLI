@@ -12,6 +12,9 @@
 between X and Y". Name the alternatives and what each one would imply. 1-3
 sentences. Never a directive.>
 
+**Recommendation:** <the option you would pick> — <why>. Not settled because
+<what only a human can weigh>.
+
 ### Resolved
 
 #### SD-003 — <Title>
@@ -24,6 +27,9 @@ _`Title` is a short slug (40 characters or fewer) — the full statement lives i
 the item's detail section, never in the table. Emit one `### SD-NNN — <Title>`
 detail section for every row whose `Origin` is `local`; rows carried down from a
 parent artifact get an index row only, because their prose lives in the parent.
+Every detail section carries a `**Recommendation:**` line. An item whose "not
+settled because" half cannot be filled is not debt: record the recommended
+option as a requirement or assumption instead.
 Resolving an item moves its row out of the index into `### Resolved`, which is
 why the resolved example above carries an ID the index no longer lists. Never
 put an unescaped `|` in a table cell — pipes belong in detail prose. Omit the

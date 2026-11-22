@@ -120,7 +120,14 @@ solely from the parsed `### Feature N` headings and the `.features.md`
      Also read the Source RFC (resolved during Routing) for additional goals
      and constraints.
 2. Explore the codebase to understand current architecture, relevant modules,
-   and existing patterns that inform the specification.
+   and existing patterns that inform the specification. When the feature
+   changes or hardens a system that already ships, treat that code as
+   evidence of current behavior, not as the source of truth for the target.
+   Where the code is broken or contradicts what the feature needs, the
+   spec states the target behavior as a requirement, names the recommended
+   fix, and notes the current-code gap once (in `## Dependency Order` or
+   the slice notes). The gap is never specification debt, and it never
+   becomes a hedge on a requirement or success criterion.
 3. Determine the spec folder name:
    - Scan `{{artifactsRoot}}specs/` for existing folders matching
      `YYYY-MM-DD-NNN-*`.

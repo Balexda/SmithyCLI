@@ -322,3 +322,34 @@ When evaluating a review comment, apply these criteria:
 - Accepting would expand scope beyond the PR's intent
 - The comment is based on a misunderstanding of the intent (explain why)
 - The change requires design discussion or dependency-version approval
+
+## Planning-Artifact Pull Requests
+
+When the pull request changes a planning artifact (`.rfc.md`,
+`.features.md`, `.spec.md`, `.data-model.md`, `.contracts.md`,
+`.tasks.md`, `.strike.md`), a fix lands in the artifact. These rules
+decide which section it goes in:
+
+- **A defect in the code the artifact describes is a requirement, not
+  debt.** A comment may show that the shipped code is broken, contradicts
+  the artifact, or cannot meet a requirement as written. Write the target
+  behavior as a requirement and name the recommended fix. Do not add a
+  `## Specification Debt` row offering to "fix it, wrap it, or document
+  current behavior": keeping a defect is never an option nobody chose.
+  Do not hedge the requirement or its success criteria with "target
+  contract, not current behavior". Note the current-code gap once, in
+  `## Dependency Order` or the slice notes.
+- **A new debt row must pass the steering test.** That test is under
+  "The steering test" in the deployed `smithy-clarify` and
+  `smithy-plan-review` agents, with "Alternatives that do not count" and
+  "Recommend first". The row's detail section carries a
+  `**Recommendation:**` line: the option you would pick, why, and what
+  only a human can weigh. If you can justify the pick yourself, make it:
+  write the requirement or assumption and say so in the reply.
+- **An implementation unknown is not debt either.** If building, testing,
+  or reading the code will settle it, it is an `IQ-NNN` row in the tasks
+  file, or a note for the slice.
+- **Re-check open debt after every fix.** When a fix answers or
+  supersedes an open `SD-NNN` row, or makes it a duplicate, resolve that
+  row in the same commit. Never leave a row open that a requirement in the
+  same artifact has already decided.

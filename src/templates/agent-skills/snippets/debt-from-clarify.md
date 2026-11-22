@@ -3,7 +3,8 @@ section already carries rather than resetting — `SD-001` only when the section
 holds no rows at all. An identifier is never reused, including one whose row
 has since moved under `### Resolved`. Carry the title, source_category,
 impact, confidence, and origin fields into the index table and the
-description into the item's `### SD-NNN — <Title>` detail section, directly
+description and recommendation into the item's `### SD-NNN — <Title>`
+detail section (the recommendation as its `**Recommendation:**` line), directly
 from clarify's return — never reword a description into a directive, and
 never add an item that did not come from `debt_items`. Everything clarify
 returns is `Origin: local`, so every item clarify returned gets a detail
