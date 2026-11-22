@@ -41,6 +41,38 @@ phrase as a directive ("we will…", "implementers must…", "mitigation:
 pin both files…", "resolution: X owns A and Y owns B") has already had
 its answer chosen, so it is never `steering`.
 
+#### Alternatives that do not count
+
+Three shapes pass "named alternatives" on their face but are never
+`steering`:
+
+- **Keep the defect.** "Document the current behavior", "accept the
+  attempted semantics", and "leave it as shipped" are not alternatives when
+  the shipped code is broken or contradicts what the artifact requires. The
+  artifact describes the target, and nobody has asked to keep a defect. If
+  you take this option away and what remains are variations of "fix it",
+  the finding is `hygiene`: write the fix as a requirement.
+- **Already decided.** If another requirement, contract, assumption, or
+  `### Resolved` item in the same artifact already picks one of the
+  options, the question is closed. Align the text that disagrees; do not
+  reopen the choice as debt.
+- **Deferred to the slice.** "The slice must decide between X and Y" hands
+  the choice to the implementer. Either the implementer can settle it by
+  building, which makes it `implementation`, or a human must, and then
+  it is `steering` and must pass the recommend-first rule below.
+
+#### Recommend first
+
+Before you call a finding `steering`, state the option you would pick and
+why, and name what only a human can decide. If the codebase, the
+conventions, the artifact, or ordinary engineering judgment justify your
+pick, the finding is not open. Record the pick as a requirement, or as an
+assumption annotated `[Critical Assumption]` when your confidence is not
+High. A finding is `steering` only when you can fill in both halves:
+"I would pick X because Y" **and** "this is not settled because only
+<a human> can weigh Z." A debt row without a recommendation is a finding
+you have not finished thinking about.
+
 #### Where the non-steering kinds go
 
 Nothing the gate rejects is discarded — every kind has a home, and the
@@ -51,6 +83,7 @@ finding carries the same information there.
 | An unknown the implementer settles by building, testing, or reading source — which field carries a value, which producer serves a surface, which of two equivalent call sites to extend | `implementation` | The tasks file's `## Open Implementation Questions` section, as an `IQ-NNN` row. Never the debt table |
 | A factual error — a wrong `## Dependency Order` table, a stale path, a contradiction with a source the artifact itself cites, ordinary sequencing stated as if ownership were in doubt | `hygiene` | Applied as a correction to the artifact. A wrong table is a fix, not a question |
 | Artifact housekeeping — "is the parent artifact corrected, or only this one?", "does this rename need to propagate upstream?" | `hygiene` | Same: applied. The answer is knowable now, so it is never open uncertainty |
+| A defect in the system being changed — "the shipped helper swallows errors", "the client treats any 200 as success", "this call has no timeout", code that contradicts a requirement | `hygiene` | The artifact's `### Functional Requirements` (specs) or the RFC body, stated as the target behavior with the recommended fix named. Note the current-code gap once, in `## Dependency Order` or the slice notes. Never debt, and never a hedge ("target contract, not current behavior") inside the requirement or its success criteria |
 | A requirement — "X must Y", "implementers verify Z", "mitigation: pin both files" | `hygiene` | The artifact's `### Functional Requirements` (specs) or the RFC body |
 | A load-bearing assumption — "a retry count of 5 is sufficient", "X is acceptable for now" | `hygiene` | The artifact's `## Assumptions` section, annotated `[Critical Assumption]` when the impact is Critical |
 | An acceptance test — "acceptance criteria require empirically capturing X", "verification needed against actual Y" | `hygiene` | The user story's `**Acceptance Scenarios**` list |

@@ -375,6 +375,36 @@ describe('kind-gate snippet', () => {
     expect(content).toContain('Only `steering` findings may become specification debt.');
   });
 
+  it('rejects keep-the-defect alternatives and requires a recommendation before debt', () => {
+    // Balexda/March#541: debt rows of the form "the shipped code is broken;
+    // the slice must decide whether to fix it, wrap it, or document current
+    // behavior" passed "named alternatives" on their face. Keeping a defect is
+    // never an alternative, a choice another requirement already made is not
+    // open, and no finding becomes debt without a stated recommendation.
+    const content = loadSnippets().get('kind-gate.md')!;
+    expect(content).toContain('#### Alternatives that do not count');
+    expect(content).toContain('**Keep the defect.**');
+    expect(content).toContain('**Already decided.**');
+    expect(content).toContain('**Deferred to the slice.**');
+    expect(content).toContain('#### Recommend first');
+    expect(content).toContain('A defect in the system being changed');
+    // The recommend-first rule sits after the steering test and before the
+    // routing table, so it is read as part of the gate, not as a footnote.
+    const steeringIdx = content.indexOf('#### The steering test');
+    const recommendIdx = content.indexOf('#### Recommend first');
+    const routingIdx = content.indexOf('#### Where the non-steering kinds go');
+    expect(recommendIdx).toBeGreaterThan(steeringIdx);
+    expect(routingIdx).toBeGreaterThan(recommendIdx);
+  });
+
+  it('carries a required recommendation into every debt detail section', () => {
+    const snippets = loadSnippets();
+    expect(snippets.get('spec-debt-section.md')).toContain('**Recommendation:**');
+    expect(snippets.get('debt-row-shape.md')).toContain('| `Recommendation` |');
+    expect(snippets.get('debt-from-clarify.md')).toContain('`**Recommendation:**` line');
+    expect(snippets.get('plan-review-triage.md')).toContain('`**Recommendation:**` line');
+  });
+
   it('folds the no-prescription rule into the positive test rather than a fourth condition', () => {
     // Clarify used to carry "no prescription" as a third gate condition, which
     // made its gate structurally different from the review agents'. It is a
@@ -1322,6 +1352,17 @@ describe('getComposedTemplates', () => {
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
     expect(skill.prompt).toContain('smithy.pr-review');
     expect(skill.prompt).toContain('allowed-tools');
+  });
+
+  it('smithy.pr-review routes code defects on planning artifacts to requirements, not debt', () => {
+    // Balexda/March#541: review follow-ups appended ungated debt rows for
+    // defects in the shipped code. The skill now holds new rows to the
+    // steering test and sends code defects to requirements.
+    const skill = claudeComposed.skills.get('smithy.pr-review')!;
+    expect(skill.prompt).toContain('## Planning-Artifact Pull Requests');
+    expect(skill.prompt).toContain('A defect in the code the artifact describes is a requirement, not');
+    expect(skill.prompt).toContain('"The steering test"');
+    expect(skill.prompt).toContain('**Re-check open debt after every fix.**');
   });
 
   it('smithy.pr-review allowed-tools lists both the GitHub MCP tools and the script fallbacks', () => {

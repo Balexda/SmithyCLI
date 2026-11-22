@@ -37,7 +37,7 @@ following shape. Emit one finding per distinct issue.
 | `destination` | enum | `apply`, `debt`, `iq`, or `note` — where the parent sends this finding, computed by you from the three fields above (see the routing step below) |
 | `description` | string | What the issue is and where it appears |
 | `artifact_path` | string | Path to the file containing the issue |
-| `proposed_fix` | string | Suggested resolution (for High-confidence findings) |
+| `proposed_fix` | string | Suggested resolution (for High-confidence findings). For a `steering` finding, the option you recommend and why, plus what only a human can weigh; it becomes the debt item's `**Recommendation:**` line |
 
 ### 4. Kind gate — set the kind before grading severity and confidence
 

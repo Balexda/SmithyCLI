@@ -9,6 +9,7 @@ and plan-review findings alike:
 | `Title` | A slug of 40 characters or fewer naming the unresolved choice. Not a sentence — the statement goes in the item's detail section. |
 | `Source Category` | The scan or audit category that produced the item. Findings from a review agent use `plan-review:<finding category>` (e.g. `plan-review:Internal contradiction`). |
 | `Origin` | `local` for an item discovered in the artifact being authored, or `<parent-kind>:SD-NNN` for one carried down from a parent artifact. |
+| `Recommendation` | Detail section only, required for every `local` item: the option the producer would pick and why, plus what keeps it unsettled ("Not settled because …"). A producer that cannot name what only a human can weigh has a requirement or assumption, not debt. |
 
 `Important` is **not** a valid `Impact` value. A review finding's severity is
 `Critical` / `Important` / `Minor`, which is a different scale, so map it into

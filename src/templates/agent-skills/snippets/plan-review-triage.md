@@ -26,7 +26,10 @@ For each `debt` finding, append a row to the target artifact's
 identifier, continuing from whatever the artifact already carries
 (including any debt inherited from a parent) rather than resetting. Use the
 finding's `description` as the body of a new `### SD-NNN — <Title>` detail
-section, never as a table cell.
+section, never as a table cell, and its `proposed_fix` as the section's
+`**Recommendation:**` line. A `debt` finding with no recommended option has
+not passed the gate's recommend-first rule: report it on the review note
+surface instead of filing it.
 
 {{>debt-row-shape}}
 
