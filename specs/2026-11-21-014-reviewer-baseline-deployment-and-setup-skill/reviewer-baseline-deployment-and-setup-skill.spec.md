@@ -55,7 +55,7 @@ actually load.
 - _Before overwriting a baseline file, update reports any file whose bytes differ from the new baseline. No content hashes are stored, so a file made stale by an older Smithy version is reported the same way as one edited by hand, and the wording says "differed from the shipped baseline" rather than claiming a user edit._ `[Critical Assumption]`
 - _The `smithy.setup` description is framed around installing and configuring Smithy and contains no review vocabulary, because Copilot catalogs `.claude/skills/` and `.agents/skills/` and may load a skill whose description fits a review._ `[Critical Assumption]`
 - _The `AGENTS.md` block text has one source, shipped with the baseline and copied verbatim. It carries the general rules (review against the plan; begin with "Steering question:"; read the planning instruction file and skill before commenting on an artifact) plus a pointer to the deployed files._
-- _A review skill's CodeRabbit entry takes the `applyTo` of each instruction file that names it, one entry per sender._
+- _A review skill's CodeRabbit entries take the `applyTo` of each instruction file that names it, one entry per distinct `applyTo`._
 - _When owned CodeRabbit entries are absent they are inserted together at the start of `filePatterns`. Existing owned entries are rewritten in place, and entries outside the owned prefixes are never reordered._
 - _Uninit removes the marked block and deletes `AGENTS.md` only when nothing but whitespace would remain._
 - _The reviewer baseline is independent of which agents are deployed, including a Gemini-only install._
@@ -119,7 +119,7 @@ differ.
 
 **Acceptance Scenarios**:
 
-1. **Given** the baseline is on and no `.coderabbit.yaml` exists, **When** init runs, **Then** the file is created with `inheritance: true`, code guidelines enabled, and one owned entry per baseline instruction file and per sender of each baseline skill.
+1. **Given** the baseline is on and no `.coderabbit.yaml` exists, **When** init runs, **Then** the file is created with `inheritance: true`, code guidelines enabled, and one owned entry per baseline instruction file and per distinct sender scope of each baseline skill.
 2. **Given** an existing `.coderabbit.yaml` with comments, other keys, and repository entries, **When** init or update runs, **Then** the owned entries are added or rewritten and every byte outside them is unchanged.
 3. **Given** a baseline file's `applyTo` changes in a newer Smithy, **When** update runs, **Then** its owned entry carries the new `applyTo`, read from the file's own frontmatter.
 4. **Given** a repository entry whose `files` path begins with `.github/skills/smithycli-` or any prefix other than the two owned prefixes, **When** init, update, or uninit runs, **Then** that entry is never modified or removed.
@@ -317,7 +317,7 @@ Recommended implementation sequence:
 
 **Shape rules**
 
-- **FR-019**: The reviewer-file shape rules MUST exist as one reusable check shared by SmithyCLI's own tests and by deployment reporting. The rules are: an instruction file has `applyTo`; `excludeAgent`, when present, is `code-review` or `coding-agent`; an instruction file, frontmatter included, is at most 4,000 characters; a skill's `name` matches its directory and is lowercase-hyphenated; a skill's description fits the skill description budget; the CodeRabbit config holds no rule text (no `instructions` or `*_instructions` key anywhere); `code_guidelines` is not disabled; every instruction file has exactly one entry, and every review skill has exactly one entry per sender instruction file (a repeated `files` value is allowed only with distinct `applyTo` values); an instruction file excluded from `code-review` has no entry; every review skill has at least one sender, and every skill an instruction file names exists; every listed `files` value is an existing rule file; and each entry's `applyTo` matches its file. (US2, US6)
+- **FR-019**: The reviewer-file shape rules MUST exist as one reusable check shared by SmithyCLI's own tests and by deployment reporting. The rules are: an instruction file has `applyTo`; `excludeAgent`, when present, is `code-review` or `coding-agent`; an instruction file, frontmatter included, is at most 4,000 characters; a skill's `name` matches its directory and is lowercase-hyphenated; a skill's description fits the skill description budget; the CodeRabbit config holds no rule text (no `instructions` or `*_instructions` key anywhere); `code_guidelines` is not disabled; every instruction file eligible for code review has exactly one entry, and an instruction file excluded from `code-review` has no entry; every review skill has exactly one entry per distinct `applyTo` among its sender instruction files, so senders sharing a scope share one entry and no `(files, applyTo)` pair appears twice; every review skill has at least one sender, and every skill an instruction file names exists; every listed `files` value is an existing rule file; and each entry's `applyTo` matches its file. (US2, US6)
 - **FR-020**: Baseline content MUST name nothing that resolves only inside SmithyCLI: no SmithyCLI source paths, engraved-record IDs or paths, issue or pull-request numbers, or the repository name. The existing portability check MUST run against the baseline source. (US1, US3)
 
 **Setup skill**

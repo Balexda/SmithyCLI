@@ -91,7 +91,7 @@ Validation rules:
 | `applyTo` | `string` | Yes | Derived (Baseline inventory, `applyTo` source). |
 
 Validation rules:
-- Ownership is the `files` prefix. The expected set is keyed by `(files, applyTo)`, and reconciliation rewrites, removes, or inserts owned entries to match it (FR-011). A skill with two sender files yields two entries.
+- Ownership is the `files` prefix. The expected set is keyed by `(files, applyTo)`, and reconciliation rewrites, removes, or inserts owned entries to match it (FR-011). A skill whose senders have two distinct `applyTo` values yields two entries. Senders sharing a scope yield one.
 - Lives under `knowledge_base.code_guidelines.filePatterns`.
 - An entry whose `files` lacks an owned prefix is repository-owned and is never touched.
 
@@ -115,7 +115,7 @@ Validation rules:
 | description within budget | skill | over budget |
 | no `instructions` or `*_instructions` key anywhere in the config | `.coderabbit.yaml` | rule text duplicated into config |
 | `code_guidelines` not disabled | `.coderabbit.yaml` | no rule file is applied |
-| one entry per instruction file; one per sender for a skill; `applyTo` matches file | `.coderabbit.yaml` | missing, duplicate, or mismatched entry |
+| one entry per code-review-eligible instruction file; one per distinct sender `applyTo` for a skill; no repeated `(files, applyTo)`; `applyTo` matches file | `.coderabbit.yaml` | missing, duplicate, or mismatched entry |
 | instruction file excluded from `code-review` has no entry | `.coderabbit.yaml` | coding-agent-only rules applied to review |
 | every skill has at least one sender; every named skill exists | skill / instruction | unreachable or dangling skill |
 | every listed `files` value is an existing rule file | `.coderabbit.yaml` | entry points at nothing |

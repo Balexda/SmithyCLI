@@ -179,7 +179,7 @@ file at deploy time (FR-010).
 
 ### C5: Shape rule check
 
-**Purpose**: One definition of a loadable reviewer file, shared by SmithyCLI's tests and by deploy reporting. It replaces the existing one-entry-per-file rule with one entry per `(files, applyTo)` pair.
+**Purpose**: One definition of a loadable reviewer file, shared by SmithyCLI's tests and by deploy reporting. It replaces the existing one-entry-per-file rule with one entry per distinct `(files, applyTo)` pair.
 **Consumers**: SmithyCLI reviewer tests; init/update reporting; the rules `smithy.setup` states.
 **Providers**: A reusable source module.
 
