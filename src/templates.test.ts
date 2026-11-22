@@ -1110,7 +1110,7 @@ describe('getTemplateFilesByCategory', () => {
     expect(byCategory.commands).toHaveLength(13);
     expect(byCategory.prompts).toHaveLength(2);
     expect(byCategory.agents).toHaveLength(14);
-    expect(byCategory.skills).toHaveLength(8);
+    expect(byCategory.skills).toHaveLength(9);
   });
 
   it('skills includes smithy.pr-review, smithy.status, smithy.gh-issue, smithy.helper-docker, smithy.helper-voice, smithy.helper-documentation, smithy.helper-screen-design, and smithy.helper-flow-definition', () => {

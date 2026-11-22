@@ -256,6 +256,18 @@ describe('CLI init --yes (non-interactive)', () => {
     expect(fs.existsSync(path.join(tmpDir, '.agents', 'skills'))).toBe(true);
     expect(fs.existsSync(path.join(tmpDir, 'tools', 'codex', 'prompts'))).toBe(true);
 
+    for (const agentDir of ['.claude', '.gemini', '.agents']) {
+      const skillDir = path.join(tmpDir, agentDir, 'skills', 'smithy.setup');
+      const skill = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+      expect(skill).toMatch(/^name: smithy\.setup$/m);
+      expect(skill).not.toMatch(/^disable-model-invocation: true$/m);
+      const description = skill.match(/^description: (.+)$/m)?.[1];
+      expect(description).toBeDefined();
+      expect(description).not.toMatch(/review|pull request/i);
+      expect(skill).toContain('](references/user-surfaces.md)');
+      expect(fs.existsSync(path.join(skillDir, 'references', 'user-surfaces.md'))).toBe(true);
+    }
+
     // Manifest directory created at .smithy/ (repo default)
     expect(fs.existsSync(path.join(tmpDir, '.smithy'))).toBe(true);
   });

@@ -270,3 +270,28 @@ down from the source spec into the generated tasks file with the correct
 - [ ] The tasks file contains **no** detail section for the carried-down
       item — its prose stays in the parent spec
 - [ ] No `inherited from spec:` text prefix appears anywhere in the file
+
+---
+
+## A10: Setup inventories user-level Smithy state (US7)
+
+Run in a disposable account or isolated agent home. In a scratch Git
+repository, deploy the workspace skills and provision external artifacts with
+`smithy init --agent all --artifacts-location external --no-permissions -y`.
+Then install the user deployment with
+`smithy init --agent claude --location user --no-permissions -y`.
+This also provisions the four user orders templates.
+
+1. Start a fresh agent session in the scratch repository and ask “Where is my
+   Smithy config?” Verify that the agent loads `smithy.setup` and opens
+   `references/user-surfaces.md` from that deployed skill directory. Repeat
+   with Claude, Gemini, and Codex.
+2. Confirm the response reports the user manifest, Claude deployment, orders
+   templates, and external repository artifact store as present. It should
+   report the user and project engraved stores as absent and identify the
+   CLI, template file, or engrave action that owns each surface.
+3. Move the user manifest aside in the disposable home. Ask the same question
+   again and verify that the manifest is reported absent, the Claude files
+   remain visible but unverified, and the other surfaces are still checked.
+4. Verify both lookups explain that there is no separate Smithy config file
+   and leave the files and directories in the disposable home untouched.

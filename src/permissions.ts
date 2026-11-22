@@ -762,6 +762,7 @@ export const claudeToolPermissions: string[] = [
   "Skill(smithy.pr-review *)",
   "Skill(smithy.render *)",
   "Skill(smithy.resolve *)",
+  "Skill(smithy.setup *)",
   "Skill(smithy.spark *)",
   "Skill(smithy.status *)",
   "Skill(smithy.strike *)",
