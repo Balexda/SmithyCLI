@@ -252,7 +252,7 @@ Recommended implementation sequence:
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| M1 | Shared Implementation Procedure | — | — |
+| M1 | Shared Implementation Procedure | — | docs/rfcs/2026-003-strike-redesign/01-shared-implementation-procedure.features.md |
 | M2 | Context-Limited Result Judges | — | — |
 | M3 | Interactive Strike From Idea to Pull Request | M1, M2 | — |
 | M4 | Issue Input and Unattended Mode | M3 | — |
