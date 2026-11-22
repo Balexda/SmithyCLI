@@ -113,6 +113,7 @@ Each rule traces to pull requests or issues in this repository.
 | Altitude of features and stories; stories backed by contracts | #351, #441 |
 | Smithy plans only for what it owns | #440, #464 |
 | A plan must not silently settle open debt | #449 |
+| New debt rows meet the steering bar; code defects become requirements | #632, #633 |
 | An empty debt section is not a missing table | #617, #618 |
 | Dependencies declared in tasks appear in the spec's table | #495 |
 | A planning pull request carries no source changes | #461 |
