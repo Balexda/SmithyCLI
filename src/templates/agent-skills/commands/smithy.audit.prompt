@@ -28,8 +28,8 @@ If no input is provided above, check whether you are on a **forge branch** (see 
 
 ### File Argument Mode
 
-When a file path is provided, detect the artifact type by its file extension —
-and, for the durable UI artifacts, by the directory it sits in as well:
+When a file path is provided, detect the artifact type by its file extension
+and use the directory when the table specifies one:
 
 | Target | Artifact Type | Producing Command |
 |--------|--------------|-------------------|
@@ -42,12 +42,14 @@ and, for the durable UI artifacts, by the directory it sits in as well:
 | `.flow.md` under `design/flows/` | Flow Definition | smithy.mark |
 | `.decision.md` | Decision (engraved) | smithy.engrave |
 | `.invariant.md` | Invariant (engraved) | smithy.engrave |
-| *(no suffix, under a `constitution/` directory)* | Principle (engraved) | smithy.engrave |
+| `.md` under a `constitution/` directory, with no other matching suffix | Principle (engraved) | smithy.engrave |
 
 1. Read the file at the given path.
 2. Match it against the table above. The two UI rows match only when the file
    also sits under the named directory — a `.design.md` or `.flow.md` elsewhere
    in the repo is **not** a screen or flow artifact and falls through to step 5.
+   Decisions, invariants, and principles are durable knowledge roots and all
+   select **Audit Checklist (engraved records)**.
 3. **Gather context documents** — many checklists require cross-document checks. Before running the checklist, discover and read the related files for the artifact type:
 
    | Target | Context to gather |
@@ -59,7 +61,7 @@ and, for the durable UI artifacts, by the directory it sits in as well:
    | `.strike.md` | None — strike files are self-contained (data model and contracts are inline sections) |
    | `.design.md` under `design/screens/` | The component named by front-matter `component-path`, when present, to verify the path contract resolves; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `SC<N>` row |
    | `.flow.md` under `design/flows/` | The screen annotations named by front-matter `screens` and the executable body named by `test-body`, when present, to verify flow references resolve; plus the owning spec's typed `## Dependency Order` ledger when it is discoverable, to resolve the matching `FL<N>` row |
-   | `.decision.md`, `.invariant.md`, principle | The engraved inventory across every level: run `smithy status --engraved --format json` (add `--project <slug>` for a project-level record). Its `records` array resolves the ids this record cites, so citation and edge checks do not need a directory walk |
+   | `.decision.md`, `.invariant.md`, principle | The engraved inventory across every level: run `smithy status --engraved --format json` (add `--project <slug>` for a project-level record). Use its `records` array to resolve cited IDs, lifecycle statuses, and reciprocal edges. For an invariant, also inspect relevant available evidence within its scope for divergence from the rule. |
 
    If a context document is missing, note it as a finding rather than skipping the check. The one exception is a context entry marked "when it is discoverable" — a durable UI artifact carries no back-pointer to its owning spec, so an unreachable ledger is not itself a finding.
 

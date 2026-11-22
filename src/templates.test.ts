@@ -160,6 +160,7 @@ describe('loadSnippets', () => {
     expect(snippets.get('audit-checklist-tasks.md')).toContain('Audit Checklist (.tasks.md)');
     expect(snippets.get('audit-checklist-strike.md')).toContain('Audit Checklist (.strike.md)');
     expect(snippets.get('audit-checklist-voice.md')).toContain('Voice & Audience Tag Lint');
+    expect(snippets.get('audit-checklist-engraved.md')).toContain('Audit Checklist (engraved records)');
     expect(snippets.get('guidance-shell.md')).toContain('Shell Best Practices');
     expect(snippets.get('tdd-protocol.md')).toContain('TDD Protocol');
     expect(snippets.get('review-protocol.md')).toContain('Review Protocol');
@@ -4721,6 +4722,26 @@ describe('getComposedTemplates', () => {
     // The retired row labels must no longer appear in the audit template
     expect(audit).not.toContain('Persona Clarity');
     expect(audit).not.toContain('Scope Boundaries');
+  });
+
+  it('audit routes engraved records to the composed engraved checklist', () => {
+    const audit = composed.commands.get('smithy.audit.md')!;
+    expect(audit).toContain('| `.decision.md` | Decision (engraved) | smithy.engrave |');
+    expect(audit).toContain('| `.invariant.md` | Invariant (engraved) | smithy.engrave |');
+    expect(audit).toContain('| `.md` under a `constitution/` directory, with no other matching suffix | Principle (engraved) | smithy.engrave |');
+    expect(audit).toMatch(/Decisions, invariants, and principles are durable knowledge roots and all\s+select \*\*Audit Checklist \(engraved records\)\*\*/);
+    expect(audit).toContain('If the target matches no row, fall back to a general review using all checklists.');
+    expect(audit).not.toContain('{{>audit-checklist-engraved}}');
+
+    const checklist = audit.split('## Audit Checklist (engraved records)')[1]
+      ?.split('### Audit Checklist (.design.md screen artifacts)')[0];
+    expect(checklist).toContain('**Pivot-Level Inclusion**');
+    expect(checklist).toContain('**Desired Invariant**');
+    expect(checklist).toMatch(/Establishing Decisions.*`established_by`.*resolve to decisions/);
+    expect(checklist).toMatch(/Establishes Reciprocity.*same-level.*`establishes`.*`established_by`/);
+    expect(checklist).toMatch(/Stale Citations.*`superseded` or `deprecated`/);
+    expect(checklist).toContain('Where \\| What diverges \\| Disposition + Why \\| Tracking Issue \\| Severity');
+    expect(checklist).toContain('Flag any observed divergence from the rule that lacks a ledger row');
   });
 
   it('audit template renders the voice/audience tag lint snippet', () => {
