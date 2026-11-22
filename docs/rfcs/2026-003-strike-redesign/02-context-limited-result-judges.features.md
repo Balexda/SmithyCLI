@@ -21,7 +21,7 @@ kind: backend
 - Withhold the plan, tasks and other reviewers' findings. Verify the reviewer returns its verdicts without asking for the plan or tasks.
 - Declare a provider-neutral tier and verify that the reviewer operates without an effort setting. Keep deployed text free of specific orchestrator, PRD and issue references, and keep the description within the template lint budget.
 - Use the existing review protocol and kind gate for findings, including `kind` and routed `destination`. Keep each finding's confidence based on its evidence regardless of agreement between reviewers.
-- Run and record the dispatch-context probe on Claude and Codex to establish whether sub-agents inherit context beyond their dispatch. If Codex inherits extra context, record it as degraded like Gemini and pass Milestone 3 the requirement to report that no independent review ran in both terminal output and the pull request.
+- Run and record the dispatch-context probe on Claude and Codex to establish whether sub-agents inherit context beyond their dispatch. If either runtime inherits extra context, record that runtime as degraded like Gemini and pass Milestone 3 the requirement that Strike on it report that no independent review ran in both terminal output and the pull request.
 
 ### Feature 2: Diff-Only Review and Working Plan Protection
 
