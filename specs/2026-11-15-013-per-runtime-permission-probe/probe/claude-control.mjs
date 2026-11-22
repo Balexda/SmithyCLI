@@ -120,7 +120,18 @@ try {
     });
     process.child.stdin.end();
     const result = await process.catch(error => error);
-    const events = (result.stdout ?? '').trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+    // Parse line by line so a session cut off mid-line (e.g. by the timeout)
+    // is still recorded; the loop continues because each operation is independent.
+    const stdout = result.stdout ?? '';
+    const events = [];
+    const malformedLines = [];
+    for (const line of stdout.split('\n').filter(Boolean)) {
+      try {
+        events.push(JSON.parse(line));
+      } catch (error) {
+        malformedLines.push({ line, error: error.message });
+      }
+    }
     const init = events.find(event => event.type === 'system' && event.subtype === 'init');
     const request = events.flatMap(event => event.message?.content ?? [])
       .find(block => block.type === 'tool_use' && block.name === 'Bash' && block.input.command === command);
@@ -136,6 +147,8 @@ try {
       approval: 'none supplied (noninteractive dontAsk)',
       exitCode: result.code ?? (result.signal ? null : 0),
       signal: result.signal ?? null,
+      timedOut: result.killed === true,
+      ...(malformedLines.length ? { malformedLines, rawStdout: stdout } : {}),
       observedPermissionMode: init?.permissionMode ?? null,
       toolRequest: request ?? null,
       toolResult: toolResult ?? null,
