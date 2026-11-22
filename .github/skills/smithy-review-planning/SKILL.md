@@ -16,15 +16,18 @@ complete, not whether the prose is polished. Work through the steps in order.
 |--------------|----------------|
 | `.rfc.md` | a `.prd.md`, when the header names one |
 | `.features.md` | the RFC named in its header |
-| `.spec.md` | the feature map and RFC named in its header |
+| `.spec.md` | the feature map and RFC named in its header, when the header names them |
 | `.data-model.md`, `.contracts.md` | the sibling `.spec.md` in the same folder, then the feature map and RFC named in the spec's header |
 | `.tasks.md` | the spec named on its `**Source**:` line |
 | `.strike.md` | none; it is one self-contained slice |
 
-When a header names no parent, for example a spec marked from a direct
-description or an RFC with no PRD, skip step 3 for the missing levels and
-review against the checklist alone. A missing parent is not a finding. Step 3
-still applies to any parent the header does name.
+Only the parents qualified with "when the header names" are optional: a PRD
+for an RFC, and the feature map and RFC for a spec marked from a direct
+description. When an optional parent is absent, skip step 3 for it and review
+against the checklist alone; the absence is not a finding. Every other parent
+is required. A `.features.md` with no RFC, or a `.tasks.md` with no
+`**Source**:` spec, is a finding: report the missing parent and the checks it
+blocks.
 
 ## 2. Load the checklist for that artifact type
 
@@ -46,8 +49,10 @@ satisfies the same row.
 
 ## 3. Check the artifact against its parent
 
-- **The link exists.** The parent's row for this child has its `Artifact`
-  cell set to this file or folder, in the same pull request. A
+- **The link exists.** The immediate parent's row for this child has its
+  `Artifact` cell set to this file or folder, in the same pull request. Only
+  the adjacent level holds that row: a spec's link is in the feature map, and
+  the feature map's link is in the RFC. The RFC has no row for the spec. A
   `.data-model.md` or `.contracts.md` has no `Artifact` row. It links to its
   spec by sitting in the spec's folder under the same file stem, so check that
   instead and compare its content against the sibling spec.
