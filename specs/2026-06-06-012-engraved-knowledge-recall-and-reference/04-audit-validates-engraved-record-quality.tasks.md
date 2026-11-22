@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Create the engraved audit checklist snippet**
+- [x] **Create the engraved audit checklist snippet**
 
   Add `audit-checklist-engraved.md` beside the existing audit checklist snippets and register it in the snippets README. The checklist must cover engraved records as durable knowledge roots, distinguish decisions, invariants, and principles, and apply the pivot-level inclusion test to every record.
 
@@ -27,7 +27,7 @@
   - Checklist describes decisions, invariants, and principles as engraved record kinds
   - Checklist applies the pivot-level inclusion test to every engraved record
 
-- [ ] **Wire engraved records into audit type selection**
+- [x] **Wire engraved records into audit type selection**
 
   Extend `smithy.audit` artifact selection and context-gathering guidance so engraved record paths select the new checklist. Recognition must cover decision, invariant, and principle records without treating them as Smithy planning artifacts or `smithy.orders` types.
 
@@ -38,7 +38,7 @@
   - Principle records select the engraved checklist
   - Unknown non-engraved paths keep the existing fallback behavior
 
-- [ ] **Add engraved quality checks to the checklist**
+- [x] **Add engraved quality checks to the checklist**
 
   Define the concrete audit checks for the engraved schema: decisions state desired invariants where applicable, decision/invariant `establishes` and `established_by` references are reciprocal, citations do not point at superseded decisions, invariants cite establishing decisions, and the Known-Exceptions ledger keeps the frozen load-bearing column order with no silent divergence.
 
@@ -49,7 +49,7 @@
   - Invariant checks require establishing-decision citations
   - Known-Exceptions ledger checks require the frozen column order and visible exception handling
 
-- [ ] **Assert engraved audit composition**
+- [x] **Assert engraved audit composition**
 
   Extend template coverage so the composed `smithy.audit` command includes the engraved checklist, type-selection rules route engraved records to it, and the checklist text preserves the decision, invariant, stale-citation, ledger, and pivot-level checks.
 
