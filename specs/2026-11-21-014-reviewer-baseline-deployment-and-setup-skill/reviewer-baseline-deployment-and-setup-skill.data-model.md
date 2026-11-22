@@ -67,7 +67,7 @@ Validation rules:
 | `frontmatter.excludeAgent` | `'code-review' \| 'coding-agent'` | No | Copied verbatim. |
 | `frontmatter.name` | `string` | skill only | Equals the skill directory name. |
 | `frontmatter.description` | `string` | skill only | Within the skill description budget. |
-| `body` | `string` | Yes | At most 4,000 characters for an instruction file. |
+| `body` | `string` | Yes | For an instruction file, the whole file (frontmatter included) is at most 4,000 characters. |
 
 ### 5) Review Rules Block (`AGENTS.md`)
 
@@ -109,7 +109,7 @@ Validation rules:
 |------|-----------|---------|
 | `applyTo` present | instruction | missing scope; reviewer ignores the file |
 | `excludeAgent` ∈ {`code-review`, `coding-agent`} | instruction | invalid value |
-| body ≤ 4,000 characters | instruction | over budget |
+| whole file (frontmatter included) ≤ 4,000 characters | instruction | over budget |
 | `name` = directory, lowercase-hyphenated | skill | skill never loads |
 | description within budget | skill | over budget |
 | no `instructions` or `*_instructions` key anywhere in the config | `.coderabbit.yaml` | rule text duplicated into config |
