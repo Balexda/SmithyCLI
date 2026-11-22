@@ -84,13 +84,23 @@ interface SmithyManifest {
 #### Signature
 
 ```markdown
-## Code Review Rules
+## Code Review Rules            <- repository-owned heading (kept on uninit)
 
 <!-- smithy:review:begin -->
 <baseline block text, verbatim>
 <!-- smithy:review:end -->
 
 <repository-owned bullets, untouched>
+```
+
+When no heading exists, Smithy places the heading inside the markers:
+
+```markdown
+<!-- smithy:review:begin -->
+## Code Review Rules
+
+<baseline block text, verbatim>
+<!-- smithy:review:end -->
 ```
 
 #### Inputs
@@ -110,9 +120,9 @@ interface SmithyManifest {
 
 | Condition | Response | Description |
 |-----------|----------|-------------|
-| file absent | Create with heading + block | Deliberate departure from the engraved rule. |
-| no markers, heading present | Insert block under heading | |
-| no markers, no heading | Append heading + block | |
+| file absent | Create with the block, heading inside the markers | Deliberate departure from the engraved rule. |
+| no markers, heading present | Insert block under heading | The heading stays repository-owned. |
+| no markers, no heading | Append the block, heading inside the markers | |
 | exactly one pair | Replace between markers | Idempotent. |
 | lone, reversed, or duplicated markers | Warn; file unchanged | Same rule as the engraved block. |
 | uninit, file reduces to whitespace | Delete file | FR-015. |

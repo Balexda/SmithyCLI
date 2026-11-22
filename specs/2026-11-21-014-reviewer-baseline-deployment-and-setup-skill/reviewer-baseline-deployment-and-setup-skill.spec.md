@@ -146,12 +146,12 @@ confirm the file is byte-identical.
 **Acceptance Scenarios**:
 
 1. **Given** an `AGENTS.md` with a `## Code Review Rules` heading and no markers, **When** init runs with the baseline on, **Then** one `<!-- smithy:review:begin -->` / `<!-- smithy:review:end -->` block holding the baseline rules is inserted directly under the heading.
-2. **Given** an `AGENTS.md` with no such heading, **When** init runs, **Then** the block, preceded by the heading, is appended to the end of the file.
-3. **Given** no `AGENTS.md`, **When** init runs, **Then** the file is created holding only the heading and the block.
+2. **Given** an `AGENTS.md` with no such heading, **When** init runs, **Then** the block is appended to the end of the file with the heading inside the markers, so the heading is Smithy-owned.
+3. **Given** no `AGENTS.md`, **When** init runs, **Then** the file is created holding only the block, with the heading inside the markers.
 4. **Given** exactly one marker pair, **When** init or update runs, **Then** only the text between the markers is replaced, and a second run produces a byte-identical file.
 5. **Given** malformed or duplicated `smithy:review` markers, **When** init, update, or uninit runs, **Then** the file is left unchanged and a warning names the problem.
 6. **Given** an `AGENTS.md` that also holds the `smithy:engraved` block, **When** init runs, **Then** the engraved block is unchanged.
-7. **Given** the baseline is deployed, **When** uninit runs, **Then** the block and its markers are removed, the heading is removed only if Smithy added it and nothing else is under it, and the file is deleted only when nothing but whitespace would remain.
+7. **Given** the baseline is deployed, **When** uninit runs, **Then** the block and its markers are removed (taking a Smithy-added heading with them), a heading that sat outside the markers is kept even if nothing remains under it, and the file is deleted only when nothing but whitespace would remain.
 
 ---
 
@@ -305,9 +305,9 @@ Recommended implementation sequence:
 
 **AGENTS.md block**
 
-- **FR-013**: Smithy MUST maintain one `<!-- smithy:review:begin -->` / `<!-- smithy:review:end -->` block holding the baseline rules. It sits under `## Code Review Rules` when that heading exists, and otherwise is appended with the heading. When `AGENTS.md` is absent, Smithy creates the file with only the heading and the block. Creating the file is a deliberate departure from the engraved block's manage-existing-files-only rule. (US3)
+- **FR-013**: Smithy MUST maintain one `<!-- smithy:review:begin -->` / `<!-- smithy:review:end -->` block holding the baseline rules. It sits under `## Code Review Rules` when that heading exists. Otherwise it is appended with the heading placed inside the markers, so ownership of the heading is recorded by the markers alone. When `AGENTS.md` is absent, Smithy creates the file with only that block. Creating the file is a deliberate departure from the engraved block's manage-existing-files-only rule. (US3)
 - **FR-014**: Marker handling MUST follow the engraved block's rules: with no markers insert, with one pair replace between them, and with malformed or duplicated markers warn and leave the file unchanged. Repeat runs MUST be byte-identical, and the engraved block MUST be unaffected. (US3)
-- **FR-015**: Uninit MUST remove the block and its markers, remove the heading only when Smithy added it and nothing else remains under it, and delete `AGENTS.md` only when nothing but whitespace would remain. (US3)
+- **FR-015**: Uninit MUST remove the block and its markers, including any heading inside them, MUST keep a heading that sits outside the markers, and MUST delete `AGENTS.md` only when nothing but whitespace would remain. (US3)
 
 **Adoption**
 
