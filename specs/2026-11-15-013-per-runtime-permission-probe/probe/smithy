@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Use only the fixture's Git configuration and repository.
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+store=${SMITHY_PROBE_STORE:-"$root/store"}
+store=$(cd -- "$store" && pwd -P)
+[[ "$store" == "$root/"* && -f "$store/.smithy-probe-store" && -d "$store/.git" ]]
+printf '%s\0' "$@" > "$root/argv"
+
+probe_git() {
+  env -i PATH="$PATH" HOME="$root/home" GIT_CONFIG_NOSYSTEM=1 \
+    git -C "$store" -c core.hooksPath="$root/no-hooks" "$@"
+}
+
+case "${1:-}" in
+  probe-query)
+    [[ $# == 1 ]]
+    printf '%s\n' "$store"
+    ;;
+  probe-write)
+    [[ $# == 1 ]]
+    printf '%s\n' 'probe write completed' > "$store/probe.txt"
+    probe_git add -- probe.txt
+    probe_git commit --only -m 'Record fixture change' -- probe.txt
+    ;;
+  probe-unrelated)
+    [[ $# == 1 ]]
+    printf '%s\n' 'unrelated command executed'
+    ;;
+  *)
+    printf '%s\n' 'Unknown probe subcommand' >&2
+    exit 2
+    ;;
+esac

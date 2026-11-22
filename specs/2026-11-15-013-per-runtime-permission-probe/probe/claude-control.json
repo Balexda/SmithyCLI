@@ -1,0 +1,203 @@
+{
+  "utc": "2026-11-22T14:26:17.306Z",
+  "platform": {
+    "os": "linux",
+    "release": "6.18.58.1-microsoft-standard-WSL2",
+    "arch": "x64"
+  },
+  "version": "2.1.330 (Claude Code)",
+  "runtime": {
+    "path": "/tmp/tmp.hqlnkXopFz/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "sha256": "f390eaa0814e6a1bff74cbb47acb74cb9c89d30ced809fe0af5af00c7bfe8ebb"
+  },
+  "standIn": {
+    "path": "/tmp/smithy-probe.sjv43LQj/bin/smithy",
+    "sha256": "a38ee79c5a473ad8eb11a1dbcaca500895ad3da6e391569dd7ce69f0401579e8"
+  },
+  "cwd": "/tmp/smithy-probe.sjv43LQj/checkout",
+  "store": "/tmp/smithy-probe.sjv43LQj/store",
+  "settings": {
+    "permissions": {
+      "allow": [
+        "Bash(smithy probe-query)",
+        "Bash(smithy probe-write)"
+      ]
+    },
+    "sandbox": {
+      "enabled": false
+    }
+  },
+  "flags": [
+    "--bare",
+    "--setting-sources",
+    "",
+    "--settings",
+    "{\"permissions\":{\"allow\":[\"Bash(smithy probe-query)\",\"Bash(smithy probe-write)\"]},\"sandbox\":{\"enabled\":false}}",
+    "--permission-mode",
+    "dontAsk",
+    "--tools",
+    "Bash",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--max-turns",
+    "3",
+    "-p"
+  ],
+  "modelEndpoint": "loopback scripted Bash requests",
+  "operations": [
+    {
+      "command": "smithy probe-query",
+      "argv": [
+        "probe-query"
+      ],
+      "ruleDecision": "allowed",
+      "approval": "none supplied (noninteractive dontAsk)",
+      "exitCode": 0,
+      "signal": null,
+      "observedPermissionMode": "dontAsk",
+      "toolRequest": {
+        "type": "tool_use",
+        "id": "toolu_probe",
+        "name": "Bash",
+        "input": {
+          "command": "smithy probe-query",
+          "description": "Run fixture operation"
+        }
+      },
+      "toolResult": {
+        "tool_use_id": "toolu_probe",
+        "type": "tool_result",
+        "content": "/tmp/smithy-probe.sjv43LQj/store",
+        "is_error": false
+      },
+      "permissionDenial": null,
+      "sessionResult": {
+        "subtype": "success",
+        "result": "Probe finished."
+      },
+      "stderr": "",
+      "before": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storeParent": null,
+        "storePaths": "",
+        "storeContent": "fixture baseline\n"
+      },
+      "after": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storeParent": null,
+        "storePaths": "",
+        "storeContent": "fixture baseline\n"
+      }
+    },
+    {
+      "command": "smithy probe-write",
+      "argv": [
+        "probe-write"
+      ],
+      "ruleDecision": "allowed",
+      "approval": "none supplied (noninteractive dontAsk)",
+      "exitCode": 0,
+      "signal": null,
+      "observedPermissionMode": "dontAsk",
+      "toolRequest": {
+        "type": "tool_use",
+        "id": "toolu_probe",
+        "name": "Bash",
+        "input": {
+          "command": "smithy probe-write",
+          "description": "Run fixture operation"
+        }
+      },
+      "toolResult": {
+        "tool_use_id": "toolu_probe",
+        "type": "tool_result",
+        "content": "[probe 0c3e177] Record fixture change\n 1 file changed, 1 insertion(+), 1 deletion(-)",
+        "is_error": false
+      },
+      "permissionDenial": null,
+      "sessionResult": {
+        "subtype": "success",
+        "result": "Probe finished."
+      },
+      "stderr": "",
+      "before": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storeParent": null,
+        "storePaths": "",
+        "storeContent": "fixture baseline\n"
+      },
+      "after": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0c3e177dbe3734ce0e21c484d712a51cfd0287b0",
+        "storeParent": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storePaths": "probe.txt",
+        "storeContent": "probe write completed\n"
+      }
+    },
+    {
+      "command": "smithy probe-unrelated",
+      "argv": null,
+      "ruleDecision": "denied",
+      "approval": "none supplied (noninteractive dontAsk)",
+      "exitCode": 0,
+      "signal": null,
+      "observedPermissionMode": "dontAsk",
+      "toolRequest": {
+        "type": "tool_use",
+        "id": "toolu_probe",
+        "name": "Bash",
+        "input": {
+          "command": "smithy probe-unrelated",
+          "description": "Run fixture operation"
+        }
+      },
+      "toolResult": {
+        "type": "tool_result",
+        "content": "Permission to use Bash has been denied because Claude Code is running in don't ask mode. IMPORTANT: You *may* attempt to accomplish this action using other tools that might naturally be used to accomplish this goal, e.g. using head instead of cat. But you *should not* attempt to work around this denial in malicious ways, e.g. do not use your ability to run tests to execute non-test actions. You should only try to work around this restriction in reasonable ways that do not attempt to bypass the intent behind this denial. If you believe this capability is essential to complete the user's request, STOP and explain to the user what you were trying to do and why you need this permission. Let the user decide how to proceed.",
+        "is_error": true,
+        "tool_use_id": "toolu_probe"
+      },
+      "permissionDenial": {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_probe",
+        "tool_input": {
+          "command": "smithy probe-unrelated",
+          "description": "Run fixture operation"
+        }
+      },
+      "sessionResult": {
+        "subtype": "success",
+        "result": "Probe finished."
+      },
+      "stderr": "",
+      "before": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0c3e177dbe3734ce0e21c484d712a51cfd0287b0",
+        "storeParent": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storePaths": "probe.txt",
+        "storeContent": "probe write completed\n"
+      },
+      "after": {
+        "checkoutHead": "c7b8dcb1fb36f8758b26d9b33b2df205d7c71909",
+        "checkoutIndexSha256": "9954c72026fda4b1f599af085041597da818db97a9d4075e35d35c80da6a6aec",
+        "storeHead": "0c3e177dbe3734ce0e21c484d712a51cfd0287b0",
+        "storeParent": "0d08871a6715defd60bcbc6b7e8b8e84bfb82820",
+        "storePaths": "probe.txt",
+        "storeContent": "probe write completed\n"
+      }
+    }
+  ],
+  "outcome": "pass"
+}

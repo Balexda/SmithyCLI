@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Build the disposable probe fixture**
+- [x] **Build the disposable probe fixture**
 
   Add a fixture and setup instructions alongside the source spec. Provide a disposable code checkout and a separate Git store, plus a stand-in callable as `smithy` for AS 1.1 and AS 1.3.
 
@@ -28,7 +28,7 @@
   - An unrelated subcommand is available for the negative control.
   - Fixture setup supplies local Git identity and isolates hooks. Runs preserve the code checkout's HEAD and index, deployed grants, and existing stores.
 
-- [ ] **Record the isolated permission controls**
+- [x] **Record the isolated permission controls**
 
   Document the run and evidence procedure alongside the fixture, then record the Claude control against AS 1.2–1.4. Capture each operation separately and keep the procedure reusable for US2.
 
