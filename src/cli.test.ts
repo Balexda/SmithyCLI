@@ -2710,10 +2710,15 @@ describe('CLI reviewer baseline lifecycle', () => {
     const localRule = '.github/instructions/local.instructions.md';
     const contents = `Read \`${files[0]}\` and the \`smithy-review-planning\` skill.\r\n`;
     fs.writeFileSync(at(localRule), contents);
+    const agents = 'Load the `smithy-review-planning` review skill. Ignore smithy-review-planning-extra.\n';
+    fs.writeFileSync(at('AGENTS.md'), agents);
     const output = run('uninit');
     expect(output).toContain(`${localRule} still references ${files[0]}`);
     expect(output).toContain(`${localRule} still references ${files[2]}`);
+    expect(output).toContain(`AGENTS.md still references ${files[2]}`);
+    expect(output).not.toContain(`AGENTS.md still references ${files[0]}`);
     expect(fs.readFileSync(at(localRule), 'utf8')).toBe(contents);
+    expect(fs.readFileSync(at('AGENTS.md'), 'utf8')).toBe(agents);
     expect(fs.existsSync(at('.github/skills'))).toBe(false);
     files.forEach(file => expect(fs.existsSync(at(file))).toBe(false));
   });

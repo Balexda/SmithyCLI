@@ -53,9 +53,10 @@ export function reportDanglingReviewerReferences(targetDir: string, removed: str
     const content = fs.readFileSync(absolute, 'utf8');
     for (const removedFile of removed) {
       const shortReference = removedFile.startsWith(`${skills}/`)
-        ? `\`${path.basename(path.dirname(removedFile))}\` skill`
+        ? path.basename(path.dirname(removedFile))
         : path.basename(removedFile);
-      if (content.includes(removedFile) || content.includes(shortReference)) {
+      const standalone = new RegExp(`(?<![\\w.-])${shortReference.replace(/[.]/g, '\\.')}(?![\\w-])`);
+      if (content.includes(removedFile) || standalone.test(content)) {
         console.log(`  ${file} still references ${removedFile}`);
       }
     }
