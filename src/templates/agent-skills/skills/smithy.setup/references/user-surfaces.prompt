@@ -1,0 +1,27 @@
+# User-level Smithy state
+
+Smithy has no separate user-level config file. If asked for one, explain that
+installation settings are recorded in the deployment manifest and report the
+inventory below. Never create a config file.
+
+## Inventory
+
+Expand `~` to the current user's home directory. Check each row with read-only
+filesystem operations, even when the user-location manifest is absent.
+Report the resolved paths, whether each is present or absent, and its change
+mechanism. If a path cannot be checked, say why. Check each named file or
+directory individually and list discovered project and external store roots.
+Keep the whole lookup read-only, including when offering a command to run.
+
+| Surface | Where to look | How to change it |
+|---|---|---|
+| User-location manifest and deployment | Check `~/.smithy/smithy-manifest.json`. If readable, use its `files` entries relative to the home directory to verify the tracked deployment under `~/.claude/` (commands, prompts, agents, skills, and optional hooks). With no readable manifest, check those directories for Smithy files and report any observed files as untracked or unverified. A missing manifest means there is no recorded user installation. When the manifest records permissions or session titles, also check the relevant entries in `~/.claude/settings.json`, which Claude shares with other settings. Gemini and Codex deploy to the workspace, so their workspace files do not count here. | Use `smithy init --agent claude --location user` to install or change options and `smithy update` or `smithy uninit` to refresh or remove the install. Select the user location when offered a choice between repo and user deployments. Keep the manifest and deployed files CLI-managed. |
+| Orders body templates | Check `~/.smithy/templates/orders/` for `rfc.md`, `features.md`, `spec.md`, and `tasks.md`. | Edit the corresponding template file to change issue bodies. Interactive `smithy init --agent claude --location user` can re-provision defaults and asks before overwriting existing templates. |
+| User engraved stores | Check `~/.smithy/decisions/`, `~/.smithy/invariants/`, and `~/.smithy/constitution/`. | Use `smithy.engrave` with `--level user`. |
+| Project engraved stores | Check `~/.smithy/projects/` and the `decisions/`, `invariants/`, and `constitution/` directories under each project. Include a specifically requested project even if its directory is absent. A project directory alone does not establish that any engraved store is present. | Use `smithy.engrave` with `--level project --project <project>`. |
+| External artifact stores | Check `~/.smithy/repos/` and list its per-repository store directories. Also check `~/.smithy/projects/default/` for the external store used when initialized outside a Git repository. Look for the generated Smithy artifact store README or existing planning artifacts to distinguish that fallback from an engraved-only project. | From the intended checkout, use `smithy init --artifacts-location external` to configure the store, choosing the intended deployment location. Use `smithy update --artifacts-location external` for an existing installation if the request is to change only that setting. |
+
+If the user-location manifest is absent, offer
+`smithy init --agent claude --location user` as the installation command.
+For an explicit change request, use the mechanism for that surface and apply
+it only to the requested target.

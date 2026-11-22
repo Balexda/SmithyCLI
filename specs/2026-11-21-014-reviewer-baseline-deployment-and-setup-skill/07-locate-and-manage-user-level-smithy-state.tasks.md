@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Author the user-level state reference**
+- [x] **Author the user-level state reference**
 
   Add a bundled reference to the setup skill under `src/templates/agent-skills/skills/`. Use data model §9 as the inventory and verify its locations and change mechanisms against the CLI. Cover AS 7.1–7.3.
 
@@ -27,7 +27,7 @@
   - Each surface identifies its location and owning change mechanism. Deployment changes go through the CLI, and orders body changes go through the template file.
   - Lookup leaves user state untouched. A request for a user config file gets an explanation that none exists and never creates one.
 
-- [ ] **Deploy the setup skill with the inventory route**
+- [x] **Deploy the setup skill with the inventory route**
 
   Add the C7 skill entry point and link to the bundled reference from its user-state route. Use the existing skill bundle deployment for Claude, Gemini, and Codex.
 

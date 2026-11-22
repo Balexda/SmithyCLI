@@ -1,0 +1,10 @@
+---
+name: smithy.setup
+description: "Use when installing or configuring Smithy or when asked where Smithy keeps its configuration, installation files, or other user-level state."
+---
+
+# smithy.setup
+
+When asked to locate, inspect, or change user-level Smithy state, including
+“where is my Smithy config?”, read the [user-level state reference](references/user-surfaces.md)
+relative to this skill and follow the route for the requested surface.
