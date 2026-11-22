@@ -27,6 +27,7 @@ import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { splitFrontmatter } from './frontmatter.js';
 import { DESCRIPTION_BUDGETS } from './template-lint.js';
+import { reviewerBaselineDir, reviewerBaselineFiles } from './reviewers.js';
 import { templatesBaseDir } from './utils.js';
 
 const repoRoot = path.resolve(templatesBaseDir, '..', '..');
@@ -273,6 +274,12 @@ describe('reviewer instructions — the Smithy-general layer stays general', () 
         .flatMap((d) => findRepoSpecificReferences(d, readSkill(d))),
     ];
     expect(leaks).toEqual([]);
+  });
+
+  it.each(reviewerBaselineFiles)('ships a portable byte-identical baseline source for %s', (file) => {
+    const source = fs.readFileSync(path.join(reviewerBaselineDir, file));
+    expect(findRepoSpecificReferences(file, source.toString('utf8'))).toEqual([]);
+    expect(source.equals(fs.readFileSync(path.join(repoRoot, file)))).toBe(true);
   });
 
   it('detects planted repository-specific references', () => {

@@ -130,6 +130,7 @@ async function redeployFromManifest(
     agents,
     location: manifest.deployLocation,
     permissions: manifest.permissions,
+    reviewers: manifest.reviewers === true,
     sessionTitles: manifest.sessionTitles ?? true,
     languages: validatedLanguages(manifest.languages),
     artifactsLocation,

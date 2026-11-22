@@ -75,7 +75,9 @@ The committed `.claude/` tree and `.smithy/smithy-manifest.json` at the repo
 root are a *snapshot* of a prior `smithy init`. They are intentionally allowed
 to drift from `src/templates/` between releases. **Do not regenerate them as
 part of a PR that edits source templates** — that is done in dedicated chore
-PRs only. If an automated reviewer asks you to regenerate `.claude/` to match
+PRs only. The three whole reviewer files under `.github/` are an exception.
+Keep them byte-identical to their sources under `src/templates/reviewers/`.
+If an automated reviewer asks you to regenerate `.claude/` to match
 source changes, decline and point back to this rule.
 
 ## Artifact hierarchy (the short version)

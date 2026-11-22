@@ -33,6 +33,8 @@ program
   )
   .option('--permissions', 'Deploy permissions at the selected location')
   .option('--no-permissions', 'Skip permissions setup')
+  .option('--reviewers', 'Deploy the repository reviewer baseline')
+  .option('--no-reviewers', 'Skip the repository reviewer baseline')
   .option('--no-session-titles', 'Skip the Claude Code session-title hook')
   .option('--toolchains <list>', 'Comma-separated language toolchains to include in permissions (node,java,rust,python)')
   .addOption(
