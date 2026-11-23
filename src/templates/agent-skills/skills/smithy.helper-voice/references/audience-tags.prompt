@@ -36,6 +36,6 @@ finding):
 <!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 ```
 
-`smithy.audit` enforces these specs per section via its voice-tag lint.
-It flags unknown keys and values, length-budget violations, missing
+`smithy.audit`'s voice-tag lint checks the inline tags an artifact
+carries and skips an artifact with none. On a tagged artifact it flags unknown keys and values, length-budget violations, missing
 required diagrams and examples, and the presence of forbidden examples.
