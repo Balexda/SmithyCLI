@@ -29,7 +29,8 @@ Cite the record ID when you raise one.
 - **One home per protocol (INV-1).** A table, gate, enum, or contract shape a
   snippet already defines is composed with `{{>snippet}}`, never re-typed or
   "adapted". A passage copied between two templates needs one home too, even
-  when no snippet exists yet.
+  when no snippet exists yet. The lint catches verbatim runs of four or more
+  lines; look for near-copies.
 - **Agent gating lives in the consumer.** No `{{#ifAgent}}` and no "if you are
   Claude" prose inside a snippet. When behaviour differs per agent there is
   one snippet per branch and the command picks.

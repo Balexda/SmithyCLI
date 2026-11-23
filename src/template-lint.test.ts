@@ -27,11 +27,16 @@ import {
   DESCRIPTION_BUDGETS,
   ENUM_SCALES,
   emittedHeadings,
+  crossTemplateCopyFindings,
+  findCrossTemplateCopies,
   findDeadRoutingDestinations,
+  findDependencyOrderCheckboxes,
   findDuplicateInjections,
   findEnumDrift,
   findInternalReferences,
+  findMissingSkillGrants,
   findMissingToolGrants,
+  grantCovers,
   findOverBudgetDescriptions,
   findRestatedProtocol,
   findUnresolvedReferences,
@@ -39,6 +44,7 @@ import {
   listAgentTemplates,
   listDescribedTemplates,
   listEnumStatements,
+  listSkillGrants,
   loadTemplateSource,
   snippetCanaries,
   snippetConsumers,
@@ -177,6 +183,173 @@ describe('template lint — no restated protocol', () => {
   });
 });
 
+describe('template lint — no passage copied between templates', () => {
+  /**
+   * `findRestatedProtocol` sees only text a snippet owns; this sees a passage
+   * pasted from one template into another before any snippet exists (INV-1,
+   * D-1). Each entry is one side of a copy and names the issue that extracts
+   * it; the extraction deletes both sides' entries.
+   */
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
+    // mark and cut: the clarify bail-out paragraph and the Phase 0 refinement
+    // PR-reuse block. #648.
+    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: \*\*Bail-out check\*\*/],
+    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: \*\*Bail-out check\*\*/],
+    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: (steps below\. Render|3\. Check whether the current branch|- \*\*Body\*\*: the refine summary)/],
+    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: (steps below\. Render|3\. Check whether the current branch|- \*\*Body\*\*: the refine summary)/],
+    // Every other copy on the tree when the lint landed, one INV-1 ledger row
+    // each. #646.
+    // mark and cut: the final PR step (capture the URL, failure fallthrough).
+    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: 4\. Capture the resulting PR URL/],
+    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: 4\. Capture the resulting PR URL/],
+    // implement and implementation-review: the reference-document input list.
+    ['agents/smithy.implement.prompt', /also in agents\/smithy\.implementation-review\.prompt: 4\. \*\*File paths\*\*/],
+    ['agents/smithy.implementation-review.prompt', /also in agents\/smithy\.implement\.prompt: 4\. \*\*File paths\*\*/],
+    // plan and slice: the dispatch input list and the Decisions/Risks shape.
+    ['agents/smithy.plan.prompt', /also in agents\/smithy\.slice\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
+    ['agents/smithy.slice.prompt', /also in agents\/smithy\.plan\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
+    // slice and cut: the slice body scaffold.
+    ['agents/smithy.slice.prompt', /also in commands\/smithy\.cut\.prompt: \*\*Addresses\*\*/],
+    ['commands/smithy.cut.prompt', /also in agents\/smithy\.slice\.prompt: \*\*Addresses\*\*/],
+    // ignite, render and mark: presenting the reconciled plan.
+    ['commands/smithy.ignite.prompt', /also in commands\/smithy\.(mark|render)\.prompt: items annotated with/],
+    ['commands/smithy.mark.prompt', /also in commands\/smithy\.(ignite|render)\.prompt: items annotated with/],
+    ['commands/smithy.render.prompt', /also in commands\/smithy\.(ignite|mark)\.prompt: items annotated with/],
+    // mark and render: scout-result handling and the plan dispatch inputs.
+    ['commands/smithy.mark.prompt', /also in commands\/smithy\.render\.prompt: (- \*\*Warnings\*\*|- \*\*Scout report\*\*)/],
+    ['commands/smithy.render.prompt', /also in commands\/smithy\.mark\.prompt: (- \*\*Warnings\*\*|- \*\*Scout report\*\*)/],
+    // gh-issue and pr-review: parsing the origin remote into owner and repo.
+    ['skills/smithy.gh-issue/SKILL.prompt', /also in skills\/smithy\.pr-review\/SKILL\.prompt: git config --get remote\.origin\.url/],
+    ['skills/smithy.pr-review/SKILL.prompt', /also in skills\/smithy\.gh-issue\/SKILL\.prompt: git config --get remote\.origin\.url/],
+  ];
+
+  const passage = [
+    'When the reviewer returns a finding with no evidence, discard it and record why.',
+    'When the reviewer returns two findings for one line, keep the more severe one.',
+    'When the reviewer cannot read a file, report the path as unread rather than clean.',
+    'When the reviewer times out, rerun it once and then report the partial result.',
+  ].join('\n');
+
+  it('carries no passage in two templates outside a snippet', () => {
+    const findings = unallowed(crossTemplateCopyFindings(tree), ALLOWED);
+    expect(findings, `passages copied between templates:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('detects a planted copy, from both sides', () => {
+    const planted = withTemplate(
+      plant(PLANT_TARGET, passage), 'agents/smithy.scout.prompt', prev => `${prev}\n\n${passage}\n`);
+    const pair = findCrossTemplateCopies(planted)
+      .filter(c => [PLANT_TARGET, 'agents/smithy.scout.prompt'].includes(c.id) && c.first.startsWith('When the reviewer'));
+    expect(pair.map(c => [c.id, c.other, c.length])).toEqual(expect.arrayContaining([
+      [PLANT_TARGET, 'agents/smithy.scout.prompt', 4],
+      ['agents/smithy.scout.prompt', PLANT_TARGET, 4],
+    ]));
+  });
+
+  it('excuses only the recorded passages, not every copy between an allowlisted pair', () => {
+    // An entry is one ledger row; a new passage between the same two
+    // templates has no row, so it must still fail.
+    const planted = withTemplate(
+      plant('agents/smithy.implement.prompt', passage), 'agents/smithy.implementation-review.prompt',
+      prev => `${prev}\n\n${passage}\n`);
+    const left = unallowed(crossTemplateCopyFindings(planted), ALLOWED);
+    expect(left.map(f => f.id)).toEqual(expect.arrayContaining([
+      'agents/smithy.implement.prompt', 'agents/smithy.implementation-review.prompt',
+    ]));
+  });
+
+  it('sees a copy through re-indentation and blank lines', () => {
+    const reflowed = passage.split('\n').map(l => `   ${l.replace(/ /g, '  ')}\n`).join('\n');
+    const planted = withTemplate(
+      plant(PLANT_TARGET, passage), 'agents/smithy.scout.prompt', prev => `${prev}\n${reflowed}`);
+    expect(findCrossTemplateCopies(planted).some(c => c.id === 'agents/smithy.scout.prompt' && c.other === PLANT_TARGET))
+      .toBe(true);
+  });
+
+  it('stays silent when both templates compose the text from a snippet', () => {
+    // The comparison is over authored source, where a composed passage is one
+    // `{{>…}}` line — the shape INV-1 asks for.
+    const planted = withTemplate(
+      plant(PLANT_TARGET, '{{>kind-gate}}'), 'agents/smithy.scout.prompt', prev => `${prev}\n{{>kind-gate}}\n`);
+    expect(findCrossTemplateCopies(planted).filter(c => c.id === PLANT_TARGET)).toEqual([]);
+  });
+
+  it('ignores a run shorter than the threshold', () => {
+    const three = passage.split('\n').slice(0, 3).join('\n');
+    const planted = withTemplate(
+      plant(PLANT_TARGET, three), 'agents/smithy.scout.prompt', prev => `${prev}\n\n${three}\n`);
+    expect(findCrossTemplateCopies(planted).filter(c => c.id === PLANT_TARGET)).toEqual([]);
+  });
+
+  it('ignores shared headings, fences, table separators, and short lines', () => {
+    const structure = [
+      '## Phase 3: Review the reconciled plan against the spec',
+      '```markdown',
+      '| Field | Meaning | Required |',
+      '|-------|---------|----------|',
+      '```',
+      '- **Yes** — proceed.',
+      '### Output',
+      '---',
+    ].join('\n');
+    const planted = withTemplate(
+      plant(PLANT_TARGET, structure), 'agents/smithy.scout.prompt', prev => `${prev}\n${structure}\n`);
+    expect(findCrossTemplateCopies(planted).filter(c => c.id === PLANT_TARGET)).toEqual([]);
+  });
+});
+
+describe('template lint — Dependency Order is a table (INV-8)', () => {
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
+    // Both decomposition agents emit their slice ordering as a numbered
+    // checkbox list instead of the four-column table. #649.
+    ['agents/smithy.slice.prompt', /checkbox under Dependency Order/],
+    ['agents/smithy.reconcile-slices.prompt', /checkbox under Dependency Order/],
+  ];
+
+  it('shows no checkbox list under a Dependency Order heading', () => {
+    const findings = unallowed(findDependencyOrderCheckboxes(tree), ALLOWED);
+    expect(findings, `checkbox Dependency Order lists:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('detects a planted checkbox list, at any heading level and inside a fence', () => {
+    const planted = plant(PLANT_TARGET, [
+      '## Dependency Order', '', '- [ ] US1 → specs/x', '',
+      '```markdown', '#### Dependency Order', '1. [x] **Slice 1** — first', '```',
+    ].join('\n'));
+    const details = findDependencyOrderCheckboxes(planted).filter(f => f.id === PLANT_TARGET).map(f => f.detail);
+    expect(details).toHaveLength(2);
+    expect(details[0]).toContain('- [ ] US1');
+    expect(details[1]).toContain('1. [x] **Slice 1**');
+  });
+
+  it('leaves task checkboxes in a Slice body alone', () => {
+    const planted = plant(PLANT_TARGET, [
+      '## Dependency Order', '', '| ID | Title | Depends On | Artifact |', '|----|----|----|----|',
+      '| S1 | First | — | — |', '', '## Slice 1: First', '', '- [ ] Write the failing test',
+      '### Slice 2 notes', '- [x] Done',
+    ].join('\n'));
+    expect(findDependencyOrderCheckboxes(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
+  });
+
+  it('keeps a longer fence open across a shorter marker inside it', () => {
+    const planted = plant(PLANT_TARGET, [
+      '````markdown', '## Dependency Order', '```', '- [ ] US1 → specs/x', '````',
+    ].join('\n'));
+    expect(findDependencyOrderCheckboxes(planted).filter(f => f.id === PLANT_TARGET).map(f => f.detail))
+      .toContainEqual(expect.stringContaining('- [ ] US1'));
+  });
+
+  it('closes the section at a fence boundary', () => {
+    // An output example's heading scopes only that example; prose after the
+    // fence belongs to the template's own section.
+    const planted = plant(PLANT_TARGET, [
+      '```markdown', '## Dependency Order', '| ID | Title | Depends On | Artifact |', '```',
+      '- [ ] Confirm the table above parses',
+    ].join('\n'));
+    expect(findDependencyOrderCheckboxes(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
+  });
+});
+
 describe('template lint — routing destinations exist', () => {
   /**
    * A destination that exists only in a routing table sends every finding of
@@ -257,6 +430,98 @@ describe('template lint — agent tool grants cover what the body invokes', () =
       expect(agent.tools.length, `${agent.id} grants no tools`).toBeGreaterThan(0);
       expect(agent.tools, agent.id).toContain('Read');
     }
+  });
+});
+
+describe('template lint — skill grants cover what the body invokes (INV-3)', () => {
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
+    // Both GitHub skills tell the agent to write its body file with a
+    // `cat > … << 'EOF'` heredoc that `allowed-tools` does not grant, so the
+    // step prompts on every run. #652.
+    ['skills/smithy.gh-issue/SKILL.prompt', /invokes Bash\(cat > \/tmp\//],
+    ['skills/smithy.pr-review/SKILL.prompt', /invokes Bash\(cat > \/tmp\//],
+  ];
+  const SKILL = 'skills/smithy.status/SKILL.prompt';
+  const CODEX_SKILL = 'skills/smithy.pr-review/SKILL.prompt';
+
+  it('grants every script, shell command, MCP tool, and Codex action a skill body uses', async () => {
+    const findings = unallowed(await findMissingSkillGrants(tree), ALLOWED);
+    expect(findings, `skill bodies invoking ungranted tools:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('reads the grant lists the deployers read', () => {
+    // A parse that returned nothing would make every invocation look ungranted
+    // and every skill without a grant look clean.
+    const grants = new Map(listSkillGrants(tree).map(g => [g.id, g]));
+    expect(grants.get(SKILL)!.allowed).toEqual(['Bash(smithy status *)']);
+    expect(grants.get(CODEX_SKILL)!.codex).toContain('_fetch_pr_comments');
+    expect(grants.get('skills/smithy.gh-issue/SKILL.prompt')!.allowed)
+      .toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *)');
+  });
+
+  it('detects a planted shell command outside the grant', async () => {
+    const planted = plant(SKILL, '```bash\nrm -rf node_modules\n```');
+    expect(await findMissingSkillGrants(planted)).toContainEqual({
+      id: SKILL, detail: 'invokes Bash(rm -rf node_modules) but allowed-tools does not cover it',
+    });
+  });
+
+  it('detects an ungranted command in a tilde fence', async () => {
+    const planted = plant(SKILL, '~~~bash\nrm -rf node_modules\n~~~');
+    expect((await findMissingSkillGrants(planted)).map(f => f.detail))
+      .toContainEqual('invokes Bash(rm -rf node_modules) but allowed-tools does not cover it');
+  });
+
+  it('splits compound commands whatever the spacing around the operator', async () => {
+    // Otherwise the granted prefix's wildcard absorbs the second command.
+    const planted = plant(SKILL, '```bash\nsmithy status --format json; rm -rf node_modules&touch x\n```');
+    const details = (await findMissingSkillGrants(planted)).filter(f => f.id === SKILL).map(f => f.detail);
+    expect(details).toContainEqual('invokes Bash(rm -rf node_modules) but allowed-tools does not cover it');
+    expect(details).toContainEqual('invokes Bash(touch x) but allowed-tools does not cover it');
+  });
+
+  it('checks Codex actions in a skill that omits codex-allowed-tools', async () => {
+    const planted = withTemplate(tree, CODEX_SKILL, prev => prev.replace(/^codex-allowed-tools:.*\n/m, ''));
+    expect((await findMissingSkillGrants(planted)).map(f => f.detail))
+      .toContainEqual('invokes _fetch_pr_comments on Codex but codex-allowed-tools does not list it');
+  });
+
+  it('detects a planted bundled script with arguments under an exact-match grant', async () => {
+    // `Bash(…/find-pr.sh)` matches the bare script only; arguments need ` *`.
+    const planted = plant(CODEX_SKILL, '```bash\n{{#ifAgent \'claude\'}}${CLAUDE_SKILL_DIR}/scripts/find-pr.sh --all{{/ifAgent}}\n```');
+    expect((await findMissingSkillGrants(planted)).map(f => f.detail))
+      .toContainEqual('invokes Bash(${CLAUDE_SKILL_DIR}/scripts/find-pr.sh --all) but allowed-tools does not cover it');
+  });
+
+  it('detects a planted MCP tool, Skill call, and Codex action', async () => {
+    const planted = plant(CODEX_SKILL,
+      'Call `mcp__github__merge_pull_request`, then Skill("smithy.status"), then `_merge_pull_request`.');
+    const details = (await findMissingSkillGrants(planted)).filter(f => f.id === CODEX_SKILL).map(f => f.detail);
+    expect(details).toContainEqual('invokes mcp__github__merge_pull_request but allowed-tools does not cover it');
+    expect(details).toContainEqual('invokes Skill(smithy.status) but allowed-tools does not cover it');
+    expect(details).toContainEqual('invokes _merge_pull_request on Codex but codex-allowed-tools does not list it');
+  });
+
+  it('stays silent on granted uses, continued lines, quoted operators, heredoc bodies, and other agents\' script paths', async () => {
+    const planted = plant(SKILL, [
+      '```bash', 'smithy status --format json && smithy status --graph', '```',
+      '```bash', 'smithy status \\', '  --format json 2>&1 | smithy status --graph', '```',
+      '```bash', 'smithy status --root "a;b|c"', '```',
+      '```bash', 'smithy status > /dev/null <<EOF', 'rm -rf /', 'EOF', '```',
+      '```bash', '{{#ifAgent \'codex\'}}./.agents/skills/smithy.status/scripts/nope.sh{{/ifAgent}}', '```',
+    ].join('\n'));
+    expect((await findMissingSkillGrants(planted)).filter(f => f.id === SKILL)).toEqual([]);
+  });
+
+  it('matches rules by the documented permission grammar', () => {
+    expect(grantCovers('Bash(smithy status *)', 'Bash(smithy status)')).toBe(true);
+    expect(grantCovers('Bash(smithy status *)', 'Bash(smithy status --format json)')).toBe(true);
+    expect(grantCovers('Bash(smithy status *)', 'Bash(smithy statusline)')).toBe(false);
+    expect(grantCovers('Bash(git branch --show-current)', 'Bash(git branch --show-current)')).toBe(true);
+    expect(grantCovers('Bash(git branch --show-current)', 'Bash(git branch --show-current -v)')).toBe(false);
+    expect(grantCovers('Skill(smithy.status)', 'Skill(smithy.status)')).toBe(true);
+    expect(grantCovers('mcp__github__*', 'mcp__github__issue_write')).toBe(true);
+    expect(grantCovers('mcp__github__issue_read', 'mcp__github__issue_write')).toBe(false);
   });
 });
 
