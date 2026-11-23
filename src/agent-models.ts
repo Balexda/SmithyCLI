@@ -151,8 +151,17 @@ function tomlString(value: string): string {
 
 /**
  * Decide a Codex sandbox mode from the agent's declared tools. Agents that can
- * edit the working tree (Write/Edit/Bash) need write access; everything else is
- * read-only analysis.
+ * edit the working tree (Write/Edit/Bash) get `workspace-write`; everything
+ * else gets `read-only`.
+ *
+ * The emitted `sandbox_mode` is a default, never a bound: the parent turn's
+ * sandbox overrides it, and current Codex releases document that a custom agent
+ * file cannot replace the parent's sandbox at all. A read-only dispatch is
+ * verified by the orchestrator (INV-7), not by this key.
+ *
+ * Web tools (`WebFetch`/`WebSearch`) map to nothing here: Codex has no
+ * per-agent web-search key, so web access follows the session's `web_search`
+ * setting (see INV-3).
  */
 function sandboxModeForTools(tools: string[]): 'read-only' | 'workspace-write' {
   const writeCapable = new Set(['write', 'edit', 'bash']);

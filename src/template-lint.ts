@@ -909,6 +909,41 @@ export function findDependencyOrderCheckboxes(source: TemplateSource = loadTempl
   return findings;
 }
 
+/**
+ * Names a bare `{{name}}` may use, because the deploy-time renderer defines
+ * them: `artifactsRoot` is a registered helper and `else` belongs to a block
+ * helper. Everything else in a bare mustache resolves against the empty render
+ * context and deploys as an empty string.
+ */
+export const RENDER_TIME_NAMES: ReadonlySet<string> = new Set(['artifactsRoot', 'else']);
+
+/** A bare mustache: not escaped, and not a partial, block, inverse, or comment. */
+const BARE_MUSTACHE = /(?<!\\)\{\{(?![>#/^!{])\s*([^{}]*?)\s*\}\}/g;
+
+/**
+ * Mustaches that deploy blank. Templates are rendered by Handlebars with an
+ * empty context, so a placeholder the *agent* is meant to substitute at run
+ * time — `{{title}}` in an issue-body context list — renders as nothing, and
+ * a bullet naming it becomes an empty code span. Such a name has to be
+ * written `\{{title}}` to survive the render. Matching the source rather than
+ * the rendered output is what makes this precise: a deliberate double-backtick
+ * span looks like an empty span once rendered, while a bare mustache with an
+ * unknown name has no legitimate reading.
+ */
+export function findBlankRenderedPlaceholders(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const findings: LintFinding[] = [];
+  for (const t of source.templates) {
+    t.source.split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(BARE_MUSTACHE)) {
+        const name = m[1]!;
+        if (RENDER_TIME_NAMES.has(name)) continue;
+        findings.push({ id: t.id, detail: `line ${i + 1}: {{${name}}} renders blank; escape it as \\{{${name}}}` });
+      }
+    });
+  }
+  return findings;
+}
+
 /** A skill file's grant lists, as the deployers read them. */
 export interface SkillGrants {
   id: string;

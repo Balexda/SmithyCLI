@@ -11,8 +11,10 @@ Deployed to:
   filename comes from the **source filename** (`smithy.plan.prompt` →
   `smithy.plan.md`).
 - **Codex**: `.codex/agents/smithy-<name>.toml` (custom-agent TOML — `tier:`
-  becomes `model_reasoning_effort`, the declared `tools` pick `sandbox_mode`,
-  and the body becomes `developer_instructions`). The deployed filename comes
+  becomes `model_reasoning_effort`, the declared `tools` pick a default
+  `sandbox_mode`, and the body becomes `developer_instructions`). The
+  `sandbox_mode` is only a default: the parent turn's sandbox overrides it, so
+  it never bounds what the agent can do. The deployed filename comes
   from the frontmatter **`name`** (`smithy-plan` → `smithy-plan.toml`).
 - **Gemini**: not deployed (Gemini does not support sub-agent dispatch, so its
   commands render the inline `{{else}}` fallback instead).
@@ -61,9 +63,13 @@ tier: deep  # light | standard | deep
   `smithy-implement` also gets `Edit, Write, Bash`. `smithy-prose` adds `Skill`
   so it can load `smithy.helper-voice`. `smithy-survey` is the only sub-agent
   with `WebFetch` and `WebSearch` — reserved for the landscape survey phase of
-  `smithy.spark`. On Codex the declared tools also pick the sandbox: an agent
-  holding `Write`, `Edit`, or `Bash` deploys `workspace-write`, everything else
-  `read-only`.
+  `smithy.spark`. On Codex the declared tools also pick the default sandbox:
+  an agent holding `Write`, `Edit`, or `Bash` deploys `workspace-write`,
+  everything else `read-only`. That is a default the parent turn's sandbox
+  overrides, not a limit, so a parent that needs a read-only dispatch verifies
+  it itself. `WebFetch` and `WebSearch` reach no Codex key, because Codex has
+  no per-agent web-search setting; the survey agent's Codex branch names the
+  hosted `web_search` tool instead.
 - **`tier`**: How much model horsepower the agent needs, stated
   provider-neutrally — **never** a raw model name. `deep` for complex reasoning
   (clarify, refine, plan, reconcile, reconcile-slices, implement,
