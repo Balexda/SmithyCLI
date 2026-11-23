@@ -191,7 +191,7 @@ voice-tag lint (`snippets/audit-checklist-voice.md`).
 inline documentation), there is no template to inherit from. Use the
 taxonomy as authoring discipline — pick Role × Mode before drafting
 and stay in it — but do not litter the file with HTML-comment
-metadata.
+metadata unless the user explicitly asks for audience tags.
 
 The tag syntax itself — every key, its allowed values, and a worked
 example — lives in
