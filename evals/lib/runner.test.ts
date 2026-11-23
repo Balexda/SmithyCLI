@@ -6,6 +6,8 @@ import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
 
 import type { EvalScenario, StreamEvent } from './types.js';
+import { extractSubAgentDispatches } from './parse-stream.js';
+import { validateStructure, verifySubAgents } from './structural.js';
 
 // ---------------------------------------------------------------------------
 // Mock node:child_process
@@ -340,6 +342,72 @@ describe('resolveFixtureDir', () => {
 // ---------------------------------------------------------------------------
 
 describe('runScenario', () => {
+  const jvmForgeCase = path.join(repoRoot, 'evals', 'cases', 'forge-tdd-slice-jvm.yaml');
+
+  it('runs the committed JVM forge case through Git preparation and evidence validation', async () => {
+    const scenario = loadScenarioFromFile(jvmForgeCase);
+    const fixture = resolveFixtureDir(scenario, defaultFixtureRoot, defaultFixtureRoot);
+    const taskFile = 'specs/01-repair-greeting-reversal.tasks.md';
+    const summary = '## Slice Summary\nCommit: 123abcd\ngradle check: BUILD SUCCESSFUL';
+    const dispatchEvents = ['smithy-implement', 'smithy-implementation-review'].map((helper) => ({
+      type: 'assistant',
+      message: {
+        content: [{
+          type: 'tool_use',
+          id: helper,
+          name: 'Agent',
+          input: { description: helper },
+        }],
+      },
+    }));
+
+    vi.mocked(execFileSync).mockImplementation(realExecFileSync);
+    vi.mocked(spawn).mockImplementation((_cmd, _args, options) => {
+      const cwd = String(options?.cwd);
+      expect(realExecFileSync('git', ['branch', '--show-current'], { cwd }).toString().trim()).toBe('main');
+      expect(realExecFileSync('git', ['status', '--porcelain'], { cwd }).toString()).toBe('');
+      expect(fs.existsSync(path.join(cwd, '.claude', 'commands', 'smithy.forge.md'))).toBe(true);
+      expect(fs.existsSync(path.join(cwd, 'build.gradle'))).toBe(true);
+      expect(fs.readFileSync(path.join(cwd, taskFile), 'utf8')).toContain('- [ ]');
+      return createMockChild(ndjsonLines(...dispatchEvents, resultEvent(summary)), 0).child as never;
+    });
+
+    const output = await runScenario(scenario, fixture);
+    expect(spawn).toHaveBeenCalledOnce();
+    expect(spawn).toHaveBeenCalledWith(
+      'claude',
+      expect.arrayContaining([expect.stringContaining(`/smithy.forge ${taskFile} 1`)]),
+      expect.anything(),
+    );
+    expect(output.exit_code).toBe(0);
+    const structuralChecks = validateStructure(output.extracted_text, scenario.structural_expectations);
+    expect(structuralChecks.map(({ passed }) => passed)).toEqual([true, true, true]);
+    const dispatches = extractSubAgentDispatches(output.stream_events);
+    const evidence = scenario.sub_agent_evidence!;
+    expect(verifySubAgents(output.extracted_text, dispatches, evidence).map(({ passed }) => passed))
+      .toEqual([true, true]);
+    expect(verifySubAgents(output.extracted_text, dispatches.slice(1), evidence).map(({ passed }) => passed))
+      .toEqual([false, true]);
+    expect(validateStructure('## Slice Summary', scenario.structural_expectations).filter(({ passed }) => !passed))
+      .toEqual([
+        expect.objectContaining({ check_name: expect.stringContaining('Commit:') }),
+        expect.objectContaining({ check_name: expect.stringContaining('gradle check:') }),
+      ]);
+  });
+
+  it('names the JVM forge case when Git setup fails before agent invocation', async () => {
+    const scenario = loadScenarioFromFile(jvmForgeCase);
+    const fixture = resolveFixtureDir(scenario, defaultFixtureRoot, defaultFixtureRoot);
+    vi.mocked(execFileSync).mockImplementation(() => {
+      throw new Error('git init failed');
+    });
+
+    await expect(runScenario(scenario, fixture)).rejects.toThrow(
+      /forge-tdd-slice-jvm.*git setup failed.*git init failed/,
+    );
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
   it('successful run with NDJSON stdout produces correct RunOutput', async () => {
     const assistantEv = assistantTextEvent('Hello world');
     const resultEv = resultEvent('Final canonical text');
