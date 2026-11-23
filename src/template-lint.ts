@@ -10,8 +10,10 @@
  *
  * | Record | What it says | Which lint carries it |
  * |--------|--------------|-----------------------|
- * | INV-1 | shared protocols are composed or cited, never restated | `findDuplicateInjections`, `findRestatedProtocol` |
+ * | INV-1 | shared protocols are composed or cited, never restated | `findDuplicateInjections`, `findRestatedProtocol`, `findCrossTemplateCopies` |
  * | INV-2 | deployable templates read correctly outside SmithyCLI | `findInternalReferences` |
+ * | INV-3 | deployed metadata is honoured, grant side included | `findMissingToolGrants`, `findMissingSkillGrants` |
+ * | INV-8 | examples obey the contract they illustrate | `findDependencyOrderCheckboxes` |
  * | P-1 | always-loaded context is a budget | `findOverBudgetDescriptions` |
  *
  * Every lint reads a `TemplateSource` and returns findings rather than
@@ -715,4 +717,346 @@ export function snippetConsumers(source: TemplateSource = loadTemplateSource()):
     }
   }
   return consumers;
+}
+
+/**
+ * A run of lines copied from one deployable template into another (INV-1,
+ * D-1).
+ *
+ * `findRestatedProtocol` only sees text that has a snippet behind it; a
+ * passage pasted between two commands with no snippet yet passes it. This
+ * compares authored source, so text a template composes through `{{>…}}` is
+ * a single partial line here and never counts as a copy.
+ */
+export interface CrossTemplateCopy {
+  /** The template the finding is reported against. */
+  id: string;
+  /** The other template carrying the same run. */
+  other: string;
+  /** 1-based source line where the run starts in `id`. */
+  line: number;
+  /** Number of significant lines in the run. */
+  length: number;
+  /** The run's first significant line, normalised. */
+  first: string;
+}
+
+/**
+ * Lines shorter than this are boilerplate that collides by accident —
+ * `Otherwise:`, `- **Yes**`, a lone `{{/ifAgent}}`.
+ */
+export const COPY_MIN_LINE_LENGTH = 30;
+/**
+ * A run this long is a passage, not a phrase. Three lines still matched
+ * unrelated templates sharing a stock list item; at four, every finding on the
+ * tree is a passage someone pasted.
+ */
+export const COPY_MIN_RUN = 4;
+
+/**
+ * The lines a copy is judged on, with their 1-based source line numbers.
+ *
+ * Whitespace is collapsed and list/blockquote markers are kept, because a
+ * copy re-indented into a nested list is still a copy. Dropped: frontmatter,
+ * blank lines, fence markers, table separator rows, headings (two templates
+ * sharing `## Phase 3: Review` is structure, not a copy), partial and helper
+ * lines, and anything shorter than `COPY_MIN_LINE_LENGTH`.
+ */
+function significantLines(source: string): Array<{ line: number; text: string }> {
+  const { frontmatter, body } = splitFrontmatter(source);
+  const offset = frontmatter ? source.slice(0, source.length - body.length).split('\n').length - 1 : 0;
+  const out: Array<{ line: number; text: string }> = [];
+  body.split('\n').forEach((raw, i) => {
+    const text = raw.replace(/\s+/g, ' ').trim();
+    if (text.length < COPY_MIN_LINE_LENGTH) return;
+    if (/^(```|~~~)/.test(text)) return;
+    if (/^\|?[\s:|-]+\|?$/.test(text) && text.includes('-')) return;
+    if (/^(>\s*)*#{1,6}\s/.test(text)) return;
+    if (/^\{\{[^}]*\}\}$/.test(text)) return;
+    out.push({ line: offset + i + 1, text });
+  });
+  return out;
+}
+
+/**
+ * Every maximal run of at least `minRun` consecutive significant lines that
+ * two deployable templates (commands, prompts, agents, skills and their
+ * bundled references) both carry. Snippets are excluded: they are the
+ * canonical homes, and their consumers compose rather than copy them.
+ *
+ * Each pair is reported once per run, from both sides, so an allowlist entry
+ * names the template it excuses.
+ */
+export function findCrossTemplateCopies(
+  source: TemplateSource = loadTemplateSource(),
+  minRun = COPY_MIN_RUN,
+): CrossTemplateCopy[] {
+  const docs = source.templates
+    .filter(t => t.category !== 'snippets')
+    .map(t => ({ id: t.id, lines: significantLines(t.source) }));
+
+  // Index every window of `minRun` lines by its joined text.
+  const windows = new Map<string, Array<{ doc: number; at: number }>>();
+  docs.forEach((d, doc) => {
+    for (let at = 0; at + minRun <= d.lines.length; at++) {
+      const key = d.lines.slice(at, at + minRun).map(l => l.text).join('\n');
+      if (!windows.has(key)) windows.set(key, []);
+      windows.get(key)!.push({ doc, at });
+    }
+  });
+
+  // Collect matching window starts per (doc, other doc) pair, then fold
+  // overlapping windows into maximal runs.
+  const starts = new Map<string, Set<number>>();
+  for (const hits of windows.values()) {
+    for (const a of hits) {
+      for (const b of hits) {
+        if (a.doc === b.doc) continue;
+        const key = `${a.doc}:${b.doc}`;
+        if (!starts.has(key)) starts.set(key, new Set());
+        starts.get(key)!.add(a.at);
+      }
+    }
+  }
+
+  const copies: CrossTemplateCopy[] = [];
+  for (const [key, set] of starts) {
+    const [a, b] = key.split(':').map(Number) as [number, number];
+    const sorted = [...set].sort((x, y) => x - y);
+    let runStart = sorted[0]!;
+    let prev = runStart;
+    const flush = () => {
+      const lines = docs[a]!.lines;
+      copies.push({
+        id: docs[a]!.id,
+        other: docs[b]!.id,
+        line: lines[runStart]!.line,
+        length: prev - runStart + minRun,
+        first: lines[runStart]!.text,
+      });
+    };
+    for (const at of sorted.slice(1)) {
+      if (at === prev + 1) { prev = at; continue; }
+      flush();
+      runStart = prev = at;
+    }
+    flush();
+  }
+  return copies.sort((x, y) => x.id.localeCompare(y.id) || x.line - y.line || x.other.localeCompare(y.other));
+}
+
+/** `findCrossTemplateCopies`, shaped as lint findings. */
+export function crossTemplateCopyFindings(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  return findCrossTemplateCopies(source).map(c => ({
+    id: c.id,
+    detail: `${c.length} lines at line ${c.line} also in ${c.other}: ${truncate(c.first)}`,
+  }));
+}
+
+/**
+ * Checkbox list items under a `Dependency Order` heading.
+ *
+ * The section is a four-column table at every level; a checkbox list there is
+ * the retired format, and an example that shows one teaches the agent to emit
+ * it (INV-8). Fenced blocks are scanned as documents of their own — an output
+ * example's headings scope only that example — so a fence opening or closing
+ * resets the section. A section ends at the next heading of the same or a
+ * higher level, which is why `## Slice N:` task checkboxes are untouched.
+ */
+export function findDependencyOrderCheckboxes(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const findings: LintFinding[] = [];
+  for (const t of source.templates) {
+    let level = 0; // heading level of the open Dependency Order section; 0 when none
+    let fence: string | null = null;
+    t.source.split('\n').forEach((raw, i) => {
+      const line = raw.trim().replace(/^(>\s*)+/, '');
+      const fenceMark = line.match(/^(```|~~~)/)?.[1];
+      if (fenceMark && (fence === null || fence === fenceMark)) {
+        fence = fence === null ? fenceMark : null;
+        level = 0;
+        return;
+      }
+      const heading = line.match(/^(#{1,6})\s+(.*?)\s*#*$/);
+      if (heading) {
+        const depth = heading[1]!.length;
+        if (level && depth <= level) level = 0;
+        if (/^dependency order$/i.test(normalizeHeading(heading[2]!.replace(/[*_`]/g, '')))) level = depth;
+        return;
+      }
+      if (level && /^(?:[-*+]|\d+[.)])\s+\[[ xX]\]/.test(line)) {
+        findings.push({ id: t.id, detail: `line ${i + 1}: checkbox under Dependency Order: ${truncate(line)}` });
+      }
+    });
+  }
+  return findings;
+}
+
+/** A skill file's grant lists, as the deployers read them. */
+export interface SkillGrants {
+  id: string;
+  /** `allowed-tools` entries; empty when the key is absent. */
+  allowed: string[];
+  /** Whether `allowed-tools` is declared at all. */
+  declaresAllowed: boolean;
+  /** `codex-allowed-tools` entries; empty when the key is absent. */
+  codex: string[];
+  declaresCodex: boolean;
+}
+
+/**
+ * Split a space-separated grant list. Entries carry spaces inside their
+ * parentheses (`Bash(smithy status *)`), so the split is on spaces at depth 0.
+ */
+function splitGrants(value: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of value) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (/\s/.test(ch) && depth === 0) {
+      if (cur) out.push(cur);
+      cur = '';
+    } else cur += ch;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * Whether one Claude permission rule covers a tool use, per the grammar in
+ * docs/permission-grammar.md: `Bash(P *)` matches `P` bare or followed by a
+ * space, any other `*` spans anything, and an MCP rule may glob only after its
+ * literal `mcp__<server>__` prefix.
+ */
+export function grantCovers(rule: string, use: string): boolean {
+  const toRegex = (pattern: string) => new RegExp(`^${pattern
+    .split(' *').map(part => part.split('*').map(s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*'))
+    .join('(?: .*)?')}$`);
+  const bash = (s: string) => s.match(/^Bash\((.*)\)$/)?.[1];
+  const ruleCmd = bash(rule);
+  const useCmd = bash(use);
+  if (ruleCmd !== undefined && useCmd !== undefined) {
+    // A trailing ` *` is the only form that also matches the bare command.
+    return toRegex(ruleCmd).test(useCmd);
+  }
+  const skill = (s: string) => s.match(/^Skill\(([^ )]+)(?: \*)?\)$/)?.[1];
+  if (skill(rule) !== undefined && skill(use) !== undefined) return skill(rule) === skill(use);
+  if (rule.startsWith('mcp__') && rule.includes('*')) return toRegex(rule).test(use);
+  return rule === use;
+}
+
+export function listSkillGrants(source: TemplateSource = loadTemplateSource()): SkillGrants[] {
+  return source.templates
+    .filter(t => /^skills\/[^/]+\/SKILL\.prompt$/.test(t.id))
+    .map(t => {
+      const { frontmatter } = splitFrontmatter(t.source);
+      const declaresAllowed = /^allowed-tools:/m.test(frontmatter);
+      const declaresCodex = /^codex-allowed-tools:/m.test(frontmatter);
+      return {
+        id: t.id,
+        allowed: splitGrants(scalar(frontmatter, 'allowed-tools')),
+        declaresAllowed,
+        codex: splitGrants(scalar(frontmatter, 'codex-allowed-tools')),
+        declaresCodex,
+      };
+    });
+}
+
+/** Lines inside shell-language fences, with Handlebars already resolved. */
+function fencedShellCommands(body: string): string[] {
+  const commands: string[] = [];
+  let inShell = false;
+  let inFence = false;
+  let heredoc: string | null = null;
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    const open = line.match(/^```(\w*)/);
+    if (open) {
+      if (inFence) { inFence = inShell = false; heredoc = null; continue; }
+      inFence = true;
+      inShell = /^(bash|sh|shell|zsh)$/.test(open[1]!);
+      continue;
+    }
+    if (!inShell || !line) continue;
+    if (heredoc !== null) {
+      if (line === heredoc) heredoc = null;
+      continue;
+    }
+    if (line.startsWith('#')) continue;
+    commands.push(line);
+    // A heredoc's body is data written by the command, not commands.
+    heredoc = line.match(/<<-?\s*['"]?(\w+)['"]?/)?.[1] ?? null;
+  }
+  return commands;
+}
+
+/**
+ * Tool uses a skill body (and the references it bundles) makes that its grant
+ * lists do not cover (INV-3, grant side).
+ *
+ * Deliberately narrow, so a finding is always a real invocation:
+ * - a bundled script run from a shell fence (`${CLAUDE_SKILL_DIR}/scripts/…`),
+ *   which needs a `Bash(…)` rule matching it with its arguments;
+ * - when the skill declares `allowed-tools`, every other fenced shell command
+ *   too — a skill that pre-declares its grant has to declare all of it;
+ * - an MCP tool named in backticks (`mcp__github__issue_write`);
+ * - a `Skill("…")` call, when the skill declares `allowed-tools`;
+ * - on the Codex render, a GitHub-app action named in backticks (`_fetch_pr_comments`),
+ *   which `codex-allowed-tools` must list.
+ *
+ * Bodies are rendered per variant first, so a script path gated to Claude is
+ * judged against the Claude grant only.
+ */
+export async function findMissingSkillGrants(source: TemplateSource = loadTemplateSource()): Promise<LintFinding[]> {
+  const skills = listSkillGrants(source);
+  const filesOf = (skill: SkillGrants) => {
+    const dir = skill.id.replace(/SKILL\.prompt$/, '');
+    return source.templates.filter(t => t.id.startsWith(dir)).map(t => splitFrontmatter(t.source).body);
+  };
+
+  // One variant per pass: renderers share Handlebars helper state, so a
+  // second renderer created before the first finishes rebinds its gating.
+  const needed = new Map<string, Set<string>>(skills.map(s => [s.id, new Set()]));
+  const claude = createTemplateRenderer('claude', '', buildPartialsMap(source.snippets));
+  for (const skill of skills) {
+    const uses = needed.get(skill.id)!;
+    for (const raw of filesOf(skill)) {
+      const body = await resolveSnippets(raw, claude);
+      for (const line of fencedShellCommands(body)) {
+        // Claude Code matches each side of a compound command on its own.
+        for (const cmd of line.split(/\s(?:&&|\|\||\||;)\s/).map(c => c.trim()).filter(Boolean)) {
+          if (cmd.startsWith('${CLAUDE_SKILL_DIR}/') || skill.declaresAllowed) uses.add(`Bash(${cmd})`);
+        }
+      }
+      for (const m of body.matchAll(/`(mcp__[a-z0-9_-]+__[a-z0-9_]+)`/gi)) uses.add(m[1]!);
+      if (skill.declaresAllowed) {
+        for (const m of body.matchAll(/Skill\("([^"]+)"\)/g)) uses.add(`Skill(${m[1]})`);
+      }
+    }
+  }
+
+  const codexNeeded = new Map<string, Set<string>>(skills.map(s => [s.id, new Set()]));
+  const codex = createTemplateRenderer('codex', '', buildPartialsMap(source.snippets));
+  for (const skill of skills.filter(s => s.declaresCodex)) {
+    for (const raw of filesOf(skill)) {
+      const body = await resolveSnippets(raw, codex);
+      for (const m of body.matchAll(/`(_[a-z][a-z0-9_]*)`/g)) codexNeeded.get(skill.id)!.add(m[1]!);
+    }
+  }
+
+  const findings: LintFinding[] = [];
+  for (const skill of skills) {
+    for (const use of [...needed.get(skill.id)!].sort()) {
+      if (!skill.allowed.some(rule => grantCovers(rule, use))) {
+        findings.push({ id: skill.id, detail: `invokes ${use} but allowed-tools does not cover it` });
+      }
+    }
+    for (const use of [...codexNeeded.get(skill.id)!].sort()) {
+      if (!skill.codex.includes(use)) {
+        findings.push({ id: skill.id, detail: `invokes ${use} on Codex but codex-allowed-tools does not list it` });
+      }
+    }
+  }
+  return findings;
 }
