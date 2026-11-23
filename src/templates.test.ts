@@ -2118,6 +2118,22 @@ describe('getComposedTemplates', () => {
     }
   });
 
+  it('smithy-implement loads draft-mode voice guidance for deliverable prose it authors', () => {
+    const implement = composed.agents.get('smithy.implement.md')!;
+    const section = implement
+      .split('## Deliverable Prose\n')[1]
+      ?.split('\n---\n')[0]
+      ?.replace(/\s+/g, ' ');
+
+    expect(implement).toMatch(/^tools: .*\bSkill\b/m);
+    expect(section).toContain('Skill("smithy.helper-voice")');
+    expect(section).toContain('draft mode');
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(section).toContain(trigger);
+    }
+    expect(section).toMatch(/skip routine code comments/i);
+  });
+
   it('smithy-maid flags voice issues in changed documentation without rewriting it', () => {
     const maid = composed.agents.get('smithy.maid.md')!;
     const voiceCheck = maid.match(/^\| \*\*Voice anti-patterns\*\* \|.+\|$/m)?.[0];
