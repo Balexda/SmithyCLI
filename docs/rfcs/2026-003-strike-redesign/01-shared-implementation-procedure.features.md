@@ -48,7 +48,7 @@ _None — no specification debt was recorded._
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
 | F1 | Shared Procedure With Forge Parity | — | specs/2026-11-22-015-shared-procedure-with-forge-parity/ |
-| F2 | Implementation From an Untracked Working Plan | — | — |
+| F2 | Implementation From an Untracked Working Plan | — | specs/2026-11-23-016-implementation-from-an-untracked-working-plan/ |
 
 F1 can verify parity using forge's tracked-checklist form. F2 can validate the untracked-plan form at the agent boundary. Strike brings the two together in Milestone 3.
 
