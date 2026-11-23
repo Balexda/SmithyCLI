@@ -45,7 +45,7 @@ Cite the record ID when you raise one.
   listing filtered before it is paginated; a retry after an unknown outcome.
 - **Declared limits are checked (INV-7).** "Read-only" prose, `tools:`, and
   `sandbox_mode` are not boundaries. Flag a read-only dispatch not verified by
-  comparing `HEAD` and file contents (status alone misses re-edits), an edit
+  comparing `HEAD`, the index, and file contents (status alone misses re-edits), an edit
   from untrusted text outside the bound scope, and an outbound query carrying
   internal names.
 - **Examples match their contract (INV-8).** Flag a sample, worked example, or

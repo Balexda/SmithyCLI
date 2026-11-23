@@ -29,11 +29,12 @@ text. If a limit is only declared, a prompt-injection path can get past it.
 Declarations state intent. Where a limit matters, the dispatching
 orchestrator enforces it with a check it runs itself.
 
-- **Read-only dispatches are verified.** The orchestrator snapshots `HEAD`
-  and the content of every tracked and untracked file before the dispatch,
-  and compares the snapshot afterwards. A status listing alone does not
-  count, because it cannot see a second edit to a file that is already
-  modified. On any difference, the orchestrator stops.
+- **Read-only dispatches are verified.** Before the dispatch, the
+  orchestrator snapshots `HEAD`, the index, and the content of every tracked
+  and untracked file. It compares the snapshot afterwards and stops on any
+  difference. A status listing alone does not count: it cannot see a second
+  edit to an already-modified file, and without the index a `git add` goes
+  unseen.
 - **Edits derived from untrusted text stay inside the bound scope.** That
   scope is repo-relative paths inside the checkout. Anything outside it is
   reported, not applied.

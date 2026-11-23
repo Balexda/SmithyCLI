@@ -15,8 +15,8 @@ excepts: []
 ## Rule
 
 No template relies on prose, `tools:`, or `sandbox_mode` as a boundary. A
-read-only dispatch is verified by comparing `HEAD` and file contents before
-and after it. Status alone is not enough. Edits derived from untrusted text
+read-only dispatch is verified by comparing `HEAD`, the index, and file
+contents before and after it. Status alone is not enough. Edits derived from untrusted text
 touch only the scope the dispatcher bound. Outbound web queries carry no
 non-public identifiers.
 
