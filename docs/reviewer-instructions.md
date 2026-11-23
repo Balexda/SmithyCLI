@@ -106,6 +106,13 @@ Each rule traces to pull requests or issues in this repository.
 | Deployed templates stay generic | #258 |
 | Portability and no narration of unbuilt work | #456, #428 |
 | Compose, do not repeat; a snippet earns its file | #411, #459, #494 |
+| A passage copied between templates needs one home (INV-1) | #646, #648, #649 |
+| Sub-agent return fields are consumed (INV-4) | #648, #650, #651 |
+| Later passes keep earlier work (INV-5) | #648, #650, #651 |
+| Side effects survive a re-run; branch only from the default branch (INV-6, D-7) | #648, #649, #652 |
+| Declared limits are checked by the orchestrator (INV-7) | #647, #648, #651 |
+| Examples match their contract (INV-8) | #648, #649, #650, #651, #653 |
+| Absence is reported only when checked (P-2) | #649, #651, #653 |
 | Agent gating lives in the consumer | #459 |
 | Context budget and load placement | #484, #441 |
 | Instructions that change nothing | #464, #468 |
@@ -120,6 +127,7 @@ Each rule traces to pull requests or issues in this repository.
 | `smithy status` surfaces agree | #499, #500, #286, #308 |
 | Deployed files are manifest-tracked | #53 |
 | The three deployers move together | #57, #55 |
+| Deployed output parses and is honoured on the target (INV-3) | #645, #647 |
 | One permission grammar | #16, #323 |
 | Planted fixture flaws are intentional | #328, #336 |
 

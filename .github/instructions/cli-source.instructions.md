@@ -14,9 +14,12 @@ counterparts. Check these before anything stylistic.
   and `codex.ts` deploy the same templates to different places. A change to
   what one deploys needs the matching change in the others, or a stated
   reason it does not apply.
-- **Deployed metadata matches the target runtime (INV-3).** Each deploy path
-  emits the frontmatter keys its runtime reads, in that runtime's spelling. A
-  key is dropped only because the target does not read it. A deliberate
+- **Deployed output parses and is honoured on the target (INV-3).** Each
+  deploy path emits the frontmatter keys its runtime reads, in that runtime's
+  spelling, encoded so the file parses and every value round-trips (a TOML
+  basic string escapes backslashes). A key is dropped only because the target
+  does not read it. A key the runtime treats as a default, such as Codex
+  `sandbox_mode`, is not documented as a limit (INV-7). A deliberate
   divergence is a row in `docs/invariants/deployed-metadata-fidelity.invariant.md`,
   not silent behaviour in a deployer.
 - **Everything deployed is tracked in the manifest.** A new deployed file that

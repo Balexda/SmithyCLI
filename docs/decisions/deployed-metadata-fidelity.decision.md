@@ -58,7 +58,10 @@ a positive finding about one path, not a default that travels with the file.
 Unknown keys are dropped rather than rejected, which is what lets one source
 block carry the union of what all three targets need. The corollary is the
 part that binds: declaring a key in a template is not enough to deploy it, so
-every key a target reads has to appear on that target's list.
+every key a target reads has to appear on that target's list. Emitting the
+key is not enough: the file must parse in the target's format, its values
+must round-trip, and a key must not be described as doing more than the
+runtime does with it.
 
 ## Consequences
 
@@ -83,7 +86,7 @@ watch.
 
 ## Establishes
 
-INV-3 — Deployers emit the metadata their target runtime reads.
+INV-3 — Deployers emit output their target runtime parses and honours.
 
 ## Citations
 

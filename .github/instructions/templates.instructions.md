@@ -28,10 +28,31 @@ Cite the record ID when you raise one.
   The template describes what it does today.
 - **One home per protocol (INV-1).** A table, gate, enum, or contract shape a
   snippet already defines is composed with `{{>snippet}}`, never re-typed or
-  "adapted".
+  "adapted". A passage copied between two templates needs one home too, even
+  when no snippet exists yet.
 - **Agent gating lives in the consumer.** No `{{#ifAgent}}` and no "if you are
   Claude" prose inside a snippet. When behaviour differs per agent there is
   one snippet per branch and the command picks.
+- **Return fields are consumed (INV-4).** Flag a dispatch that ignores a
+  field the agent's output contract defines (`bail_out`, `debt_items`,
+  `destination`, a gaps or error shape) or appends the response verbatim.
+- **Later passes keep earlier work (INV-5).** Flag a write that drops existing
+  rows, renumbers a cited id, writes an empty-state line beside rows, or
+  writes a record or UI file without a collision check.
+- **Side effects survive a re-run (INV-6, D-7).** Flag a PR, issue, or branch
+  created without looking for the existing one; a branch made from anything
+  but the default branch, or renamed at push; repo identity derived twice; a
+  listing filtered before it is paginated; a retry after an unknown outcome.
+- **Declared limits are checked (INV-7).** "Read-only" prose, `tools:`, and
+  `sandbox_mode` are not boundaries. Flag a read-only dispatch not verified by
+  comparing `HEAD`, the index, and file contents and modes (status alone misses re-edits), an edit
+  from untrusted text outside the bound scope, and an outbound query carrying
+  internal names.
+- **Examples match their contract (INV-8).** Flag a sample, worked example, or
+  guard/test pair that breaks the rules beside it or invents evidence.
+- **Absence only when checked (P-2).** Flag "none" or "empty" reported where
+  the producer failed, was truncated, or never looked. Reliance on a
+  guarantee a lower layer provides is fine.
 - **Context budget (P-1).** Descriptions are dispatch triggers: 40 words for
   commands and sub-agents, 55 for skills. Material needed only sometimes goes
   in a skill's `references/` file, linked with a sentence saying when to read

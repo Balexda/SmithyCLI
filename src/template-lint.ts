@@ -567,6 +567,20 @@ export function findInternalReferences(source: TemplateSource = loadTemplateSour
  */
 export const DESCRIPTION_BUDGETS = { agents: 40, commands: 40, skills: 55 } as const;
 
+/**
+ * Commands that stay in the model's registry (`disable-model-invocation:
+ * false`), keyed by file stem. Every other command is a pipeline step the
+ * operator drives and opts out. `smithy.engrave` is the exception: recording
+ * a durable commitment is something a planning or review agent should be able
+ * to reach for mid-task, and its description is the trigger it matches on.
+ */
+export const MODEL_INVOCABLE_COMMANDS: ReadonlySet<string> = new Set(['smithy.engrave']);
+
+/** The command's file stem: `smithy.engrave.prompt` / `.md` → `smithy.engrave`. */
+export function commandStem(file: string): string {
+  return path.basename(file).replace(/\.(prompt|md)$/, '');
+}
+
 export interface DescribedTemplate {
   id: string;
   surface: keyof typeof DESCRIPTION_BUDGETS;

@@ -61,7 +61,7 @@ decoration — it is the command's only trigger signal.
 | `name` | Skill-directory name for Gemini and Codex (dashed form: `smithy-cut`). **Dropped on the Claude path** — a Claude command is named by its filename, and emitting the dashed form would advertise a `/smithy-cut` that does not exist. |
 | `description` | What the command does and when to reach for it. Reaches all three targets. Never a restatement of the H1 — that is the failure this contract exists to prevent. |
 | `argument-hint` | The command's argument shape, in the `<required> [optional]` convention (e.g. `<tasks-file\|strike-file> [<slice-number>]`). Shown after the command name in Claude Code's completion. |
-| `disable-model-invocation: true` | Every Smithy command is an explicit pipeline step the operator drives. The opt-out keeps all 13 out of the model's registry — recovering that context — while leaving them fully user-invocable. |
+| `disable-model-invocation` | `true` on every pipeline step the operator drives: the opt-out keeps them out of the model's registry, recovering that context, while leaving them fully user-invocable. `false` only on the commands in `MODEL_INVOCABLE_COMMANDS` (`src/template-lint.ts`), currently `smithy.engrave`, which an agent may reach for mid-task. For those, the description is the trigger. |
 
 ### Optional, Claude-only
 

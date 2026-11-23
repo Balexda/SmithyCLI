@@ -21,6 +21,7 @@ import {
   writeSessionTitleHook,
 } from './claude.js';
 import { hasDrift } from '../drift.js';
+import { MODEL_INVOCABLE_COMMANDS, commandStem } from '../template-lint.js';
 import { getComposedTemplates, getTemplateFilesByCategory } from '../templates.js';
 import { writeManifest, readManifest, removeStaleFiles } from '../manifest.js';
 
@@ -91,7 +92,8 @@ describe('deploy', () => {
       const block = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)![1]!;
       expect(block, file).toMatch(/^description:\s*\S/m);
       expect(block, file).toMatch(/^argument-hint:\s*\S/m);
-      expect(block, file).toMatch(/^disable-model-invocation:\s*true$/m);
+      const expected = MODEL_INVOCABLE_COMMANDS.has(commandStem(file)) ? 'false' : 'true';
+      expect(block, file).toMatch(new RegExp(`^disable-model-invocation:\\s*${expected}$`, 'm'));
       // The source `name:` is the Codex spelling (smithy-forge); a Claude
       // command is named by its filename, so emitting it would advertise a
       // command that does not exist.
