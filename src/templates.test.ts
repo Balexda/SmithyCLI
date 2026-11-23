@@ -2307,6 +2307,16 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/\.agents\/skills/);
   });
 
+  it.each(['smithy.render.md', 'smithy.mark.md', 'smithy.cut.md'])(
+    '%s loads smithy.helper-voice for direct artifact authoring',
+    commandName => {
+      const command = composed.commands.get(commandName);
+      expect(command, `${commandName} should be composed`).toBeDefined();
+      expect(command!).toContain('Skill("smithy.helper-voice")');
+      expect(command!).toMatch(/draft mode/i);
+    },
+  );
+
   it('narrative commands load smithy.helper-voice for direct prose authoring', () => {
     const commandNames = [
       'smithy.spark.md',
