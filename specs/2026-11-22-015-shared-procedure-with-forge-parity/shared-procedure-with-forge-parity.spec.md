@@ -60,7 +60,7 @@ As a team with existing task slices and strike plans, I want forge to use the sh
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Share the Implementation Procedure | — | — |
+| US1 | Share the Implementation Procedure | — | specs/2026-11-22-015-shared-procedure-with-forge-parity/01-share-the-implementation-procedure.tasks.md |
 | US2 | Preserve Existing Forge Runs | US1 | — |
 
 ## Requirements
