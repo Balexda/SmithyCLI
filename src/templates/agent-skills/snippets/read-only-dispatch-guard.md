@@ -17,7 +17,7 @@ git rev-parse HEAD > "$GUARD/head"
 git stash create > "$GUARD/stash"
 git ls-files -o --exclude-standard -z > "$GUARD/untracked"
 git ls-files -o --exclude-standard > "$GUARD/untracked.txt"
-tar --null -T "$GUARD/untracked" -cf "$GUARD/untracked.tar"
+[ -s "$GUARD/untracked" ] && tar --null -T "$GUARD/untracked" -cf "$GUARD/untracked.tar"
 ```
 
 `git stash create` writes the dirty tracked state as a dangling commit and
@@ -36,7 +36,8 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
   git status --porcelain=v2 --untracked-files=all
   { git diff --name-only -z; git ls-files -o --exclude-standard -z; } |
     sort -zu | while IFS= read -r -d '' p; do
-      if [ ! -e "$p" ]; then echo "gone $p"
+      if [ -L "$p" ]; then echo "link $(readlink -- "$p") $p"
+      elif [ ! -e "$p" ]; then echo "gone $p"
       elif [ -x "$p" ]; then echo "exec $(git hash-object -- "$p") $p"
       else echo "file $(git hash-object -- "$p") $p"; fi
     done
@@ -45,7 +46,8 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
 
 The fingerprint covers `HEAD`, every index entry's mode and blob, the
 worktree mode on each status line, and a content hash plus executable bit for
-every dirty or untracked file.
+every dirty or untracked file (a symlink's target text instead, so a
+retargeted link is caught even when it dangles).
 
 **Immediately after the dispatch**, compare the two fingerprints:
 
@@ -62,7 +64,7 @@ diff "$GUARD/before" "$GUARD/after"
   GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
   git reset --hard "$(cat "$GUARD/head")"
   [ -s "$GUARD/stash" ] && git stash apply --index "$(cat "$GUARD/stash")"
-  tar -xpf "$GUARD/untracked.tar"
+  [ -f "$GUARD/untracked.tar" ] && tar -xpf "$GUARD/untracked.tar"
   git ls-files -o --exclude-standard | while IFS= read -r p; do
     grep -Fxq -- "$p" "$GUARD/untracked.txt" || rm -f -- "$p"
   done

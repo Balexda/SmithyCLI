@@ -917,6 +917,9 @@ export function findDependencyOrderCheckboxes(source: TemplateSource = loadTempl
  */
 export const RENDER_TIME_NAMES: ReadonlySet<string> = new Set(['artifactsRoot', 'else']);
 
+/** A Handlebars comment: the `{{!-- … --}}` form (which may hold mustaches) or `{{! … }}`. */
+const HANDLEBARS_COMMENT = /(?<!\\)\{\{!--[\s\S]*?--\}\}|(?<!\\)\{\{![^}]*\}\}/g;
+
 /** A bare mustache: not escaped, and not a partial, block, inverse, or comment. */
 const BARE_MUSTACHE = /(?<!\\)\{\{(?![>#/^!{])\s*([^{}]*?)\s*\}\}/g;
 
@@ -933,7 +936,10 @@ const BARE_MUSTACHE = /(?<!\\)\{\{(?![>#/^!{])\s*([^{}]*?)\s*\}\}/g;
 export function findBlankRenderedPlaceholders(source: TemplateSource = loadTemplateSource()): LintFinding[] {
   const findings: LintFinding[] = [];
   for (const t of source.templates) {
-    t.source.split('\n').forEach((line, i) => {
+    // A comment renders nothing, including any mustache written inside it, so
+    // blank out every comment span first. Newlines survive, keeping line numbers.
+    const uncommented = t.source.replace(HANDLEBARS_COMMENT, c => c.replace(/[^\n]/g, ' '));
+    uncommented.split('\n').forEach((line, i) => {
       for (const m of line.matchAll(BARE_MUSTACHE)) {
         const name = m[1]!;
         if (RENDER_TIME_NAMES.has(name)) continue;
