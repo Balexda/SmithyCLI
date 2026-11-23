@@ -853,6 +853,25 @@ export function crossTemplateCopyFindings(source: TemplateSource = loadTemplateS
   }));
 }
 
+/** An open Markdown code fence: its marker character, run length, and info string. */
+interface OpenFence { char: '`' | '~'; length: number; info: string }
+
+/** The fence a trimmed line opens, or `undefined` when it opens none. */
+function fenceOpening(line: string): OpenFence | undefined {
+  const m = line.match(/^(`{3,}|~{3,})\s*([^\s`]*)/);
+  return m ? { char: m[1]![0] as '`' | '~', length: m[1]!.length, info: m[2]! } : undefined;
+}
+
+/**
+ * Whether a trimmed line closes `fence`: the same marker character, at least
+ * as long as the opener, and nothing after it — so a three-backtick line
+ * inside a four-backtick example stays example text.
+ */
+function closesFence(line: string, fence: OpenFence): boolean {
+  const m = line.match(/^(`{3,}|~{3,})\s*$/);
+  return !!m && m[1]![0] === fence.char && m[1]!.length >= fence.length;
+}
+
 /**
  * Checkbox list items under a `Dependency Order` heading.
  *
@@ -867,12 +886,11 @@ export function findDependencyOrderCheckboxes(source: TemplateSource = loadTempl
   const findings: LintFinding[] = [];
   for (const t of source.templates) {
     let level = 0; // heading level of the open Dependency Order section; 0 when none
-    let fence: string | null = null;
+    let fence: OpenFence | undefined;
     t.source.split('\n').forEach((raw, i) => {
       const line = raw.trim().replace(/^(>\s*)+/, '');
-      const fenceMark = line.match(/^(```|~~~)/)?.[1];
-      if (fenceMark && (fence === null || fence === fenceMark)) {
-        fence = fence === null ? fenceMark : null;
+      if (fence ? closesFence(line, fence) : fenceOpening(line)) {
+        fence = fence ? undefined : fenceOpening(line);
         level = 0;
         return;
       }
@@ -963,32 +981,74 @@ export function listSkillGrants(source: TemplateSource = loadTemplateSource()): 
     });
 }
 
-/** Lines inside shell-language fences, with Handlebars already resolved. */
+/**
+ * Commands inside shell-language fences, with Handlebars already resolved.
+ *
+ * Backslash-continued lines are joined into one command, heredoc bodies are
+ * skipped (they are data the command writes), and each command is split into
+ * the subcommands Claude Code matches on their own.
+ */
 function fencedShellCommands(body: string): string[] {
   const commands: string[] = [];
-  let inShell = false;
-  let inFence = false;
+  let fence: OpenFence | undefined;
   let heredoc: string | null = null;
+  let pending = '';
   for (const raw of body.split('\n')) {
     const line = raw.trim();
-    const open = line.match(/^```(\w*)/);
-    if (open) {
-      if (inFence) { inFence = inShell = false; heredoc = null; continue; }
-      inFence = true;
-      inShell = /^(bash|sh|shell|zsh)$/.test(open[1]!);
+    if (fence ? closesFence(line, fence) : fenceOpening(line)) {
+      fence = fence ? undefined : fenceOpening(line);
+      heredoc = null;
+      pending = '';
       continue;
     }
-    if (!inShell || !line) continue;
+    if (!fence || !/^(bash|sh|shell|zsh)$/.test(fence.info)) continue;
     if (heredoc !== null) {
       if (line === heredoc) heredoc = null;
       continue;
     }
-    if (line.startsWith('#')) continue;
-    commands.push(line);
+    if (!pending && (!line || line.startsWith('#'))) continue;
+    if (line.endsWith('\\')) {
+      pending += `${line.slice(0, -1).trim()} `;
+      continue;
+    }
+    const command = `${pending}${line}`.trim();
+    pending = '';
+    commands.push(...splitCompound(command));
     // A heredoc's body is data written by the command, not commands.
-    heredoc = line.match(/<<-?\s*['"]?(\w+)['"]?/)?.[1] ?? null;
+    heredoc = command.match(/<<-?\s*['"]?(\w+)['"]?/)?.[1] ?? null;
   }
   return commands;
+}
+
+/**
+ * Split a shell line on `;`, `&&`, `||`, `|`, and a backgrounding `&`,
+ * whatever whitespace surrounds them, outside quotes. A `&` inside a
+ * redirection (`2>&1`, `&>file`) is not a separator.
+ */
+export function splitCompound(line: string): string[] {
+  const parts: string[] = [];
+  let cur = '';
+  let quote: string | null = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]!;
+    if (quote) {
+      if (ch === '\\' && quote === '"' && i + 1 < line.length) { cur += ch + line[++i]; continue; }
+      if (ch === quote) quote = null;
+      cur += ch;
+      continue;
+    }
+    if (ch === '\\' && i + 1 < line.length) { cur += ch + line[++i]; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; cur += ch; continue; }
+    const two = line.slice(i, i + 2);
+    if (two === '&&' || two === '||') { parts.push(cur); cur = ''; i++; continue; }
+    if (ch === ';' || ch === '|') { parts.push(cur); cur = ''; continue; }
+    if (ch === '&' && line[i - 1] !== '>' && line[i - 1] !== '<' && line[i + 1] !== '>') {
+      parts.push(cur); cur = ''; continue;
+    }
+    cur += ch;
+  }
+  parts.push(cur);
+  return parts.map(p => p.trim()).filter(Boolean);
 }
 
 /**
@@ -1003,7 +1063,7 @@ function fencedShellCommands(body: string): string[] {
  * - an MCP tool named in backticks (`mcp__github__issue_write`);
  * - a `Skill("…")` call, when the skill declares `allowed-tools`;
  * - on the Codex render, a GitHub-app action named in backticks (`_fetch_pr_comments`),
- *   which `codex-allowed-tools` must list.
+ *   which `codex-allowed-tools` must list — whether or not the key is declared.
  *
  * Bodies are rendered per variant first, so a script path gated to Claude is
  * judged against the Claude grant only.
@@ -1023,11 +1083,8 @@ export async function findMissingSkillGrants(source: TemplateSource = loadTempla
     const uses = needed.get(skill.id)!;
     for (const raw of filesOf(skill)) {
       const body = await resolveSnippets(raw, claude);
-      for (const line of fencedShellCommands(body)) {
-        // Claude Code matches each side of a compound command on its own.
-        for (const cmd of line.split(/\s(?:&&|\|\||\||;)\s/).map(c => c.trim()).filter(Boolean)) {
-          if (cmd.startsWith('${CLAUDE_SKILL_DIR}/') || skill.declaresAllowed) uses.add(`Bash(${cmd})`);
-        }
+      for (const cmd of fencedShellCommands(body)) {
+        if (cmd.startsWith('${CLAUDE_SKILL_DIR}/') || skill.declaresAllowed) uses.add(`Bash(${cmd})`);
       }
       for (const m of body.matchAll(/`(mcp__[a-z0-9_-]+__[a-z0-9_]+)`/gi)) uses.add(m[1]!);
       if (skill.declaresAllowed) {
@@ -1038,7 +1095,9 @@ export async function findMissingSkillGrants(source: TemplateSource = loadTempla
 
   const codexNeeded = new Map<string, Set<string>>(skills.map(s => [s.id, new Set()]));
   const codex = createTemplateRenderer('codex', '', buildPartialsMap(source.snippets));
-  for (const skill of skills.filter(s => s.declaresCodex)) {
+  // Every skill, not only those declaring the key: an action used with the key
+  // omitted deploys with no Codex grant at all, the same gap as an empty list.
+  for (const skill of skills) {
     for (const raw of filesOf(skill)) {
       const body = await resolveSnippets(raw, codex);
       for (const m of body.matchAll(/`(_[a-z][a-z0-9_]*)`/g)) codexNeeded.get(skill.id)!.add(m[1]!);
