@@ -39,7 +39,7 @@ There is no worktree-shape test and no forge carve-out. The default branch
 is the remote's current default, read from the remote and not from a local
 `origin/HEAD` that may be stale. If that cannot be resolved, an interactive
 run asks the user and a forked run stops. Pushes and pull requests use the
-resolved branch as their head and never rename it. A command that writes no
+branch this rule kept or created as their head, and never rename it. A command that writes no
 repository commit skips branching. This rule replaces the worktree-aware one
 in `snippets/branch-policy.md`.
 
