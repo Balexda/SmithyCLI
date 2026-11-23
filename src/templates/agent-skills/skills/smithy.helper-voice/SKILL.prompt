@@ -1,6 +1,6 @@
 ---
 name: smithy.helper-voice
-description: "Section-level voice and audience guidance built on a Role × Diátaxis-mode taxonomy. Use when drafting or reviewing prose for any artifact: RFC/spec/PRD narrative, migration plans, ADRs, runbooks, READMEs, design docs, change notes, inline documentation. Not a direct user entry point — artifact-level shape questions go to smithy.helper-documentation, which calls this skill."
+description: "Section-level voice and audience guidance using a Role × Diátaxis-mode taxonomy. Use when drafting or reviewing prose in migration plans, ADRs, runbooks, READMEs, and other artifacts. Use review / cleanup mode for standalone requests to clean up the voice, improve the prose, or apply audience tags to existing text."
 ---
 # smithy.helper-voice
 
@@ -12,12 +12,19 @@ either of two modes:
 
 - **Draft mode** — given a section, audience, and length budget, write
   prose to convention from scratch.
-- **Review / cleanup mode** — given an existing artifact, produce a
-  revised version that applies the taxonomy, fixes anti-patterns,
+- **Review / cleanup mode** — given an existing artifact, an arbitrary
+  file path, or pasted text, produce a revised version that applies
+  the taxonomy, fixes anti-patterns,
   suggests diagrams, compresses dense Reference prose, and inserts
   audience tags. Return the original and the revised version side by
   side so a human can judge whether the new voice is an improvement —
   the side-by-side compare is the primary validation path.
+
+For standalone cleanup, accept requests to revise existing prose outside
+any Smithy planning workflow. Work directly with the prose in the file
+or the pasted text. During drafting in `smithy.mark` or a similar Smithy
+command, follow the parent template's voice instructions and skip the
+standalone cleanup trigger.
 
 ---
 
@@ -226,5 +233,6 @@ prose-level cleanup once the shape is settled. This skill owns the
 the cell; jargon glossed, examples worked, diagrams that earn their
 space, cross-refs previewed) and defers artifact-level commingling
 upward (see §2's escalation note). Users invoke
-`smithy.helper-documentation`; this skill is reached through it or
-through the authoring commands.
+`smithy.helper-documentation` for whole-document review; this skill is
+reached through it, through the authoring commands, or directly for
+standalone prose cleanup of existing text.
