@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { parse as parseToml } from 'smol-toml';
 import {
   tierToClaudeModel,
   tierToCodexEffort,
@@ -113,5 +114,28 @@ describe('toCodexAgentToml', () => {
 
   it('returns no name when the template lacks frontmatter name', () => {
     expect(toCodexAgentToml('---\ntier: deep\n---\nbody').name).toBeUndefined();
+  });
+
+  it('round-trips backslashes and triple quotes through developer_instructions', () => {
+    // Every backslash form that broke or corrupted the old emitter: a Markdown
+    // table-pipe escape (invalid TOML escape), literal `\n`/`\t`/`\u0041`
+    // (silently decoded), a Windows path, a literal triple quote, and a
+    // trailing backslash right before the closing delimiter.
+    const body = [
+      '# smithy-escape',
+      '',
+      '| a \\| b | `\\n` and `\\t` and `\\u0041` |',
+      'Path: C:\\path\\to\\file and \\\\server\\share',
+      'Quote: """ and """" and "" end"',
+      'Trailing backslash \\',
+    ].join('\n');
+    const content = ['---', 'name: smithy-escape', 'tier: light', '---', body, ''].join('\n');
+
+    const { toml } = toCodexAgentToml(content);
+    const parsed = parseToml(toml) as Record<string, unknown>;
+    // The emitter puts the closing `"""` on its own line, so the decoded
+    // string is the authored body plus that one newline.
+    expect(parsed.developer_instructions).toBe(`${body}\n`);
+    expect(parsed.name).toBe('smithy-escape');
   });
 });

@@ -3,7 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { deploy, removeLegacy } from './codex.js';
+import { parse as parseToml } from 'smol-toml';
 import { getComposedTemplates, getTemplateFilesByCategory, parseFrontmatterName } from '../templates.js';
+import { parseAgentModel, splitAgentFrontmatter } from '../agent-models.js';
 
 describe('deploy', () => {
   let tmpDir: string;
@@ -257,6 +259,34 @@ describe('deploy', () => {
 
     // Deployed agent TOMLs are tracked for manifest-driven cleanup.
     expect(deployed).toContain(path.join('.codex', 'agents', 'smithy-plan.toml'));
+  });
+
+  it('deploys every sub-agent as TOML that parses and round-trips its rendered body', async () => {
+    // Whole-tree guard: any backslash, quote, or control character reaching an
+    // agent body (directly or through a composed snippet) must survive the
+    // TOML encoding exactly, or Codex fails to load the agent.
+    await deploy(tmpDir, false);
+
+    const templates = await getComposedTemplates('codex');
+    expect(templates.agents.size).toBeGreaterThan(0);
+    for (const [file, content] of templates.agents) {
+      const name = parseAgentModel(content).name;
+      expect(name, file).toBeDefined();
+      const text = fs.readFileSync(path.join(tmpDir, '.codex', 'agents', `${name}.toml`), 'utf8');
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = parseToml(text) as Record<string, unknown>;
+      } catch (err) {
+        throw new Error(`${name}.toml is not valid TOML: ${(err as Error).message}`);
+      }
+
+      // The emitter trims leading newlines and trailing whitespace from the
+      // body and closes the block on its own line, adding one newline.
+      const expected = splitAgentFrontmatter(content).body.replace(/^\n+/, '').replace(/\s+$/, '');
+      expect(parsed.name, file).toBe(name);
+      expect(parsed.developer_instructions, file).toBe(`${expected}\n`);
+    }
   });
 
   it('removeLegacy cleans up deployed Codex agent TOMLs', async () => {
