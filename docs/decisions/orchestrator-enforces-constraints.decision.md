@@ -30,8 +30,8 @@ Declarations state intent. Where a limit matters, the dispatching
 orchestrator enforces it with a check it runs itself.
 
 - **Read-only dispatches are verified.** Before the dispatch, the
-  orchestrator snapshots `HEAD`, the index, and the content of every tracked
-  and untracked file. It compares the snapshot afterwards and stops on any
+  orchestrator snapshots `HEAD`, the index, and the content and mode of every
+  tracked and untracked file. It compares the snapshot afterwards and stops on any
   difference. A status listing alone does not count: it cannot see a second
   edit to an already-modified file, and without the index a `git add` goes
   unseen.
@@ -42,11 +42,13 @@ orchestrator enforces it with a check it runs itself.
 
 ## Consequences
 
-Good: a limit holds whatever sandbox the host provides, and the worst case
-for injected text is a reported finding.
+Good: a limit holds whatever sandbox the host provides, and an injected write
+is caught and stops the run.
 
 Bad: each dispatch gains a few orchestrator steps, and every composer of the
-`apply` step must bind a scope.
+`apply` step must bind a scope. Detection does not undo a write, so
+uncommitted work a dispatch overwrote stays overwritten until the user
+recovers it.
 
 ## Establishes
 
