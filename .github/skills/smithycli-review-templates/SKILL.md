@@ -41,8 +41,11 @@ you to read, never fine for a template to cite.
 ## 3. Frontmatter
 
 - **Commands** declare `description`, `argument-hint`, and
-  `disable-model-invocation: true`. Every command is a pipeline step the
-  operator runs, so none may auto-fire. `name` uses the dashed spelling.
+  `disable-model-invocation`. It is `true` for every pipeline step the
+  operator runs. It is `false` only for the commands listed in
+  `MODEL_INVOCABLE_COMMANDS` (`src/template-lint.ts`), currently
+  `smithy.engrave`. Flag any other command that opts in. `name` uses the
+  dashed spelling.
 - **Sub-agents** declare `name`, `description`, `tools`, and a
   provider-neutral `tier` (`light`, `standard`, `deep`). The `tools` list must
   cover every tool the body tells the agent to use.

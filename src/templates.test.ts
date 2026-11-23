@@ -14,6 +14,7 @@ import {
 import { skillsTemplateDir } from './utils.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 import { toClaudeCommandContent } from './command-frontmatter.js';
+import { MODEL_INVOCABLE_COMMANDS, commandStem } from './template-lint.js';
 
 describe('stripFrontmatter', () => {
   it('removes YAML frontmatter from content', () => {
@@ -5787,11 +5788,19 @@ describe('command template frontmatter contract', () => {
     expect(hint, `${file} is missing argument-hint:`).toBeTruthy();
   });
 
-  it.each(commandFiles)('%s opts out of model invocation', file => {
-    // Every Smithy command is an explicit pipeline step the operator drives.
-    // Leaving them model-invocable spends registry context on 13 entries that
-    // should never auto-fire.
-    expect(frontmatterOf(file)).toMatch(/^disable-model-invocation:\s*true$/m);
+  it.each(commandFiles)('%s declares its model-invocation setting', file => {
+    // Pipeline steps the operator drives opt out: leaving them model-invocable
+    // spends registry context on entries that should never auto-fire. The
+    // allowlisted commands opt in, and must say so explicitly.
+    const expected = MODEL_INVOCABLE_COMMANDS.has(commandStem(file)) ? 'false' : 'true';
+    expect(frontmatterOf(file)).toMatch(
+      new RegExp(`^disable-model-invocation:\\s*${expected}$`, 'm'),
+    );
+  });
+
+  it('allowlists only commands that exist', () => {
+    const stems = new Set(commandFiles.map(commandStem));
+    for (const stem of MODEL_INVOCABLE_COMMANDS) expect(stems, stem).toContain(stem);
   });
 
   it('keeps the source `name` for the Gemini and Codex skill-directory scheme', () => {
@@ -5826,7 +5835,8 @@ describe('command frontmatter reaches each agent', () => {
       const block = deployed.match(/^---\s*\n([\s\S]*?)\n---\s*\n/)![1]!;
       expect(block, file).toMatch(/^description:/m);
       expect(block, file).toMatch(/^argument-hint:/m);
-      expect(block, file).toMatch(/^disable-model-invocation:\s*true$/m);
+      const expected = MODEL_INVOCABLE_COMMANDS.has(commandStem(file)) ? 'false' : 'true';
+      expect(block, file).toMatch(new RegExp(`^disable-model-invocation:\\s*${expected}$`, 'm'));
       // `name:` is the Codex spelling (smithy-audit); the Claude command is
       // named by its filename (smithy.audit.md → /smithy.audit).
       expect(block, file).not.toMatch(/^name:/m);
