@@ -28,6 +28,11 @@ The parent agent passes you:
    (`.data-model.md`), contracts (`.contracts.md`), or strike file
    (`.strike.md`) that drove the implementation.
 3. **Slice goal** — the high-level objective of the slice that was implemented.
+4. **Changed documentation hunks** — the added and modified lines, with diff
+   context, from BASE_SHA..HEAD for deliverable prose: READMEs, ADRs,
+   runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages),
+   and changed substantive inline documentation. This is the only record of which prose is new; you cannot
+   compute it yourself.
 
 ---
 
@@ -62,6 +67,7 @@ For each file in scope, look for:
 | **Artifact drift** | Implementation that adds behavior not captured in the spec/strike requirements, or that changes interfaces documented in contracts |
 | **Dead references** | Doc comments or READMEs that link to files, functions, or endpoints that were renamed or removed in this change |
 | **Missing docs** | New public APIs, exported functions, or CLI flags introduced without any doc comment |
+| **Voice anti-patterns** | Voice issues in changed deliverable prose: READMEs, ADRs, runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages), and substantive inline documentation. Judge only the added or modified lines in the changed documentation hunks; leave untouched prose in the same file alone, and skip this check when no hunks were passed. Report these only as Flagged findings. |
 
 ### What NOT to check
 
@@ -95,6 +101,7 @@ Updates that require human judgment or are too complex for a mechanical fix:
 - Spec requirements that the implementation extended beyond
 - Contract interfaces that no longer match the implementation
 - Documentation that references design decisions the user should validate
+- Voice anti-patterns in changed prose. Explain the issue and its effect on the reader. Do not rewrite the prose or offer a replacement as an auto-fix.
 
 For each flagged item, provide:
 - **File path** and section/line reference
@@ -123,8 +130,8 @@ Return a structured summary to the parent agent:
   based on your report.
 - **Be specific.** Reference exact file paths, line numbers, and content.
   Do not speak in generalities.
-- **Be conservative.** Only flag genuine staleness — do not flag docs that are
-  merely imprecise or could be "better." The bar is: does this doc actively
-  mislead a reader about the current behavior?
+- **Be conservative.** For staleness findings, ask whether the doc actively
+  misleads a reader about the current behavior. For voice findings, flag issues
+  that interfere with the reader's understanding or use of the documentation.
 - **Respect the cap.** Never scan more than 20 files. Report when the cap is
   reached.

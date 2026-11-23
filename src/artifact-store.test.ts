@@ -100,8 +100,15 @@ describe('ensureArtifactStore', () => {
     // Point git at empty global/system config so no `user.email` resolves.
     // Without the fallback the very first commit fails and the store is left
     // historyless on exactly the machines least likely to notice.
+    // GIT_CONFIG_GLOBAL / GIT_CONFIG_SYSTEM need git >= 2.32; older git
+    // ignores them and still reads the system config, $HOME/.gitconfig, and
+    // the XDG config, so disable the system file and point the others at the
+    // empty fake home as well.
     vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
     vi.stubEnv('GIT_CONFIG_SYSTEM', '/dev/null');
+    vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
+    vi.stubEnv('HOME', fakeHome);
+    vi.stubEnv('XDG_CONFIG_HOME', path.join(fakeHome, '.config'));
     try {
       const result = ensureArtifactStore(workdir, 'external');
       expect(result!.warning).toBeUndefined();

@@ -2099,6 +2099,57 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy.helper-docker');
   });
 
+  it('smithy.forge advertises draft-mode voice guidance for deliverable prose', async () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    const operationalSkills = forge.split('### Operational Skills\n')[1]?.split('\n---\n')[0];
+    const voiceRow = operationalSkills?.match(/^\| `smithy\.helper-voice` \|.+\|$/m)?.[0];
+
+    expect(voiceRow).toBeDefined();
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(voiceRow).toContain(trigger);
+    }
+    expect(voiceRow).toContain('draft mode');
+    expect(voiceRow).toMatch(/skip routine code comments/i);
+    expect(forge).not.toContain('Voice rules per Role × Mode combination');
+    const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
+    const maidDispatch = claudeForge.split('## Documentation Check\n')[1]?.split('\n---\n')[0];
+    expect(maidDispatch).toContain('**Changed documentation hunks**');
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(maidDispatch).toContain(surface);
+    }
+  });
+
+  it('smithy-implement loads draft-mode voice guidance for deliverable prose it authors', () => {
+    const implement = composed.agents.get('smithy.implement.md')!;
+    const section = implement
+      .split('## Deliverable Prose\n')[1]
+      ?.split('\n---\n')[0]
+      ?.replace(/\s+/g, ' ');
+
+    expect(implement).toMatch(/^tools: .*\bSkill\b/m);
+    expect(section).toContain('Skill("smithy.helper-voice")');
+    expect(section).toContain('draft mode');
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(section).toContain(trigger);
+    }
+    expect(section).toMatch(/skip routine code comments/i);
+  });
+
+  it('smithy-maid flags voice issues in changed documentation without rewriting it', () => {
+    const maid = composed.agents.get('smithy.maid.md')!;
+    const voiceCheck = maid.match(/^\| \*\*Voice anti-patterns\*\* \|.+\|$/m)?.[0];
+    const flaggedFindings = maid.split('### Flagged\n')[1]?.split('\n---\n')[0];
+
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(voiceCheck).toContain(surface);
+    }
+    expect(voiceCheck).toContain('only as Flagged findings');
+    expect(voiceCheck).toContain('only the added or modified lines in the changed documentation hunks');
+    expect(maid).toContain('**Changed documentation hunks**');
+    expect(flaggedFindings).toMatch(/Voice anti-patterns.*Do not rewrite the prose/);
+    expect(maid).toContain('**Read-only.**');
+  });
+
   // Issue #420: smithy.helper-voice is a new body-only operational skill
   // that distributes the voice & audience taxonomy (EPIC #419). These
   // assertions back-stop the deployment contract (body-only, frontmatter

@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Advertise the helper in forge's operational skills table**
+- [x] **Advertise the helper in forge's operational skills table**
 
   Update `src/templates/agent-skills/commands/smithy.forge.prompt` so the Operational Skills table includes `smithy.helper-voice` with a load-when trigger for README, ADR, runbook, migration-plan, and substantive inline-doc authoring. The row should advertise draft-mode usage for deliverable prose and should not paste the helper's taxonomy into the forge prompt.
 
@@ -27,7 +27,7 @@
   - Routine, non-substantive code comments are excluded from the trigger boundary.
   - No helper taxonomy text is inlined in the forge prompt.
 
-- [ ] **Permit maid to flag voice anti-patterns without fixing them**
+- [x] **Permit maid to flag voice anti-patterns without fixing them**
 
   Update `src/templates/agent-skills/agents/smithy.maid.prompt` so documentation review may report voice anti-patterns in changed README or inline-doc prose through the existing findings format. Preserve maid's read-only posture for these issues: it may flag and explain, but must not rewrite prose in place.
 
@@ -36,7 +36,7 @@
   - The prompt states that voice findings are flags only, not in-place edits.
   - Existing stale-doc and missing-doc review responsibilities remain intact.
 
-- [ ] **Add forge and maid regression coverage and validate**
+- [x] **Add forge and maid regression coverage and validate**
 
   Add focused coverage in `src/templates.test.ts` (or its existing helpers) asserting that composed forge output advertises `smithy.helper-voice` with the deliverable-prose trigger and that composed maid output permits read-only voice findings. Keep assertions structural: check for the named helper, trigger categories, and flag-only boundary rather than long taxonomy wording. Then run template parsing and type checking without regenerating derived snapshots.
 
