@@ -2104,7 +2104,7 @@ describe('getComposedTemplates', () => {
     const voiceRow = operationalSkills?.match(/^\| `smithy\.helper-voice` \|.+\|$/m)?.[0];
 
     expect(voiceRow).toBeDefined();
-    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'substantive inline documentation']) {
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
       expect(voiceRow).toContain(trigger);
     }
     expect(voiceRow).toContain('draft mode');
@@ -2113,7 +2113,7 @@ describe('getComposedTemplates', () => {
     const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
     const maidDispatch = claudeForge.split('## Documentation Check\n')[1]?.split('\n---\n')[0];
     expect(maidDispatch).toContain('**Changed documentation hunks**');
-    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', '`docs/` prose', 'substantive inline documentation']) {
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
       expect(maidDispatch).toContain(surface);
     }
   });
@@ -2123,7 +2123,7 @@ describe('getComposedTemplates', () => {
     const voiceCheck = maid.match(/^\| \*\*Voice anti-patterns\*\* \|.+\|$/m)?.[0];
     const flaggedFindings = maid.split('### Flagged\n')[1]?.split('\n---\n')[0];
 
-    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', '`docs/` prose', 'substantive inline documentation']) {
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
       expect(voiceCheck).toContain(surface);
     }
     expect(voiceCheck).toContain('only as Flagged findings');

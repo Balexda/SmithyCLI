@@ -30,8 +30,8 @@ The parent agent passes you:
 3. **Slice goal** — the high-level objective of the slice that was implemented.
 4. **Changed documentation hunks** — the added and modified lines, with diff
    context, from BASE_SHA..HEAD for deliverable prose: READMEs, ADRs,
-   runbooks, migration plans, other `docs/` prose, and changed substantive
-   inline documentation. This is the only record of which prose is new; you cannot
+   runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages),
+   and changed substantive inline documentation. This is the only record of which prose is new; you cannot
    compute it yourself.
 
 ---
@@ -67,7 +67,7 @@ For each file in scope, look for:
 | **Artifact drift** | Implementation that adds behavior not captured in the spec/strike requirements, or that changes interfaces documented in contracts |
 | **Dead references** | Doc comments or READMEs that link to files, functions, or endpoints that were renamed or removed in this change |
 | **Missing docs** | New public APIs, exported functions, or CLI flags introduced without any doc comment |
-| **Voice anti-patterns** | Voice issues in changed deliverable prose: READMEs, ADRs, runbooks, migration plans, other `docs/` prose, and substantive inline documentation. Judge only the added or modified lines in the changed documentation hunks; leave untouched prose in the same file alone, and skip this check when no hunks were passed. Report these only as Flagged findings. |
+| **Voice anti-patterns** | Voice issues in changed deliverable prose: READMEs, ADRs, runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages), and substantive inline documentation. Judge only the added or modified lines in the changed documentation hunks; leave untouched prose in the same file alone, and skip this check when no hunks were passed. Report these only as Flagged findings. |
 
 ### What NOT to check
 
