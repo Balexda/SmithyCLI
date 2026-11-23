@@ -2126,10 +2126,10 @@ describe('getComposedTemplates', () => {
     // description — if it disappears, the skill no longer advertises its
     // actual content.
     expect(description).toMatch(/Role × Diátaxis-mode taxonomy/i);
-    // Issue #555: trigger condition, not a table of contents. The skill is
-    // reached through smithy.helper-documentation, so the description must
-    // still say so — but the body's feature list stays in the body.
-    expect(description).toMatch(/not a direct user entry point/i);
+    expect(description).toMatch(/review \/ cleanup mode for standalone requests/i);
+    expect(description).toContain('clean up the voice');
+    expect(description).toContain('improve the prose');
+    expect(description).toContain('apply audience tags');
     expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
@@ -2181,16 +2181,22 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-voice documents both invocation modes', () => {
     const skill = composed.skills.get('smithy.helper-voice')!;
+    const body = skill.prompt.split('\n---\n')[1]!;
     // Two first-class modes per issue #420. Both must be documented in
     // the body so any agent loading the skill knows it can draft *or*
     // review/cleanup.
-    expect(skill.prompt).toMatch(/Draft mode/);
-    expect(skill.prompt).toMatch(/Review \/ cleanup mode/);
-    // The side-by-side compare is the primary validation path for the
-    // cleanup mode and must be called out explicitly. Either spelling
-    // (hyphenated or whitespace-separated, potentially wrapped across a
-    // newline) counts as documenting the compare protocol.
-    expect(skill.prompt).toMatch(/side[\s-]+by[\s-]+side/i);
+    expect(body).toMatch(/Draft mode/);
+    expect(body).toMatch(/Review \/ cleanup mode/);
+    expect(body).toMatch(/arbitrary\s+file path/);
+    expect(body).toContain('pasted text');
+    expect(body).toMatch(/original and the revised version side by\s+side/i);
+  });
+
+  it('smithy.helper-voice leaves mid-workflow drafting under the parent template', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    const body = skill.prompt.split('\n---\n')[1]!;
+    expect(body).toMatch(/standalone cleanup, accept requests to revise existing prose outside\s+any Smithy planning workflow/i);
+    expect(body).toMatch(/During drafting in `smithy\.mark` or a similar Smithy\s+command, follow the parent template's voice instructions and skip the\s+standalone cleanup trigger/);
   });
 
   it('smithy.helper-voice documents the audience-tag grammar with all directive keys', () => {
