@@ -55,7 +55,7 @@
 
 ### Tasks
 
-- [ ] **Author the JVM forge scenario YAML**
+- [x] **Author the JVM forge scenario YAML**
 
   Add `evals/cases/forge-tdd-slice-jvm.yaml` following the Forge-JVM Scenario Declaration contract and the existing eval case conventions. The scenario should invoke `/smithy.forge`, select the JVM fixture, opt into git setup, and use a forge task-file prompt that exercises the committed JVM fixture for AS 1.1, AS 1.2, and AS 1.4.
 
@@ -66,7 +66,7 @@
   - The prompt targets a JVM-fixture forge slice rather than the JavaScript fixture.
   - `loadScenarios` discovers the new scenario without warnings.
 
-- [ ] **Cover JVM scenario loading and selection**
+- [x] **Cover JVM scenario loading and selection**
 
   Add focused tests around the committed Forge-JVM YAML case and scenario selection path. The tests should verify the case loads with JVM metadata and remains independently selectable by `npm run eval -- --case forge-tdd-slice-jvm` for AS 1.1.
 

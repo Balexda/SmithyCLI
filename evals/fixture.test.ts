@@ -157,7 +157,7 @@ describe('evals/fixture deployment', () => {
     // `evals/lib/scenario-loader.test.ts`; this guard only asserts that no
     // current case was rewritten to point at the JVM fixture.
     const yamlFiles = fs.readdirSync(CASES_DIR)
-      .filter((file) => file.endsWith('.yaml'))
+      .filter((file) => file.endsWith('.yaml') && file !== 'forge-tdd-slice-jvm.yaml')
       .sort();
 
     expect(yamlFiles.length).toBeGreaterThan(0);
