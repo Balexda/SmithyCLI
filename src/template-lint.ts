@@ -939,13 +939,14 @@ export function findBlankRenderedPlaceholders(source: TemplateSource = loadTempl
     // A comment renders nothing, including any mustache written inside it, so
     // blank out every comment span first. Newlines survive, keeping line numbers.
     const uncommented = t.source.replace(HANDLEBARS_COMMENT, c => c.replace(/[^\n]/g, ' '));
-    uncommented.split('\n').forEach((line, i) => {
-      for (const m of line.matchAll(BARE_MUSTACHE)) {
-        const name = m[1]!;
-        if (RENDER_TIME_NAMES.has(name)) continue;
-        findings.push({ id: t.id, detail: `line ${i + 1}: {{${name}}} renders blank; escape it as \\{{${name}}}` });
-      }
-    });
+    // Match the whole text, not line by line: Handlebars accepts a mustache
+    // split across lines, and it renders blank just the same.
+    for (const m of uncommented.matchAll(BARE_MUSTACHE)) {
+      const name = m[1]!.replace(/\s+/g, ' ');
+      if (RENDER_TIME_NAMES.has(name)) continue;
+      const line = uncommented.slice(0, m.index).split('\n').length;
+      findings.push({ id: t.id, detail: `line ${line}: {{${name}}} renders blank; escape it as \\{{${name}}}` });
+    }
   }
   return findings;
 }

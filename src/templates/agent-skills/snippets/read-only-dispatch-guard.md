@@ -36,7 +36,7 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
   git status --porcelain=v2 --untracked-files=all
   { git diff --name-only -z; git ls-files -o --exclude-standard -z; } |
     sort -zu | while IFS= read -r -d '' p; do
-      if [ -L "$p" ]; then echo "link $(readlink -- "$p") $p"
+      if [ -L "$p" ]; then echo "link $(readlink -- "$p" | git hash-object --stdin) $p"
       elif [ ! -e "$p" ]; then echo "gone $p"
       elif [ -x "$p" ]; then echo "exec $(git hash-object -- "$p") $p"
       else echo "file $(git hash-object -- "$p") $p"; fi
@@ -46,8 +46,8 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
 
 The fingerprint covers `HEAD`, every index entry's mode and blob, the
 worktree mode on each status line, and a content hash plus executable bit for
-every dirty or untracked file (a symlink's target text instead, so a
-retargeted link is caught even when it dangles).
+every dirty or untracked file (for a symlink, a hash of its raw target text,
+so a retargeted link is caught even when it dangles).
 
 **Immediately after the dispatch**, compare the two fingerprints:
 

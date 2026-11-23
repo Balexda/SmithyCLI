@@ -758,6 +758,13 @@ describe('template lint — no placeholder renders blank', () => {
     expect(findBlankRenderedPlaceholders(planted)).toEqual([]);
   });
 
+  it('detects a bare placeholder split across lines, at the line it opens on', () => {
+    const planted = withTemplate(tree, PLANT_TARGET, () => 'intro\n- `{{\nissue_title\n}}` ← the title\n');
+    expect(findBlankRenderedPlaceholders(planted)).toEqual([
+      { id: PLANT_TARGET, detail: 'line 2: {{issue_title}} renders blank; escape it as \\{{issue_title}}' },
+    ]);
+  });
+
   it('still reports a bare placeholder after a comment, on its own line number', () => {
     const planted = withTemplate(tree, PLANT_TARGET, () => '{{!-- a\ncomment {{x}} --}} {{issue_title}}\n');
     expect(findBlankRenderedPlaceholders(planted)).toEqual([
