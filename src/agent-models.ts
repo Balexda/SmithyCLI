@@ -180,8 +180,12 @@ export function toCodexAgentToml(content: string): { name: string | undefined; t
     `model_reasoning_effort = "${effort}"`,
     '',
     'developer_instructions = """',
-    // Escape any literal triple-quote so it cannot close the block early.
-    instructions.replace(/"""/g, '\\"\\"\\"'),
+    // A TOML multi-line basic string decodes backslash escapes, so escape
+    // every backslash first (a Markdown `\|` would otherwise be an invalid
+    // escape, and `\n`/`\t`/`\u…` would silently decode), then escape any
+    // literal triple-quote so it cannot close the block early. Order matters:
+    // escaping quotes first would have its own backslashes doubled.
+    instructions.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"'),
     '"""',
     '',
   ]
