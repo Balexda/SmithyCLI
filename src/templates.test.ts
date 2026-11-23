@@ -2098,7 +2098,7 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy.helper-docker');
   });
 
-  it('smithy.forge advertises draft-mode voice guidance for deliverable prose', () => {
+  it('smithy.forge advertises draft-mode voice guidance for deliverable prose', async () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     const operationalSkills = forge.split('### Operational Skills\n')[1]?.split('\n---\n')[0];
     const voiceRow = operationalSkills?.match(/^\| `smithy\.helper-voice` \|.+\|$/m)?.[0];
@@ -2110,6 +2110,9 @@ describe('getComposedTemplates', () => {
     expect(voiceRow).toContain('draft mode');
     expect(voiceRow).toMatch(/skip routine code comments/i);
     expect(forge).not.toContain('Voice rules per Role × Mode combination');
+    const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
+    const maidDispatch = claudeForge.split('## Documentation Check\n')[1]?.split('\n---\n')[0];
+    expect(maidDispatch).toContain('**Changed documentation hunks**');
   });
 
   it('smithy-maid flags voice issues in changed documentation without rewriting it', () => {
@@ -2119,6 +2122,8 @@ describe('getComposedTemplates', () => {
 
     expect(voiceCheck).toContain('changed README prose or substantive inline documentation');
     expect(voiceCheck).toContain('only as Flagged findings');
+    expect(voiceCheck).toContain('only the added or modified lines in the changed documentation hunks');
+    expect(maid).toContain('**Changed documentation hunks**');
     expect(flaggedFindings).toMatch(/Voice anti-patterns.*Do not rewrite the prose/);
     expect(maid).toContain('**Read-only.**');
   });
