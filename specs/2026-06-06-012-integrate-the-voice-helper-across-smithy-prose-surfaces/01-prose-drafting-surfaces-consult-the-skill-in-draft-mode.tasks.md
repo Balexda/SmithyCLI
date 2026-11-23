@@ -59,7 +59,7 @@
 
 ### Tasks
 
-- [ ] **Add voice load to render authoring**
+- [x] **Add voice load to render authoring**
 
   Update `src/templates/agent-skills/commands/smithy.render.prompt` so the feature-map drafting phase invokes `Skill("smithy.helper-voice")` in draft mode for Reference discipline before writing artifact prose. Keep the command's existing feature-map structure, dependency table, and specification-debt conventions intact for AS 1.3.
 
@@ -68,7 +68,7 @@
   - The invocation describes Reference discipline without inlining taxonomy text.
   - Existing feature-map template sections and audience tags remain parseable.
 
-- [ ] **Add voice load to mark authoring**
+- [x] **Add voice load to mark authoring**
 
   Update `src/templates/agent-skills/commands/smithy.mark.prompt` so spec, data-model, and contracts drafting invokes `Skill("smithy.helper-voice")` in draft mode for Reference discipline. Preserve the existing artifact templates, `N/A — <reason>` fallback, and no-derived-snapshot rule for AS 1.3 and AS 1.4.
 
@@ -77,7 +77,7 @@
   - The data-model and contracts instructions still support `N/A — <reason>` when no code-shaped entity or contract exists.
   - No helper taxonomy text is pasted into the mark template.
 
-- [ ] **Add voice load to cut authoring**
+- [x] **Add voice load to cut authoring**
 
   Update `src/templates/agent-skills/commands/smithy.cut.prompt` so task-slice artifact drafting invokes `Skill("smithy.helper-voice")` in draft mode for How-to and Reference discipline. Preserve the mandatory task structure, dependency-order table, and debt inheritance rules for AS 1.3.
 
@@ -86,7 +86,7 @@
   - The task format remains the mandatory checkbox task structure consumed by forge.
   - No helper taxonomy text is pasted into the cut template.
 
-- [ ] **Add reference-command regression coverage and validate**
+- [x] **Add reference-command regression coverage and validate**
 
   Add focused coverage in `src/templates.test.ts` (or its helpers) asserting that the composed `smithy.render`, `smithy.mark`, and `smithy.cut` templates each carry a named `Skill("smithy.helper-voice")` reference and parse cleanly. Keep assertions structural — check for the named helper reference, not exact taxonomy wording. Then run the parse test after the render, mark, and cut edits.
 
