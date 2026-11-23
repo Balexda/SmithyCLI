@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Update stale voice-lint status language**
+- [x] **Update stale voice-lint status language**
 
   Update `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` §8, the `src/templates/agent-skills/README.md` voice convention section, and the `CLAUDE.md` `smithy.helper-voice` skill description so each describes the audit voice-tag lint as shipped. The concrete stale marker to remove is the future-tense framing in the skill §8 and README — `The lint currently carries the per-section specs directly; as [every] template surface is wired through it will read them from the same template files` — which implies the enforcement is not yet complete; replace it with present-tense shipped-state wording. (CLAUDE.md already reads present-tense — verify it stays that way.) Preserve the source-vs-deployed boundary: deployable templates must not point readers at source-only documentation paths as instructions.
 
@@ -26,7 +26,7 @@
   - The skill §8, README convention section, and CLAUDE.md skill line all describe the voice-tag lint in the present tense, as an existing `smithy.audit` enforcement surface.
   - No deployable prompt adds a source-tree-only README or `src/...` path as a required runtime reference.
 
-- [ ] **Reconcile the `examples` enum by adopting `optional`**
+- [x] **Reconcile the `examples` enum by adopting `optional`**
 
   Resolve SD-002 by keeping the shipped audit checklist's `optional` value and adding it to the skill §8 grammar plus the README voice convention grammar and key table. The three surfaces should use the same enum order and explain that `optional` imposes no example constraint, without changing the audit lint's existing accepted domain.
 
@@ -35,7 +35,7 @@
   - The README grammar lists `examples: <required|recommended|discouraged|optional|forbidden>`.
   - The skill §8, README key table, and `src/templates/agent-skills/snippets/audit-checklist-voice.md` all describe the `examples` values as `required`, `recommended`, `discouraged`, `optional`, and `forbidden`, with `optional` meaning no example constraint.
 
-- [ ] **Add drift coverage and validate**
+- [x] **Add drift coverage and validate**
 
   Add focused regression coverage in `src/templates.test.ts` or an existing template/documentation test so the future-tense stale-status marker cannot reappear and the `examples` enum remains identical across the skill, README, and audit checklist. Keep assertions structural: compare the enum markers and the stable status phrase, not long prose paragraphs. Then run the standard validation scripts without regenerating derived snapshots.
 

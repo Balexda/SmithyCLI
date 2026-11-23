@@ -184,8 +184,9 @@ Each section's voice is described by a small set of keys: `audience`,
 used by the generating command (`smithy.ignite`, `smithy.render`,
 `smithy.mark`, `smithy.cut`) — not inline in every generated artifact.
 One source of truth, no per-file drift; the artifact itself stays
-clean prose, and `smithy.audit` enforces the specs per section via its
-voice-tag lint (`snippets/audit-checklist-voice.md`).
+clean prose. `smithy.audit`'s voice-tag lint checks only the inline
+voice tags an artifact carries; an artifact with no tags is skipped, not
+checked against these specs.
 
 **For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,
 inline documentation), there is no template to inherit from. Use the
@@ -193,7 +194,10 @@ taxonomy as authoring discipline — pick Role × Mode before drafting
 and stay in it — but do not litter the file with HTML-comment
 metadata unless the user explicitly asks for audience tags.
 
-The tag syntax itself — every key, its allowed values, and a worked
+The examples directive uses `examples: <required|recommended|discouraged|optional|forbidden>`.
+`optional` imposes no example constraint.
+
+The full tag syntax and a worked
 example — lives in
 [`references/audience-tags.md`](references/audience-tags.md). Read it
 when you are writing or checking a tag; the policy above is all you need

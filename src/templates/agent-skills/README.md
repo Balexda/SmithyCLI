@@ -471,9 +471,8 @@ recorded by an HTML-comment tag with the grammar below. **The tag lives
 in the planning-artifact template** (the markdown code-fence block that
 `smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut` emit
 as the artifact shape), **not in every generated artifact instance**.
-That keeps the spec in one place, lets template authors edit it
-centrally, and gives `smithy.audit` a single file to read when checking
-voice. The full Role × Mode taxonomy — conciseness budgets, diagram-
+That keeps the spec in one place for template authors to edit.
+The full Role × Mode taxonomy — conciseness budgets, diagram-
 first framing, depth-control rules — lives in the `smithy.helper-voice`
 skill body. Authors of new command templates should follow it rather
 than redefining voice rules inline.
@@ -482,7 +481,7 @@ The tag grammar (as it appears in templates):
 
 ```
 ## <Section title>
-<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|forbidden>[; applicability: <free-text>] -->
+<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|optional|forbidden>[; applicability: <free-text>] -->
 ```
 
 Keys:
@@ -493,19 +492,15 @@ Keys:
 | `mode` | `explanation` \| `reference` \| `how-to` \| `tutorial`. |
 | `length` | Sentence or paragraph budget (`2-3 sentences`, `3-6 paragraphs`, `tables only`, `5-15 steps`). |
 | `diagram` | `required` \| `recommended` \| `optional`. |
-| `examples` | `required` \| `recommended` \| `discouraged` \| `forbidden`. |
+| `examples` | `required` \| `recommended` \| `discouraged` \| `optional` \| `forbidden`. `optional` imposes no example constraint. |
 | `applicability` (optional) | Free-text condition under which the section legitimately resolves to `N/A` (e.g., `code-shaped features only` on `.data-model.md` / `.contracts.md`). |
 
 Authoring rule: when adding a new `##` section to a planning-artifact
 template, drop the tag immediately under the heading inside the
-template's markdown code fence. `smithy.audit` reads these tags to
-enforce voice rules via its voice-tag lint
-(`snippets/audit-checklist-voice.md`): it flags unknown keys/values,
-length-budget violations, and missing/forbidden diagrams and examples.
-The lint currently carries the per-section specs directly; as every
-template surface is wired through it will read them from the same
-template files, keeping the enforcement surface and the templates in
-lockstep. See
+template's markdown code fence. `smithy.audit` enforces voice rules via
+its voice-tag lint (`snippets/audit-checklist-voice.md`). It flags
+unknown keys and values, length-budget violations, missing required
+diagrams and examples, and the presence of forbidden examples. See
 `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt`
 for the per-cell rules, and that skill's `references/` bundle for the
 material it loads on demand: the review-mode anti-pattern checklist, the

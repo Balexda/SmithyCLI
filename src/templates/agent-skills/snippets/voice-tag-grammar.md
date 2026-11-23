@@ -1,0 +1,1 @@
+<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|optional|forbidden>[; applicability: <free-text>] -->

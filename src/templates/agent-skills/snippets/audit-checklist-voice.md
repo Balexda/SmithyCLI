@@ -21,7 +21,7 @@ A voice tag is a single HTML comment on the first non-blank line beneath a
 
 ```
 ## <Section title>
-<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|optional|forbidden>[; applicability: <free-text>] -->
+{{>voice-tag-grammar}}
 ```
 
 Parse the comment body into `key: value` pairs split on `;`. Keys and values
