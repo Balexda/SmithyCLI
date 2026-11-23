@@ -11,7 +11,7 @@ import {
   getComposedTemplates,
   type ComposedTemplates,
 } from './templates.js';
-import { skillsTemplateDir } from './utils.js';
+import { agentSkillsDir, skillsTemplateDir } from './utils.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 import { toClaudeCommandContent } from './command-frontmatter.js';
 import { MODEL_INVOCABLE_COMMANDS, commandStem } from './template-lint.js';
@@ -107,7 +107,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(36);
+    expect(snippets.size).toBe(37);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -116,6 +116,7 @@ describe('loadSnippets', () => {
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
       'audit-checklist-voice.md',
+      'voice-tag-grammar.md',
       'audit-checklist-engraved.md',
       'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
@@ -2217,6 +2218,31 @@ describe('getComposedTemplates', () => {
     // the taxonomy, per issue #420 sections 6 and 8.
     expect(skill.prompt).toMatch(/<!-- audience:/);
     expect(skill.prompt).toMatch(/N\/A —/);
+  });
+
+  it('keeps the voice-tag examples enum and shipped lint wording aligned', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    const skillSection = skill.prompt.split('## 8. Audience tag grammar')[1]?.split('\n## ')[0] ?? '';
+    const readme = fs.readFileSync(path.join(agentSkillsDir, 'README.md'), 'utf8');
+    const convention = readme.split('## Voice and Audience Tagging Convention')[1]?.split('\n## Feature Kinds')[0] ?? '';
+    const grammar = skill.resources.get('references/audience-tags.md')!.toString();
+    const audit = composed.commands.get('smithy.audit.md')!;
+    const checklist = audit.split('Voice & Audience Tag Lint')[1] ?? '';
+    const examples = ['required', 'recommended', 'discouraged', 'optional', 'forbidden'];
+
+    for (const surface of [skillSection, grammar, convention, checklist]) {
+      expect(surface.match(/examples: <([^>]+)>/)?.[1]?.split('|')).toEqual(examples);
+      expect(surface).toContain('`optional` imposes no example constraint');
+    }
+    for (const surface of [grammar, convention, checklist]) {
+      const row = surface.match(/^(?:\| |- )`examples`[^.\n]*/m)?.[0] ?? '';
+      const values = [...row.matchAll(/`([a-z]+)`/g)].slice(1).map((match) => match[1]);
+      expect(values).toEqual(examples);
+    }
+    for (const surface of [skillSection, grammar, convention]) {
+      expect(surface).not.toMatch(/is wired through\s+it will/);
+      expect(surface).toMatch(/`smithy\.audit`[^.]*voice-tag lint/);
+    }
   });
 
   it('smithy.helper-voice is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
