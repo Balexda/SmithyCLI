@@ -143,6 +143,23 @@ describe('loadScenarios', () => {
       expect(matches[0]!.prompt).not.toMatch(/fetch live|gh issue|gh run|GitHub Actions/i);
     });
 
+    it('loads and selects the committed JVM forge scenario by its exact case name', () => {
+      const scenarios = loadScenarios(realCasesDir);
+      const matches = scenarios.filter((scenario) => scenario.name === 'forge-tdd-slice-jvm');
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0]).toMatchObject({
+        skill: '/smithy.forge',
+        fixture: 'jvm',
+        requires_git: true,
+      });
+      const invocation = matches[0]!.prompt.split('\n')[0]!;
+      expect(invocation).toBe('specs/01-repair-greeting-reversal.tasks.md 1');
+      const [taskFile] = invocation.split(' ');
+      expect(fs.existsSync(path.join(here, '..', 'fixture', 'jvm', taskFile!))).toBe(true);
+      expect(errSpy).not.toHaveBeenCalled();
+    });
+
     it('preserves a boolean requires_git flag when present', () => {
       const dir = mkdir();
       const content = [
@@ -211,27 +228,23 @@ describe('loadScenarios', () => {
       expect(errSpy).not.toHaveBeenCalled();
     });
 
-    it('preserves the current fixture-less scenario inventory and ordering', () => {
+    it('preserves the committed scenario inventory and ordering', () => {
+      const expectedNames = [...currentScenarioNames, 'forge-tdd-slice-jvm'].sort();
       const yamlFiles = fs.readdirSync(realCasesDir)
         .filter((file) => file.endsWith('.yaml'))
         .sort();
 
-      expect(yamlFiles).toEqual([...currentScenarioFiles]);
-      for (const filename of currentScenarioFiles) {
-        const contents = fs.readFileSync(path.join(realCasesDir, filename), 'utf-8');
-        expect(contents).not.toMatch(/^fixture:/m);
-      }
+      expect(yamlFiles).toEqual(expectedNames.map((name) => `${name}.yaml`));
 
       const scenarios = loadScenarios(realCasesDir);
-      expect(scenarios.map((scenario) => scenario.name)).toEqual([
-        ...currentScenarioNames,
-      ]);
-      expect(scenarios.every((scenario) => !Object.hasOwn(scenario, 'fixture'))).toBe(true);
+      expect(scenarios.map((scenario) => scenario.name)).toEqual(expectedNames);
       expect(errSpy).not.toHaveBeenCalled();
     });
 
-    it('matches the committed shape snapshot for every current scenario', () => {
-      const scenarios = loadScenarios(realCasesDir);
+    it('matches the committed shape snapshot for the original fixture-less scenarios', () => {
+      const scenarios = loadScenarios(realCasesDir).filter(
+        (scenario) => scenario.name !== 'forge-tdd-slice-jvm',
+      );
 
       // Compares all nine scenarios in full — skill, prompt, structural
       // expectations, sub-agent evidence, local fixtures, model and timeout —
