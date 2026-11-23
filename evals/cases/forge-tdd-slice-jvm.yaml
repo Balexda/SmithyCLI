@@ -4,11 +4,21 @@ prompt: |
   specs/01-repair-greeting-reversal.tasks.md 1
 
   This is an offline fixture repository with `main` as its default branch.
-  Complete the slice and commit locally. End with a `## Slice Summary` heading
-  on its own line and summarize the work and validation.
+  Complete the slice and commit locally. Include a `## Slice Summary` heading
+  on its own line. Report the local commit as `Commit: <sha>` and the
+  successful Gradle check as `gradle check: BUILD SUCCESSFUL`.
+  Identify the implementation and review helpers by name in the summary.
 fixture: jvm
 requires_git: true
+timeout: 900
 structural_expectations:
   required_headings:
     - '## Slice Summary'
-sub_agent_evidence: []
+  required_patterns:
+    - '\bCommit:\s+`?[0-9a-f]{7,40}\b'
+    - '\bgradle check:\s+BUILD SUCCESSFUL\b'
+sub_agent_evidence:
+  - agent: smithy-implement
+    pattern: '\bsmithy-implement\b(?![\w-])'
+  - agent: smithy-implementation-review
+    pattern: '\bsmithy-implementation-review\b'
