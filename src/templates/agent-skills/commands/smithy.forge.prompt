@@ -26,6 +26,7 @@ the canonical set of fallbacks for problems that recur across forge runs.
 | Skill | Load when |
 |-------|-----------|
 | `smithy.helper-docker` | A docker command appears stuck (>60s without progress), a container exits unexpectedly, or validation fails with docker-related errors. |
+| `smithy.helper-voice` | Use draft mode when authoring deliverable prose for a README, ADR, runbook, migration plan, or substantive inline documentation. Skip routine code comments. |
 
 ---
 
