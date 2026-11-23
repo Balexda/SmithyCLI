@@ -34,6 +34,6 @@
 
 | Boundary | Contract |
 |----------|----------|
-| Calling workflow → Goal reviewer | Pass the three review inputs. Omit the plan, tasks and other reviewers' findings. Bind the shared routing context to the caller's reporting surface without passing withheld material. |
+| Calling workflow → Goal reviewer | Pass the three review inputs. Omit the plan, tasks and other reviewers' findings. Bind the shared routing context to the caller's target artifact path and review note surface without passing withheld material. |
 | Goal reviewer → Calling workflow | Return read-only verdicts and routed findings. The caller checks the evidence, acts on each destination and uses verdicts to determine whether criteria remain open. |
 | Runtime probe → Milestone 3 | Hand off recorded dispatch-context outcomes for Claude and Codex. For each degraded runtime, require the terminal and pull request to say that no independent review ran. |
