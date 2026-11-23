@@ -2113,6 +2113,9 @@ describe('getComposedTemplates', () => {
     const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
     const maidDispatch = claudeForge.split('## Documentation Check\n')[1]?.split('\n---\n')[0];
     expect(maidDispatch).toContain('**Changed documentation hunks**');
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', '`docs/` prose', 'substantive inline documentation']) {
+      expect(maidDispatch).toContain(surface);
+    }
   });
 
   it('smithy-maid flags voice issues in changed documentation without rewriting it', () => {
@@ -2120,7 +2123,9 @@ describe('getComposedTemplates', () => {
     const voiceCheck = maid.match(/^\| \*\*Voice anti-patterns\*\* \|.+\|$/m)?.[0];
     const flaggedFindings = maid.split('### Flagged\n')[1]?.split('\n---\n')[0];
 
-    expect(voiceCheck).toContain('changed README prose or substantive inline documentation');
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', '`docs/` prose', 'substantive inline documentation']) {
+      expect(voiceCheck).toContain(surface);
+    }
     expect(voiceCheck).toContain('only as Flagged findings');
     expect(voiceCheck).toContain('only the added or modified lines in the changed documentation hunks');
     expect(maid).toContain('**Changed documentation hunks**');

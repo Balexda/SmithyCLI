@@ -355,7 +355,7 @@ Use the **smithy-maid** sub-agent. Pass it:
 - **Changed files**: the list of files modified between BASE_SHA and HEAD (including review auto-fix commits)
 - **Spec/strike paths**: the spec, contracts, data-model, or strike file paths from Intake
 - **Slice goal**: the slice's stated goal
-- **Changed documentation hunks**: the added and modified lines from `git diff BASE_SHA..HEAD` for README and `docs/` files and for changed doc comments, so voice findings stay limited to prose this change wrote
+- **Changed documentation hunks**: the added and modified lines from `git diff BASE_SHA..HEAD` for every deliverable-prose surface the `smithy.helper-voice` row above names — READMEs, ADRs, runbooks, migration plans, other `docs/` prose, and changed substantive inline documentation — so voice findings stay limited to prose this change wrote
 
 After the sub-agent returns:
 
