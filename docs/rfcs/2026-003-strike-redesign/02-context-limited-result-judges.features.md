@@ -49,7 +49,7 @@ _None — no specification debt was recorded._
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| F1 | Goal Review Against the Original Request | — | — |
+| F1 | Goal Review Against the Original Request | — | specs/2026-11-23-016-goal-review-against-the-original-request/ |
 | F2 | Diff-Only Review and Working Plan Protection | F1 | — |
 
 The reviewer contracts can be developed in parallel. F2 needs the goal reviewer from F1 to finish the plan-access probe.
