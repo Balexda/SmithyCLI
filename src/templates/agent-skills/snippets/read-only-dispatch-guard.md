@@ -30,6 +30,7 @@ immediately before the dispatch and `OUT=after` immediately after it:
 ```bash
 : "${OUT:?set OUT to before, after, or restored}"
 GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
+perm() { ls -ld -- "$1" | cut -c1-10; }
 {
   git rev-parse HEAD
   git ls-files -s
@@ -37,17 +38,27 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
   { git diff --name-only -z; git ls-files -o --exclude-standard -z; } |
     sort -zu | while IFS= read -r -d '' p; do
       if [ -L "$p" ]; then echo "link $(readlink -- "$p" | git hash-object --stdin) $p"
-      elif [ ! -e "$p" ]; then echo "gone $p"
-      elif [ -x "$p" ]; then echo "exec $(git hash-object -- "$p") $p"
-      else echo "file $(git hash-object -- "$p") $p"; fi
+      elif [ -d "$p" ]; then
+        echo "tree $({
+          git -C "$p" rev-parse HEAD
+          git -C "$p" diff HEAD --binary
+          git -C "$p" ls-files -o --exclude-standard | while IFS= read -r u; do
+            echo "$(perm "$p/$u") $(git hash-object -- "$p/$u") $u"
+          done
+        } | git hash-object --stdin) $p"
+      elif [ -e "$p" ]; then echo "$(perm "$p") $(git hash-object -- "$p") $p"
+      else echo "gone $p"; fi
     done
 } > "$GUARD/$OUT"
 ```
 
 The fingerprint covers `HEAD`, every index entry's mode and blob, the
-worktree mode on each status line, and a content hash plus executable bit for
-every dirty or untracked file (for a symlink, a hash of its raw target text,
-so a retargeted link is caught even when it dangles).
+worktree mode on each status line, and the full permission bits plus a content
+hash for every dirty or untracked file. A symlink is recorded as a hash of its
+raw target text, so a retargeted link is caught even when it dangles. A dirty
+submodule, which git lists as one directory, is recorded as one hash over its
+`HEAD`, its diff, and the permissions and content of its untracked files, so
+an edit inside it is caught even when the submodule was already dirty.
 
 **Immediately after the dispatch**, compare the two fingerprints:
 
@@ -74,6 +85,8 @@ diff "$GUARD/before" "$GUARD/after"
   Report the violation as a stop: say which parts differed (`HEAD`, index,
   file content, or mode), name the paths from the diff, say that no output
   from the sub-agent was applied, and say whether the restored fingerprint
-  matched `before`. If it did not match, list the paths that still differ
+  matched `before`. The block does not undo changes inside a submodule, or a
+  permission change git does not track on a tracked file, so those show up in
+  the restored diff. If it did not match, list the paths that still differ
   and leave them for the operator. Never continue as though the dispatch had
   returned a clean result.
