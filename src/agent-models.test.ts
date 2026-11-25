@@ -112,6 +112,27 @@ describe('toCodexAgentToml', () => {
     expect(toml).toContain('model_reasoning_effort = "high"');
   });
 
+  // Codex documents no per-agent web-search key: a custom agent file can
+  // change model settings, instructions, and disable `features.*`, and web
+  // access follows the session's top-level `web_search` setting. Emitting one
+  // would be a key the runtime ignores (INV-3), so web tools map to nothing.
+  it('emits no web-search key for an agent that declares web tools', () => {
+    const webAgent = DEEP_AGENT.replace('  - Grep\n', '  - Grep\n  - WebFetch\n  - WebSearch\n');
+    expect(parseAgentModel(webAgent).tools).toContain('WebSearch');
+    const parsed = parseToml(toCodexAgentToml(webAgent).toml) as Record<string, unknown>;
+    expect(Object.keys(parsed).sort()).toEqual(
+      ['description', 'developer_instructions', 'model_reasoning_effort', 'name', 'sandbox_mode'],
+    );
+    expect(parsed.sandbox_mode).toBe('read-only');
+  });
+
+  it('emits no web-search key for an agent without web tools', () => {
+    for (const agent of [DEEP_AGENT, WRITE_AGENT]) {
+      const parsed = parseToml(toCodexAgentToml(agent).toml) as Record<string, unknown>;
+      expect(Object.keys(parsed).some(k => /web/i.test(k))).toBe(false);
+    }
+  });
+
   it('returns no name when the template lacks frontmatter name', () => {
     expect(toCodexAgentToml('---\ntier: deep\n---\nbody').name).toBeUndefined();
   });

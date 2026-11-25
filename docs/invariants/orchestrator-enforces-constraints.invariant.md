@@ -30,7 +30,6 @@ open to injected text (D-9).
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `src/agent-models.ts` (`smithy-implement`) | A read-only parent overrides the agent's `workspace-write` default, and forge does not probe for it | Accepted: forge writes the branch and base state before any dispatch, so a read-only parent fails there first | — | low |
-| `src/templates/agent-skills/commands/smithy.forge.prompt` (reviewer dispatch) | A read-only dispatch is not verified | Temporary: content snapshot before and after | #647 | medium |
 | `src/templates/agent-skills/snippets/plan-review-triage.md` (`apply`) | Edits any path a finding names | Temporary: every composer binds a scope | #648 | medium |
 | `src/templates/agent-skills/agents/smithy.survey.prompt` (queries) | Constraint text goes into queries verbatim | Temporary: use generic public terms | #651 | medium |
 

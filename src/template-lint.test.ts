@@ -29,6 +29,7 @@ import {
   emittedHeadings,
   crossTemplateCopyFindings,
   findCrossTemplateCopies,
+  findBlankRenderedPlaceholders,
   findDeadRoutingDestinations,
   findDependencyOrderCheckboxes,
   findDuplicateInjections,
@@ -721,5 +722,53 @@ describe('template lint — rosters match the tree', () => {
       );
       expect([...listed].sort(), `smithy.${promptName} Referenced By column`).toEqual([...actual].sort());
     }
+  });
+});
+
+describe('template lint — no placeholder renders blank', () => {
+  // Deploy-time Handlebars renders with an empty context, so a bare
+  // `{{name}}` the agent was meant to substitute at run time deploys as an
+  // empty string. Escaped (`\{{name}}`), partial, block, and comment forms
+  // are not bare, and `artifactsRoot` / `else` are defined by the renderer.
+  it('finds no bare mustache outside the render-time names', () => {
+    const findings = findBlankRenderedPlaceholders(tree);
+    expect(findings, `placeholders that deploy blank:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('detects a planted bare placeholder', () => {
+    const planted = plant(PLANT_TARGET, '- `{{issue_title}}` ← the title');
+    const findings = findBlankRenderedPlaceholders(planted);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.id).toBe(PLANT_TARGET);
+    expect(findings[0]!.detail).toMatch(/\{\{issue_title\}\} renders blank/);
+  });
+
+  it('passes escaped placeholders, helpers, partials, blocks, and comments', () => {
+    const planted = plant(PLANT_TARGET, [
+      '- `\\{{issue_title}}` ← the title',
+      '{{artifactsRoot}}specs/',
+      '{{#ifAgent}}a{{else}}b{{/ifAgent}}',
+      '{{>branch-policy}}',
+      '{{!-- a comment --}}',
+      '{{!-- Example: {{issue_title}} --}}',
+      '{{!-- spans',
+      'two lines: {{issue_title}} --}}',
+      '{{! short comment }}',
+    ].join('\n'));
+    expect(findBlankRenderedPlaceholders(planted)).toEqual([]);
+  });
+
+  it('detects a bare placeholder split across lines, at the line it opens on', () => {
+    const planted = withTemplate(tree, PLANT_TARGET, () => 'intro\n- `{{\nissue_title\n}}` ← the title\n');
+    expect(findBlankRenderedPlaceholders(planted)).toEqual([
+      { id: PLANT_TARGET, detail: 'line 2: {{issue_title}} renders blank; escape it as \\{{issue_title}}' },
+    ]);
+  });
+
+  it('still reports a bare placeholder after a comment, on its own line number', () => {
+    const planted = withTemplate(tree, PLANT_TARGET, () => '{{!-- a\ncomment {{x}} --}} {{issue_title}}\n');
+    expect(findBlankRenderedPlaceholders(planted)).toEqual([
+      { id: PLANT_TARGET, detail: 'line 2: {{issue_title}} renders blank; escape it as \\{{issue_title}}' },
+    ]);
   });
 });

@@ -345,31 +345,31 @@ For **each** milestone extracted in Phase 3, perform the following steps:
 1. **Build the rfc-type interpolation context.** Compute a value for every
    variable listed below. Sources:
 
-   - `{{title}}` ← the milestone's title (the same `<milestone-title>` used
+   - `\{{title}}` ← the milestone's title (the same `<milestone-title>` used
      in the `[RFC][Milestone] <milestone-title>` issue title).
-   - `{{milestone_number}}` ← the integer `N` from the
+   - `\{{milestone_number}}` ← the integer `N` from the
      `### Milestone N: <Title>` heading (no leading zeros — e.g., `3`).
-   - `{{milestone_title}}` ← the `<Title>` portion of
+   - `\{{milestone_title}}` ← the `<Title>` portion of
      `### Milestone N: <Title>`.
-   - `{{milestone_description}}` ← the milestone's `**Description**` body
+   - `\{{milestone_description}}` ← the milestone's `**Description**` body
      parsed in Phase 3.
-   - `{{milestone_success_criteria}}` ← the milestone's `**Success
+   - `\{{milestone_success_criteria}}` ← the milestone's `**Success
      Criteria**` body parsed in Phase 3. When the milestone had no
      `**Success Criteria**` block, use empty string.
-   - `{{rfc_path}}` ← the artifact path argument that `smithy.orders` was
+   - `\{{rfc_path}}` ← the artifact path argument that `smithy.orders` was
      invoked with (the `.rfc.md` file).
-   - `{{parent_issue}}` ← the `#<n>` reference for the RFC parent tracking
+   - `\{{parent_issue}}` ← the `#<n>` reference for the RFC parent tracking
      issue (the `[RFC] <rfc-title>` epic) created earlier in this same
      orders run. If for some reason that parent was not created, use
      empty string.
-   - `{{next_step}}` ← the literal string
+   - `\{{next_step}}` ← the literal string
      `smithy.render <rfc_path> <milestone_number>`, **with `<rfc_path>` and
      `<milestone_number>` already substituted using the values captured
      above** (e.g., `smithy.render {{artifactsRoot}}docs/rfcs/2026-03-21-001-foo.rfc.md 3`).
-     Compose `{{next_step}}`'s value first, before running the global
+     Compose `\{{next_step}}`'s value first, before running the global
      substitution pass on the template body, so the rendered body's
-     `{{next_step}}` becomes the fully-resolved command rather than a
-     command still containing `{{rfc_path}}` / `{{milestone_number}}`.
+     `\{{next_step}}` becomes the fully-resolved command rather than a
+     command still containing `\{{rfc_path}}` / `\{{milestone_number}}`.
 
 2. **Read the template file.** Using the `Read` tool, attempt to read
    `<manifestDir>/templates/orders/rfc.md`.
@@ -378,13 +378,13 @@ For **each** milestone extracted in Phase 3, perform the following steps:
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. Because
-   `{{next_step}}`'s value was pre-composed in step 1 with `<rfc_path>`
+   `\{{next_step}}`'s value was pre-composed in step 1 with `<rfc_path>`
    and `<milestone_number>` already substituted, the rendered
-   `{{next_step}}` introduces no new placeholders into the output —
+   `\{{next_step}}` introduces no new placeholders into the output —
    this single pass only replaces tokens that were already present in
    the template body, including any user-customised parenthetical aside
-   that references `{{rfc_path}}` or `{{milestone_number}}` directly.
-   Unknown `{{variable}}` names (any token not in the rfc-row context
+   that references `\{{rfc_path}}` or `\{{milestone_number}}` directly.
+   Unknown `\{{variable}}` names (any token not in the rfc-row context
    above) are **left as literal text** — do not error and do not delete them.
 
    Write the rendered body to `/tmp/orders_body.md` and then call:
@@ -464,21 +464,21 @@ For **each** feature extracted in Phase 3, perform the following steps:
 1. **Build the features-type interpolation context.** Compute a value for every
    variable listed below. Sources:
 
-   - `{{title}}` ← the feature's title (the same `<feature-title>` used in the
+   - `\{{title}}` ← the feature's title (the same `<feature-title>` used in the
      `[Feature] <feature-title>` issue title).
-   - `{{feature_description}}` ← the feature description body parsed in
+   - `\{{feature_description}}` ← the feature description body parsed in
      Phase 3.
-   - `{{milestone_number}}` ← the milestone number parsed from the feature
+   - `\{{milestone_number}}` ← the milestone number parsed from the feature
      map's `**Milestone**` metadata in Phase 3.
-   - `{{parent_issue}}` ← the `#<n>` reference for the matched
+   - `\{{parent_issue}}` ← the `#<n>` reference for the matched
      `[RFC][Milestone] <milestone-title>` issue. If no parent issue was found,
      use empty string.
-   - `{{features_path}}` ← the value captured in Phase 3 from the source RFC's
+   - `\{{features_path}}` ← the value captured in Phase 3 from the source RFC's
      `## Dependency Order` table `Artifact` column for this milestone. When
      Phase 3 could not locate the source RFC, could not find the matching
      milestone row by number, or found an empty/`—` artifact cell, use empty
      string.
-   - `{{next_step}}` ← the literal instruction `smithy.mark` on this
+   - `\{{next_step}}` ← the literal instruction `smithy.mark` on this
      feature. Include enough context for the
      operator to run mark on the specific feature, e.g.
      `smithy.mark <features_path> <feature_number>` when that source path and
@@ -491,7 +491,7 @@ For **each** feature extracted in Phase 3, perform the following steps:
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. Unknown
-   `{{variable}}` names (any token not in the features-type context above)
+   `\{{variable}}` names (any token not in the features-type context above)
    are **left as literal text** — do not error and do not delete them.
 
    Write the rendered body to `/tmp/orders_body.md` and then call:
@@ -551,33 +551,33 @@ For **each** user story extracted in Phase 3, perform the following steps:
 1. **Build the spec-type interpolation context.** Compute a value for every
    variable listed below. Sources:
 
-   - `{{title}}` ← the user story's title (the same `<story-title>` used in
+   - `\{{title}}` ← the user story's title (the same `<story-title>` used in
      the `[Story] <story-title>` issue title).
-   - `{{parent_issue}}` ← empty string. The `.spec.md` mapping creates no
+   - `\{{parent_issue}}` ← empty string. The `.spec.md` mapping creates no
      parent ticket upstream, so there is no `#<n>` reference to inject.
-   - `{{user_story}}` ← the user story body parsed in Phase 3
+   - `\{{user_story}}` ← the user story body parsed in Phase 3
      (`As a <persona>, I want <goal> so that <benefit>.`).
-   - `{{user_story_number}}` ← the integer `N` from the `### User Story N:`
+   - `\{{user_story_number}}` ← the integer `N` from the `### User Story N:`
      heading (no leading zeros — e.g., `3`).
-   - `{{acceptance_scenarios}}` ← the Given/When/Then scenarios block for
+   - `\{{acceptance_scenarios}}` ← the Given/When/Then scenarios block for
      this story from Phase 3.
-   - `{{priority}}` ← the story's priority (`P1` / `P2` / `P3`).
-   - `{{spec_path}}` ← the artifact path argument that `smithy.orders` was
+   - `\{{priority}}` ← the story's priority (`P1` / `P2` / `P3`).
+   - `\{{spec_path}}` ← the artifact path argument that `smithy.orders` was
      invoked with (the `.spec.md` file).
-   - `{{spec_folder}}` ← the parent folder of `{{spec_path}}` (e.g.,
+   - `\{{spec_folder}}` ← the parent folder of `\{{spec_path}}` (e.g.,
      `specs/2026-03-14-001-webhook-support`).
-   - `{{data_model_path}}` ← the sibling `<spec_folder>/<basename>.data-model.md`
+   - `\{{data_model_path}}` ← the sibling `<spec_folder>/<basename>.data-model.md`
      path. If no such file exists on disk, use empty string.
-   - `{{contracts_path}}` ← the sibling `<spec_folder>/<basename>.contracts.md`
+   - `\{{contracts_path}}` ← the sibling `<spec_folder>/<basename>.contracts.md`
      path. If no such file exists on disk, use empty string.
-   - `{{next_step}}` ← the literal string
+   - `\{{next_step}}` ← the literal string
      `smithy.cut <spec_folder> <user_story_number>`, **with `<spec_folder>` and
      `<user_story_number>` already substituted using the values captured
      above** (e.g., `smithy.cut specs/2026-03-14-001-webhook-support 3`).
-     Compose `{{next_step}}`'s value first, before running the global
+     Compose `\{{next_step}}`'s value first, before running the global
      substitution pass on the template body, so the rendered body's
-     `{{next_step}}` becomes the fully-resolved command rather than a
-     command still containing `{{spec_folder}}` / `{{user_story_number}}`.
+     `\{{next_step}}` becomes the fully-resolved command rather than a
+     command still containing `\{{spec_folder}}` / `\{{user_story_number}}`.
 
 2. **Read the template file.** Using the `Read` tool, attempt to read
    `<manifestDir>/templates/orders/spec.md`.
@@ -587,12 +587,12 @@ For **each** user story extracted in Phase 3, perform the following steps:
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. This single
    pass is what handles the parenthetical-leak case: if the default
-   template body contains an aside such as ``Run `{{next_step}}`
-   (equivalent to `smithy.cut {{spec_folder}} {{user_story_number}}`) to
-   …``, the parenthetical's `{{spec_folder}}` and `{{user_story_number}}`
-   are replaced inline in the same pass that replaces `{{next_step}}`
-   itself — so the rendered output contains no leftover `{{…}}` tokens
-   for known variables. Unknown `{{variable}}` names (any token not in
+   template body contains an aside such as ``Run `\{{next_step}}`
+   (equivalent to `smithy.cut \{{spec_folder}} \{{user_story_number}}`) to
+   …``, the parenthetical's `\{{spec_folder}}` and `\{{user_story_number}}`
+   are replaced inline in the same pass that replaces `\{{next_step}}`
+   itself — so the rendered output contains no leftover `\{{…}}` tokens
+   for known variables. Unknown `\{{variable}}` names (any token not in
    the spec-type context above) are **left as literal text** — do not
    error and do not delete them.
 
@@ -674,25 +674,25 @@ For **each** slice extracted in Phase 3, perform the following steps:
 1. **Build the tasks-type interpolation context.** Compute a value for every
    variable listed below. Sources:
 
-   - `{{title}}` ← the slice's title (the same `<slice-title>` used in the
+   - `\{{title}}` ← the slice's title (the same `<slice-title>` used in the
      `[Slice] <slice-title>` issue title).
-   - `{{slice_number}}` ← the integer `N` from the `## Slice N: <Title>`
+   - `\{{slice_number}}` ← the integer `N` from the `## Slice N: <Title>`
      heading (no leading zeros — e.g., `2`).
-   - `{{slice_goal}}` ← the slice's goal statement parsed in Phase 3.
-   - `{{slice_tasks}}` ← the slice's task checklist parsed in Phase 3. This
+   - `\{{slice_goal}}` ← the slice's goal statement parsed in Phase 3.
+   - `\{{slice_tasks}}` ← the slice's task checklist parsed in Phase 3. This
      is a multi-line markdown value: it includes the `- [ ]` bullets and
      any nested prose under each bullet. Preserve the embedded newlines and
      list structure verbatim during substitution — do not flatten, trim, or
      collapse the value to a single line.
-   - `{{tasks_path}}` ← the artifact path argument that `smithy.orders` was
+   - `\{{tasks_path}}` ← the artifact path argument that `smithy.orders` was
      invoked with (the `.tasks.md` file).
-   - `{{parent_issue}}` ← the `#<n>` reference for the `[Story] <story-title>`
+   - `\{{parent_issue}}` ← the `#<n>` reference for the `[Story] <story-title>`
      issue resolved by the parent-linking `search-issues.sh` call earlier in
      this `.tasks.md` mapping. If no parent was found, use empty string.
-   - `{{next_step}}` ← the literal string `smithy.forge on this slice`
+   - `\{{next_step}}` ← the literal string `smithy.forge on this slice`
      (note: this is an English phrase, not
      a CLI-shaped command with placeholder slots, so there are no nested
-     `{{…}}` references to resolve within it).
+     `\{{…}}` references to resolve within it).
 
 2. **Read the template file.** Using the `Read` tool, attempt to read
    `<manifestDir>/templates/orders/tasks.md`.
@@ -701,10 +701,10 @@ For **each** slice extracted in Phase 3, perform the following steps:
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. When the
-   `{{slice_tasks}}` placeholder is replaced, its multi-line markdown
+   `\{{slice_tasks}}` placeholder is replaced, its multi-line markdown
    value (the parsed `- [ ]` task checklist) must be inserted with its
    newlines and list structure preserved so the rendered body still
-   renders as a list. Unknown `{{variable}}` names (any token not in
+   renders as a list. Unknown `\{{variable}}` names (any token not in
    the tasks-type context above) are **left as literal text** — do not
    error and do not delete them.
 

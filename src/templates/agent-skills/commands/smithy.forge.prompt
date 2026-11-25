@@ -238,7 +238,10 @@ git diff --name-only <BASE_SHA> HEAD
 git diff <BASE_SHA> HEAD
 ```
 
-Use the **smithy-implementation-review** sub-agent. Pass it:
+Use the **smithy-implementation-review** sub-agent, wrapped in the
+*Read-Only Review Guard* below: snapshot immediately before the dispatch,
+compare immediately after it, and act on the returned findings only when the
+comparison shows no difference. Pass it:
 
 - **BASE_SHA**: The commit SHA from before implementation started
 - **Slice goal**: The slice's stated goal
@@ -283,6 +286,14 @@ containing a list of `Finding` entries (`category`, `kind`, `severity`,
 `proposed_fix`) and a summary. It does not modify files, run commands, or
 create commits — forge owns every on-disk change and commit resulting from
 a finding.
+
+### Read-Only Review Guard
+
+{{>read-only-dispatch-guard}}
+
+On a violation, record it in the **Review Summary** as a read-only contract
+violation and stop the slice there: skip every later section, including the
+Pull Request.
 
 {{>plan-review-triage}}
 

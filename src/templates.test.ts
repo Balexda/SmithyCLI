@@ -12,6 +12,7 @@ import {
   type ComposedTemplates,
 } from './templates.js';
 import { agentSkillsDir, skillsTemplateDir } from './utils.js';
+import { splitFrontmatter } from './frontmatter.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 import { toClaudeCommandContent } from './command-frontmatter.js';
 import { MODEL_INVOCABLE_COMMANDS, commandStem } from './template-lint.js';
@@ -107,7 +108,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(37);
+    expect(snippets.size).toBe(38);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -146,6 +147,7 @@ describe('loadSnippets', () => {
       'debt-grading.md',
       'debt-from-clarify.md',
       'plan-review-triage.md',
+      'read-only-dispatch-guard.md',
       'drift-categories.md',
     ];
     for (const file of expectedFiles) {
@@ -2046,6 +2048,73 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy-implement');
     expect(forge).toContain('smithy-implementation-review');
     expect(forge).not.toContain('Use test-driven development for each task');
+  });
+
+  // The survey agent's web-tool vocabulary is Claude's; Codex reaches the web
+  // only through its hosted `web_search` tool, so the Codex body names that
+  // tool and never a Claude tool name outside the Claude branch (INV-3).
+  it('smithy-survey names the hosted web_search tool on Codex, and WebFetch only on Claude', () => {
+    const body = (variant: ComposedTemplates) =>
+      splitFrontmatter(variant.agents.get('smithy.survey.md')!).body;
+    const codex = body(codexComposed);
+    expect(codex).toContain('`web_search`');
+    expect(codex).not.toMatch(/WebFetch|WebSearch/);
+    const claude = body(claudeComposed);
+    expect(claude).toContain('`WebFetch`');
+    expect(claude).not.toContain('`web_search`');
+  });
+
+  // A candidate whose page could not be retrieved is never presented as
+  // verified (P-2): it is dropped or kept with an explicit snippet-only gap.
+  it('smithy-survey marks an unretrieved candidate unverified rather than verified', () => {
+    for (const variant of [claudeComposed, codexComposed]) {
+      expect(variant.agents.get('smithy.survey.md')!).toContain('`unverified (snippet only)`');
+    }
+  });
+
+  // Forge's reviewer is read-only by declaration only — the parent turn's
+  // sandbox overrides the agent's — so forge proves it by snapshotting the
+  // repository around the dispatch (INV-7). The guard must be composed into
+  // the section the dispatch step names, on both sub-agent variants.
+  it('smithy.forge composes the read-only dispatch guard in the section the review dispatch names', () => {
+    const canary = 'git stash create > "$GUARD/stash"';
+    for (const [label, variant] of [['claude', claudeComposed], ['codex', codexComposed]] as const) {
+      const forge = variant.commands.get('smithy.forge.md')!;
+      expect(forge, label).toMatch(/smithy-implementation-review\*\* sub-agent, wrapped in the\s+\*Read-Only Review Guard\*/);
+      const start = forge.indexOf('### Read-Only Review Guard');
+      expect(start, label).toBeGreaterThan(-1);
+      const rest = forge.slice(forge.indexOf('\n', start) + 1);
+      const end = rest.search(/^#{1,3} /m);
+      const section = end === -1 ? rest : rest.slice(0, end);
+      expect(section, label).toContain(canary);
+      expect(section, label).toContain('git ls-files -s');
+      expect(section, label).toContain('git status --porcelain=v2 --untracked-files=all');
+      expect(forge.split(canary).length - 1, label).toBe(1);
+    }
+    // Gemini has no sub-agent, so there is no dispatch to guard.
+    expect(geminiComposed.commands.get('smithy.forge.md')!).not.toContain('Read-Only Review Guard');
+  });
+
+  // Phase 5's interpolation-context lists name each placeholder in a code
+  // span. Deploy-time Handlebars renders an unescaped `{{title}}` with an
+  // empty context, which turned every bullet into an empty span and an arrow.
+  it('smithy.orders interpolation contexts render their placeholder names', () => {
+    const names = [
+      'title', 'milestone_number', 'milestone_title', 'milestone_description',
+      'milestone_success_criteria', 'rfc_path', 'parent_issue', 'next_step',
+      'feature_description', 'features_path', 'user_story', 'user_story_number',
+      'acceptance_scenarios', 'priority', 'spec_path', 'spec_folder',
+      'data_model_path', 'contracts_path', 'slice_number', 'slice_goal',
+      'slice_tasks', 'tasks_path',
+    ];
+    for (const [label, variant] of [['claude', claudeComposed], ['codex', codexComposed]] as const) {
+      const orders = variant.commands.get('smithy.orders.md')!;
+      for (const name of names) {
+        expect(orders, `${label}: ${name}`).toContain(`\`{{${name}}}\` ←`);
+      }
+      expect(orders, label).not.toMatch(/``\s*←/);
+      expect(orders, label).not.toMatch(/(^|[^`])``\s+names\b/m);
+    }
   });
 
   // US4 Slice 1 Task 1: the RFC parser in Phase 3 must enumerate
