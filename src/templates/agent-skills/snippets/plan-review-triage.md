@@ -21,24 +21,24 @@ finding arriving with no `destination`, or one you do not recognize, is a
 drift category go to the note surface prominently, so the reader can
 confirm the underlying assumption rather than silently accepting a fix.
 
-For each `debt` finding, append a row to the target artifact's
-`## Specification Debt` index table with the next available `SD-NNN`
-identifier, continuing from whatever the artifact already carries
-(including any debt inherited from a parent) rather than resetting. Use the
-finding's `description` as the body of a new `### SD-NNN — <Title>` detail
-section, never as a table cell, and its `proposed_fix` as the section's
-`**Recommendation:**` line. A `debt` finding with no recommended option has
-not passed the gate's recommend-first rule: report it on the review note
-surface instead of filing it.
+For each `debt` finding, add an `SD-NNN` row to the target artifact's
+`## Specification Debt` index table. Use the finding's `description` as the
+body of a new `### SD-NNN — <Title>` detail section, never as a table cell,
+and its `proposed_fix` as the section's `**Recommendation:**` line. A `debt`
+finding with no recommended option has not passed the gate's
+recommend-first rule: report it on the review note surface instead of
+filing it.
 
 {{>debt-row-shape}}
 
+For each `iq` finding, add an `IQ-NNN` row instead: the finding's
+`description` compressed into a single question of 120 characters or fewer,
+the `S<N>` slice it lands in (`—` when it spans slices), a `Settled By`
+value of `building`, `testing`, or `reading code`, and `Origin` `local`.
 
-For each `iq` finding, append a row instead: the next available `IQ-NNN`,
-the finding's `description` compressed into a single question of 120
-characters or fewer, the `S<N>` slice it lands in (`—` when it spans
-slices), a `Settled By` value of `building`, `testing`, or `reading code`,
-and `Origin` `local`.
+Both kinds of row follow the shared append rule:
+
+{{>debt-row-append}}
 
 The review agent never modifies files itself — every on-disk change from a
 finding is made here, by this command.

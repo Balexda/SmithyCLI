@@ -70,6 +70,11 @@ After the sub-agent returns its summary, update the existing tasks file on disk
 to incorporate the refinements. Do not dump the full file contents into the
 terminal.
 
+Record refine's `debt_items` in the tasks file's `## Specification Debt`
+section, after any rows carried down from the spec:
+
+{{>debt-from-refine}}
+
 One-shot mode: do **not** stop to ask the user to review or approve the
 refinements. The refinement diff is the review surface and the one-shot PR
 below is how the user sees it.
@@ -913,9 +918,9 @@ run. Map captured run data onto the snippet's canonical sections: in
 for `<branch>`, and list the tasks file (plus the spec write-back) under
 "Artifacts produced". Follow the snippet's relabeling guidance to report
 the slice count in place of the default "User stories" bullet. Populate
-Assumptions and Specification Debt from the full `assumptions` and
-`debt_items` arrays returned by clarify (including debt inherited from
-the spec), and substitute the PR URL from the previous step into the
+Assumptions from the full `assumptions` array returned by clarify and
+Specification Debt from the tasks file's own `## Specification Debt`
+table, and substitute the PR URL from the previous step into the
 `## PR` section. Do not invent new placeholders or reinterpret existing
 ones. Do NOT dump the full file contents into the terminal; the snippet
 is the contract.

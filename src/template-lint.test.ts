@@ -100,6 +100,15 @@ describe('template lint — no duplicate snippet injection', () => {
     ['commands/smithy.ignite.prompt', /\{\{>debt-row-shape\}\}/],
     ['commands/smithy.mark.prompt', /\{\{>debt-row-shape\}\}/],
     ['commands/smithy.render.prompt', /\{\{>debt-row-shape\}\}/],
+    // `debt-row-append` is the one rule for adding a debt or IQ row, nested in
+    // each producer's consumer rule: both `plan-review-triage` copies above,
+    // `debt-from-clarify` at draft time, and `debt-from-refine` in Phase 0.
+    // The triage pair clears with the rows above; the other two are distinct
+    // steps whose rule would otherwise drift back into two spellings (INV-1).
+    ['commands/smithy.cut.prompt', /\{\{>debt-row-append\}\}/],
+    ['commands/smithy.ignite.prompt', /\{\{>debt-row-append\}\}/],
+    ['commands/smithy.mark.prompt', /\{\{>debt-row-append\}\}/],
+    ['commands/smithy.render.prompt', /\{\{>debt-row-append\}\}/],
     // A single sentence naming the PR-creation tool preference, bound into two
     // different phase steps that each hand the reader a command to run. The
     // second injection costs one line, and collapsing the two phases to share

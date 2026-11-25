@@ -30,8 +30,6 @@ renumbered id misdirects every citation to it (D-6).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `snippets/debt-from-clarify.md` (in `smithy.cut`) | The empty-state line replaces inherited debt rows | Temporary: one shared append rule | #648 | medium |
-| `snippets/plan-review-triage.md` | New rows are appended beside the empty-state line | Temporary: the first row replaces it | #648 | medium |
 | `commands/smithy.mark.prompt` (Phase 0 reordering) | Renumbers user stories that may already be cited | Temporary: keep ids; reorder without renumbering | #648 | medium |
 | `commands/smithy.mark.prompt` (UI wire pass) | Overwrites `.design.md`, `.flow.md`, and the test body | Temporary: keep existing files | #650 | medium |
 | `commands/smithy.persona.prompt` (RFC mode) | Duplicate slugs in one batch overwrite each other | Temporary: detect in-batch collisions | #651 | low |

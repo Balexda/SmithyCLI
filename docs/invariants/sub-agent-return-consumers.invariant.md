@@ -31,7 +31,6 @@ the answer (D-5).
 |-------|---------------|-------------------|----------------|----------|
 | `commands/smithy.render.prompt`, `commands/smithy.ignite.prompt` (clarify dispatch) | `bail_out` is never read | Temporary: compose a shared bail-out check | #648 | medium |
 | `commands/smithy.spark.prompt` (bail-out) | `debt_items` are not shown on bail-out | Temporary: the shared check lists them | #648 | low |
-| `commands/smithy.spark.prompt`, `commands/smithy.render.prompt` (refine) | Only "low-confidence" `debt_items` are recorded | Temporary: record every entry | #648 | medium |
 | `commands/smithy.ignite.prompt` (clarify log) | `debt_items` are not persisted, so a resumed run loses them | Temporary: persist them | #648 | medium |
 | `commands/smithy.strike.prompt` (document template) | `assumptions` reach only the terminal | Temporary: add `## Assumptions` | #648 | low |
 | `snippets/typed-ui-build-profiles.md` (flow-wire review handoff) | The reviewer never gets the worker's `test-body` fallback | Temporary: pass the same resolution | #650 | low |
