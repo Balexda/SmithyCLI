@@ -31,34 +31,33 @@ immediately before the dispatch and `OUT=after` immediately after it:
 : "${OUT:?set OUT to before, after, or restored}"
 GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
 perm() { ls -ld -- "$1" | cut -c1-10; }
-{
+entry() {
+  if [ -L "$1" ]; then echo "link $(readlink -- "$1" | git hash-object --stdin) $1"
+  elif [ -d "$1" ]; then
+    (cd "$1" && repo) | while IFS= read -r l; do printf '%s: %s\n' "$1" "$l"; done
+  elif [ -e "$1" ]; then
+    if h=$(git hash-object -- "$1"); then echo "$(perm "$1") $h $1"
+    else echo "unreadable $1"; fi
+  else echo "gone $1"; fi
+}
+repo() {
   git rev-parse HEAD
   git ls-files -s
   git status --porcelain=v2 --untracked-files=all
   { git diff --name-only -z; git ls-files -o --exclude-standard -z; } |
-    sort -zu | while IFS= read -r -d '' p; do
-      if [ -L "$p" ]; then echo "link $(readlink -- "$p" | git hash-object --stdin) $p"
-      elif [ -d "$p" ]; then
-        echo "tree $({
-          git -C "$p" rev-parse HEAD
-          git -C "$p" diff HEAD --binary
-          git -C "$p" ls-files -o --exclude-standard | while IFS= read -r u; do
-            echo "$(perm "$p/$u") $(git hash-object -- "$p/$u") $u"
-          done
-        } | git hash-object --stdin) $p"
-      elif [ -e "$p" ]; then echo "$(perm "$p") $(git hash-object -- "$p") $p"
-      else echo "gone $p"; fi
-    done
-} > "$GUARD/$OUT"
+    sort -zu | while IFS= read -r -d '' p; do entry "$p"; done
+}
+repo > "$GUARD/$OUT"
 ```
 
 The fingerprint covers `HEAD`, every index entry's mode and blob, the
 worktree mode on each status line, and the full permission bits plus a content
 hash for every dirty or untracked file. A symlink is recorded as a hash of its
 raw target text, so a retargeted link is caught even when it dangles. A dirty
-submodule, which git lists as one directory, is recorded as one hash over its
-`HEAD`, its diff, and the permissions and content of its untracked files, so
-an edit inside it is caught even when the submodule was already dirty.
+submodule, which git lists as one directory, gets the same fingerprint of its
+own, prefixed with its path, so an edit, a staged change, or a mode change
+inside it is caught even when the submodule was already dirty. A file whose
+content cannot be hashed is recorded as `unreadable`.
 
 **Immediately after the dispatch**, compare the two fingerprints:
 
@@ -67,7 +66,9 @@ GUARD=$(git rev-parse --git-path read-only-dispatch-guard)
 diff "$GUARD/before" "$GUARD/after"
 ```
 
-- **No difference:** the dispatch was read-only. Act on its output as usual.
+- **No difference, and no `unreadable` line in either fingerprint:** the
+  dispatch was read-only. Act on its output as usual. An `unreadable` line
+  means the guard could not check that file, so treat it as a difference.
 - **Any difference:** the read-only contract was violated. Apply none of the
   sub-agent's output, then restore the snapshot:
 
