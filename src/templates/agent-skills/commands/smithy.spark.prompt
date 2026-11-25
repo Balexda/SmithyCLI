@@ -370,7 +370,8 @@ available from the review pass. Output in this order:
 
 2. **Refinement summary** — a short bulleted list of the smithy-refine
    findings that were applied directly, plus any that were declined with a
-   one-line reason. If no findings were produced, write:
+   one-line reason and any refine left unresolved in its `summary`. If no
+   findings were produced, write:
    > "Review complete — no refinements needed."
 
 3. **Specification Debt delta** — one line describing debt introduced by

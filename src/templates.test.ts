@@ -6192,6 +6192,8 @@ describe('issue #554 — audit defects D1–D10', () => {
     file => {
       const cmd = composed.commands.get(file)!;
       expect(cmd).toContain('Record every entry refine returned in `debt_items`, whatever its confidence');
+      // A non-steering finding with no home reaches the operator, not the debt table.
+      expect(cmd.replace(/\s+/g, ' ')).toContain('Do this even on a run that changes nothing on disk');
       for (const m of cmd.match(/low-confidence findings[^.]*debt_items/gi) ?? []) {
         expect(m, file).toMatch(/Medium/);
       }
