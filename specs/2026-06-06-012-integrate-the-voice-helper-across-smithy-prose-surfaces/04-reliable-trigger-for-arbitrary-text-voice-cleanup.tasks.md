@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Sharpen the standalone cleanup trigger**
+- [x] **Sharpen the standalone cleanup trigger**
 
   Update `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` so the frontmatter `description` advertises review / cleanup mode as a valid direct response to standalone arbitrary-text requests. Keep the description provider-neutral and name the positive trigger phrasing family from AS 4.1 without adding a new slash command.
 
@@ -30,7 +30,7 @@
   - No helper taxonomy text is duplicated outside the skill body.
   - No dedicated `/smithy.voice` or adjacent command surface is introduced.
 
-- [ ] **Document arbitrary file and pasted-text cleanup**
+- [x] **Document arbitrary file and pasted-text cleanup**
 
   Extend the review / cleanup mode documentation in `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` so an agent loading the skill knows it may accept either a file path or pasted text outside any Smithy planning workflow. Preserve the existing side-by-side original-vs-revised output contract from AS 4.1 and AS 4.2.
 
@@ -42,7 +42,7 @@
   - The workflow remains prose-only and does not require planning-artifact wrapping.
   - The body remains provider-neutral with no Claude, Gemini, or Codex-specific syntax.
 
-- [ ] **Bound activation during Smithy drafting**
+- [x] **Bound activation during Smithy drafting**
 
   Add guidance in `src/templates/agent-skills/skills/smithy.helper-voice/SKILL.prompt` that standalone cleanup triggers apply only when the user is asking to revise existing text, not when a parent Smithy command is already drafting prose under its own voice instructions. This satisfies AS 4.3 without weakening the draft-mode integrations from US1.
 

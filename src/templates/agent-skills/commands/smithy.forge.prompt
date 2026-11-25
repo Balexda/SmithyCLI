@@ -26,6 +26,7 @@ the canonical set of fallbacks for problems that recur across forge runs.
 | Skill | Load when |
 |-------|-----------|
 | `smithy.helper-docker` | A docker command appears stuck (>60s without progress), a container exits unexpectedly, or validation fails with docker-related errors. |
+| `smithy.helper-voice` | Use draft mode when authoring deliverable prose for a README, ADR, runbook, migration plan, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages), or substantive inline documentation. Skip routine code comments. |
 
 ---
 
@@ -365,6 +366,7 @@ Use the **smithy-maid** sub-agent. Pass it:
 - **Changed files**: the list of files modified between BASE_SHA and HEAD (including review auto-fix commits)
 - **Spec/strike paths**: the spec, contracts, data-model, or strike file paths from Intake
 - **Slice goal**: the slice's stated goal
+- **Changed documentation hunks**: the added and modified lines from `git diff BASE_SHA..HEAD` for every deliverable-prose surface the `smithy.helper-voice` row above names — READMEs, ADRs, runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages), and changed substantive inline documentation — so voice findings stay limited to prose this change wrote
 
 After the sub-agent returns:
 

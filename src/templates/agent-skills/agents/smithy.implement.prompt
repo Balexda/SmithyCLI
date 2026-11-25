@@ -1,7 +1,7 @@
 ---
 name: smithy-implement
 description: "TDD implementation sub-agent. Takes a single task, writes failing test, implements to pass, commits."
-tools: Read, Edit, Write, Grep, Glob, Bash
+tools: Read, Edit, Write, Grep, Glob, Bash, Skill
 tier: deep
 ---
 # smithy-implement
@@ -75,6 +75,18 @@ implementation.
 - If blocked (missing information, conflicting requirements, contracts
   insufficient to proceed), **stop immediately** and report the blocker. Do not
   guess or improvise.
+
+---
+
+## Deliverable Prose
+
+When the task authors deliverable prose — a README, ADR, runbook,
+migration plan, other prose documentation in any directory (such as
+CONTRIBUTING, CHANGELOG, or `docs/` pages), or substantive inline
+documentation — load
+`Skill("smithy.helper-voice")` in draft mode before writing it and follow its
+rules. Skip routine code comments. If the host exposes no `Skill` tool, write
+the prose without the helper and note that in your output; do not fail the task.
 
 ---
 

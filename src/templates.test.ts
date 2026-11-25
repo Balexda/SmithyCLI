@@ -11,7 +11,7 @@ import {
   getComposedTemplates,
   type ComposedTemplates,
 } from './templates.js';
-import { skillsTemplateDir } from './utils.js';
+import { agentSkillsDir, skillsTemplateDir } from './utils.js';
 import { splitFrontmatter } from './frontmatter.js';
 import { ORDERS_DEFAULT_TEMPLATES, ORDERS_TEMPLATE_TYPES } from './orders-templates.js';
 import { toClaudeCommandContent } from './command-frontmatter.js';
@@ -108,7 +108,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(37);
+    expect(snippets.size).toBe(38);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -117,6 +117,7 @@ describe('loadSnippets', () => {
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
       'audit-checklist-voice.md',
+      'voice-tag-grammar.md',
       'audit-checklist-engraved.md',
       'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
@@ -2167,6 +2168,57 @@ describe('getComposedTemplates', () => {
     expect(forge).toContain('smithy.helper-docker');
   });
 
+  it('smithy.forge advertises draft-mode voice guidance for deliverable prose', async () => {
+    const forge = composed.commands.get('smithy.forge.md')!;
+    const operationalSkills = forge.split('### Operational Skills\n')[1]?.split('\n---\n')[0];
+    const voiceRow = operationalSkills?.match(/^\| `smithy\.helper-voice` \|.+\|$/m)?.[0];
+
+    expect(voiceRow).toBeDefined();
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(voiceRow).toContain(trigger);
+    }
+    expect(voiceRow).toContain('draft mode');
+    expect(voiceRow).toMatch(/skip routine code comments/i);
+    expect(forge).not.toContain('Voice rules per Role × Mode combination');
+    const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
+    const maidDispatch = claudeForge.split('## Documentation Check\n')[1]?.split('\n---\n')[0];
+    expect(maidDispatch).toContain('**Changed documentation hunks**');
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(maidDispatch).toContain(surface);
+    }
+  });
+
+  it('smithy-implement loads draft-mode voice guidance for deliverable prose it authors', () => {
+    const implement = composed.agents.get('smithy.implement.md')!;
+    const section = implement
+      .split('## Deliverable Prose\n')[1]
+      ?.split('\n---\n')[0]
+      ?.replace(/\s+/g, ' ');
+
+    expect(implement).toMatch(/^tools: .*\bSkill\b/m);
+    expect(section).toContain('Skill("smithy.helper-voice")');
+    expect(section).toContain('draft mode');
+    for (const trigger of ['README', 'ADR', 'runbook', 'migration plan', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(section).toContain(trigger);
+    }
+    expect(section).toMatch(/skip routine code comments/i);
+  });
+
+  it('smithy-maid flags voice issues in changed documentation without rewriting it', () => {
+    const maid = composed.agents.get('smithy.maid.md')!;
+    const voiceCheck = maid.match(/^\| \*\*Voice anti-patterns\*\* \|.+\|$/m)?.[0];
+    const flaggedFindings = maid.split('### Flagged\n')[1]?.split('\n---\n')[0];
+
+    for (const surface of ['READMEs', 'ADRs', 'runbooks', 'migration plans', 'other prose documentation in any directory', 'substantive inline documentation']) {
+      expect(voiceCheck).toContain(surface);
+    }
+    expect(voiceCheck).toContain('only as Flagged findings');
+    expect(voiceCheck).toContain('only the added or modified lines in the changed documentation hunks');
+    expect(maid).toContain('**Changed documentation hunks**');
+    expect(flaggedFindings).toMatch(/Voice anti-patterns.*Do not rewrite the prose/);
+    expect(maid).toContain('**Read-only.**');
+  });
+
   // Issue #420: smithy.helper-voice is a new body-only operational skill
   // that distributes the voice & audience taxonomy (EPIC #419). These
   // assertions back-stop the deployment contract (body-only, frontmatter
@@ -2195,10 +2247,10 @@ describe('getComposedTemplates', () => {
     // description — if it disappears, the skill no longer advertises its
     // actual content.
     expect(description).toMatch(/Role × Diátaxis-mode taxonomy/i);
-    // Issue #555: trigger condition, not a table of contents. The skill is
-    // reached through smithy.helper-documentation, so the description must
-    // still say so — but the body's feature list stays in the body.
-    expect(description).toMatch(/not a direct user entry point/i);
+    expect(description).toMatch(/review \/ cleanup mode for standalone requests/i);
+    expect(description).toContain('clean up the voice');
+    expect(description).toContain('improve the prose');
+    expect(description).toContain('apply audience tags');
     expect(description.split(/\s+/).length).toBeLessThanOrEqual(55);
   });
 
@@ -2250,16 +2302,22 @@ describe('getComposedTemplates', () => {
 
   it('smithy.helper-voice documents both invocation modes', () => {
     const skill = composed.skills.get('smithy.helper-voice')!;
+    const body = skill.prompt.split('\n---\n')[1]!;
     // Two first-class modes per issue #420. Both must be documented in
     // the body so any agent loading the skill knows it can draft *or*
     // review/cleanup.
-    expect(skill.prompt).toMatch(/Draft mode/);
-    expect(skill.prompt).toMatch(/Review \/ cleanup mode/);
-    // The side-by-side compare is the primary validation path for the
-    // cleanup mode and must be called out explicitly. Either spelling
-    // (hyphenated or whitespace-separated, potentially wrapped across a
-    // newline) counts as documenting the compare protocol.
-    expect(skill.prompt).toMatch(/side[\s-]+by[\s-]+side/i);
+    expect(body).toMatch(/Draft mode/);
+    expect(body).toMatch(/Review \/ cleanup mode/);
+    expect(body).toMatch(/arbitrary\s+file path/);
+    expect(body).toContain('pasted text');
+    expect(body).toMatch(/original and the revised version side by\s+side/i);
+  });
+
+  it('smithy.helper-voice leaves mid-workflow drafting under the parent template', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    const body = skill.prompt.split('\n---\n')[1]!;
+    expect(body).toMatch(/standalone cleanup, accept requests to revise existing prose outside\s+any Smithy planning workflow/i);
+    expect(body).toMatch(/During drafting in `smithy\.mark` or a similar Smithy\s+command, follow the parent template's voice instructions and skip the\s+standalone cleanup trigger/);
   });
 
   it('smithy.helper-voice documents the audience-tag grammar with all directive keys', () => {
@@ -2280,6 +2338,31 @@ describe('getComposedTemplates', () => {
     // the taxonomy, per issue #420 sections 6 and 8.
     expect(skill.prompt).toMatch(/<!-- audience:/);
     expect(skill.prompt).toMatch(/N\/A —/);
+  });
+
+  it('keeps the voice-tag examples enum and shipped lint wording aligned', () => {
+    const skill = composed.skills.get('smithy.helper-voice')!;
+    const skillSection = skill.prompt.split('## 8. Audience tag grammar')[1]?.split('\n## ')[0] ?? '';
+    const readme = fs.readFileSync(path.join(agentSkillsDir, 'README.md'), 'utf8');
+    const convention = readme.split('## Voice and Audience Tagging Convention')[1]?.split('\n## Feature Kinds')[0] ?? '';
+    const grammar = skill.resources.get('references/audience-tags.md')!.toString();
+    const audit = composed.commands.get('smithy.audit.md')!;
+    const checklist = audit.split('Voice & Audience Tag Lint')[1] ?? '';
+    const examples = ['required', 'recommended', 'discouraged', 'optional', 'forbidden'];
+
+    for (const surface of [skillSection, grammar, convention, checklist]) {
+      expect(surface.match(/examples: <([^>]+)>/)?.[1]?.split('|')).toEqual(examples);
+      expect(surface).toContain('`optional` imposes no example constraint');
+    }
+    for (const surface of [grammar, convention, checklist]) {
+      const row = surface.match(/^(?:\| |- )`examples`[^.\n]*/m)?.[0] ?? '';
+      const values = [...row.matchAll(/`([a-z]+)`/g)].slice(1).map((match) => match[1]);
+      expect(values).toEqual(examples);
+    }
+    for (const surface of [skillSection, grammar, convention]) {
+      expect(surface).not.toMatch(/is wired through\s+it will/);
+      expect(surface).toMatch(/`smithy\.audit`[^.]*voice-tag lint/);
+    }
   });
 
   it('smithy.helper-voice is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
@@ -2369,6 +2452,16 @@ describe('getComposedTemplates', () => {
     expect(body).not.toMatch(/\.gemini\/skills/);
     expect(body).not.toMatch(/\.agents\/skills/);
   });
+
+  it.each(['smithy.render.md', 'smithy.mark.md', 'smithy.cut.md'])(
+    '%s loads smithy.helper-voice for direct artifact authoring',
+    commandName => {
+      const command = composed.commands.get(commandName);
+      expect(command, `${commandName} should be composed`).toBeDefined();
+      expect(command!).toContain('Skill("smithy.helper-voice")');
+      expect(command!).toMatch(/draft mode/i);
+    },
+  );
 
   it('narrative commands load smithy.helper-voice for direct prose authoring', () => {
     const commandNames = [

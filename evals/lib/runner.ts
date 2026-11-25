@@ -389,7 +389,11 @@ export async function runScenario(
       // this here decouples the runner from whether the fixture source is
       // itself under git (SD-001 / SD-007). A repo-local identity is configured
       // so the developer's global git config is never touched.
-      initGitInTempCopy(tmpDir);
+      try {
+        initGitInTempCopy(tmpDir);
+      } catch (cause) {
+        throw new Error(`Scenario "${scenario.name}" git setup failed: ${String(cause)}`, { cause });
+      }
     }
 
     // Deploy Smithy skills into the temp copy.
@@ -404,7 +408,11 @@ export async function runScenario(
       // which would otherwise leave the temp repo dirty for the whole scenario.
       // Producing commands that gate behavior on `git status --porcelain` clean
       // (e.g. refine paths in mark / cut) need this to detect no-op runs.
-      commitAllInTempCopy(tmpDir, 'eval: post-init baseline');
+      try {
+        commitAllInTempCopy(tmpDir, 'eval: post-init baseline');
+      } catch (cause) {
+        throw new Error(`Scenario "${scenario.name}" git setup failed: ${String(cause)}`, { cause });
+      }
     }
 
     // FR-011: Checksum the source fixture *before* execution.

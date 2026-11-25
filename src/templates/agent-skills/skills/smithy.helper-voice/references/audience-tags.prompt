@@ -9,7 +9,7 @@ Grammar (the syntax templates use):
 
 ```
 ## <Section title>
-<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|forbidden>[; applicability: <free-text>] -->
+{{>voice-tag-grammar}}
 ```
 
 Keys:
@@ -21,7 +21,8 @@ Keys:
 - `length` — sentence or paragraph budget (`2-3 sentences`,
   `3-6 paragraphs`, `tables only`, `5-15 steps`).
 - `diagram` — `required` | `recommended` | `optional`.
-- `examples` — `required` | `recommended` | `discouraged` | `forbidden`.
+- `examples` — `required` | `recommended` | `discouraged` | `optional` | `forbidden`.
+  `optional` imposes no example constraint.
 - `applicability` (optional) — free-text condition under which the
   section legitimately resolves to `N/A` (e.g., `code-shaped features
   only`).
@@ -35,10 +36,6 @@ finding):
 <!-- audience: stakeholder; mode: explanation; length: 2-3 sentences; diagram: optional; examples: discouraged -->
 ```
 
-`smithy.audit` enforces these specs per section via its voice-tag lint
-(`snippets/audit-checklist-voice.md`): it parses the tags and flags
-unknown keys/values, length-budget violations, and missing/forbidden
-diagrams and examples. The lint currently carries the per-section specs
-directly; as the template surface is wired through it will read them from
-the same template files, keeping the enforcement surface and the
-templates in lockstep.
+`smithy.audit`'s voice-tag lint checks the inline tags an artifact
+carries and skips an artifact with none. On a tagged artifact it flags unknown keys and values, length-budget violations, missing
+required diagrams and examples, and the presence of forbidden examples.

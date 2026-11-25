@@ -55,7 +55,7 @@
 
 ### Tasks
 
-- [ ] **Author the JVM forge scenario YAML**
+- [x] **Author the JVM forge scenario YAML**
 
   Add `evals/cases/forge-tdd-slice-jvm.yaml` following the Forge-JVM Scenario Declaration contract and the existing eval case conventions. The scenario should invoke `/smithy.forge`, select the JVM fixture, opt into git setup, and use a forge task-file prompt that exercises the committed JVM fixture for AS 1.1, AS 1.2, and AS 1.4.
 
@@ -66,7 +66,7 @@
   - The prompt targets a JVM-fixture forge slice rather than the JavaScript fixture.
   - `loadScenarios` discovers the new scenario without warnings.
 
-- [ ] **Cover JVM scenario loading and selection**
+- [x] **Cover JVM scenario loading and selection**
 
   Add focused tests around the committed Forge-JVM YAML case and scenario selection path. The tests should verify the case loads with JVM metadata and remains independently selectable by `npm run eval -- --case forge-tdd-slice-jvm` for AS 1.1.
 
@@ -91,7 +91,7 @@
 
 ### Tasks
 
-- [ ] **Add JVM forge structural expectations**
+- [x] **Add JVM forge structural expectations**
 
   Extend `evals/cases/forge-tdd-slice-jvm.yaml` with structural expectations and sub-agent evidence aligned with the JavaScript forge scenario's intent. Keep the checks focused on forge slice-completion markers and expected helper evidence, leaving F1.5's structural expectation design owned by the existing forge-JS contract for AS 1.3.
 
@@ -101,7 +101,7 @@
   - The expectations do not redesign or weaken the JavaScript forge scenario contract.
   - Pattern checks remain structural markers rather than long prose snapshots.
 
-- [ ] **Exercise the JVM fixture end to end**
+- [x] **Exercise the JVM fixture end to end**
 
   Add or update eval tests so the Forge-JVM scenario can run against the committed JVM fixture and validate the deterministic evidence available from the runner. Keep this work scoped to scenario execution and validation; do not commit a Forge-JVM baseline in this slice because US2 owns the baseline artifact.
 
