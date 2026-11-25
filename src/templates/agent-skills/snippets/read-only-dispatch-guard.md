@@ -36,15 +36,16 @@ entry() {
   elif [ -d "$1" ]; then
     (cd "$1" && repo) | while IFS= read -r l; do printf '%s: %s\n' "$1" "$l"; done
   elif [ -e "$1" ]; then
-    if h=$(git hash-object -- "$1"); then echo "$(perm "$1") $h $1"
+    if h=$(git hash-object --no-filters -- "$1"); then echo "$(perm "$1") $h $1"
     else echo "unreadable $1"; fi
   else echo "gone $1"; fi
 }
 repo() {
   git rev-parse HEAD
   git ls-files -s
-  git status --porcelain=v2 --untracked-files=all
-  { git diff --name-only -z; git ls-files -o --exclude-standard -z; } |
+  git status --porcelain=v2 --untracked-files=all --ignore-submodules=none
+  { git diff --name-only -z --ignore-submodules=none
+    git ls-files -o --exclude-standard -z; } |
     sort -zu | while IFS= read -r -d '' p; do entry "$p"; done
 }
 repo > "$GUARD/$OUT"
@@ -52,7 +53,10 @@ repo > "$GUARD/$OUT"
 
 The fingerprint covers `HEAD`, every index entry's mode and blob, the
 worktree mode on each status line, and the full permission bits plus a content
-hash for every dirty or untracked file. A symlink is recorded as a hash of its
+hash for every dirty or untracked file. Hashes are taken with `--no-filters`,
+so they cover the bytes on disk, line endings included, and submodules are
+listed with `--ignore-submodules=none`, so a `submodule.<name>.ignore` setting
+cannot hide one. A symlink is recorded as a hash of its
 raw target text, so a retargeted link is caught even when it dangles. A dirty
 submodule, which git lists as one directory, gets the same fingerprint of its
 own, prefixed with its path, so an edit, a staged change, or a mode change
