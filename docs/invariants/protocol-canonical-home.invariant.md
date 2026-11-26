@@ -37,10 +37,7 @@ records the evidence from the 2026-08 audit.
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `agents/smithy.clarify.prompt` Step 3b, `agents/smithy.refine.prompt` | Both compose the one `kind-gate` definition but reroute a rejected candidate differently — clarify into its assumption stream with `[Critical Assumption]`, refine into `refinements` — because neither emits a `kind` field for a parent to route on | Accepted: the gate itself is shared and identical; only the return channel differs, and each consumer states its own in two sentences beside the composed gate | — | low |
-| `commands/smithy.mark.prompt`, `commands/smithy.cut.prompt` (clarify bail-out) | The bail-out paragraph is hand-copied | Temporary: one shared snippet | #648 | medium |
-| `commands/smithy.mark.prompt`, `commands/smithy.cut.prompt` (refinement PR step) | The PR-reuse block is hand-copied | Temporary: one shared snippet | #648 | medium |
 | Dependency Order table in ignite, render, mark, cut | The table is restated in four commands | Temporary: one shared snippet | #649 | medium |
-| `commands/smithy.mark.prompt`, `commands/smithy.cut.prompt` (final PR step) | The PR-URL capture and failure fallthrough are hand-copied | Temporary: one shared home | #646 | low |
 | `agents/smithy.implement.prompt`, `agents/smithy.implementation-review.prompt` (inputs) | The reference-document input list is hand-copied | Temporary: one shared home | #646 | low |
 | `agents/smithy.plan.prompt`, `agents/smithy.slice.prompt` (inputs, Decisions output) | The dispatch input list and Decisions/Risks shape are hand-copied | Temporary: one shared home | #646 | low |
 | `agents/smithy.slice.prompt`, `commands/smithy.cut.prompt` (slice scaffold) | The slice body scaffold is hand-copied | Temporary: one shared home | #646 | low |
