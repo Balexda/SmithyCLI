@@ -884,6 +884,10 @@ After the sub-agent returns its summary, update the existing spec, data-model,
 and/or contracts files on disk to incorporate the refinements. Do not dump the
 full file contents into the terminal.
 
+Record refine's `debt_items` in the spec's `## Specification Debt` section:
+
+{{>debt-from-refine}}
+
 One-shot mode: do **not** stop to ask the user to review or approve the
 refinements. The refinement diff is the review surface, and the one-shot PR
 below is how the user sees it.

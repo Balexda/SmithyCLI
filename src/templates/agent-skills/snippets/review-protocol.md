@@ -65,16 +65,10 @@ acts on one field instead of re-deriving this table.
 building either way, so on any other artifact it is reported instead of
 recorded. When the dispatch named no target artifact, choose `note`.
 
-Two of these cells bind you rather than the parent, because they are
-properties of the finding you emit:
+The `steering` row is the kind gate's never-applied rule: a `steering`
+finding takes `debt`, never `apply`. One more cell binds you rather than
+the parent, because it is a property of the finding you emit:
 
-- **A `steering` finding is never auto-applied, at any confidence.** It
-  takes `debt`, never `apply` — the kind means a human has to pick, and
-  applying a fix would make that pick for them. A High-confidence
-  `steering` finding is a contradiction and means the classification is
-  wrong. Re-examine it: if the `proposed_fix` can be applied verbatim
-  without anyone choosing, the finding is `hygiene`; if a human must
-  choose, confidence is Low by construction.
 - **A wrong table is a fix, not a question.** A `hygiene` finding never
   takes `debt` at any severity or confidence, and neither does an
   `implementation` finding. When a `hygiene` correction is knowable but

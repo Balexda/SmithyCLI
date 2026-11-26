@@ -73,6 +73,16 @@ High. A finding is `steering` only when you can fill in both halves:
 <a human> can weigh Z." A debt row without a recommendation is a finding
 you have not finished thinking about.
 
+#### Steering is never applied
+
+**A `steering` finding is never applied at any confidence** — not as an
+auto-applied fix, and not as a ready-to-apply change returned for someone
+else to apply. The kind means a human has to pick, and applying the change
+makes that pick for them. A High-confidence `steering` finding is a
+misclassification, so re-examine it: if the change can be applied verbatim
+without anyone choosing, the finding is `hygiene`; if someone must choose,
+its confidence is below High by construction.
+
 #### Where the non-steering kinds go
 
 Nothing the gate rejects is discarded — every kind has a home, and the

@@ -70,10 +70,11 @@ Use the **smithy-refine** sub-agent. Pass it:
 - **Context**: this is a PRD review for a one-page Product Requirement Document.
 
 After smithy-refine returns:
-1. Apply high-confidence refinements directly to the PRD file in place.
-2. Record low-confidence findings as new debt items in the PRD's
-   `## Specification Debt` section, with `Origin: local` and a
-   `### SD-NNN — <Title>` detail section each.
+1. Apply the returned refinements directly to the PRD file in place.
+2. Record refine's `debt_items` in the PRD's `## Specification Debt` section:
+
+   {{>debt-from-refine}}
+
 3. Skip to **Phase 4: One-Shot Summary** once the file is updated.
 
 Do not STOP and ask for approval between review and write — spark is one-shot,
@@ -364,12 +365,13 @@ derived slug) must not be fabricated. Use only data that is actually
 available from the review pass. Output in this order:
 
 1. **Phase summary** — one line describing what was refined:
-   > Refined <reviewed-file-path> with <N> high-confidence fix(es) applied
-   > and <M> low-confidence finding(s) recorded as debt.
+   > Refined <reviewed-file-path> with <N> refinement(s) applied and <M>
+   > debt item(s) recorded.
 
 2. **Refinement summary** — a short bulleted list of the smithy-refine
    findings that were applied directly, plus any that were declined with a
-   one-line reason. If no findings were produced, write:
+   one-line reason and any refine left unresolved in its `summary`. If no
+   findings were produced, write:
    > "Review complete — no refinements needed."
 
 3. **Specification Debt delta** — one line describing debt introduced by

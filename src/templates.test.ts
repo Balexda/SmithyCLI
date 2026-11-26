@@ -108,7 +108,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(38);
+    expect(snippets.size).toBe(40);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -146,6 +146,8 @@ describe('loadSnippets', () => {
       'debt-row-shape.md',
       'debt-grading.md',
       'debt-from-clarify.md',
+      'debt-from-refine.md',
+      'debt-row-append.md',
       'plan-review-triage.md',
       'read-only-dispatch-guard.md',
       'drift-categories.md',
@@ -664,9 +666,8 @@ describe('review-protocol snippet', () => {
     expect(content).toContain('### 6. Report; do not act');
     expect(content).toContain('The parent command owns the consequences');
     // Two rules bind the agent because they are properties of what it emits.
-    expect(content).toContain(
-      '**A `steering` finding is never auto-applied, at any confidence.**',
-    );
+    // The steering one lives in the nested kind gate, its single home.
+    expect(content).toContain('**A `steering` finding is never applied at any confidence**');
     expect(content).toContain('**A wrong table is a fix, not a question.**');
   });
 
@@ -692,7 +693,7 @@ describe('review-protocol snippet', () => {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) expect(row, row).not.toContain('`apply`');
     expect(content).not.toMatch(/`steering`[^|\n]*\|[^|\n]*\|\s*High\s*\|/);
-    expect(content.replace(/\s+/g, ' ')).toContain('It takes `debt`, never `apply`');
+    expect(content.replace(/\s+/g, ' ')).toContain('a `steering` finding takes `debt`, never `apply`');
   });
 
   it('snippet carries the whole kind gate, not a pointer to an agent prompt', async () => {
@@ -3446,9 +3447,9 @@ describe('getComposedTemplates', () => {
     // hand-copying a consequence table.
     const mappings = cut.match(/^\|\s*`debt`\s*\|/gm) ?? [];
     expect(mappings.length).toBe(2);
-    const debtRoutes = cut.match(/For each `debt` finding, append a row/g) ?? [];
+    const debtRoutes = cut.match(/For each `debt` finding, add an `SD-NNN` row/g) ?? [];
     expect(debtRoutes.length).toBe(2);
-    const iqRoutes = cut.match(/For each `iq` finding, append a row/g) ?? [];
+    const iqRoutes = cut.match(/For each `iq` finding, add an `IQ-NNN` row/g) ?? [];
     expect(iqRoutes.length).toBe(2);
     // The grading axes reach cut only as fields it may cite, never as rows it
     // triages on — that derivation belongs to smithy-plan-review now.
@@ -5869,7 +5870,7 @@ describe('getComposedTemplates artifactsRoot', () => {
             `${where} spec-debt-section`,
           ).toBeLessThanOrEqual(1);
           expect(
-            marker(/Assign sequential `SD-NNN` identifiers, continuing from the highest/g),
+            marker(/Everything clarify\s+returns is `Origin: local`/g),
             `${where} debt-from-clarify`,
           ).toBeLessThanOrEqual(1);
         }
@@ -6041,14 +6042,18 @@ describe('issue #554 — audit defects D1–D10', () => {
     expect(content).toContain('never add an item that did not come from `debt_items`');
   });
 
-  it('D1: the snippet owns SD numbering, and no consumer contradicts it', () => {
+  it('D1: the snippet owns SD numbering, and no consumer contradicts it', async () => {
     // Review feedback on #581: the snippet said "continue from whatever the
     // section already carries" while three lead-ins said "starting numbering
     // at SD-001", which would duplicate ids on a re-run over an existing
     // artifact. The snippet states the whole rule; consumers state none of it.
-    const content = loadSnippets().get('debt-from-clarify.md')!;
-    expect(content).toContain('`SD-001` only when the section');
-    expect(content).toMatch(/never reused/);
+    // The numbering rule now lives in the shared append snippet that
+    // debt-from-clarify nests, so the rendered rule is checked.
+    const raw = loadSnippets().get('debt-from-clarify.md')!;
+    expect(raw).toContain('{{>debt-row-append}}');
+    const content = (await composeSnippet('debt-from-clarify')).replace(/\s+/g, ' ');
+    expect(content).toContain('start at `-001` only when it carries none');
+    expect(content).toContain('Never reuse or renumber an id');
     for (const file of ['smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md']) {
       const cmd = composed.commands.get(file)!;
       expect(cmd).not.toMatch(/starting numbering at `SD-001`/);
@@ -6121,6 +6126,79 @@ describe('issue #554 — audit defects D1–D10', () => {
     const refine = composed.agents.get('smithy.refine.md')!;
     expect(refine).toMatch(/must name a section the artifact actually has/);
   });
+
+  // Refine used to split on confidence first: every High-confidence finding,
+  // steering included, became an auto-applied refinement, and every
+  // Medium/Low finding became debt on confidence alone. The kind gate now
+  // runs first, and its never-applied rule has one home every consumer gets.
+
+  it('refine runs the kind gate before any confidence split', async () => {
+    for (const variant of ['claude', 'codex']) {
+      const refine = (await getComposedTemplates(variant)).agents.get('smithy.refine.md')!;
+      const step3 = refine.indexOf('## Step 3: Triage Findings');
+      const gate = refine.indexOf('#### The steering test', step3);
+      expect(gate, variant).toBeGreaterThan(step3);
+      expect(refine.indexOf('Confidence is High', step3), variant).toBeGreaterThan(gate);
+      expect(refine.indexOf('### Refinements', step3), variant).toBeGreaterThan(gate);
+    }
+  });
+
+  it('every kind-gate consumer carries the never-applied steering rule', async () => {
+    const canary = '**A `steering` finding is never applied at any confidence**';
+    expect(loadSnippets().get('kind-gate.md')).toContain(canary);
+    for (const variant of ['claude', 'codex']) {
+      const agents = (await getComposedTemplates(variant)).agents;
+      for (const name of [
+        'smithy.refine.md',
+        'smithy.clarify.md',
+        'smithy.plan-review.md',
+        'smithy.implementation-review.md',
+      ]) {
+        expect(agents.get(name), `${name} (${variant})`).toContain(canary);
+      }
+    }
+  });
+
+  it('refine never routes to debt_items on confidence alone', () => {
+    const refine = composed.agents.get('smithy.refine.md')!;
+    const sentences = refine.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+|\n/);
+    const confidenceOnly = sentences.filter(
+      t => t.includes('debt_items')
+        && /Medium or Low|Medium\/Low|low-confidence|Low confidence/i.test(t)
+        && !/steering/.test(t),
+    );
+    expect(confidenceOnly).toEqual([]);
+  });
+
+  it('one append rule owns debt and IQ rows, nested by both producers', () => {
+    const snippets = loadSnippets();
+    const append = snippets.get('debt-row-append.md')!.replace(/\s+/g, ' ');
+    expect(append).toContain('_None — no specification debt was recorded._');
+    expect(append).toContain('_None — no open implementation questions._');
+    expect(append).toContain('replace that line with the section template\'s table header');
+    expect(append).toContain('An empty-state line never sits beside a table.');
+    expect(append).toContain('Leave every existing row exactly as it is');
+    for (const consumer of ['debt-from-clarify.md', 'debt-from-refine.md', 'plan-review-triage.md']) {
+      expect(snippets.get(consumer), consumer).toContain('{{>debt-row-append}}');
+    }
+    // The drifted local rules are gone: no producer writes the empty-state
+    // line on its own terms any more.
+    expect(snippets.get('debt-from-clarify.md')).not.toContain('write the section\'s empty-state line');
+    expect(snippets.get('plan-review-triage.md')).not.toContain('continuing from whatever the artifact already carries');
+  });
+
+  it.each(['smithy.spark.md', 'smithy.render.md', 'smithy.ignite.md', 'smithy.mark.md', 'smithy.cut.md'])(
+    '%s records every refine debt item, whatever its confidence',
+    file => {
+      const cmd = composed.commands.get(file)!;
+      expect(cmd).toContain('Record every entry refine returned in `debt_items`, whatever its confidence');
+      // A non-steering finding with no home reaches the operator, not the debt table.
+      expect(cmd.replace(/\s+/g, ' ')).toContain('Do this even on a run that changes nothing on disk');
+      for (const m of cmd.match(/low-confidence findings[^.]*debt_items/gi) ?? []) {
+        expect(m, file).toMatch(/Medium/);
+      }
+    },
+  );
 
   // D3 — smithy-prose Step 3 mandates `Skill("smithy.helper-voice")` while the
   // agent's grant was Read/Grep/Glob and its Rules forbade anything else.

@@ -108,11 +108,14 @@ Use the **smithy-refine** sub-agent. Pass it:
 After the sub-agent returns its summary:
 
 1. Apply the refinements from smithy-refine directly to the `.features.md`
-   file in place — refine is non-interactive and returns high-confidence
-   refinements ready to apply. Do not pause for user approval before
+   file in place — refine is non-interactive and returns refinements ready
+   to apply. Do not pause for user approval before
    writing.
-2. Route any low-confidence findings returned in `debt_items` into the
-   feature map's `## Specification Debt` section.
+2. Record refine's `debt_items` in the feature map's
+   `## Specification Debt` section:
+
+   {{>debt-from-refine}}
+
 3. Run the **Plan-Review Pass** described below on the refined
    `.features.md` file before committing. Plan-review runs after refine has
    applied its changes and before the commit below, so any High-confidence

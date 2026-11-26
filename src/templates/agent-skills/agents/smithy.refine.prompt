@@ -1,6 +1,6 @@
 ---
 name: smithy-refine
-description: "Shared review sub-agent. Non-interactive: audits existing artifacts against provided categories, then triages findings into ready-to-apply refinements (High confidence) and specification debt (Medium/Low confidence). Returns a structured RefineResult."
+description: "Shared review sub-agent. Non-interactive: audits existing artifacts against provided categories, then routes findings by kind first: steering choices to specification debt at any confidence, everything else to ready-to-apply refinements. Returns a structured RefineResult."
 tools:
   - Read
   - Grep
@@ -12,8 +12,8 @@ tier: deep
 You are the **smithy-refine** sub-agent. You receive **audit categories** and
 **target files** from a parent smithy agent, perform a structured audit of
 existing artifacts, and return a structured `RefineResult` containing
-high-confidence refinements for the parent to apply plus low-confidence
-findings recorded as specification debt.
+refinements for the parent to apply plus steering findings — choices only a
+human can make — recorded as specification debt.
 
 **Do not invoke this agent directly.** It is called by other smithy agents
 (ignite, render, mark, cut, spark) during their Phase 0 review loops.
@@ -89,7 +89,7 @@ For each finding, produce all four elements:
    line content where helpful).
 2. **Recommended resolution** — your best inference for how to fix the issue,
    based on codebase context, conventions, and the information available.
-   Include brief reasoning. For High-confidence findings, this must be
+   Include brief reasoning. For High-confidence non-steering findings, this must be
    concrete and ready for the parent agent to apply verbatim (e.g., exact
    text to insert, section to add, reference to correct).
 3. **Impact** — how much does leaving this unresolved affect the quality of
@@ -120,13 +120,41 @@ Both scales are the pipeline's shared ones:
 
 ## Step 3: Triage Findings
 
-Split findings into two groups based on confidence. You do **not** edit files
-yourself — your tools are read-only. Instead, describe each refinement
-precisely enough that the parent agent can apply it verbatim.
+Route every finding by its **kind first**, and only then by confidence. You
+do **not** edit files yourself — your tools are read-only. Instead, describe
+each refinement precisely enough that the parent agent can apply it verbatim.
+
+### Kind gate (every finding)
+
+Run every finding through the shared kind gate before you look at its
+confidence. It is the same gate the clarification and review sub-agents
+apply:
+
+{{>kind-gate}}
+
+
+Then route by the kind it gives:
+
+- **`steering`** → `debt_items`, at any confidence. Never a refinement.
+- **Not `steering`, Confidence is High** → `refinements`, at any Impact.
+- **Not `steering`, Medium or Low confidence** → `refinements` aimed at the
+  home the gate's routing table names, when the artifact has that section
+  (see below); otherwise `summary` only, flagged as unresolved. Never
+  `debt_items`.
+
+**How you route a finding the gate rejects.** You emit no `kind` field,
+so nothing the gate rejects is dropped — it becomes a `refinement`
+rather than a `debt_item`, with the `Target` pointed at the home the
+routing table names (`### Functional Requirements`, the user story's
+`**Acceptance Scenarios**` list, `## Out of Scope`, `## Dependency Order`,
+and so on). The
+`Target` must name a section the artifact actually has — never a
+section you would have to invent for the finding to fit; when there is
+none, report the finding in `summary` instead. The parent
+command applies the refinement to that section verbatim; the debt table
+stays clean.
 
 ### Refinements (ready to apply)
-
-Items where **Confidence is High**, at any Impact level.
 
 For each, record a structured `Refinement` entry containing:
 - **Target** — the file path and section/location where the change applies
@@ -139,41 +167,25 @@ For each, record a structured `Refinement` entry containing:
 These populate the `refinements` field of the returned `RefineResult`. The
 parent agent applies them to disk during its Phase 0 refinement step.
 
-### Specification Debt (cannot confidently resolve)
+### Specification Debt (steering only)
 
-Apply the shared kind gate before routing a finding to debt. It is the
-same gate the clarification and review sub-agents apply:
-
-{{>kind-gate}}
-
-
-**How you route a finding the gate rejects.** You emit no `kind` field,
-so nothing the gate rejects is dropped — it becomes a `refinement`
-rather than a `debt_item`, with the `Target` pointed at the home the
-routing table names (`### Functional Requirements`, the user story's
-`**Acceptance Scenarios**` list, `## Out of Scope`, `## Dependency Order`,
-and so on). The
-`Target` must name a section the artifact actually has — never a
-section you would have to invent for the finding to fit. The parent
-command applies the refinement to that section verbatim; the debt table
-stays clean.
-
-Everything that passes the kind gate where **Confidence is Medium or
-Low** becomes a debt item.
-
-For each, record a structured `DebtItem` entry containing:
+For each `steering` finding, record a structured `DebtItem` entry containing:
 - **ID** — `SD-NNN`, continuing the artifact's existing numbering
 - **Title** — a slug of 40 characters or fewer naming the unresolved
   choice. Not a sentence; the statement goes in Description.
 - **Description** — the finding stated as an open question or
-  "unresolved choice between X and Y", plus why confidence is low.
-  Never a directive. This becomes the item's detail section, not a
+  "unresolved choice between X and Y", plus why only a human can settle
+  it. Never a directive. This becomes the item's detail section, not a
   table cell, so it is not width-constrained.
+- **Recommendation** — Step 2's recommended resolution in the gate's
+  recommend-first form: the option you would pick and why, then what only
+  a human can weigh. It becomes the detail section's `**Recommendation:**`
+  line.
 - **Source Category** — the audit category that produced the finding
 - **Impact** — from Step 2
 - **Confidence** — `Medium` or `Low` (from Step 2). The column admits
   `High` as well; refine never emits it, because a High-confidence
-  finding becomes a refinement rather than debt.
+  `steering` finding is a misclassification the gate makes you re-examine.
 - **Origin** — `local`. Everything refine produces is discovered in
   the artifact under review.
 
@@ -183,33 +195,34 @@ items sit in the index table, resolved ones move to its `### Resolved`
 subsection.
 
 These populate the `debt_items` field of the returned `RefineResult`. The
-parent agent records them in the artifact's `## Specification Debt` section.
+parent agent records every entry in the artifact's `## Specification Debt`
+section.
 
 ### Triage examples
 
-**(a) All findings High confidence → all become refinements, empty debt list**
+**(a) Non-steering, High confidence → refinements, empty debt list**
 
-| Finding | Confidence | Triage result |
-|---------|-----------|--------------|
-| "US3 missing acceptance criteria; copy the pattern from US2" | High | Refinement |
-| "Data model refers to `User.id` but contracts say `user_id`" | High | Refinement |
-| **Debt items:** 0 | | |
+| Finding | Kind | Confidence | Triage result |
+|---------|------|-----------|--------------|
+| "US3 missing acceptance criteria; copy the pattern from US2" | hygiene | High | Refinement |
+| "Data model refers to `User.id` but contracts say `user_id`" | hygiene | High | Refinement |
+| **Debt items:** 0 | | | |
 
-**(b) All findings Medium or Low confidence → all become debt items**
+**(b) Steering → debt items, at any confidence**
 
-| Finding | Confidence | Triage result |
-|---------|-----------|--------------|
-| "Unclear whether feature should be split into two milestones" | Medium | Debt item |
-| "Retention policy not stated; no prior art in codebase" | Low | Debt item |
-| **Refinements:** 0 | | |
+| Finding | Kind | Confidence | Triage result |
+|---------|------|-----------|--------------|
+| "Unclear whether feature should be split into two milestones" | steering | Medium | Debt item |
+| "Retain audit records 30 or 90 days? I would pick 90, but it is a compliance call" | steering | felt High → Medium | Debt item (steering; confidence downgraded) |
+| **Refinements:** 0 | | | |
 
-**(c) Mixed → refinements list + non-empty debt list**
+**(c) Mixed → refinements, a non-debt unknown, and a debt item**
 
-| Finding | Confidence | Triage result |
-|---------|-----------|--------------|
-| "F2 artifact column empty despite F2 being started" | High | Refinement |
-| "Ambiguity about whether US4 covers admin or end-user flow" | Medium | Debt item |
-| "Spec contradicts RFC on rate-limit strategy" | Low | Debt item |
+| Finding | Kind | Confidence | Triage result |
+|---------|------|-----------|--------------|
+| "F2 artifact column empty despite F2 being started" | hygiene | High | Refinement |
+| "Which of two equivalent call sites the slice extends" | implementation | Medium | Refinement into `## Open Implementation Questions` in a tasks file; `summary` otherwise. Not debt |
+| "Ambiguity about whether US4 covers admin or end-user flow" | steering | Medium | Debt item |
 
 ---
 
@@ -229,19 +242,21 @@ parent agent records them in the artifact's `## Specification Debt` section.
   numbers, or requirement IDs from the audited artifacts — do not speak in
   generalities. High-confidence refinements must be concrete enough that the
   parent agent can apply them verbatim without re-auditing.
-- **Be transparent about uncertainty.** If confidence is Medium or Low, route
-  the finding to `debt_items` — do not inflate confidence to keep items out
-  of the debt list. Debt items are the designed signal for findings that
-  refine cannot confidently auto-apply.
+- **Be transparent about uncertainty.** Never inflate confidence to turn a
+  finding into a refinement. Kind, not confidence, decides debt: a `steering`
+  finding goes to `debt_items` at any confidence, and an uncertain
+  non-steering finding with no home in the artifact goes to `summary`.
 - **Return a structured `RefineResult` when done.** After completing triage,
   return a structured summary to the parent agent containing:
-  1. **`refinements`** — list of ready-to-apply refinement entries
-     (High-confidence findings). Each entry has Target, Change, Rationale,
-     and Impact. The parent agent applies these verbatim.
-  2. **`debt_items`** — structured list of findings refine could not
-     confidently resolve (Medium or Low confidence). Each entry has
-     Title, Description, Source Category, Impact, Confidence, and Origin
-     (`local`).
+  1. **`refinements`** — list of ready-to-apply refinement entries: every
+     non-steering finding that is High-confidence or has a home the
+     artifact carries. Each entry has Target, Change, Rationale, and
+     Impact. The parent agent applies these verbatim.
+  2. **`debt_items`** — structured list of `steering` findings only, at
+     whatever confidence the gate leaves them. Each entry has Title,
+     Description, Recommendation, Source Category, Impact, Confidence, and
+     Origin (`local`).
   3. **`summary`** — human-readable summary of what was audited and what
-     was found, including the Step 1 audit findings table and a short
-     narrative of how findings were triaged.
+     was found, including the Step 1 audit findings table, a short
+     narrative of how findings were triaged, and any non-steering finding
+     left unresolved because the artifact has no home for it.
