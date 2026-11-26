@@ -6433,9 +6433,14 @@ describe('shared clarify bail-out check and commit/push/PR step', () => {
   ])('%s checks bail_out before its first draft or write step', (file, headings) => {
     for (const [label, composed] of variants) {
       const cmd = composed.commands.get(file)!;
-      const dispatch = cmd.lastIndexOf('smithy-clarify', cmd.indexOf(BAIL_CANARY));
-      const check = cmd.indexOf(BAIL_CANARY);
-      expect(dispatch, `${label} ${file}: clarify dispatch precedes the check`).toBeGreaterThan(-1);
+      // The check starts at its bold lead-in; the dispatch is the command's
+      // own "Use the **smithy-clarify** sub-agent" instruction, not the
+      // snippet's mention of clarify inside the check itself.
+      const check = cmd.indexOf('**Bail-out check.**');
+      const dispatch = cmd.indexOf('**smithy-clarify** sub-agent');
+      expect(cmd.indexOf(BAIL_CANARY), `${label} ${file}: canary inside the check`).toBeGreaterThan(check);
+      expect(dispatch, `${label} ${file}: clarify dispatch found`).toBeGreaterThan(-1);
+      expect(check, `${label} ${file}: clarify dispatch precedes the check`).toBeGreaterThan(dispatch);
       for (const heading of headings) {
         const at = cmd.indexOf(heading);
         expect(at, `${label} ${file}: ${heading}`).toBeGreaterThan(-1);
