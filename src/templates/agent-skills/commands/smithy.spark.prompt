@@ -130,12 +130,13 @@ Dispatch the **smithy-clarify** sub-agent. Pass it:
   or specification debt. Return the structured output per the standard
   smithy-clarify contract.
 
-**If smithy-clarify returns `bail_out: true`** — the idea is too vague to
-draft a credible PRD — **stop the pipeline** and surface the
-`bail_out_summary` to the user with a one-line instruction to re-run spark
-after expanding the idea. Do not create a PRD file.
+{{>clarify-bail-out-check}}
 
-Otherwise, carry the returned `assumptions[]` and `debt_items[]` into Phase 2.5
+Spark's bail-out output: `bail_out_summary`, then each `debt_items` entry
+as a bullet (title — description), then one line telling the user to re-run
+spark after expanding the idea.
+
+On a normal return, carry the returned `assumptions[]` and `debt_items[]` into Phase 2.5
 and Phase 3 unchanged.
 
 ---
@@ -479,4 +480,5 @@ produces from this PRD is where the first Dependency Order table appears.
   past 3 paragraphs, it is no longer a PRD — recommend `smithy.ignite`
   instead.
 - **DO** bail out (without writing a file) if clarify returns
-  `bail_out: true`. A hollow PRD is worse than no PRD.
+  `bail_out: true`, listing every `debt_items` entry. A hollow PRD is
+  worse than no PRD.

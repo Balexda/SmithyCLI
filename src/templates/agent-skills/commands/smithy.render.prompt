@@ -120,9 +120,9 @@ After the sub-agent returns its summary:
    `.features.md` file before committing. Plan-review runs after refine has
    applied its changes and before the commit below, so any High-confidence
    fixes it proposes are captured in the same refinement commit.
-4. Commit the refinement diff and create a PR for the refinement using the
-   forge `gh pr create` pattern (the same pattern Phase 4 uses below;
-   {{>pr-create-tool-choice}}).
+4. Run the **Commit, push, and PR step** under Phase 4 with the refinement
+   diff as the files, `Refine <milestone title> feature map` as the title,
+   and the refine summary plus the refinements applied as the body.
 5. Render the one-shot output block (the format defined in the
    `one-shot-output` shared snippet, inlined into Phase 4 below) as the
    terminal contract for the refinement pass, using the feature map as the
@@ -302,6 +302,8 @@ Use the **smithy-clarify** sub-agent. Pass it:
   milestone is well-defined, expect more assumptions and fewer questions. Never
   skip clarification entirely.
 
+{{>clarify-bail-out-check}}
+
 ---
 
 ## Phase 3: Draft Feature Map
@@ -473,30 +475,30 @@ in the same diff.
    plan-review pass above appended any `steering` findings). The artifact
    must be complete before the commit — nothing after this step writes
    debt into the file.
-4. Commit the feature map file on the current feature branch (capturing
-   both the original feature map and any plan-review fixes in the same
-   diff). Push the current branch as-is — do not rename it or prepend a
-   prefix such as `feature/`. The PR must be opened against the same
-   branch the operator (or upstream orchestrator) had checked out when
-   render was invoked. See the branch policy below.
-5. Compose the one-shot output snippet content (the format defined below).
+4. Compose the one-shot output snippet content (the format defined below).
    For a feature-map run, use the RFC folder as the spec folder and
    substitute feature counts where the snippet asks for user stories /
    functional requirements. Copy the clarify return's `assumptions` into
    the snippet's `## Assumptions` section (the snippet / PR body is the
    only Assumptions surface — the feature map artifact has no
    `## Assumptions` section), and source the `## Specification Debt`
-   summary from the committed feature map per the snippet's placeholder
+   summary from the finished feature map per the snippet's placeholder
    guidance, so the PR body and the artifact stay in sync. Leave the
    `## PR` section unfilled for now.
-6. Create a PR for the feature map artifact using the forge `gh pr create`
-   pattern ({{>pr-create-tool-choice}}):
+5. Run the commit, push, and PR step below on the current feature branch
+   with:
+   - **Files**: the feature map file, capturing both the original feature
+     map and any plan-review fixes in the same diff.
    - **Title**: `Feature Map: <Milestone Title>`, under 70 characters,
      descriptive text only.
    - **Body**: the snippet content composed in the previous step (minus its
      `## PR` section) plus a relative link to the feature map file.
-7. Fill the snippet's `## PR` section with the URL the previous step
-   returned and render the completed snippet as the terminal contract.
+6. Fill the snippet's `## PR` section with the URL that step captured and
+   render the completed snippet as the terminal contract.
+
+#### Commit, push, and PR step
+
+{{>commit-push-pr}}
 
 {{>one-shot-output}}
 

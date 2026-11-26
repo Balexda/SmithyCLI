@@ -108,7 +108,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(40);
+    expect(snippets.size).toBe(42);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -151,6 +151,8 @@ describe('loadSnippets', () => {
       'plan-review-triage.md',
       'read-only-dispatch-guard.md',
       'drift-categories.md',
+      'clarify-bail-out-check.md',
+      'commit-push-pr.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -813,7 +815,7 @@ describe('one-shot-output snippet', () => {
     const snippets = loadSnippets();
     const content = snippets.get('one-shot-output.md')!;
     expect(content).toMatch(/PR creation fail/i);
-    expect(content.toLowerCase()).toContain('artifacts are on disk');
+    expect(content.toLowerCase()).toContain('artifacts are committed on');
   });
 
   it('snippet includes bail-out fallback guidance', () => {
@@ -3247,10 +3249,8 @@ describe('getComposedTemplates', () => {
   it('mark template contains no intermediate STOP-gate language', () => {
     const mark = composed.commands.get('smithy.mark.md')!;
     // Intermediate approval STOPs must be gone. The Phase 2 clarify bail-out
-    // path (`Stop and wait for the user to provide expanded information`)
-    // is intentional and preserved from Story 2 — it only runs when clarify
-    // returns `bail_out: true` and the pipeline short-circuits before any
-    // files are written.
+    // check is not one: it composes `clarify-bail-out-check`, which renders
+    // the one-shot Bail-Out output and ends the run without waiting.
     expect(mark).not.toMatch(/STOP and ask/i);
     expect(mark).not.toMatch(/STOP after/i);
   });
@@ -3334,10 +3334,8 @@ describe('getComposedTemplates', () => {
   it('cut template contains no intermediate STOP-gate language', () => {
     const cut = composed.commands.get('smithy.cut.md')!;
     // Intermediate approval STOPs must be gone. The Phase 3 clarify bail-out
-    // path (`Stop and wait for the user to provide expanded information`)
-    // is intentional and preserved from Story 2 — it only runs when clarify
-    // returns `bail_out: true` and the pipeline short-circuits before the
-    // tasks file is written.
+    // check is not one: it composes `clarify-bail-out-check`, which renders
+    // the one-shot Bail-Out output and ends the run without waiting.
     expect(cut).not.toMatch(/STOP and ask/i);
     expect(cut).not.toMatch(/STOP after/i);
   });
@@ -6384,5 +6382,125 @@ describe('issue #554 — audit defects D1–D10', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).not.toMatch(/copy `assumptions` and\s+`debt_items` from clarify's return/);
     expect(strike).toMatch(/source `## Specification Debt` from the committed strike/);
+  });
+});
+
+// Two protocols every one-shot planning command shares, each composed from
+// one snippet (INV-1): what happens when clarify bails out (INV-4 — the
+// `bail_out` flag and `debt_items` must have a consumer), and the commit,
+// push, and open-or-reuse PR step (INV-6 — a re-run, or cut on the branch
+// mark opened, never opens a second PR). Each guard matches on the snippet's
+// canary and on headings, so it holds however a command's phases move.
+describe('shared clarify bail-out check and commit/push/PR step', () => {
+  const BAIL_CANARY = "Render the bail-out output — the one-shot output's `## Bail-Out` fallback";
+  const PR_CANARY = 'finding an open PR on this branch is not a failure';
+  const commandsDir = path.join(process.cwd(), 'src/templates/agent-skills/commands');
+  const sources = new Map(
+    fs.readdirSync(commandsDir)
+      .filter(f => f.endsWith('.prompt'))
+      .map(f => [f.replace(/\.prompt$/, '.md'), fs.readFileSync(path.join(commandsDir, f), 'utf8')] as const),
+  );
+  const variants: Array<[string, ComposedTemplates]> = [];
+
+  beforeAll(async () => {
+    variants.push(['claude', await getComposedTemplates('claude')]);
+    variants.push(['codex', await getComposedTemplates('codex')]);
+  });
+
+  const CLARIFY_DISPATCHERS = [
+    'smithy.strike.md', 'smithy.ignite.md', 'smithy.mark.md',
+    'smithy.render.md', 'smithy.cut.md', 'smithy.spark.md',
+  ];
+
+  it('lists every command that dispatches smithy-clarify', () => {
+    const dispatchers = [...sources].filter(([, src]) => src.includes('smithy-clarify')).map(([f]) => f);
+    expect(dispatchers.sort()).toEqual([...CLARIFY_DISPATCHERS].sort());
+  });
+
+  it('every clarify dispatcher composes the bail-out check', () => {
+    for (const [label, composed] of variants) {
+      for (const file of CLARIFY_DISPATCHERS) {
+        const cmd = composed.commands.get(file);
+        expect(cmd, `${label} ${file}`).toBeDefined();
+        expect(cmd, `${label} ${file} must compose clarify-bail-out-check`).toContain(BAIL_CANARY);
+      }
+    }
+  });
+
+  it.each([
+    ['smithy.render.md', ['## Phase 3: Draft Feature Map']],
+    ['smithy.ignite.md', ['### Append New Clarify Log Session', '## Phase 3: Draft RFC']],
+  ])('%s checks bail_out before its first draft or write step', (file, headings) => {
+    for (const [label, composed] of variants) {
+      const cmd = composed.commands.get(file)!;
+      const dispatch = cmd.lastIndexOf('smithy-clarify', cmd.indexOf(BAIL_CANARY));
+      const check = cmd.indexOf(BAIL_CANARY);
+      expect(dispatch, `${label} ${file}: clarify dispatch precedes the check`).toBeGreaterThan(-1);
+      for (const heading of headings) {
+        const at = cmd.indexOf(heading);
+        expect(at, `${label} ${file}: ${heading}`).toBeGreaterThan(-1);
+        expect(check, `${label} ${file}: bail-out check precedes ${heading}`).toBeLessThan(at);
+      }
+    }
+  });
+
+  it('spark lists debt_items in its bail-out output', () => {
+    for (const [label, composed] of variants) {
+      const spark = composed.commands.get('smithy.spark.md')!;
+      const block = spark.slice(spark.indexOf(BAIL_CANARY), spark.indexOf('## Phase 2.5'));
+      expect(block, label).toMatch(/each `debt_items` entry/);
+    }
+  });
+
+  const PR_COMPOSERS = ['smithy.mark.md', 'smithy.cut.md', 'smithy.render.md', 'smithy.ignite.md'];
+
+  it('mark, cut, render, and ignite compose the commit/push/PR step', () => {
+    for (const file of PR_COMPOSERS) {
+      expect(sources.get(file), file).toContain('{{>commit-push-pr}}');
+    }
+  });
+
+  it('every command composing the commit/push/PR step carries its canary and the reuse lookup', () => {
+    const composers = [...sources].filter(([, src]) => src.includes('{{>commit-push-pr}}')).map(([f]) => f);
+    expect(composers.sort()).toEqual([...PR_COMPOSERS].sort());
+    for (const [label, composed] of variants) {
+      for (const file of composers) {
+        const cmd = composed.commands.get(file)!;
+        expect(cmd, `${label} ${file}`).toContain(PR_CANARY);
+        expect(cmd, `${label} ${file}`).toContain('mcp__github__list_pull_requests');
+        // Both the Phase 0 refinement path and the main path point at the
+        // one composed section rather than carrying a step of their own.
+        expect(cmd.match(/Commit, push, and PR step/g)?.length ?? 0, `${label} ${file}`)
+          .toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it('no command source carries its own PR-reuse prose', () => {
+    for (const [file, src] of sources) {
+      expect(src, file).not.toContain('already has an open pull request');
+      expect(src, file).not.toContain(PR_CANARY);
+      expect(src, file).not.toContain('list_pull_requests');
+    }
+  });
+
+  it('no composed command tells the user to retry the whole command', () => {
+    for (const [label, composed] of variants) {
+      for (const [file, cmd] of composed.commands) {
+        expect(cmd, `${label} ${file}`).not.toMatch(/retry the command/i);
+      }
+    }
+  });
+
+  it('the PR-creation failure block tells the user to push and open the PR by hand', () => {
+    for (const [label, composed] of variants) {
+      for (const [file, cmd] of composed.commands) {
+        const at = cmd.indexOf('PR creation failed —');
+        if (at === -1) continue;
+        const block = cmd.slice(at, cmd.indexOf('Error: <error message>', at));
+        expect(block, `${label} ${file}`).toContain('git push -u origin <branch>');
+        expect(block, `${label} ${file}`).toMatch(/Do not\s+re-run the whole\s+command/);
+      }
+    }
   });
 });

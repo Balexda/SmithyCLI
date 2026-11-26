@@ -255,11 +255,7 @@ Use the **smithy-clarify** sub-agent. Pass it:
 
 Record all Q&A and assumptions for inclusion in the Clarifications section of the spec.
 
-**Bail-out check**: If clarify returns `bail_out: true`, output the
-`debt_items` table and the `bail_out_summary` guidance message to the terminal
-so the user can see exactly which ambiguities need resolution. Do not write any
-artifact files. Stop and wait for the user to provide expanded information or
-narrow the scope, then re-run.
+{{>clarify-bail-out-check}}
 
 ---
 
@@ -810,29 +806,22 @@ in the same diff.
 One-shot mode: do **not** stop to ask the user to review or approve the
 artifacts. The files are on disk and the PR is the review surface.
 
-1. Stage and commit all written files on the current branch:
-   - the three spec artifacts in the new spec folder
-   - the durable UI artifacts and paired stub test bodies, when this run used
-     the UI authoring path
-   - the updated `.features.md` (if this run performed a feature-map
-     write-back)
-2. Push the current branch to `origin` as-is — do not rename it or
-   prepend a prefix such as `feature/`. The branch must match the one
-   resolved in Phase 1 step 4 so downstream tooling can find the PR by
-   that branch name.
-3. Create a pull request using the same PR-creation pattern that
-   `smithy.forge` uses ({{>pr-create-tool-choice}}):
-   - **Title**: the feature title, under 70 characters, plain descriptive text
-     (no FR numbers, no bracketed tags).
-   - **Body**: a short summary with the spec folder path, the user story list
-     with priorities, key entities (if any), contracts/interfaces identified
-     (if any), and a one-line pointer to `smithy.cut` as the next step.
-4. Capture the resulting PR URL for the one-shot output snippet.
+Run the commit, push, and PR step below on the branch resolved in Phase 1
+step 4, with:
 
-If PR creation fails (network error, auth failure, missing upstream,
-etc.), do **not** roll back the written files — they stay on disk. Fall
-through to the PR-creation-failure branch of the one-shot output snippet
-below so the user sees exactly what was produced and what went wrong.
+- **Files**: the three spec artifacts in the new spec folder; the durable UI
+  artifacts and paired stub test bodies, when this run used the UI authoring
+  path; and the updated `.features.md`, if this run performed a feature-map
+  write-back.
+- **Title**: the feature title, under 70 characters, plain descriptive text
+  (no FR numbers, no bracketed tags).
+- **Body**: a short summary with the spec folder path, the user story list
+  with priorities, key entities (if any), contracts/interfaces identified
+  (if any), and a one-line pointer to `smithy.cut` as the next step.
+
+#### Commit, push, and PR step
+
+{{>commit-push-pr}}
 
 ### Render the one-shot output contract
 
@@ -840,7 +829,7 @@ Render the shared one-shot output snippet as the terminal output for this
 run. Populate every placeholder from captured run data — the spec folder
 path, the branch name, the artifact list, the user story / FR counts, the
 full `assumptions` and `debt_items` arrays returned by clarify, and the PR
-URL from the previous step. Do NOT dump the full file contents into the
+URL the commit, push, and PR step captured. Do NOT dump the full file contents into the
 terminal; the snippet is the contract.
 
 {{>one-shot-output}}
@@ -928,38 +917,15 @@ the spec artifact set. Pass it:
 The Phase 0c commit below captures both the refine diff and the plan-review
 fixes in the same diff.
 
-**No-op check** (runs after refine and plan-review): if refine returned an
-empty `refinements` list, plan-review returned no High-confidence fixes and
-no new debt rows, and `git status --porcelain` reports a clean worktree,
-this pass had nothing to change. Skip the commit, push, and PR-creation
-steps below. Render the one-shot output snippet with an explicit "no-op"
-note in `## Summary` ("Artifacts produced: 0 files — refine and plan-review
-found no changes") and reuse the branch's existing PR URL if one exists
-(fall back to "No PR — nothing to change" otherwise). Do not fail with
-"nothing to commit".
+Run the **Commit, push, and PR step** under Phase 6 on the spec
+folder's branch, with:
 
-1. Stage and commit the refinement diff on the current branch (the spec
-   folder's branch). The commit message should describe the refinements
-   applied (e.g., `mark refine: resolve SD-003; add US4 priority
-   justification`).
-2. Push the branch to `origin`.
-3. Check whether the current branch already has an open pull request (for
-   example with `mcp__github__list_pull_requests` filtered by `head`, or
-   `gh pr view --json url` if MCP is unavailable).
-   - If a PR already exists for this branch, capture and reuse that PR URL
-     for the one-shot output snippet — do **not** create another PR, and
-     do **not** treat the existing PR as a failure.
-   - If no PR exists, create one using the same PR-creation pattern that
-     `smithy.forge` uses (see `pr-create-tool-choice` for the MCP-first /
-     `gh`-fallback tool choice):
-     - **Title**: `Refine <feature title>` — under 70 characters, plain text.
-     - **Body**: the refine summary, a list of refinements applied, and any
-       debt items resolved or introduced by this pass.
-4. Capture the resulting or existing PR URL for the one-shot output snippet.
-
-If PR creation fails, fall through to the PR-creation-failure branch of
-the one-shot output snippet so the user sees exactly what changed and what
-went wrong.
+- **Files**: the refinement diff, committed with a message describing the
+  refinements applied (e.g., `mark refine: resolve SD-003; add US4 priority
+  justification`).
+- **Title**: `Refine <feature title>` — under 70 characters, plain text.
+- **Body**: the refine summary, a list of refinements applied, and any debt
+  items resolved or introduced by this pass.
 
 Render the shared one-shot output snippet as the terminal output, populating
 Summary (note that "Artifacts produced" describes the refinement diff, not a

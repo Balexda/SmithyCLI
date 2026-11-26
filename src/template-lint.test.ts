@@ -109,13 +109,6 @@ describe('template lint — no duplicate snippet injection', () => {
     ['commands/smithy.ignite.prompt', /\{\{>debt-row-append\}\}/],
     ['commands/smithy.mark.prompt', /\{\{>debt-row-append\}\}/],
     ['commands/smithy.render.prompt', /\{\{>debt-row-append\}\}/],
-    // A single sentence naming the PR-creation tool preference, bound into two
-    // different phase steps that each hand the reader a command to run. The
-    // second injection costs one line, and collapsing the two phases to share
-    // one mention would put the instruction far from one of its uses.
-    ['commands/smithy.cut.prompt', /\{\{>pr-create-tool-choice\}\}/],
-    ['commands/smithy.ignite.prompt', /\{\{>pr-create-tool-choice\}\}/],
-    ['commands/smithy.render.prompt', /\{\{>pr-create-tool-choice\}\}/],
   ];
 
   for (const variant of VARIANTS) {
@@ -201,17 +194,8 @@ describe('template lint — no passage copied between templates', () => {
    * it; the extraction deletes both sides' entries.
    */
   const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // mark and cut: the clarify bail-out paragraph and the Phase 0 refinement
-    // PR-reuse block. #648.
-    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: \*\*Bail-out check\*\*/],
-    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: \*\*Bail-out check\*\*/],
-    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: (steps below\. Render|3\. Check whether the current branch|- \*\*Body\*\*: the refine summary)/],
-    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: (steps below\. Render|3\. Check whether the current branch|- \*\*Body\*\*: the refine summary)/],
-    // Every other copy on the tree when the lint landed, one INV-1 ledger row
-    // each. #646.
-    // mark and cut: the final PR step (capture the URL, failure fallthrough).
-    ['commands/smithy.cut.prompt', /also in commands\/smithy\.mark\.prompt: 4\. Capture the resulting PR URL/],
-    ['commands/smithy.mark.prompt', /also in commands\/smithy\.cut\.prompt: 4\. Capture the resulting PR URL/],
+    // The copies still on the tree from when the lint landed, one INV-1
+    // ledger row each. #646.
     // implement and implementation-review: the reference-document input list.
     ['agents/smithy.implement.prompt', /also in agents\/smithy\.implementation-review\.prompt: 4\. \*\*File paths\*\*/],
     ['agents/smithy.implementation-review.prompt', /also in agents\/smithy\.implement\.prompt: 4\. \*\*File paths\*\*/],

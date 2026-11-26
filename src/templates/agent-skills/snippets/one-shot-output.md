@@ -49,7 +49,8 @@ render it.)
   artifacts produced by the run (e.g. `specs/2026-04-08-003-reduce-interaction-friction/`).
   For RFC-only runs (ignite without a downstream spec folder), use the RFC
   file's parent directory.
-- **Branch**: the feature branch the command pushed the PR from.
+- **Branch**: the feature branch the command pushed the PR from; also
+  `<branch>` in the PR-creation failure fallback.
 - **Artifacts produced**: file count and comma-separated list of basenames
   (e.g. `3 files (reduce-interaction-friction.spec.md, …data-model.md,
   …contracts.md)`).
@@ -110,17 +111,18 @@ attempting to render the full format above:
   ```markdown
   ## PR
 
-  PR creation failed — artifacts are on disk at `<spec folder>`. Re-run
-  the PR creation step manually (see `pr-create-tool-choice` for the
-  tool to use), or retry the command. Error: <error message>.
+  PR creation failed — the artifacts are committed on `<branch>` at
+  `<spec folder>`. Push the branch if the push did not complete
+  (`git push -u origin <branch>`), then open the PR manually. Do not
+  re-run the whole command. Error: <error message>.
   ```
 
   Never silently drop the PR section; the developer needs to see that PR
   creation was attempted and failed.
 
-- **Bail-out**: if the run short-circuited because clarify returned
-  `bail_out: true`, no artifacts were written and there is no PR. Skip the
-  full format above and render only:
+- **Bail-out**: if the run stopped at the clarify bail-out check
+  (clarify returned `bail_out: true`), no artifacts were written and there
+  is no PR. Skip the full format above and render only:
 
   ```markdown
   ## Bail-Out
@@ -134,7 +136,7 @@ attempting to render the full format above:
 
   ### What's needed
 
-  <clarify's debt summary — the specific information required to proceed>
+  <one bullet per clarify `debt_items` entry: title — description>
   ```
 
   Do not emit `## Summary`, `## Assumptions`, `## Specification Debt`, or
