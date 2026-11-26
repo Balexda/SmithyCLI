@@ -233,6 +233,8 @@ review of the refined artifact. Pass it:
 - **artifact_paths** — the repo-relative path to the refined RFC file
   (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
 - **artifact_type** — `rfc`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the refined RFC file;
   its `SD-NNN` numbering continues from whatever refine or prior clarify
@@ -401,12 +403,18 @@ sessions on this RFC can deduplicate against them:
    **Questions & Answers**:
    - Q: <question> → A: <answer>
    - Q: <question> → A: <answer>
+
+   **Specification Debt Candidates**:
+   - <SD-NNN> | <Title> | <Description> | <Source Category> | <Impact> | <Confidence> | <Recommendation> | <Origin>
    ```
 
-   Pull the assumptions and Q&A from smithy-clarify's return summary, not
-   from any other source. Omit either the `**Assumptions**` or
+   Pull the assumptions, Q&A, and `debt_items` from smithy-clarify's return
+   summary, not from any other source. Omit either the `**Assumptions**` or
    `**Questions & Answers**` block if smithy-clarify returned nothing for
-   that category, but always include the `### Session YYYY-MM-DD` heading.
+   that category, but always include the `### Session YYYY-MM-DD` heading and
+   the `**Specification Debt Candidates**` block: one line per `debt_items`
+   record with its fields verbatim, or `- None` when there are none. A resumed
+   run's sub-phase 3e writes its debt from this block.
 4. **Append** the new session entry to
    `.smithy/clarify-logs/<YYYY>-<NNN>-<slug>.clarify-log.md`. The log is
    append-only — never overwrite prior sessions, and never modify existing
@@ -496,7 +504,9 @@ hand-off with the following rules:
      `.smithy/clarify-logs/<YYYY>-<NNN>-<slug>.clarify-log.md` if it
      exists. (This path replaces the legacy in-RFC-folder
      `.clarify-log.md`; the slug here is the same one ignite uses for the
-     RFC folder.) If no log is present, run **Phase 2 (Clarify)** before
+     RFC folder.) If sub-phase 3e is not yet on disk and the log's latest
+     session has no `**Specification Debt Candidates**` block, treat the log
+     as absent. If no log is present, run **Phase 2 (Clarify)** before
      dispatching the first resumed sub-phase so the downstream sub-agents
      receive grounded clarification context rather than fabricated answers.
      Do not silently dispatch with empty clarification.
@@ -883,6 +893,8 @@ review. Pass it:
 - **artifact_paths** — the repo-relative path to the RFC file
   (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`).
 - **artifact_type** — `rfc`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the RFC file just
   written; its `SD-NNN` numbering continues from whatever clarify / Phase 3

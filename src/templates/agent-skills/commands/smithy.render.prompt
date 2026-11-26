@@ -150,6 +150,8 @@ review of the refined artifact. Pass it:
 - **artifact_paths** — the repo-relative path to the refined feature map
   file (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the refined feature
   map; its `SD-NNN` numbering continues from whatever refine or prior
@@ -461,6 +463,8 @@ Pass it:
 - **artifact_paths** — the repo-relative path to the feature map file
   (`{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<NN>-<milestone-slug>.features.md`).
 - **artifact_type** — `feature-map`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the feature map just
   written; its `SD-NNN` numbering continues from whatever clarify already
