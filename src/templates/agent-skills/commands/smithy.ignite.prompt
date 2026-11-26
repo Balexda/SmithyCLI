@@ -75,6 +75,17 @@ folders. If a folder's slug is a close match to the derived slug for the new ide
 
 ---
 
+## Branch Step
+
+Every path runs this step once, before its first file write in the
+repository: Phase 0c before it applies refinements, and a new RFC before
+Phase 2 edits `.gitignore` or the RFC folder is created. The derived name is
+the RFC folder name, `<YYYY>-<NNN>-<slug>`.
+
+{{>branch-policy}}
+
+---
+
 {{#ifAgent}}
 ## Phase 0: State Detection and Review Loop
 {{else}}
@@ -184,7 +195,7 @@ Use the **smithy-refine** sub-agent. Pass it:
 
 ### Phase 0c: Apply Refinements
 
-After the sub-agent returns its summary:
+After the sub-agent returns its summary, run the **Branch Step**, then:
 1. Apply the refinements from smithy-refine directly to the RFC file in place
    — refine is non-interactive and returns refinements ready to apply. Do not pause for user approval before writing.
 2. Record refine's `debt_items` in the RFC's `## Specification Debt`
@@ -356,7 +367,8 @@ After smithy-clarify returns its summary of assumptions and Q&A, and before
 Phase 3 begins, persist the results to the per-RFC clarify log so future
 sessions on this RFC can deduplicate against them:
 
-1. **Ensure `.smithy/clarify-logs/` is gitignored.** Before writing the log,
+1. **Ensure `.smithy/clarify-logs/` is gitignored.** Run the **Branch Step**
+   first if this run has not already. Before writing the log,
    read the repo's root `.gitignore`. If it does not contain an entry that
    matches `.smithy/clarify-logs/` (either `.smithy/clarify-logs/` or a
    broader pattern that covers it), append the following two lines to the end
@@ -427,7 +439,8 @@ all. See Sub-phase 3b for the full projection-and-gap procedure and Sub-phase
 {{#ifAgent}}
 ### RFC File Creation
 
-Before any sub-phase begins, create the RFC folder and file:
+Before any sub-phase begins, run the **Branch Step** if this run has not
+already, then create the RFC folder and file:
 
 1. Create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
 2. Create `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md` with only the RFC header — nothing else:
@@ -863,7 +876,7 @@ PR — the snippet's PR link is the handoff point, not an interactive gate.
 ### Plan-Review Pass
 
 After the RFC file is fully on disk (following Phase 3 in agent mode, or
-after writing it in the default branch below) and before the commit step,
+after writing it in the steps below) and before the commit step,
 dispatch the **smithy-plan-review** sub-agent to perform a self-consistency
 review. Pass it:
 
@@ -913,7 +926,7 @@ and file write — proceed directly through plan-review, commit, and PR:
    render the completed snippet as the terminal contract.
 
 {{else}}
-1. Create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
+1. Run the **Branch Step**, then create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
 2. Write the RFC to `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/<slug>.rfc.md`,
    including its `## Specification Debt` section populated from clarify's
    `debt_items` per the rule stated below the template.
@@ -962,7 +975,3 @@ and file write — proceed directly through plan-review, commit, and PR:
 - **DO** ensure milestones are clearly delineated with distinct scope and success criteria.
 - **DO** surface risks during clarification via the clarify return.
 - **DO** keep the RFC concise — a good RFC is a starting point, not a final design.
-
----
-
-{{>branch-policy}}

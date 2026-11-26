@@ -31,9 +31,6 @@ done (D-8, D-7).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `commands/smithy.render.prompt`, `commands/smithy.ignite.prompt` | No branch step, so they commit to the default branch | Temporary: compose the shared branch step | #648 | medium |
-| `snippets/branch-policy.md`; branch steps in strike, mark, forge | Uses the worktree-shape test and the forge carve-out | Temporary: rewrite the snippet to D-7 | #648 | low |
-| `commands/smithy.audit.prompt` (code audit) | Reads the default branch from the local ref only | Temporary: use the shared detection | #648 | low |
 | `commands/smithy.forge.prompt` (implementation repo check) | Repo identity is the worktree directory name | Temporary: use the common git dir and the remote | #649 | medium |
 | `commands/smithy.orders.prompt` (linking) | Hierarchy is linked as blocked-by | Temporary: use sub-issues | #652 | medium |
 | `skills/smithy.pr-review/scripts/get-comments.sh` | Reads one page of threads and of replies | Temporary: paginate both | #652 | medium |

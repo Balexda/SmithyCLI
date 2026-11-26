@@ -57,6 +57,17 @@ Before starting, determine the mode:
 
 ---
 
+## Branch Step
+
+Both paths run this step once, before their first file write: Phase 0c
+before it applies refinements, Phase 4 before it writes the feature map. The
+derived name is `<YYYY>-<NNN>-<slug>-m<N>-features`, from the RFC folder name
+and the milestone number.
+
+{{>branch-policy}}
+
+---
+
 ## Phase 0: Review Loop
 
 Triggered when the target milestone already has a `.features.md` file in the RFC
@@ -105,7 +116,7 @@ Use the **smithy-refine** sub-agent. Pass it:
 
 ### Phase 0c: Apply Refinements
 
-After the sub-agent returns its summary:
+After the sub-agent returns its summary, run the **Branch Step**, then:
 
 1. Apply the refinements from smithy-refine directly to the `.features.md`
    file in place — refine is non-interactive and returns refinements ready
@@ -466,8 +477,8 @@ in the same diff.
 
 ### Commit and create the PR
 
-1. Write the feature map to the RFC folder as `<NN>-<milestone-slug>.features.md`,
-   co-located with the source RFC.
+1. Run the **Branch Step**, then write the feature map to the RFC folder as
+   `<NN>-<milestone-slug>.features.md`, co-located with the source RFC.
 2. Run the Plan-Review Pass described above on the feature map file that was
    just written.
 3. Verify the feature map's `## Specification Debt` section is already
@@ -485,8 +496,8 @@ in the same diff.
    summary from the finished feature map per the snippet's placeholder
    guidance, so the PR body and the artifact stay in sync. Leave the
    `## PR` section unfilled for now.
-5. Run the commit, push, and PR step below on the current feature branch
-   with:
+5. Run the commit, push, and PR step below on the branch the Branch Step
+   resolved, with:
    - **Files**: the feature map file, capturing both the original feature
      map and any plan-review fixes in the same diff.
    - **Title**: `Feature Map: <Milestone Title>`, under 70 characters,
@@ -569,7 +580,3 @@ in the same diff.
   attach backend prerequisites only to the wire feature's `## Dependency Order`
   row, alongside the build feature dependency. The seam must be visible from
   `phase`, the shared `flag`, and `Depends On`, not from naming convention alone.
-
----
-
-{{>branch-policy}}

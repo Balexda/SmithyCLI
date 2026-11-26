@@ -14,6 +14,7 @@
  * | INV-2 | deployable templates read correctly outside SmithyCLI | `findInternalReferences` |
  * | INV-3 | deployed metadata is honoured, grant side included | `findMissingToolGrants`, `findMissingSkillGrants` |
  * | INV-8 | examples obey the contract they illustrate | `findDependencyOrderCheckboxes` |
+ * | INV-6 / D-7 | a branch is created only by the one branch rule | `findBareBranchCreation`, `findWorktreeShapeBranching` |
  * | P-1 | always-loaded context is a budget | `findOverBudgetDescriptions` |
  *
  * Every lint reads a `TemplateSource` and returns findings rather than
@@ -903,6 +904,55 @@ export function findDependencyOrderCheckboxes(source: TemplateSource = loadTempl
       }
       if (level && /^(?:[-*+]|\d+[.)])\s+\[[ xX]\]/.test(line)) {
         findings.push({ id: t.id, detail: `line ${i + 1}: checkbox under Dependency Order: ${truncate(line)}` });
+      }
+    });
+  }
+  return findings;
+}
+
+/** The one template allowed to create a branch: the shared branch rule (D-7). */
+export const BRANCH_RULE_HOME = 'snippets/branch-policy.md';
+
+const BRANCH_CREATION = /\bgit\s+(?:checkout\s+-b|switch\s+(?:-c|--create))\b/g;
+
+/**
+ * A branch-creating command anywhere but the shared branch rule.
+ *
+ * D-7 makes the branch decision one rule — create only from the default branch
+ * or a detached HEAD, and check out a branch that already exists rather than
+ * making a second one (INV-6). A template that runs its own `git checkout -b`
+ * bypasses both halves, which is how commands drifted to committing on the
+ * default branch or keying on checkout shape.
+ */
+export function findBareBranchCreation(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const findings: LintFinding[] = [];
+  for (const t of source.templates) {
+    if (t.id === BRANCH_RULE_HOME) continue;
+    t.source.split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(BRANCH_CREATION)) {
+        findings.push({ id: t.id, detail: `line ${i + 1}: \`${m[0]}\` outside the shared branch rule` });
+      }
+    });
+  }
+  return findings;
+}
+
+const WORKTREE_SHAPE = /--git-common-dir|\blinked\s+worktree|\bmain\s+checkout\b|\bworktree\s+shape\b/gi;
+
+/**
+ * Wording that keys a decision on the checkout's shape — main checkout versus
+ * linked worktree, detected with `--git-common-dir`.
+ *
+ * D-7 retired that test: the branch decision depends on the current branch
+ * alone. Any template naming the shape is either reintroducing the old rule or
+ * needs an allowlist entry saying why its use is a different concern.
+ */
+export function findWorktreeShapeBranching(source: TemplateSource = loadTemplateSource()): LintFinding[] {
+  const findings: LintFinding[] = [];
+  for (const t of source.templates) {
+    t.source.split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(WORKTREE_SHAPE)) {
+        findings.push({ id: t.id, detail: `line ${i + 1}: worktree-shape wording \`${m[0]}\`` });
       }
     });
   }

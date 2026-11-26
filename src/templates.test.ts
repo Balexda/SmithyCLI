@@ -108,7 +108,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(42);
+    expect(snippets.size).toBe(43);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -128,6 +128,7 @@ describe('loadSnippets', () => {
       'one-shot-output.md',
       'pr-create-tool-choice.md',
       'branch-policy.md',
+      'default-branch.md',
       'feature-kinds.md',
       'artifact-location-policy.md',
       'persona-convention.md',
@@ -175,7 +176,8 @@ describe('loadSnippets', () => {
     expect(snippets.get('competing-lenses-decomposition.md')).toContain('Competing Slice Lenses');
     expect(snippets.get('competing-lenses-implementation.md')).toContain('Competing Plan Lenses');
     expect(snippets.get('competing-lenses-scoping.md')).toContain('Competing Plan Lenses');
-    expect(snippets.get('branch-policy.md')).toContain('Branch Selection Policy');
+    expect(snippets.get('branch-policy.md')).toContain('Resolve the working branch before the first file write or commit.');
+    expect(snippets.get('default-branch.md')).toContain('Read the default branch from the remote');
     expect(snippets.get('persona-convention.md')).toContain('Persona Artifact Convention');
     expect(snippets.get('engraved-recall-rules.md')).toContain('Engraved Recall Rules');
     expect(snippets.get('spec-debt-section.md')).toContain('## Specification Debt');
@@ -6521,6 +6523,87 @@ describe('shared clarify bail-out check and commit/push/PR step', () => {
         expect(block, `${label} ${file}`).toContain('git push -u origin <branch>');
         expect(block, `${label} ${file}`).toMatch(/Do not\s+re-run the whole\s+command/);
       }
+    }
+  });
+});
+
+// The one branch rule (D-7, INV-6). Every command that commits composes the
+// shared branch step before its commit step — `commit-push-pr` pushes the
+// current branch as-is, so the branch must already be right — and the
+// default-branch lookup has one home, read from the remote. Guards match on
+// canaries, not positions, so they hold however a command's phases move.
+describe('one branch rule, composed before every commit step', () => {
+  const BRANCH_CANARY = 'Resolve the working branch before the first file write or commit.';
+  const DEFAULT_CANARY = 'Read the default branch from the remote';
+  const PR_CANARY = 'finding an open PR on this branch is not a failure';
+  const commandsDir = path.join(process.cwd(), 'src/templates/agent-skills/commands');
+  const sources = new Map(
+    fs.readdirSync(commandsDir)
+      .filter(f => f.endsWith('.prompt'))
+      .map(f => [f.replace(/\.prompt$/, '.md'), fs.readFileSync(path.join(commandsDir, f), 'utf8')] as const),
+  );
+  const variants: Array<[string, ComposedTemplates]> = [];
+
+  beforeAll(async () => {
+    variants.push(['claude', await getComposedTemplates('claude')]);
+    variants.push(['codex', await getComposedTemplates('codex')]);
+  });
+
+  // Strike and forge push and open their PR by hand rather than through
+  // commit-push-pr, but they commit all the same.
+  const BRANCHING = [
+    ...[...sources].filter(([, src]) => src.includes('{{>commit-push-pr}}')).map(([f]) => f),
+    'smithy.strike.md', 'smithy.forge.md',
+  ];
+
+  it('covers the commands that commit', () => {
+    expect([...BRANCHING].sort()).toEqual([
+      'smithy.cut.md', 'smithy.forge.md', 'smithy.ignite.md',
+      'smithy.mark.md', 'smithy.render.md', 'smithy.strike.md',
+    ]);
+  });
+
+  it('every committing command composes the branch rule once, before its commit step', () => {
+    for (const [label, composed] of variants) {
+      for (const file of BRANCHING) {
+        const cmd = composed.commands.get(file)!;
+        const at = cmd.indexOf(BRANCH_CANARY);
+        expect(at, `${label} ${file} must compose branch-policy`).toBeGreaterThan(-1);
+        expect(cmd.split(BRANCH_CANARY).length - 1, `${label} ${file}: one composition`).toBe(1);
+        // Forge's tasks commit from Record Base State onward; strike pushes by hand.
+        const commit = cmd.includes(PR_CANARY) ? cmd.indexOf(PR_CANARY)
+          : file === 'smithy.forge.md' ? cmd.indexOf('## Record Base State')
+          : cmd.search(/git push -u origin/);
+        expect(commit, `${label} ${file}: commit step found`).toBeGreaterThan(-1);
+        expect(at, `${label} ${file}: branch rule precedes the commit step`).toBeLessThan(commit);
+      }
+    }
+  });
+
+  it('spark writes no repository commit and composes no branch rule', () => {
+    const spark = sources.get('smithy.spark.md')!;
+    expect(spark).not.toContain('{{>branch-policy}}');
+    expect(spark).not.toMatch(/git (?:commit|push)\b/);
+  });
+
+  it('every template that detects the default branch composes the shared lookup', () => {
+    const detects = /refs\/remotes\/origin\/HEAD|symbolic-ref refs|git remote show origin|ls-remote --symref/;
+    for (const [label, composed] of variants) {
+      const rendered: Array<[string, string]> = [
+        ...[...composed.commands].map(([f, c]) => [`commands/${f}`, c] as [string, string]),
+        ...[...composed.prompts].map(([f, c]) => [`prompts/${f}`, c] as [string, string]),
+        ...[...composed.agents].map(([f, c]) => [`agents/${f}`, c] as [string, string]),
+        ...[...composed.skills].map(([n, s]) => [`skills/${n}`, s.prompt] as [string, string]),
+      ];
+      for (const [id, text] of rendered) {
+        if (!detects.test(text)) continue;
+        expect(text, `${label} ${id} detects the default branch without the shared lookup`).toContain(DEFAULT_CANARY);
+      }
+      // The lookup reads the remote, never the local ref alone.
+      for (const [id, text] of rendered) {
+        expect(text, `${label} ${id}`).not.toContain('symbolic-ref refs/remotes/origin/HEAD');
+      }
+      expect(composed.commands.get('smithy.audit.md'), `${label} audit`).toContain(DEFAULT_CANARY);
     }
   });
 });

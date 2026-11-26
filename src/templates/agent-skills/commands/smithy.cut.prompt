@@ -36,6 +36,18 @@ This may be:
 
 ---
 
+## Branch Step
+
+Both paths run this step once, before their first file write: Phase 0c
+before it updates the tasks file, Phase 5 before it writes one. The derived
+name is the spec folder name, `<YYYY-MM-DD>-<NNN>-<slug>` — the branch
+`smithy.mark` opened, so a cut started on the default branch checks that
+branch out and its PR is the one reused.
+
+{{>branch-policy}}
+
+---
+
 ## Phase 0: Review Loop (Repeat to Refine)
 
 **If a `.tasks.md` file already exists for the target work node** (i.e.,
@@ -66,7 +78,8 @@ Use the **smithy-refine** sub-agent. Pass it:
 
 ### 0c. Apply Refinements
 
-After the sub-agent returns its summary, update the existing tasks file on disk
+After the sub-agent returns its summary, run the **Branch Step**, then update
+the existing tasks file on disk
 to incorporate the refinements. Do not dump the full file contents into the
 terminal.
 
@@ -106,8 +119,8 @@ sub-agent to perform a self-consistency review of the tasks file. Pass it:
 The Phase 0c commit below captures both the refine diff and the plan-review
 fixes in the same commit.
 
-Run the **Commit, push, and PR step** under Phase 5 on the
-current branch, with:
+Run the **Commit, push, and PR step** under Phase 5 on the branch the
+Branch Step resolved, with:
 
 - **Files**: the refinement diff, committed with a message describing the
   refinements applied (e.g., `cut refine: split Slice 2; resolve SD-001`).
@@ -750,7 +763,7 @@ existing code to find the right implementation pattern.
 
 ## Phase 5: Write & PR
 
-Write the file to the node-specific tasks path:
+Run the **Branch Step**, then write the file to the node-specific tasks path:
 
 - Backend story table: `{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md`
   (where `<NN>` is the zero-padded user story number).
@@ -844,16 +857,9 @@ in the same diff.
 One-shot mode: do **not** stop to ask the user to review or approve the tasks
 file. The file is on disk and the PR is the review surface.
 
-**Branch check**: before committing, verify the current branch is NOT the
-repository's default branch. Discover the default branch dynamically (e.g.
-`git symbolic-ref refs/remotes/origin/HEAD`) rather than assuming `main`.
-If HEAD is on the default branch, stop with an error telling the user to
-re-run cut from the spec folder's feature branch (the one `smithy.mark`
-created) — pushing planning commits to the default branch and creating a
-PR with `head == base` will fail and pollute history.
-
-Run the commit, push, and PR step below on the current branch (usually the
-one where `smithy.mark` already opened the PR it will reuse), with:
+Run the commit, push, and PR step below on the branch the Branch Step
+resolved (usually the one where `smithy.mark` already opened the PR it will
+reuse), with:
 
 - **Files**: the new `.tasks.md` file and the spec's `## Dependency Order`
   write-back.
@@ -941,10 +947,6 @@ sections, the same placeholder guidance, and the same error fallbacks.
   tasks. See "Prohibitions" in the task authoring guidelines.
 - **DO** express testing requirements as acceptance criteria on the functional
   task, not as separate tasks.
-
----
-
-{{>branch-policy}}
 
 ---
 
