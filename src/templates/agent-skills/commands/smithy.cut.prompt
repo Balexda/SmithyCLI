@@ -106,40 +106,14 @@ sub-agent to perform a self-consistency review of the tasks file. Pass it:
 The Phase 0c commit below captures both the refine diff and the plan-review
 fixes in the same commit.
 
-**No-op check** (runs after refine and plan-review): if refine returned an
-empty `refinements` list, plan-review returned no High-confidence fixes and
-no new debt or implementation-question rows, and `git status --porcelain`
-reports a clean worktree, this pass had nothing to change. Skip the commit, push, and PR-creation
-steps below. Render the one-shot output snippet with an explicit "no-op"
-note in `## Summary` ("Artifacts produced: 0 files — refine and plan-review
-found no changes") and reuse the branch's existing PR URL if one exists
-(fall back to "No PR — nothing to change" otherwise). Do not fail with
-"nothing to commit".
+Run the **Commit, push, and PR step** under Phase 5 on the
+current branch, with:
 
-1. Stage and commit the refinement diff on the current branch. The commit
-   message should describe the refinements applied (e.g.,
-   `cut refine: split Slice 2; resolve SD-001`).
-2. Push the current branch to `origin` as-is — do not rename it or
-   prepend a prefix such as `feature/`. Orchestrators that pre-create
-   the worktree track the spec by the branch name they chose, and a
-   renamed PR head breaks downstream PR discovery (see the branch
-   policy below for the full rule).
-3. Check whether the current branch already has an open pull request (for
-   example with `mcp__github__list_pull_requests` filtered by `head`, or
-   `gh pr view --json url` if MCP is unavailable).
-   - If a PR already exists for this branch, capture and reuse that PR URL
-     for the one-shot output snippet — do **not** create another PR, and
-     do **not** treat the existing PR as a failure.
-   - If no PR exists, create one using the same PR-creation pattern that
-     `smithy.forge` uses ({{>pr-create-tool-choice}}):
-     - **Title**: `Refine <user story title> tasks` — under 70 characters.
-     - **Body**: the refine summary, a list of refinements applied, and any
-       debt items resolved or introduced by this pass.
-4. Capture the resulting or existing PR URL for the one-shot output snippet.
-
-If PR creation fails, fall through to the PR-creation-failure branch of
-the one-shot output snippet so the user sees exactly what changed and what
-went wrong.
+- **Files**: the refinement diff, committed with a message describing the
+  refinements applied (e.g., `cut refine: split Slice 2; resolve SD-001`).
+- **Title**: `Refine <user story title> tasks` — under 70 characters.
+- **Body**: the refine summary, a list of refinements applied, and any debt
+  items resolved or introduced by this pass.
 
 Render the shared one-shot output snippet as the terminal output, mapping
 refine-run data onto the snippet's canonical sections: in `## Summary`, use
@@ -422,11 +396,7 @@ Use the **smithy-clarify** sub-agent. Pass it:
   flag as Partial/Missing if the spec itself is ambiguous about which story owns
   a piece of functionality. If all categories are Clear, skip to Phase 4.
 
-**Bail-out check**: If clarify returns `bail_out: true`, output the
-`debt_items` table and the `bail_out_summary` guidance message to the terminal
-so the user can see exactly which ambiguities need resolution. Do not write any
-artifact files. Stop and wait for the user to provide expanded information or
-narrow the scope, then re-run.
+{{>clarify-bail-out-check}}
 
 ---
 
@@ -882,33 +852,23 @@ re-run cut from the spec folder's feature branch (the one `smithy.mark`
 created) — pushing planning commits to the default branch and creating a
 PR with `head == base` will fail and pollute history.
 
-1. Stage and commit both the new `.tasks.md` file and the spec's
-   `## Dependency Order` write-back on the current branch.
-2. Push the current branch to `origin` as-is — do not rename it or
-   prepend a prefix such as `feature/`. The PR must be opened against
-   the same branch name the operator (or upstream orchestrator) had
-   checked out when cut was invoked, so downstream tooling can find
-   the PR by that branch name. The branch policy below states the
-   full rule.
-3. Create a pull request using the same PR-creation pattern that
-   `smithy.forge` uses ({{>pr-create-tool-choice}}):
-   - **Title**: the user story or ledger node title, under 70 characters, plain
-     descriptive text (no FR numbers, no bracketed tags).
-   - **Body**: a short summary with the tasks file path, the slice count and
-     titles, the FRs and acceptance scenarios each slice addresses, the
-     recommended implementation order, any tradeoffs noted, and a one-line
-     pointer to `smithy.forge` as the next step.
-4. Capture the resulting PR URL for the one-shot output snippet.
+Run the commit, push, and PR step below on the current branch (usually the
+one where `smithy.mark` already opened the PR it will reuse), with:
 
-If PR creation fails (network error, auth failure, missing upstream,
-etc.), do **not** roll back the written files — they stay on disk. Fall
-through to the PR-creation-failure branch of the one-shot output snippet
-below so the user sees exactly what was produced and what went wrong.
+- **Files**: the new `.tasks.md` file and the spec's `## Dependency Order`
+  write-back.
+- **Title**: the user story or ledger node title, under 70 characters, plain
+  descriptive text (no FR numbers, no bracketed tags).
+- **Body**: a short summary with the tasks file path, the slice count and
+  titles, the FRs and acceptance scenarios each slice addresses, the
+  recommended implementation order, any tradeoffs noted, and a one-line
+  pointer to `smithy.forge` as the next step.
 
-The bail-out behavior from Phase 3 is preserved: if clarify returned
-`bail_out: true`, the pipeline short-circuits before writing the tasks file
-and before this commit-and-PR step. The one-shot output snippet renders its
-Bail-Out branch instead of the full contract.
+A run that stopped at Phase 3's bail-out check never reaches this step.
+
+#### Commit, push, and PR step
+
+{{>commit-push-pr}}
 
 ### Render the one-shot output contract
 
@@ -920,7 +880,7 @@ for `<branch>`, and list the tasks file (plus the spec write-back) under
 the slice count in place of the default "User stories" bullet. Populate
 Assumptions from the full `assumptions` array returned by clarify and
 Specification Debt from the tasks file's own `## Specification Debt`
-table, and substitute the PR URL from the previous step into the
+table, and substitute the PR URL the commit, push, and PR step captured into the
 `## PR` section. Do not invent new placeholders or reinterpret existing
 ones. Do NOT dump the full file contents into the terminal; the snippet
 is the contract.

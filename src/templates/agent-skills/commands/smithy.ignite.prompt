@@ -203,9 +203,9 @@ After the sub-agent returns its summary:
    before committing. Plan-review runs after refine has applied its changes
    and before the commit below, so any High-confidence fixes it proposes are
    captured in the same refinement commit.
-4. Commit the refinement diff and create a PR for the refinement using the
-   forge `gh pr create` pattern (the same pattern Phase 4 uses below;
-   {{>pr-create-tool-choice}}).
+4. Run the **Commit, push, and PR step** under Phase 4 with the refinement
+   diff as the files, `Refine <RFC title>` as the title, and the refine
+   summary plus the refinements applied as the body.
 5. Render the one-shot output block (the `## One-Shot Output` format
    defined at the end of Phase 4 below) as the
    terminal contract for the refinement pass, treating the refinement diff
@@ -347,6 +347,8 @@ Use the **smithy-clarify** sub-agent. Pass it:
 - **Special instructions**: if the idea is already well-specified (e.g., from a
   detailed PRD), expect more assumptions and fewer questions. Never skip
   clarification entirely.
+
+{{>clarify-bail-out-check}}
 
 ### Append New Clarify Log Session
 
@@ -892,29 +894,23 @@ and file write — proceed directly through plan-review, commit, and PR:
    pass above appended any `steering` findings). The artifact must be
    complete before the commit — nothing after this step writes debt into
    the file.
-3. Commit the RFC file on the current feature branch (capturing both the
-   harmonized content and any plan-review fixes in the same diff). Push
-   the current branch as-is — do not rename it or prepend a prefix such
-   as `feature/`. The PR must be opened against the same branch the
-   operator (or upstream orchestrator) had checked out when ignite was
-   invoked. See the branch policy below.
-4. Compose the one-shot output snippet content (the format defined below).
+3. Compose the one-shot output snippet content (the format defined below).
    For an RFC-only run, use the RFC folder as the spec folder and
    substitute milestone counts where the snippet asks for user stories /
    functional requirements. Copy the clarify return's `assumptions` into
    the snippet's `## Assumptions` section (the snippet / PR body is the
    only Assumptions surface — the RFC artifact itself has no
    `## Assumptions` section), and source the `## Specification Debt`
-   summary from the committed RFC per the snippet's placeholder guidance,
+   summary from the finished RFC per the snippet's placeholder guidance,
    so the PR body and the artifact stay in sync. Leave the `## PR` section
    unfilled for now.
-5. Create a PR for the RFC artifact using the forge PR-creation pattern
-   ({{>pr-create-tool-choice}}):
-   - **Title**: the RFC title, under 70 characters, descriptive text only.
-   - **Body**: the snippet content composed in the previous step (minus its
-     `## PR` section) plus a relative link to the RFC file.
-6. Fill the snippet's `## PR` section with the URL the previous step
-   returned and render the completed snippet as the terminal contract.
+4. Run the commit, push, and PR step below with the RFC file as the files
+   (the harmonized content and any plan-review fixes in one diff) and the
+   RFC title (under 70 characters) as the title. The body is
+   the snippet content composed in the previous step (minus its `## PR`
+   section) plus a relative link to the RFC file.
+5. Fill the snippet's `## PR` section with the URL that step captured and
+   render the completed snippet as the terminal contract.
 
 {{else}}
 1. Create the folder `{{artifactsRoot}}docs/rfcs/<YYYY>-<NNN>-<slug>/` if it doesn't exist.
@@ -924,31 +920,29 @@ and file write — proceed directly through plan-review, commit, and PR:
 3. Run the Plan-Review Pass described above on the RFC file that was just
    written. The artifact is complete after this step — nothing after the
    commit writes debt into the file.
-4. Commit the RFC file on the current feature branch (capturing both the
-   original RFC content and any plan-review fixes in the same diff). Push
-   the current branch as-is — do not rename it or prepend a prefix such
-   as `feature/`. The PR must be opened against the same branch the
-   operator (or upstream orchestrator) had checked out when ignite was
-   invoked. See the branch policy below.
-5. Compose the one-shot output snippet content (the format defined below).
+4. Compose the one-shot output snippet content (the format defined below).
    For an RFC-only run, use the RFC folder as the spec folder and
    substitute milestone counts where the snippet asks for user stories /
    functional requirements. Copy the clarify return's `assumptions` into
    the snippet's `## Assumptions` section (the snippet / PR body is the
    only Assumptions surface — the RFC artifact itself has no
    `## Assumptions` section), and source the `## Specification Debt`
-   summary from the committed RFC per the snippet's placeholder guidance,
+   summary from the finished RFC per the snippet's placeholder guidance,
    so the PR body and the artifact stay in sync. Leave the `## PR` section
    unfilled for now.
-6. Create a PR for the RFC artifact using the forge PR-creation pattern
-   ({{>pr-create-tool-choice}}):
-   - **Title**: the RFC title, under 70 characters, descriptive text only.
-   - **Body**: the snippet content composed in the previous step (minus its
-     `## PR` section) plus a relative link to the RFC file.
-7. Fill the snippet's `## PR` section with the URL the previous step
-   returned and render the completed snippet as the terminal contract.
+5. Run the commit, push, and PR step below with the RFC file as the files
+   (the original content and any plan-review fixes in one diff) and the
+   RFC title (under 70 characters) as the title. The body is
+   the snippet content composed in the previous step (minus its `## PR`
+   section) plus a relative link to the RFC file.
+6. Fill the snippet's `## PR` section with the URL that step captured and
+   render the completed snippet as the terminal contract.
 
 {{/ifAgent}}
+
+#### Commit, push, and PR step
+
+{{>commit-push-pr}}
 
 {{>one-shot-output}}
 
