@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Deploy the read-only goal reviewer**
+- [x] **Deploy the read-only goal reviewer**
 
   Add the reviewer under `src/templates/agent-skills/agents/` using the Goal Review Dispatch and Integration Boundaries contracts. Exercise AS 1.1 with the evidence cases in SC-001 through a standalone dispatch.
 
@@ -28,7 +28,7 @@
   - The read-only reviewer returns one verdict per criterion reference, with evidence or a specific gap, and completes without asking for the plan or tasks. The fixtures cover met, unmet and unverified verdicts.
   - Existing Forge reviews continue without a goal-review dispatch.
 
-- [ ] **Report request omissions through the shared review protocol**
+- [x] **Report request omissions through the shared review protocol**
 
   Compose the canonical review protocol, including its kind gate, in the goal-review agent template. Exercise AS 1.2 and AS 1.3 in the standalone review fixture.
 
