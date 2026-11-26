@@ -87,7 +87,7 @@ When no file argument is provided and the current branch matches the forge branc
 3. Get the code diff (run each command separately — do **not** use subshells):
    1. {{>default-branch}}
    2. Fetch it: `git fetch origin refs/heads/<default-branch>:refs/remotes/origin/<default-branch>`, using the branch name from step 1. If the fetch fails, stop and report that the diff base could not be fetched.
-   3. Find the merge base: `git merge-base HEAD origin/<default-branch>` (e.g., returns a commit hash)
+   3. Find the merge base: `git merge-base HEAD refs/remotes/origin/<default-branch>` (e.g., returns a commit hash)
    4. Diff from the merge base: `git diff <merge-base-hash>..HEAD` using the hash from step 3
 4. Review the code changes against:
    - The slice's goal, tasks, and acceptance criteria

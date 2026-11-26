@@ -9,7 +9,7 @@
    - **Any other branch:** keep it. Add no prefix, do not rename it, and create no branch.
 5. Switch without duplicating, deciding existence from checked sources only:
    - **Local:** if `git rev-parse --verify --quiet refs/heads/<name>` finds it, run `git checkout <name>`.
-   - **Remote:** else, if the remote branch list `git remote show origin` printed names `<name>`, run `git fetch origin refs/heads/<name>:refs/remotes/origin/<name>`, then `git checkout -b <name> --track origin/<name>`. If that fetch fails, stop and report it; never fall through to creating the branch.
+   - **Remote:** else, if the remote branch list `git remote show origin` printed names `<name>`, run `git fetch origin refs/heads/<name>:refs/remotes/origin/<name>`, then `git checkout -b <name> --track refs/remotes/origin/<name>`. If that fetch fails, stop and report it; never fall through to creating the branch.
    - **Neither:** run `git checkout -b <name>`.
 
    After checking out an existing branch, repeat every artifact lookup the calling phase made before this step. A file that exists on this branch is routed the way the command routes an existing artifact (review or resume), never overwritten.
