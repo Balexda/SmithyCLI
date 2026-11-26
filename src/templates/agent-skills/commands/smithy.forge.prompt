@@ -44,8 +44,7 @@ This may be:
   current branch to follow the standard forge shape
   `<NNN>/us-<NN>-<slug>/slice-<N>`. When the current branch does not match
   this shape, the slice-number-only invocation cannot infer the tasks file —
-  ask the user for the explicit tasks file path instead. (`smithy.audit`
-  has the same dependency on this shape and the same fallback.)
+  ask the user for the explicit tasks file path instead.
 - A **`.strike.md` file path** — single slice, no slice number needed.
 - Empty — if so, ask the user which tasks file and slice to work on.
 
