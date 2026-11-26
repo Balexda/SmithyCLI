@@ -6689,7 +6689,8 @@ describe('one-shot pipeline closeout', () => {
 
   it('mark gates renumbering on the Dependency Order Artifact cells', () => {
     const mark = flat(composed.commands.get('smithy.mark.md')!);
-    expect(mark).toContain('the spec\'s `## Dependency Order` `Artifact` cells gate what may change');
+    expect(mark).toContain('the spec\'s `## Dependency Order` `Artifact` cells, read before any refinement is applied, gate what may change');
+    expect(mark).toContain("keep any populated cell as found");
     expect(mark).toContain('**Any `Artifact` cell is populated**: ids are frozen.');
     expect(mark).not.toContain('Warn the user if existing `.tasks.md` files reference old story numbers');
   });

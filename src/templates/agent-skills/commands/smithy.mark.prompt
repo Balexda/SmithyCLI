@@ -853,7 +853,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Dependency Order** | Does the spec carry the ordering table its authoring path calls for, in the exact shape Phase 3 scaffolds — the backend `## Dependency Order` for `kind: backend` and absent-kind specs, or the typed UI Spec Ledger for `kind: ui`? Check every row against that shape: IDs, `Depends On` cells, `Design` cells where the shape has them, and `Artifact` cells (always `—` in mark's own output). Do not flag a valid UI ledger as missing the backend shape, and never rewrite one into the other. Flag any checkbox markup as an error. |
+  | **Dependency Order** | Does the spec carry the ordering table its authoring path calls for, in the exact shape Phase 3 scaffolds — the backend `## Dependency Order` for `kind: backend` and absent-kind specs, or the typed UI Spec Ledger for `kind: ui`? Check every row against that shape: IDs, `Depends On` cells, `Design` cells where the shape has them, and `Artifact` cells (always `—` in mark's own output; keep any populated cell as found). Do not flag a valid UI ledger as missing the backend shape, and never rewrite one into the other. Flag any checkbox markup as an error. |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.
@@ -951,8 +951,8 @@ question into the `**Question:**` line. Do not write the resolution back to
 the parent.
 
 **Priority re-ordering**: If any user story priorities changed during
-refinement, the spec's `## Dependency Order` `Artifact` cells gate what may
-change:
+refinement, the spec's `## Dependency Order` `Artifact` cells, read before
+any refinement is applied, gate what may change:
 
 - **Every `Artifact` cell is `—`**: reorder so all P1 stories come first, then
   P2, then P3, preserving relative order within a level, and renumber. Rewrite
