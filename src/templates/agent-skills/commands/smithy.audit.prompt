@@ -74,8 +74,8 @@ When no file argument is provided, review the code on the current branch against
 
 1. Get the code diff (run each command separately — do **not** use subshells):
    1. {{>default-branch}}
-   2. Fetch it: `git fetch origin refs/heads/<default-branch>:refs/remotes/origin/<default-branch>`, using the branch name from step 1. If the fetch fails, stop and report that the diff base could not be fetched.
-   3. Find the merge base: `git merge-base HEAD refs/remotes/origin/<default-branch>` (e.g., returns a commit hash)
+   2. Fetch it: `git fetch origin +refs/heads/<default>:refs/remotes/origin/<default>`, using the name from step 1. If the fetch fails, stop and report that the diff base could not be fetched.
+   3. Find the merge base: `git merge-base HEAD refs/remotes/origin/<default>` (e.g., returns a commit hash)
    4. Diff from the merge base: `git diff <merge-base-hash>..HEAD` using the hash from step 3
 2. Identify the slice, taking the first clue that names exactly one:
    - **The branch name.** A branch shaped `<NNN>/us-<NN>-<slug>/slice-<N>` gives the spec number `<NNN>`, the user story number `<NN>`, and the slice number `<N>`.
