@@ -29,6 +29,7 @@ import {
   emittedHeadings,
   crossTemplateCopyFindings,
   findCrossTemplateCopies,
+  findBareBranchCreation,
   findBlankRenderedPlaceholders,
   findDeadRoutingDestinations,
   findDependencyOrderCheckboxes,
@@ -42,6 +43,8 @@ import {
   findRestatedProtocol,
   findUnresolvedReferences,
   findUnresolvedSmithyNames,
+  findWorktreeShapeBranching,
+  BRANCH_RULE_HOME,
   listAgentTemplates,
   listDescribedTemplates,
   listEnumStatements,
@@ -341,6 +344,50 @@ describe('template lint — Dependency Order is a table (INV-8)', () => {
       '- [ ] Confirm the table above parses',
     ].join('\n'));
     expect(findDependencyOrderCheckboxes(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
+  });
+});
+
+describe('template lint — one branch rule (D-7, INV-6)', () => {
+  it('creates a branch only inside the shared branch rule', () => {
+    const findings = findBareBranchCreation(tree);
+    expect(findings, `branch creation outside ${BRANCH_RULE_HOME}:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('the shared branch rule itself carries the creation step', () => {
+    const home = tree.templates.find(t => t.id === BRANCH_RULE_HOME);
+    expect(home?.source).toContain('git checkout -b <name>');
+  });
+
+  it('detects a planted bare checkout -b and switch -c', () => {
+    const planted = plant(PLANT_TARGET, 'Run `git checkout -b feature/x`, or `git switch -c feature/x`.');
+    const details = findBareBranchCreation(planted).filter(f => f.id === PLANT_TARGET).map(f => f.detail);
+    expect(details).toHaveLength(2);
+    expect(details[0]).toContain('git checkout -b');
+    expect(details[1]).toContain('git switch -c');
+  });
+
+  it('passes a plain checkout of an existing branch', () => {
+    const planted = plant(PLANT_TARGET, 'Run `git checkout <name>` and `git checkout --track origin/<name>`.');
+    expect(findBareBranchCreation(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
+  });
+
+  it('names no worktree-shape test anywhere', () => {
+    const findings = findWorktreeShapeBranching(tree);
+    expect(findings, `worktree-shape wording:\n${report(findings)}`).toEqual([]);
+  });
+
+  it('detects planted worktree-shape wording', () => {
+    const planted = plant(PLANT_TARGET, [
+      'Compare `git rev-parse --git-dir` with `git rev-parse --git-common-dir`.',
+      'Keep the branch only in a linked worktree, not the main checkout.',
+    ].join('\n'));
+    const details = findWorktreeShapeBranching(planted).filter(f => f.id === PLANT_TARGET).map(f => f.detail);
+    expect(details).toHaveLength(3);
+  });
+
+  it('passes worktree wording that is not a shape test', () => {
+    const planted = plant(PLANT_TARGET, 'Forge runs in one worktree and stops when the worktree is not clean.');
+    expect(findWorktreeShapeBranching(planted).filter(f => f.id === PLANT_TARGET)).toEqual([]);
   });
 });
 

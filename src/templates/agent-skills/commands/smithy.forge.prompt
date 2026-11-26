@@ -42,9 +42,8 @@ This may be:
 - A **slice number only** — if so, look for a `.tasks.md` file matching the
   current branch name's spec and story identifiers. This requires the
   current branch to follow the standard forge shape
-  `<NNN>/us-<NN>-<slug>/slice-<N>`. When forge is invoked in a linked
-  worktree on an orchestrator-supplied branch that does not match this
-  shape, the slice-number-only invocation cannot infer the tasks file —
+  `<NNN>/us-<NN>-<slug>/slice-<N>`. When the current branch does not match
+  this shape, the slice-number-only invocation cannot infer the tasks file —
   ask the user for the explicit tasks file path instead. (`smithy.audit`
   has the same dependency on this shape and the same fallback.)
 - A **`.strike.md` file path** — single slice, no slice number needed.
@@ -116,49 +115,24 @@ This may be:
 
 ## Branch
 
-### `.tasks.md` mode
+The derived name depends on the mode:
 
-Resolve the working branch using the policy below. When the policy
-creates a new branch (the current checkout is the default branch),
-derive the new branch name from the tasks file path and slice number
-using this convention:
+- **`.tasks.md` mode** — built from the tasks file path and slice number:
 
-```
-<NNN>/us-<NN>-<slug>/slice-<N>
-```
+  ```
+  <NNN>/us-<NN>-<slug>/slice-<N>
+  ```
 
-Where:
-- `<NNN>` — spec number, extracted from the spec folder name (`specs/YYYY-MM-DD-<NNN>-<slug>/`)
-- `<NN>` — user story number, extracted from the tasks file name (`<NN>-<story-slug>.tasks.md`)
-- `<slug>` — story slug from the tasks file name (kebab-case)
-- `<N>` — the target slice number
+  Where:
+  - `<NNN>` — spec number, extracted from the spec folder name (`specs/YYYY-MM-DD-<NNN>-<slug>/`)
+  - `<NN>` — user story number, extracted from the tasks file name (`<NN>-<story-slug>.tasks.md`)
+  - `<slug>` — story slug from the tasks file name (kebab-case)
+  - `<N>` — the target slice number
 
-Example: `001/us-03-bar/slice-2`
-
-Before creating the branch, check whether one with this derived name
-already exists. If it does, ask the user whether to continue on it or
-abort. Otherwise create it.
-
-When the policy keeps the existing branch (the current cwd is a linked
-worktree on a non-default branch — typical when an orchestrator
-pre-staged it on a slice-named branch), skip the derivation and the
-`git checkout -b` step entirely and use the existing checkout. The
-slice's PR will be opened against that exact branch name. In the
-normal main-checkout `mark` → `cut` → `forge` flow the policy falls
-through to auto-naming, so each slice still gets its own
-`<NNN>/us-<NN>-<slug>/slice-<N>` branch as before.
+  Example: `001/us-03-bar/slice-2`
+- **`.strike.md` mode** — the `**Branch:** <branch>` field of the strike file header.
 
 {{>branch-policy}}
-
-### `.strike.md` mode
-
-Read the `**Branch:** <branch>` field from the strike file header. If the
-current cwd is a linked worktree on any non-default branch (typical when
-an upstream orchestrator pre-staged the worktree for this slice), keep
-the existing checkout — do not switch off the worktree's branch. In the
-main checkout, check out the branch named in the strike file header; if
-that branch does not exist for some reason, create it from the
-repository's default branch.
 
 ---
 
@@ -504,7 +478,7 @@ This traceability lets reviewers navigate from PR → slice → spec to understa
   you are standing in. Stop before touching any file; name both repos and point
   the user at a checkout of the declared one. Never fall back to editing the
   current repo.
-- **Branch already exists**: Ask the user whether to continue on the existing branch or abort.
+- **Branch already exists**: Check it out and continue on it, as the Branch step does; never create a second branch for the same slice.
 - **Slice already forged (PR exists)**: Warn the user and confirm before proceeding.
 - **Unchecked tasks at PR time**: If the Slice Completion Check finds any
   `- [ ]` rows in the target slice at HEAD, do **not** open the PR. Either

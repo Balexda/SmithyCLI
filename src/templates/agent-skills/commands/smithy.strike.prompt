@@ -24,22 +24,11 @@ If no feature description is clear from the input above, ask the user what they 
 
 ## Phase 1: Branch
 
-Resolve the working branch automatically. Do not ask the user — apply the
-policy below and move on.
+Resolve the working branch automatically. Do not ask the user. The derived
+name is `strike/<slug>`, where `<slug>` is a short kebab-case slug of the
+feature description (e.g., "add a --verbose flag" → `verbose-flag`).
 
 {{>branch-policy}}
-
-When the policy creates a new branch (the current checkout is the default
-branch), use this auto-naming step:
-
-1. Derive a short kebab-case slug from the feature description (e.g.,
-   "add a --verbose flag" → `verbose-flag`).
-2. Run `git checkout -b strike/<slug>`.
-
-When the policy keeps the existing branch (the current cwd is a linked
-worktree on a non-default branch — typical when an orchestrator
-pre-staged it), skip the auto-name and continue with the current
-checkout. Confirm the resolved branch name to the user and move on.
 
 ---
 
@@ -258,10 +247,8 @@ transcript.
 
 ### Commit and create the PR
 
-1. **Commit the strike document** on the resolved branch (the one chosen
-   in Phase 1 — either `strike/<slug>` for a greenfield run, or the
-   pre-existing branch the policy preserved) with a message referencing
-   the strike goal.
+1. **Commit the strike document** on the branch Phase 1 resolved, with a
+   message referencing the strike goal.
 2. **Push the branch** with `git push -u origin <resolved-branch>`. Use
    the actual resolved branch name; do not rename or prepend a prefix
    such as `feature/`.

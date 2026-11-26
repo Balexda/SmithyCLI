@@ -138,23 +138,14 @@ solely from the parsed `### Feature N` headings and the `.features.md`
      with hyphens, collapse consecutive hyphens, trim leading/trailing
      hyphens. Use the **full** title — do not shorten or abbreviate.
    - Folder name: `<YYYY-MM-DD>-<NNN>-<slug>` (e.g., `2026-03-14-004-webhook-support`).
-4. Resolve the working branch using the policy below. When the policy
-   creates a new branch (the current checkout is the default branch),
-   name it the same as the spec folder:
-
-   ```
-   git checkout -b <YYYY-MM-DD>-<NNN>-<slug>
-   ```
-
-   When the policy keeps the existing branch (the current cwd is a
-   linked worktree on a non-default branch — typical when an
-   orchestrator pre-staged it), skip the auto-name and use the current
-   checkout. The spec folder still gets the date-numbered name above;
-   only the branch name is preserved.
+4. **Branch step.** The derived name is the spec folder name,
+   `<YYYY-MM-DD>-<NNN>-<slug>`. Phase 0's refinement path runs this same
+   step, with the existing spec folder's name, before it writes anything.
+   A kept branch leaves the spec folder's date-numbered name unchanged.
 
    {{>branch-policy}}
 
-5. Confirm the branch name and spec folder path to the user and proceed.
+5. Confirm the spec folder path to the user and proceed.
 
 ---
 
@@ -280,10 +271,9 @@ Draft the `<slug>.spec.md` file with this structure:
 # Feature Specification: <Title>
 
 **Spec Folder**: `<YYYY-MM-DD>-<NNN>-<slug>`
-**Branch**: `<resolved-branch>` *(the actual branch resolved in Phase 1
-step 4 — usually `<YYYY-MM-DD>-<NNN>-<slug>` for a fresh main-checkout
-run, but can be the orchestrator's pre-staged branch when mark is
-invoked inside a linked worktree)*
+**Branch**: `<resolved-branch>` *(the branch Phase 1 step 4 resolved —
+`<YYYY-MM-DD>-<NNN>-<slug>` when mark started on the default branch,
+otherwise the branch it kept)*
 **Created**: YYYY-MM-DD
 **Status**: Draft
 **Input**: <source — user description or RFC path with summary>
@@ -869,7 +859,9 @@ Use the **smithy-refine** sub-agent. Pass it:
 
 ### 0c. Apply Refinements
 
-After the sub-agent returns its summary, update the existing spec, data-model,
+Run the **Branch step** in Phase 1 step 4 first, with the existing spec
+folder's name as the derived name. Then, after the sub-agent returns its
+summary, update the existing spec, data-model,
 and/or contracts files on disk to incorporate the refinements. Do not dump the
 full file contents into the terminal.
 
@@ -917,8 +909,8 @@ the spec artifact set. Pass it:
 The Phase 0c commit below captures both the refine diff and the plan-review
 fixes in the same diff.
 
-Run the **Commit, push, and PR step** under Phase 6 on the spec
-folder's branch, with:
+Run the **Commit, push, and PR step** under Phase 6 on the branch the
+Branch step resolved, with:
 
 - **Files**: the refinement diff, committed with a message describing the
   refinements applied (e.g., `mark refine: resolve SD-003; add US4 priority
@@ -981,7 +973,7 @@ through Phase 0).
 - **DO** order user stories by priority (P1 first, then P2, then P3) and renumber
   them when priorities change during refinement.
 - **DO** invoke smithy-clarify for ambiguity scanning and triage.
-- **DO** create the git branch and spec folder automatically.
+- **DO** resolve the branch with the Branch step and create the spec folder automatically.
 - **DO** write minimal placeholder files for data-model and contracts when they
   don't apply, rather than omitting them.
 
