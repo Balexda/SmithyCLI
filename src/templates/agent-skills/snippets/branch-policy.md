@@ -7,9 +7,9 @@
 4. Decide by the current branch alone:
    - **The default branch, or a detached HEAD:** switch to the derived name (step 5).
    - **Any other branch:** keep it. Add no prefix, do not rename it, and create no branch.
-5. Switch without duplicating, deciding existence from checked sources only:
+5. Switch without duplicating, deciding existence from checked sources only. The derived name must pass the same pattern as the default branch; stop if it does not.
    - **Local:** if `git rev-parse --verify --quiet refs/heads/<name>` finds it, run `git checkout <name>`.
-   - **Remote:** else, if the remote branch list `git remote show origin` printed names `<name>`, run `git fetch origin refs/heads/<name>:refs/remotes/origin/<name>`, then `git checkout -b <name> --track refs/remotes/origin/<name>`. If that fetch fails, stop and report it; never fall through to creating the branch.
+   - **Remote:** else ask the remote itself: `git fetch origin refs/heads/<name>:refs/remotes/origin/<name>`. If it succeeds, run `git checkout -b <name> refs/remotes/origin/<name>`; the push later sets its upstream. If it fails with `couldn't find remote ref`, the branch is absent. Any other failure: stop and report it, and never fall through to creating the branch.
    - **Neither:** run `git checkout -b <name>`.
 
    After checking out an existing branch, repeat every artifact lookup the calling phase made before this step. A file that exists on this branch is routed the way the command routes an existing artifact (review or resume), never overwritten.
