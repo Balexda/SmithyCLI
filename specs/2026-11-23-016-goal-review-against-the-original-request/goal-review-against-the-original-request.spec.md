@@ -56,7 +56,7 @@ As a Strike operator, I want verified runtime evidence about inherited context s
 
 | ID | Title | Depends On | Artifact |
 |----|-------|------------|----------|
-| US1 | Judge the Change Against the Request | — | — |
+| US1 | Judge the Change Against the Request | — | specs/2026-11-23-016-goal-review-against-the-original-request/01-judge-the-change-against-the-request.tasks.md |
 | US2 | Verify Dispatch Context on Each Runtime | US1 | — |
 
 ## Requirements
