@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { Dotprompt } from 'dotprompt';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import {
   stripFrontmatter,
   parseFrontmatterName,
@@ -697,7 +698,12 @@ describe('review-protocol snippet', () => {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) expect(row, row).not.toContain('`apply`');
     expect(content).not.toMatch(/`steering`[^|\n]*\|[^|\n]*\|\s*High\s*\|/);
-    expect(content.replace(/\s+/g, ' ')).toContain('a `steering` finding takes `debt`, never `apply`');
+    // Never-applied is unconditional; only the debt clause depends on
+    // severity, matching the table's Minor → `note` row.
+    const flat = content.replace(/\s+/g, ' ');
+    expect(flat).toContain('a `steering` finding is never `apply`, at any confidence');
+    expect(flat).toContain('Critical or Important takes `debt`; Minor takes `note`.');
+    expect(flat).not.toContain('a `steering` finding takes `debt`, never `apply`');
   });
 
   it('snippet carries the whole kind gate, not a pointer to an agent prompt', async () => {
@@ -1248,19 +1254,28 @@ describe('getComposedTemplates', () => {
     // Reading a PNG/zip/fixture as utf8 would swap every invalid sequence for
     // U+FFFD and write the corruption back out, breaking the byte-for-byte
     // contract the non-`.prompt` path promises.
-    const planted = path.join(
-      skillsTemplateDir, 'smithy.helper-voice', 'references', 'fixture.bin',
-    );
+    // The fixture goes into a temp copy of the skills tree, never the real
+    // one: deploy tests in other files read the real tree concurrently.
+    const tmpSkills = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-skills-'));
+    fs.cpSync(skillsTemplateDir, tmpSkills, { recursive: true });
     // Bytes that are invalid UTF-8 (lone continuation, 0xFF, NUL).
     const bytes = Buffer.from([0x00, 0xff, 0xfe, 0x80, 0x41, 0xc3, 0x28]);
-    fs.writeFileSync(planted, bytes);
+    fs.writeFileSync(path.join(tmpSkills, 'smithy.helper-voice', 'references', 'fixture.bin'), bytes);
     try {
-      const reloaded = await getComposedTemplates('claude');
+      vi.resetModules();
+      vi.doMock('./utils.js', async (importOriginal) => ({
+        ...(await importOriginal<typeof import('./utils.js')>()),
+        skillsTemplateDir: tmpSkills,
+      }));
+      const { getComposedTemplates: composeFromTmp } = await import('./templates.js');
+      const reloaded = await composeFromTmp('claude');
       const value = reloaded.skills.get('smithy.helper-voice')!.resources.get('references/fixture.bin');
       expect(Buffer.isBuffer(value)).toBe(true);
       expect((value as Buffer).equals(bytes)).toBe(true);
     } finally {
-      fs.rmSync(planted, { force: true });
+      vi.doUnmock('./utils.js');
+      vi.resetModules();
+      fs.rmSync(tmpSkills, { recursive: true, force: true });
     }
   });
 
@@ -4013,10 +4028,10 @@ describe('getComposedTemplates', () => {
   it('strike template includes all four one-shot output headers', () => {
     const strike = composed.commands.get('smithy.strike.md')!;
     expect(strike).toBeDefined();
-    // These headers come from the {{>one-shot-output}} partial. ## Summary
-    // and ## Specification Debt also appear in the strike document
-    // markdown template, but ## Assumptions and ## PR are unique to the
-    // snippet, so their presence proves the partial composed in.
+    // These headers come from the {{>one-shot-output}} partial. ## Summary,
+    // ## Assumptions, and ## Specification Debt also appear in the strike
+    // document markdown template, but ## PR is unique to the snippet, so its
+    // presence proves the partial composed in.
     expect(strike).toContain('## Summary');
     expect(strike).toContain('## Assumptions');
     expect(strike).toContain('## Specification Debt');
@@ -6605,5 +6620,95 @@ describe('one branch rule, composed before every commit step', () => {
       }
       expect(composed.commands.get('smithy.audit.md'), `${label} audit`).toContain(DEFAULT_CANARY);
     }
+  });
+});
+
+describe('one-shot pipeline closeout', () => {
+  const APPLY_CANARY = "Only when the finding's `artifact_path` names a file inside the apply scope";
+  const variants = ['claude', 'gemini', 'codex'] as const;
+  const flat = (t: string) => t.replace(/\s+/g, ' ');
+  let composed: ComposedTemplates;
+  beforeAll(async () => {
+    composed = await getComposedTemplates();
+  });
+
+  it('plan-review-triage `apply` acts only inside the bound scope', async () => {
+    const content = flat(await composeSnippet('plan-review-triage'));
+    expect(content).toContain(APPLY_CANARY);
+    expect(content).toContain(
+      'An absolute path, a `..` segment, a `.git` path, a store path outside the checkout, a missing file, or any path outside the scope is a `note` instead',
+    );
+    const protocol = flat(await composeSnippet('review-protocol'));
+    expect(protocol).toContain('When the dispatch bound an apply scope, a fix outside it routes to `note`');
+  });
+
+  it('every composer of plan-review-triage binds an apply scope, in every variant', async () => {
+    // Walk every rendered template: a new composer without a binding fails here.
+    for (const variant of variants) {
+      const composed = await getComposedTemplates(variant);
+      const all = [...composed.commands, ...composed.prompts, ...composed.agents];
+      const composers = all.filter(([, body]) => flat(body).includes(APPLY_CANARY));
+      expect(composers.length, variant).toBeGreaterThanOrEqual(6);
+      for (const [name, body] of composers) {
+        expect(body, `${variant} ${name}`).toMatch(/\*\*apply_scope\*\*|\*\*The apply scope\*\*/);
+      }
+      // Forge binds its scope once, outside the agent branch.
+      const forge = flat(composed.commands.get('smithy.forge.md')!);
+      expect(forge, variant).toContain('**The apply scope** is the Changed files');
+      expect(forge, variant).toContain('"out of slice scope"');
+    }
+    const claudeForge = (await getComposedTemplates('claude')).commands.get('smithy.forge.md')!;
+    expect(claudeForge).toContain('**apply_scope**: the apply scope bound above.');
+    const review = (await getComposedTemplates('claude')).agents.get('smithy.implementation-review.md')!;
+    expect(flat(review)).toContain('**apply_scope** — the Changed files plus the target artifact.');
+  });
+
+  it('ignite persists clarify debt candidates and re-runs clarify when they are missing', async () => {
+    // The resume hand-off renders on the sub-agent branch.
+    const ignite = flat((await getComposedTemplates('claude')).commands.get('smithy.ignite.md')!);
+    expect(ignite).toContain('**Specification Debt Candidates**:');
+    expect(ignite).toContain('or `- None` when there are none');
+    expect(ignite).toContain(
+      'If sub-phase 3e is not yet on disk and the log\'s latest session has no `**Specification Debt Candidates**` block, treat the log as absent.',
+    );
+  });
+
+  it('strike document records its assumptions before Decisions', () => {
+    const strike = composed.commands.get('smithy.strike.md')!;
+    const fence = [...strike.matchAll(/```markdown\r?\n([\s\S]*?)\r?\n```/g)]
+      .map(m => m[1]!).find(b => b.includes('## Single Slice'))!;
+    expect(fence).toBeDefined();
+    expect(fence).toMatch(/## Assumptions\r?\n<!-- audience: [^>]*-->/);
+    const contracts = fence.indexOf('## Contracts');
+    const assumptions = fence.indexOf('## Assumptions');
+    const decisions = fence.indexOf('## Decisions');
+    expect(assumptions).toBeGreaterThan(contracts);
+    expect(decisions).toBeGreaterThan(assumptions);
+    expect(flat(strike)).toContain("source `## Assumptions` from the committed strike document's `## Assumptions` section");
+  });
+
+  it('mark gates renumbering on the Dependency Order Artifact cells', () => {
+    const mark = flat(composed.commands.get('smithy.mark.md')!);
+    expect(mark).toContain('the spec\'s `## Dependency Order` `Artifact` cells gate what may change');
+    expect(mark).toContain('**Any `Artifact` cell is populated**: ids are frozen.');
+    expect(mark).not.toContain('Warn the user if existing `.tasks.md` files reference old story numbers');
+  });
+
+  it('no review agent says low-confidence findings become debt', () => {
+    for (const [name, body] of composed.agents) {
+      if (!/review/.test(name)) continue;
+      expect(flat(body), name).not.toMatch(/low-confidence findings (as|become|into)? ?(specification )?debt/i);
+    }
+    expect(flat(composed.agents.get('smithy.plan-review.md')!)).toContain(
+      'each finding carries a routed `destination`, and the parent planning command carries it out',
+    );
+  });
+
+  it('clarify triage examples show the kind gate', () => {
+    const clarify = composed.agents.get('smithy.clarify.md')!;
+    expect(clarify).not.toContain('Which database schema to extend');
+    expect(clarify).not.toContain('All candidates Medium or Low confidence → zero assumptions');
+    expect(clarify.match(/\| Candidate \| Confidence \| Kind gate \| Triage result \|/g)?.length).toBe(3);
+    expect(flat(clarify)).toContain('every candidate was High confidence or failed the steering test');
   });
 });
