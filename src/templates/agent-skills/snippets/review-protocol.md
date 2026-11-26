@@ -1,15 +1,13 @@
 ## Review Protocol
 
-Shared read-only review protocol used by the review sub-agents
-(`smithy-plan-review` and `smithy-implementation-review`). Both agents
-return structured findings using the same shape; neither agent modifies
-artifacts or code. The parent command (planning command or forge)
-applies fixes based on the returned findings.
+Review agents return structured findings using a shared shape. The calling
+workflow acts on the findings.
 
 ### 1. Gather context
 
-Read the target artifacts and any referenced source material. Cross-reference
-each observation against:
+Use the evidence within the calling agent's review scope. When that scope
+includes target artifacts and referenced source material, read them and
+cross-reference each observation against the applicable sources:
 
 - The stated goal or task descriptions driving the work
 - The spec requirements (`.spec.md`)
@@ -94,5 +92,5 @@ Review agents are strictly read-only:
 - They do not modify files or code.
 - They do not create commits, branches, or PRs.
 - They do not run mutating tools.
-- Their sole output is a list of findings in the structure above; the
-  parent command is responsible for any resulting changes on disk.
+- They return findings in the structure above as part of their review result.
+  The calling workflow is responsible for any resulting changes on disk.

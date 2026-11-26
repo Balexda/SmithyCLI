@@ -1115,7 +1115,7 @@ describe('getTemplateFilesByCategory', () => {
     const byCategory = getTemplateFilesByCategory();
     expect(byCategory.commands).toHaveLength(13);
     expect(byCategory.prompts).toHaveLength(2);
-    expect(byCategory.agents).toHaveLength(14);
+    expect(byCategory.agents).toHaveLength(15);
     expect(byCategory.skills).toHaveLength(9);
   });
 
@@ -4353,6 +4353,20 @@ describe('getComposedTemplates', () => {
     expect(review).toContain('`proposed_fix`');
   });
 
+  it('composes the goal reviewer without changing Forge dispatch', async () => {
+    for (const variant of ['claude', 'codex', 'gemini']) {
+      const templates = await getComposedTemplates(variant);
+      const review = templates.agents.get('smithy.goal-review.md')!;
+      const { frontmatter } = splitFrontmatter(review);
+      expect(frontmatter).toMatch(/^tier: deep$/m);
+      expect(frontmatter).toMatch(/^tools:\n  - Read\n  - Grep\n  - Glob\n/m);
+      expect(frontmatter).not.toMatch(/^(effort|model):/m);
+      expect(review).toContain('## Review Protocol');
+      expect(review).toContain('#### The steering test');
+      expect(templates.commands.get('smithy.forge.md')).not.toMatch(/smithy[.-]goal-review/);
+    }
+  });
+
   it('forge default renders inline TDD and review protocols', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
@@ -6153,6 +6167,7 @@ describe('issue #554 — audit defects D1–D10', () => {
         'smithy.clarify.md',
         'smithy.plan-review.md',
         'smithy.implementation-review.md',
+        'smithy.goal-review.md',
       ]) {
         expect(agents.get(name), `${name} (${variant})`).toContain(canary);
       }

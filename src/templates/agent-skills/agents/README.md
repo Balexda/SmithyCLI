@@ -36,6 +36,7 @@ leaves the list by composing it.
 | `smithy-reconcile-slices` | Synthesize competing `smithy-slice` outputs, reconciling both slice boundaries and task lists | cut (`competing-lenses-decomposition`) | deep |
 | `smithy-implement` | TDD implementation: failing test → code → commit | forge (per task) | deep |
 | `smithy-implementation-review` | Read-only code review; returns findings for forge to apply | forge (after implementation) | deep |
+| `smithy-goal-review` | Read-only verdicts and routed findings against the original request | Standalone review | deep |
 | `smithy-plan-review` | Read-only self-consistency review of planning artifacts; durable screen/flow artifacts route to `smithy.audit` and `flow-lint`; returns structured findings for the parent command to apply | strike, ignite, render, mark, cut (after artifact generation, before PR) | deep |
 | `smithy-recall` | Read-only engraved-knowledge recall across the user / repo / project levels; ranks level-tagged records, flags candidate invariant exceptions with their ledger severity, reports declared vs. undeclared cross-level conflicts, and flags retired-decision citation hazards | strike, ignite, render, mark, cut (`engraved-recall-dispatch`, scan phase) | standard |
 | `smithy-scout` | Pre-planning consistency scan | render, mark, cut | standard |
@@ -59,7 +60,7 @@ tier: deep  # light | standard | deep
 
 - **`tools`**: Which tools the sub-agent has access to. Read-only agents
   (clarify, refine, plan, reconcile, slice, reconcile-slices, plan-review,
-  implementation-review, recall, scout, maid) get `Read, Grep, Glob`.
+  implementation-review, goal-review, recall, scout, maid) get `Read, Grep, Glob`.
   `smithy-implement` also gets `Edit, Write, Bash`. `smithy-prose` adds `Skill`
   so it can load `smithy.helper-voice`. `smithy-survey` is the only sub-agent
   with `WebFetch` and `WebSearch` — reserved for the landscape survey phase of
@@ -73,7 +74,7 @@ tier: deep  # light | standard | deep
 - **`tier`**: How much model horsepower the agent needs, stated
   provider-neutrally — **never** a raw model name. `deep` for complex reasoning
   (clarify, refine, plan, reconcile, reconcile-slices, implement,
-  implementation-review, plan-review, prose, survey); `standard` for
+  implementation-review, goal-review, plan-review, prose, survey); `standard` for
   pattern-matching and lookup work (slice, recall, scout, maid). An optional
   `effort:` refines the Codex reasoning effort. Both fields and their
   per-provider translation are documented in
