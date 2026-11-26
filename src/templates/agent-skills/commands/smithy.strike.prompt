@@ -176,6 +176,11 @@ with this format:
 
 <Inline, minimal description of any interface changes. Write `N/A — <one-sentence reason>` if the strike has no code-shaped interface changes.>
 
+## Assumptions
+<!-- audience: reviewer; mode: reference; length: tables only; diagram: optional; examples: discouraged -->
+
+<One bullet per clarify assumption, keeping each `[Critical Assumption]` annotation. Write `None — no assumptions were recorded.` if clarify returned none.>
+
 ## Decisions
 <!-- audience: reviewer; mode: explanation; length: 1-3 paragraphs; diagram: optional; examples: discouraged -->
 
@@ -220,6 +225,8 @@ After writing the strike document to disk and before committing, dispatch the
   external-artifacts mode this is a `~/.smithy/repos/<repo>/...` path, not a
   repo-relative one — pass it through verbatim; do not strip the prefix.
 - **artifact_type** — `strike`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the strike document
   just written; its `SD-NNN` numbering continues from whatever clarify
@@ -271,8 +278,9 @@ transcript.
    file, and substitute `User stories` / `Functional requirements`
    with the strike's requirement and task counts per the snippet's
    placeholder guidance. Populate the `## PR` section with the URL
-   captured in the previous step, copy `assumptions` from clarify's
-   return, and source `## Specification Debt` from the committed strike
+   captured in the previous step, source `## Assumptions` from the
+   committed strike document's `## Assumptions` section, and
+   source `## Specification Debt` from the committed strike
    document's own debt table per the snippet's placeholder guidance —
    the plan-review triage above may have appended `steering` findings
    after clarify returned, and the terminal count must match what a

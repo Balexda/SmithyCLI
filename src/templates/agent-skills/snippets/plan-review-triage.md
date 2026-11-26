@@ -4,12 +4,13 @@ computed from its `kind`, `severity`, and `confidence` — act on that field
 rather than re-deriving it. The three grading fields ride along so this
 command can explain in its own output why each finding went where it did.
 
-**The target artifact** and **the review note surface** below are the two
-terms bound just above and passed to the agent in the dispatch.
+**The target artifact**, **the review note surface**, and **the apply
+scope** below are the terms bound just above and passed to the agent in the
+dispatch.
 
 | `destination` | This command does |
 |---------------|-------------------|
-| `apply` | Edit the file named by the finding's `artifact_path`, using its `proposed_fix`, following whatever apply protocol this command defines. |
+| `apply` | Only when the finding's `artifact_path` names a file inside the apply scope: edit it, using its `proposed_fix`, following whatever apply protocol this command defines. An absolute path, a `..` segment, a `.git` path, a store path outside the checkout, a missing file, or any path outside the scope is a `note` instead, unless the scope names that exact path. |
 | `debt` | Append an `SD-NNN` row and detail section to the target artifact's `## Specification Debt` section. Never apply the fix as well. |
 | `iq` | Append an `IQ-NNN` row to the target artifact's `## Open Implementation Questions` section. |
 | `note` | Report it on the review note surface. Change nothing on disk. |

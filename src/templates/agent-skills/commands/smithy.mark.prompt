@@ -775,6 +775,8 @@ it:
   `artifact_paths`; their helper-contract review belongs to `smithy.audit`,
   and graph/test pairing belongs to `flow-lint`.
 - **artifact_type** — `spec`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the `.spec.md` file:
   record every row there, while `apply` findings are fixed in whichever of
@@ -851,7 +853,7 @@ Use the **smithy-refine** sub-agent. Pass it:
   | **Ambiguity & Risk** | Are there vague terms, unstated assumptions, or scope boundaries that could be interpreted multiple ways? |
   | **Specification Debt** | Are there open debt items that can now be resolved based on new information or user answers? Are all debt items structured with required metadata columns? Are inherited items attributed to their source artifact? |
   | **Staleness** | Does the spec still reflect the current codebase reality? Have upstream changes invalidated any assumptions? |
-  | **Dependency Order** | Does the spec carry the ordering table its authoring path calls for, in the exact shape Phase 3 scaffolds — the backend `## Dependency Order` for `kind: backend` and absent-kind specs, or the typed UI Spec Ledger for `kind: ui`? Check every row against that shape: IDs, `Depends On` cells, `Design` cells where the shape has them, and `Artifact` cells (always `—` in mark's own output). Do not flag a valid UI ledger as missing the backend shape, and never rewrite one into the other. Flag any checkbox markup as an error. |
+  | **Dependency Order** | Does the spec carry the ordering table its authoring path calls for, in the exact shape Phase 3 scaffolds — the backend `## Dependency Order` for `kind: backend` and absent-kind specs, or the typed UI Spec Ledger for `kind: ui`? Check every row against that shape: IDs, `Depends On` cells, `Design` cells where the shape has them, and `Artifact` cells (always `—` in mark's own output; keep any populated cell as found). Do not flag a valid UI ledger as missing the backend shape, and never rewrite one into the other. Flag any checkbox markup as an error. |
 
 - **Target files**: the spec (`.spec.md`), data model (`.data-model.md`), and
   contracts (`.contracts.md`) in the spec folder.
@@ -894,6 +896,8 @@ the spec artifact set. Pass it:
   screen/flow helper contracts and `flow-lint` checks screen/flow/test graph
   consistency.
 - **artifact_type** — `spec`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the refined `.spec.md`
   file: record every row there, while `apply` findings are fixed in
@@ -946,11 +950,19 @@ parent artifact — one whose `Origin` was not `local` — quote the parent's
 question into the `**Question:**` line. Do not write the resolution back to
 the parent.
 
-**Priority re-ordering**: If any user story priorities changed during refinement,
-renumber and reorder the user stories so all P1 stories come first, then P2,
-then P3. Within the same priority level, preserve relative order. Update all
-story numbers (User Story 1, 2, 3...) to reflect the new order. Warn the user
-if existing `.tasks.md` files reference old story numbers that will change.
+**Priority re-ordering**: If any user story priorities changed during
+refinement, the spec's `## Dependency Order` `Artifact` cells, read before
+any refinement is applied, gate what may change:
+
+- **Every `Artifact` cell is `—`**: reorder so all P1 stories come first, then
+  P2, then P3, preserving relative order within a level, and renumber. Rewrite
+  every `US<N>` reference in the spec in the same edit — the table's `ID` and
+  `Depends On` cells, requirement and criteria references, and debt rows
+  naming a story.
+- **Any `Artifact` cell is populated**: ids are frozen. Change only the
+  `(Priority: P<N>)` label, and record the change in the PR body.
+
+Typed UI ledger ids (`SC<N>`, `FL<N>`, `US<N>`) follow the same gate.
 
 This phase runs INSTEAD of Phases 1-6 when repeating the command. If more
 refinement is needed, the user can re-run the command again (another pass
@@ -970,8 +982,9 @@ through Phase 0).
 - **DO** keep specs anchored to user value — every requirement should trace to
   a user story.
 - **DO** number user stories sequentially — downstream commands depend on this.
-- **DO** order user stories by priority (P1 first, then P2, then P3) and renumber
-  them when priorities change during refinement.
+- **DO** order user stories by priority (P1 first, then P2, then P3); on a
+  priority change, renumber only while every `## Dependency Order` `Artifact`
+  cell is `—`, and otherwise change only the priority label.
 - **DO** invoke smithy-clarify for ambiguity scanning and triage.
 - **DO** resolve the branch with the Branch step and create the spec folder automatically.
 - **DO** write minimal placeholder files for data-model and contracts when they

@@ -29,7 +29,6 @@ teaches the defect (D-10).
 |-------|---------------|-------------------|----------------|----------|
 | `agents/smithy.slice.prompt`, `agents/smithy.reconcile-slices.prompt` (output) | Dependency Order is a checkbox list with no `Depends On` | Temporary: emit the table | #649 | medium |
 | `agents/smithy.recall.prompt` (sample output) | An undeclared conflict names a `governing_id` | Temporary: `null` when undeclared | #651 | low |
-| `agents/smithy.clarify.prompt` (triage examples) | Candidates are routed on confidence alone, skipping the kind gate | Temporary: apply the gate | #648 | low |
 | `skills/smithy.helper-flow-definition/references/examples.prompt` | The test body asserts one of the three declared guards | Temporary: assert every guard | #650 | low |
 | `skills/smithy.helper-voice/references/worked-examples.prompt` | The "after" text invents incidents | Temporary: use only facts from the "before" | #653 | low |
 

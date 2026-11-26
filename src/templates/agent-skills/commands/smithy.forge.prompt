@@ -202,6 +202,10 @@ guidance.
 
 After all tasks are complete:
 
+**The apply scope** is the Changed files (`git diff --name-only <BASE_SHA> HEAD`)
+plus the target artifact. Log a fix outside it in the **Review Summary** as
+"out of slice scope" instead of applying it; it does not block the slice.
+
 {{#ifAgent}}
 Compute the diff and changed file list:
 
@@ -233,6 +237,7 @@ comparison shows no difference. Pass it:
   section in it — those records go to the planning artifact only. **The
   review note surface** is forge's terminal-output **Review Summary**
   deliverable, never the PR body.
+- **apply_scope**: the apply scope bound above.
 - **Review profile**: If the tasks file's `**Node Kind**:` is
   `screen-build` (`SC<N>`) or `flow-wire` (`FL<N>`), request the
   `ui-structural` profile. Otherwise use the default implementation

@@ -34,7 +34,7 @@ following shape. Emit one finding per distinct issue.
 | `confidence` | enum | High or Low — whether the parent may apply the `proposed_fix` without a human. These are the two endpoints of the pipeline's `High` / `Medium` / `Low` confidence scale; a review finding never takes the middle value, because "may the parent apply this" has no middle setting |
 | `destination` | enum | `apply`, `debt`, `iq`, or `note` — where the parent sends this finding, computed by you from the three fields above (see the routing step below) |
 | `description` | string | What the issue is and where it appears |
-| `artifact_path` | string | Path to the file containing the issue |
+| `artifact_path` | string | Path to the file containing the issue. When the dispatch bound an apply scope, a fix outside it routes to `note` |
 | `proposed_fix` | string | Suggested resolution (for High-confidence findings). For a `steering` finding, the option you recommend and why, plus what only a human can weigh; it becomes the debt item's `**Recommendation:**` line |
 
 ### 4. Kind gate — set the kind before grading severity and confidence
@@ -64,7 +64,8 @@ building either way, so on any other artifact it is reported instead of
 recorded. When the dispatch named no target artifact, choose `note`.
 
 The `steering` row is the kind gate's never-applied rule: a `steering`
-finding takes `debt`, never `apply`. One more cell binds you rather than
+finding is never `apply`, at any confidence. Critical or Important takes
+`debt`; Minor takes `note`. One more cell binds you rather than
 the parent, because it is a property of the finding you emit:
 
 - **A wrong table is a fix, not a question.** A `hygiene` finding never

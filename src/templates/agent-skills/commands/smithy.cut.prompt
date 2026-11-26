@@ -109,6 +109,8 @@ sub-agent to perform a self-consistency review of the tasks file. Pass it:
   (`{{artifactsRoot}}specs/<folder>/<NN>-<story-slug>.tasks.md` or
   `{{artifactsRoot}}specs/<folder>/<node-id-lower>-<node-slug>.tasks.md`).
 - **artifact_type** — `tasks`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the refined tasks
   file, and **the review note surface** is the refinement PR body.
@@ -840,6 +842,8 @@ perform a self-consistency review. Pass it:
   review only audits the new tasks artifact, not the parent spec's
   dependency-order table.
 - **artifact_type** — `tasks`.
+- **apply_scope** — **the apply scope** the routing below uses: the
+  `artifact_paths` above.
 - **target_artifact** and **review_note_surface** — the two terms the
   routing below also uses. **The target artifact** is the tasks file just
   written; its `SD-NNN` numbering continues from whatever it already

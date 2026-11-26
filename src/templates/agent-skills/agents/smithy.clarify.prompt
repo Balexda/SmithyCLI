@@ -130,7 +130,8 @@ candidate failed the gate: route it to `assumptions` with
 ### Edge cases
 
 - If no candidates qualify as assumptions, skip the assumptions block entirely.
-- If triage produces zero debt items (all candidates are High confidence), return
+- If triage produces zero debt items (every candidate was High confidence or
+  failed the steering test), return
   the full structured summary with `debt_items` as an empty list, `bail_out`
   as `false`, and `bail_out_summary` omitted. This is a valid and expected
   outcome when the feature description is clear.
@@ -147,23 +148,23 @@ candidate failed the gate: route it to `assumptions` with
 
 Pipeline proceeds with all items as assumptions. Empty debt list returned.
 
-**(b) All candidates Medium or Low confidence → zero assumptions, bail-out assessment triggered**
+**(b) Every Medium or Low candidate passes the steering test → all debt, bail-out assessment triggered**
 
-| Candidate | Confidence | Triage result |
-|-----------|-----------|--------------|
-| "Which database schema to extend" — three plausible options | Medium | Debt item |
-| "Whether webhooks are synchronous or async" — no prior art | Low | Debt item |
-| **Assumptions:** 0 | | |
+| Candidate | Confidence | Kind gate | Triage result |
+|-----------|-----------|----------|--------------|
+| "Whether a deleted account's data is purged or kept for audit" — a policy call, no prior decision | Medium | passes the steering test | Debt item |
+| "Whether webhooks are synchronous or async" — no prior art | Low | passes the steering test | Debt item |
+| **Assumptions:** 0 | | | |
 
-Zero assumptions. All scope is uncertain. Bail-out assessment applies (see Step 3).
+Every candidate needs a person to choose, so none becomes an assumption. Bail-out assessment applies (see Step 3).
 
 **(c) Mixed → assumptions block + non-empty debt list**
 
-| Candidate | Confidence | Triage result |
-|-----------|-----------|--------------|
-| "API versioning strategy" — v2 pattern established in codebase | High | Assumption |
-| "Notification delivery guarantee" — at-least-once vs exactly-once unclear | Medium | Debt item |
-| "Rate limit policy" — no existing policy found | Low | Debt item |
+| Candidate | Confidence | Kind gate | Triage result |
+|-----------|-----------|----------|--------------|
+| "API versioning strategy" — v2 pattern established in codebase | High | not applied (Step 3a) | Assumption |
+| "Notification delivery guarantee" — at-least-once vs exactly-once unclear | Medium | passes the steering test | Debt item |
+| "Rate limit policy" — no existing policy found | Low | passes the steering test | Debt item |
 
 Assumptions block contains one item. Debt list contains two items.
 
