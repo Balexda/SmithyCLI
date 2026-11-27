@@ -109,7 +109,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(55);
+    expect(snippets.size).toBe(56);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -120,6 +120,7 @@ describe('loadSnippets', () => {
       'audit-checklist-strike.md',
       'audit-checklist-voice.md',
       'voice-tag-grammar.md',
+      'prose-return-handling.md',
       'audit-checklist-engraved.md',
       'competing-lenses-decomposition.md',
       'competing-lenses-implementation.md',
@@ -1533,7 +1534,7 @@ describe('getComposedTemplates', () => {
     expect(rfcMode).toContain('its source of truth rather than rereading unrelated input');
     expect(rfcMode).toContain('For each RFC persona candidate, derive the filename slug');
     expect(rfcMode).toContain('Resolve each target path using the Persona Artifact Convention section');
-    expect(rfcMode).toContain('Before drafting a candidate, check whether its target path already exists');
+    expect(rfcMode).toContain('a candidate collides when its target path already exists');
     expect(rfcMode).toContain('Continue processing the remaining candidates after any collision skip');
     expect(rfcMode).toContain('For each non-colliding candidate, dispatch **smithy-prose** with:');
     expect(rfcMode).toContain('`idea_description`: the candidate');
@@ -1617,14 +1618,14 @@ describe('getComposedTemplates', () => {
     const rfcMode = persona.slice(rfcModeIdx, summaryIdx);
     const summary = persona.slice(summaryIdx);
 
-    expect(rfcMode).toContain('add the candidate name, slug, and path to the skipped-collisions list');
+    expect(rfcMode).toMatch(/add the candidate name, slug, and path to the\s+skipped-collisions list/);
     expect(rfcMode).toContain('leave the existing file untouched');
     expect(rfcMode).toContain('Continue processing the remaining candidates after any collision skip');
     expect(summary).toContain('For **RFC mode**, report only this block');
     expect(summary).toContain('Written persona paths');
     expect(summary).toContain('name/role and slug');
     expect(summary).toContain('Skipped collisions');
-    expect(summary).toContain('target slug');
+    expect(summary).toContain('reserved this run');
     expect(summary).toContain('Totals');
   });
 
@@ -1637,7 +1638,7 @@ describe('getComposedTemplates', () => {
     expect(summary).toContain('For a successful **free-text mode** write, report:');
     expect(summary).toContain('For a **free-text mode** slug collision skip, report:');
     expect(summary).toContain(
-      'the two free-text blocks above never\napply to an RFC run',
+      'the free-text blocks above never\napply to an RFC run',
     );
     expect(summary).toContain(
       'In either mode, report the written and skipped persona paths',
@@ -1715,7 +1716,7 @@ describe('getComposedTemplates', () => {
     expect(subphase3bBlock).toContain('Do not regenerate personas covered by existing `.persona.md` files');
     expect(subphase3bBlock).toContain('If every needed persona is covered');
     expect(subphase3bBlock).toMatch(/do not\s+dispatch smithy-prose for Personas/);
-    expect(subphase3bBlock).toContain('Combine the file-sourced projections and any cold-drafted uncovered gap content');
+    expect(subphase3bBlock).toMatch(/Combine the file-sourced\s+projections and the remaining cold-drafted content/);
     expect(subphase3bBlock).toContain('exactly one `## Personas` section');
   });
 
@@ -1807,7 +1808,7 @@ describe('getComposedTemplates', () => {
     expect(subphase3gBlock).toContain('narrowed to the uncovered persona names or roles');
     expect(subphase3gBlock).toMatch(/Do not regenerate personas covered by\s+existing `\.persona\.md` files/);
     expect(subphase3gBlock).toMatch(/If every persona is file-sourced[\s\S]+do not dispatch\s+smithy-prose for Personas repair/);
-    expect(subphase3gBlock).toContain('Combine the file-sourced re-projections and any cold-repaired uncovered gap');
+    expect(subphase3gBlock).toMatch(/Combine the file-sourced\s+re-projections and the remaining cold-repaired content/);
     expect(subphase3gBlock).toContain('exactly one valid `## Personas` section');
     expect(subphase3gBlock).toContain('do not append a second Personas section');
   });
@@ -6318,7 +6319,7 @@ describe('issue #554 — audit defects D1–D10', () => {
     // The read-only rule no longer contradicts the Step 3 directive, and a
     // host without a Skill tool has a stated fallback rather than a dead end.
     expect(prose).not.toMatch(/Use only `Read`, `Grep`, and `Glob` to gather context\. Do not\n\s+create/);
-    expect(prose).toMatch(/If the host exposes no `Skill` tool/);
+    expect(prose).toMatch(/Only if the helper cannot be loaded at all/);
   });
 
   // D4 — the gh-issue skill hard-required `gh`, so orders/engrave dead-ended on
@@ -7080,5 +7081,80 @@ describe.each(['claude', 'codex'])('typed UI ledger consistency (%s)', (variant)
     expect(body).toContain('"not a url"');
     expect(examples).toContain('`AddTitleDuplicateUrl`');
     expect(examples).toContain('`AddTitleBackOut`');
+  });
+});
+
+// Recall, prose, survey, and persona report what they found and keep what
+// they recorded (INV-4, INV-5, INV-7, INV-8, P-2). Each guard runs against
+// both sub-agent variants.
+describe.each(['claude', 'codex'] as const)('recall, prose, survey and persona contracts (%s)', (variant) => {
+  let c: ComposedTemplates;
+  beforeAll(async () => {
+    c = await getComposedTemplates(variant);
+  });
+  const agent = (name: string) => c.agents.get(`smithy.${name}.md`)!;
+  const command = (name: string) => c.commands.get(`smithy.${name}.md`)!;
+
+  it('recall decides the empty state after the hazards and never clears superseded_citations', () => {
+    const recall = agent('recall');
+    expect(recall).toContain('Decide emptiness last, after every citation hazard');
+    expect(recall).not.toMatch(/When `empty` is true, keep[\s\S]{0,120}`superseded_citations`/);
+  });
+
+  it('recall pairs an undeclared conflict with a null governing_id', () => {
+    const recall = agent('recall');
+    expect(recall).toMatch(/"declared": false,\s*\n\s*"governing_id": null/);
+    expect(recall).not.toMatch(/"declared": false,\s*\n\s*"governing_id": "/);
+    expect(recall).not.toContain('always the narrower one');
+  });
+
+  it("recall treats the parent's project answer as final", () => {
+    const recall = agent('recall');
+    expect(recall).toContain("The parent's answer is final");
+    expect(recall).toContain('never\n   infer a project from `~/.smithy/projects/`');
+  });
+
+  it('prose loads the voice helper through the host mechanism, and only Codex names the installed path', () => {
+    const prose = agent('prose');
+    const path = '.agents/skills/smithy.helper-voice/SKILL.md';
+    if (variant === 'codex') expect(prose).toContain(path);
+    else expect(prose).not.toContain(path);
+    expect(prose).toContain('Only if the helper cannot be loaded at all');
+  });
+
+  it('every prose consumer composes prose-return-handling and none appends the response verbatim', () => {
+    for (const name of ['ignite', 'spark', 'persona']) {
+      const cmd = command(name);
+      expect(cmd, name).toContain('**Split off the gaps.**');
+      expect(cmd.match(/\*\*Split off the gaps\.\*\*/g), name).toHaveLength(1);
+      expect(cmd, name).toContain('Prose Return Handling');
+      expect(cmd, name).not.toMatch(/smithy-prose returns, append/);
+      expect(cmd, name).not.toContain('Append the returned content under a `## Problem Statement`');
+      expect(cmd, name).not.toContain('the smithy-prose narrative body');
+      expect(cmd, name).not.toMatch(/prose[^.\n]*verbatim/i);
+    }
+  });
+
+  it('survey returns an incomplete shape and spark consumes it', () => {
+    const survey = agent('survey');
+    expect(survey).toContain('### Incomplete-survey shape');
+    expect(survey).toContain('Survey incomplete: <N> candidates could not be verified.');
+    expect(survey).toContain('Use this only when the searches ran and found nothing credible');
+    expect(command('spark')).toContain('Survey incomplete: <N> candidates could not be verified');
+    expect(command('spark')).toContain('never\ndescribe the market as empty');
+  });
+
+  it('survey phrases every query in public, generic terms', () => {
+    const survey = agent('survey');
+    expect(survey).toContain('phrase it in public, generic terms');
+    expect(survey).toContain('encode its public form into one query');
+    expect(survey).toContain('**Public queries only.**');
+  });
+
+  it('persona reserves slugs within one RFC batch', () => {
+    const persona = command('persona');
+    expect(persona).toContain('**reserved slugs**');
+    expect(persona).toContain('"duplicate of earlier candidate <name>"');
+    expect(persona).toContain('Immediately before each write, check the target path again');
   });
 });

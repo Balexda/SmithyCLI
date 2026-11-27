@@ -101,9 +101,9 @@ report it in `superseded_citations`.
 
 ### Empty states
 
-- If no engraved records exist in any scanned level, the result is
-  `empty: true` with `empty_reason: "no_records"`.
-- If records exist but none credibly match the planning context, the result is
-  `empty: true` with `empty_reason: "no_match"`.
-- When `empty` is true, keep `relevant`, `conflicts`, `cross_level_conflicts`,
-  and `superseded_citations` empty. Still report `levels_scanned`.
+Decide emptiness last, after every citation hazard — `unresolved` ones
+included — is collected. The result is `empty: true` only when `relevant`,
+`conflicts`, `cross_level_conflicts`, and `superseded_citations` are all empty;
+then `empty_reason` is `"no_records"` if no scanned level held records, or
+`"no_match"` if records exist but none credibly match. Otherwise the result is
+`empty: false` with `empty_reason: null`. Always report `levels_scanned`.

@@ -381,14 +381,12 @@ describe('template lint — routing destinations exist', () => {
    * matrix" was named by five references and defined by no template.
    */
   const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // Both of these name a block the sub-agent is told to *emit* in its own
-    // response, not a section some template scaffolds: survey returns a
-    // `### Error` block when it cannot search, and prose appends
-    // `## Gaps / Missing Context` to what it drafts. The section exists at
-    // runtime, in the agent's output. Level-blind matching used to hide these
-    // by borrowing the other agent's heading at the wrong level.
+    // This names a block the sub-agent is told to *emit* in its own response,
+    // not a section some template scaffolds: survey returns a `### Error`
+    // block when it cannot search. The section exists at runtime, in the
+    // agent's output. Level-blind matching used to hide it by borrowing
+    // another agent's heading at the wrong level.
     ['agents/smithy.survey.prompt', /### Error/],
-    ['agents/smithy.prose.prompt', /## Gaps \/ Missing Context/],
   ];
 
   it('routes findings only to sections some template emits', () => {

@@ -440,6 +440,10 @@ every needed persona is covered, no `smithy-prose` Personas dispatch occurs at
 all. See Sub-phase 3b for the full projection-and-gap procedure and Sub-phase
 3g for the repair-time variant.
 
+### Prose Return Handling
+
+{{>prose-return-handling}}
+
 {{#ifAgent}}
 ### RFC File Creation
 
@@ -532,7 +536,9 @@ Dispatch **smithy-prose** with:
 - **clarify_output**: the Q&A and assumptions from Phase 2 clarification
 - **rfc_file_path**: do not pass (this is the first sub-phase; the RFC file contains only the header)
 
-After smithy-prose returns, append the returned content to `<slug>.rfc.md`.
+After smithy-prose returns, run **Prose Return Handling** on the response — an
+`## Error` halts the pipeline — then append the remaining draft to
+`<slug>.rfc.md`.
 
 ### Sub-phase 3b: Personas
 
@@ -574,7 +580,9 @@ If every needed persona is covered by matching `.persona.md` files, do not
 dispatch smithy-prose for Personas. Build the `## Personas` section entirely
 from the file-sourced projections.
 
-Combine the file-sourced projections and any cold-drafted uncovered gap content
+Run any cold-drafted response through **Prose Return Handling** first; an
+`## Error` halts with the diagnostic below. Combine the file-sourced
+projections and the remaining cold-drafted content
 into exactly one `## Personas` section. If both sources are present, include
 both in that single section; do not append a second `## Personas` heading.
 Verify that the combined content contains a non-empty `## Personas` section with
@@ -629,6 +637,8 @@ block below:
 
 {{>debt-from-clarify}}
 
+The one other source this section takes is the `steering` gaps **Prose Return
+Handling** held from sub-phases 3a and 3b; write them after clarify's rows.
 
 The RFC has **no `## Open Questions` section**. Genuinely unresolved
 uncertainty is already captured as `SD-NNN` rows in `## Specification Debt`
@@ -749,8 +759,10 @@ sub-agents are dispatched in 3g.
      smithy-prose for Personas repair. Re-project from the matching durable
      files and normalize only what the coherence pass requires.
 
-   Combine the file-sourced re-projections and any cold-repaired uncovered gap
-   content into exactly one valid `## Personas` section. **Replace** any
+   Run any cold-repaired response through **Prose Return Handling** first; an
+   `## Error` halts with the diagnostic below. Combine the file-sourced
+   re-projections and the remaining cold-repaired content into
+   exactly one valid `## Personas` section. **Replace** any
    existing `## Personas` section in the RFC file with that combined section
    in place — do not append a second Personas section. If no `## Personas`
    heading exists, splice the combined section in at the canonical position

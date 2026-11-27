@@ -162,6 +162,13 @@ plus `### Build-vs-Buy Rationale`, **or** an empty-state stub reading "No
 comparable off-the-shelf options identified during survey." Both are valid —
 append whichever was returned verbatim into the PRD in Phase 3d.
 
+A response reading "Survey incomplete: <N> candidates could not be verified"
+is neither: candidates exist but none was checked. Append it verbatim too —
+it already says so in the PRD — record one debt item for the unverified
+survey (`source_category: "Off-the-Shelf Alternatives"`, `impact: High`,
+`confidence: Low`) naming the failed retrievals from its Gaps block, and never
+describe the market as empty in the summary or any other section.
+
 **Do not skip this phase.** Alternatives / build-vs-buy awareness is the
 defining differentiator of the PRD and must always be populated. If
 smithy-survey returns an `### Error` block (e.g., context was too thin to
@@ -212,6 +219,10 @@ After each sub-phase returns its drafted content, append it to
 next sub-phase reads the accumulating file for context rather than relying on
 the context window.
 
+### Prose Return Handling
+
+{{>prose-return-handling}}
+
 ### Sub-phase 3a: Problem Statement
 
 Dispatch **smithy-prose** with:
@@ -227,8 +238,10 @@ Dispatch **smithy-prose** with:
   an executive pitch. Do not invent figures; flag missing evidence as debt
   rather than using gap markers."
 
-Append the returned content under a `## Problem Statement` heading (if
-smithy-prose did not supply the heading, add it before appending).
+Run **Prose Return Handling** on the response — an `## Error` halts the run
+with nothing appended — then append the remaining draft under a
+`## Problem Statement` heading (if smithy-prose did not supply the heading,
+add it before appending).
 
 ### Sub-phase 3b: Proposed Solution
 
@@ -280,7 +293,8 @@ the `## Specification Debt` section from the **combined** set of debt items
 collected so far: the items returned by smithy-clarify in Phase 2, **plus**
 any additional debt items recorded during Phase 2.5 (for example, the
 survey-error debt item that spark records when smithy-survey returns an
-`### Error` block). Do not drop additions contributed by later phases.
+`### Error` block), and the `steering` gaps **Prose Return Handling** held
+from sub-phase 3a. Do not drop additions contributed by later phases.
 
 **Assumptions**: A bulleted list. Items that came from Critical+High
 candidates must carry a `[Critical Assumption]` annotation at the start of
@@ -288,7 +302,7 @@ the bullet.
 
 **Specification Debt**: The standard index table plus per-item detail
 sections. Include every debt item from clarify **and** every debt item added
-during Phase 2.5, assigning sequential `SD-NNN` identifiers across the merged
+during Phase 2.5 or sub-phase 3a, assigning sequential `SD-NNN` identifiers across the merged
 list. Every item a PRD records is discovered locally, so each row carries
 `Origin: local` and gets its own `### SD-NNN — <Title>` detail section. Use
 the `## Specification Debt` shape from the PRD Template Reference below —

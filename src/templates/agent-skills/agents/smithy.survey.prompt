@@ -78,7 +78,13 @@ Derive **2–4 web search queries** covering different angles:
 - **User-level**: framed from the target user's perspective (e.g., "CI tools
   for AI coding agent workflows").
 - **Constraint-level** (optional): if `key_constraints` includes a strong
-  requirement like "self-hosted", encode that directly into one query.
+  requirement like "self-hosted", encode its public form into one query.
+
+Before any query leaves this agent, phrase it in public, generic terms:
+replace internal codenames, customer or team names, private paths, and
+hostnames with the category they stand for, and never paste repo content into
+a search or fetch. The repo facts from Step 1 inform the rationale, not the
+queries.
 
 Queries should be specific enough to return real products, not generic advice
 articles. Avoid vague queries like "developer tools" or "productivity software".
@@ -118,6 +124,10 @@ candidate whose page could not be retrieved, or whose page was inconclusive,
 is never presented as verified. Either drop it, or keep it with its `Why not`
 cell marked `unverified (snippet only)` and a matching line in
 `### Gaps / Missing Context` naming what could not be checked.
+
+If search surfaced candidates but **every** retrieval failed or was
+inconclusive, the survey is incomplete, not empty: return the
+incomplete-survey shape under Output Format.
 
 ### Step 5: Assess Fit
 
@@ -179,11 +189,34 @@ verify — e.g., "Could not confirm ProductX's self-hosted pricing; the pricing
 page redirected to a sales form.">
 ```
 
+### Incomplete-survey shape
+
+When candidates were found but none could be verified, return this instead of
+the table. List candidates by name and URL only — no capability, license, or
+price claims:
+
+```markdown
+### Alternatives Considered
+
+Survey incomplete: <N> candidates could not be verified.
+
+- <Name> — <https://...> — unverified
+- <Name> — <https://...> — unverified
+
+### Build-vs-Buy Rationale
+
+Open — no candidate could be verified, so build-vs-buy is undecided.
+
+### Gaps / Missing Context
+
+- Could not retrieve <URL>: <what failed — error, redirect, inconclusive page>
+```
+
 ### Empty-state fallback
 
-If no credible alternatives emerge after searching — for example, the problem
-space is genuinely novel, or all discovered candidates are blog posts /
-abandoned projects — return the empty-state stub instead of the table:
+Use this only when the searches ran and found nothing credible — for example,
+the problem space is genuinely novel, or all discovered candidates are blog
+posts / abandoned projects. Return the empty-state stub instead of the table:
 
 ```markdown
 ### Alternatives Considered
@@ -215,6 +248,8 @@ The parent command will append it to the PRD's Alternatives section as-is.
   pricing fact in the output must be traceable to a real search result or
   retrieved page. When uncertain, say so in `### Gaps / Missing Context` or
   drop the candidate entirely.
+- **Public queries only.** Every search and fetch uses the generic public
+  phrasing Step 2 requires.
 - **Read-only.** Use only `Read`, `Grep`, `Glob`, and {{#ifAgent 'codex'}}the
   `web_search` tool{{else}}`WebSearch` and `WebFetch`{{/ifAgent}}. Do not create,
   modify, or delete any files.
