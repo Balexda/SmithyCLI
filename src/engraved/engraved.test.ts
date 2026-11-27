@@ -238,6 +238,14 @@ describe('parseEngravedRecord', () => {
     expect(record!.topics).toEqual(['experiment-platform']);
   });
 
+  it('parses a title escaped as a YAML double-quoted scalar', () => {
+    // engrave writes `"` as `\"` and `\` as `\\` inside the quoted title.
+    const escaped = decision('D-1', 'Paths use \\\\ on "Windows"'.replace(/"/g, '\\"'));
+    const record = parseEngravedRecord('/repo/docs/decisions/a.decision.md', escaped, ctx);
+    expect(record).not.toBeNull();
+    expect(record!.title).toBe('Paths use \\ on "Windows"');
+  });
+
   it('parses a CRLF invariant ledger', () => {
     const lf = invariant(
       'INV-1',

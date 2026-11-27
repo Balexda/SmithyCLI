@@ -63,7 +63,7 @@ If the input is empty or you cannot determine the mode, ask:
 | `id` | Unique within a resolution scope, with a prefix encoding kind **and** level — see the identity table in the levels section below. Stable across renames; never reused. |
 | `kind` | `decision` \| `invariant` \| `principle`. |
 | `domain` | `system` (default) \| `design`. Ownership / recall partition; separates UI / interaction commitments owned by design from architectural ones owned by engineering. |
-| `title` | Human-readable title. Always quoted (`title: "<topic>"`) so a `: ` inside the title does not break the YAML. Also rendered as the H1 in the body. |
+| `title` | Human-readable title, always a YAML double-quoted scalar so a `: ` cannot break the frontmatter. Every scaffold's `title: "<topic>"` means the escaped topic: write each `\` as `\\` and each `"` as `\"` (or single-quote it and double each `'`). The H1 in the body is the topic unescaped. |
 | `topics` | Searchable tags (lowercase-kebab — e.g. `offline-first`, `agent-router`). Consumed by `smithy.recall`. |
 | `scope` | Optional. Code paths, modules, or layers the record governs, relative to the record's own level. Omit at `user` level. |
 | `applies_to` | User-visible surfaces the record affects (e.g. `CLI`, `Status JSON`, `init flow`). |
@@ -116,8 +116,10 @@ Column rules:
   gap that should be tracked toward closure. The Capitalized `Accepted:` /
   `Temporary:` token is the canonical on-disk form.
 - **Tracking Issue** — `#NNN` for a `Temporary` row whose drift-tracking
-  issue exists, or `—` if that issue could not be created yet (see Phase 6
-  failure fallback); always `—` for `Accepted` rows.
+  issue exists, or `—` if that issue could not be created yet, with the
+  reason appended to the Disposition cell as
+  `Temporary: <reason> (issue not created: <failure summary>)`; always `—`
+  for `Accepted` rows.
 - **Severity** — `low` \| `medium` \| `high`. Severity is read by recall and
   handed to planning commands, which escalate on it deterministically: a
   `high` row bearing on proposed work forces a `## Specification Debt` row and
@@ -184,38 +186,50 @@ one — a project-level record has nowhere to go without it.
 
 ## Where "commit" lands, per level
 
-Every create and update phase below ends with *commit and report*. Which
-repository that means depends on the level, and only the repo level is the one
-the artifact-location policy already covers:
+Every create and update phase below ends with *commit and report*. **Only the
+outermost phase commits.** When one phase runs another — Phase 3a running 3b
+to establish an invariant, 3b running 3a to scaffold its decision, Phase 5
+running 3a — the nested phase writes its files and returns without running
+Phase 7 or committing; the outermost phase runs Phase 7 once and commits every
+record it wrote in one commit, so an interruption never leaves one side of a
+two-sided edge committed without the other.
+
+Which repository *commit* means depends on the level, and only the repo level
+is the one the artifact-location policy already covers:
 
 | Level | Store | What to commit |
 |-------|-------|----------------|
-| `repo` | the repo, or its external artifact store | Commit the record where that store's own rules say — in-repo records ride the working branch, external-store records follow the store-commit step in the artifact-location policy. |
+| `repo` | the repo, or its external artifact store | Commit the record where that store's own rules say — in-repo records ride the working branch, external-store records follow the store-commit rules below. |
 | `user` | `~/.smithy/` | Commit **only if the store is already a git repository**. |
 | `project` | `~/.smithy/projects/<project>/` | Commit **only if the store is already a git repository**. |
 
-For the two home-anchored stores, check first and act accordingly:
+For a store outside the code repo — the two home-anchored stores, or an
+external artifact store — check first and act accordingly:
 
 ```bash
 git -C <store-root> rev-parse --git-dir
 ```
 
-- **It is a repository** — stage and commit just the record files you touched,
-  using the phase's commit message and `--no-gpg-sign`:
-  ```bash
-  git -C <store-root> add <record-paths>
-  git -C <store-root> commit --no-gpg-sign -m "<phase commit message>"
-  ```
-- **It is not** — do not run `git init`, and do not fall back to committing in
-  the code repo: `~/.smithy/...` is outside it, so `git add` there would either
-  fail or silently stage nothing while the run still reported success. Write
-  the record, skip the commit, and say so in the terminal summary:
-  `store: <store-root> (not versioned — record written, not committed)`.
+If it is a repository, stage and commit just the record files you touched,
+using the phase's commit message:
+
+```bash
+git -C <store-root> add <record-paths>
+git -C <store-root> commit --no-gpg-sign -m "<phase commit message>"
+```
+
+{{>store-commit}}
+
+Do not fall back to committing in the code repo: `~/.smithy/...` is outside
+it, so `git add` there would either fail or silently stage nothing while the
+run still reported success. When the store is not versioned, say so in the
+terminal summary: `store: <store-root> (not versioned — record written, not
+committed)`.
 
 Never let a repo-level commit stand in for a user- or project-level one. The
-Phase 7 context-file projection is a repo edit and is committed with the repo,
-which means a successful-looking repo commit can accompany a record that was
-never versioned anywhere — the summary line above is what keeps that visible.
+Phase 7 projection is always committed in the code repo (see Phase 7), so a
+successful-looking repo commit can accompany a record that was never
+versioned anywhere — the summary line above is what keeps that visible.
 
 ---
 
@@ -283,6 +297,10 @@ Resolve **path**:
   collapse and trim hyphens.
 - File name: `<slug>.decision.md` / `<slug>.invariant.md` for those two
   kinds; `<slug>.md` for principles (no dedicated suffix).
+- **Never overwrite on a collision.** If a file already exists at that path,
+  append `-2`, `-3`, … to the slug until the path is unused, and tell the user
+  which path you chose. Phases 4–6 edit a path the user named; that is an
+  update, not a collision.
 - Create the directory if it does not exist. A level's store is provisioned
   the first time something is engraved into it.
 
@@ -302,6 +320,33 @@ If no prior records exist at that level, start at `1`. First ids per level:
 
 ---
 
+## Cross-level comparison
+
+Every create phase runs this before writing. Search **every** resolved level
+for existing records of the kinds the phase names whose `topics` /
+`applies_to` overlap with the new topic, and handle each by where it sits
+relative to the level resolved in Phase 0:
+
+- **Same level**, and it would be replaced by what the user is proposing:
+  surface it. For a decision, ask whether the new record should supersede it
+  instead of standing alone (jump to Phase 5 if yes); for an invariant or
+  principle, ask whether to update it instead (jump to Phase 4 if yes).
+- **Broader level**, and the new record would tighten it: no action — a
+  narrower record may tighten a broader one freely. Cite it.
+- **Broader level**, and the new record would contradict it: this is an
+  exception, not a supersession. Surface the broader record, confirm the
+  contradiction with the user, and set `excepts: [<broader-id>]` on the new
+  record, with a body passage (`## Context`, `## Rationale`, or
+  `## Statement`) saying what the broader rule requires, what this level does
+  instead, and why the narrower context makes that correct. If the user will
+  not declare the exception, stop: an undeclared cross-level conflict is
+  reported as unresolved by every later recall.
+- **Narrower level**: leave it alone. A broader record never supersedes or
+  edits a narrower one; report it to the user as work they may want to
+  revisit at that level.
+
+---
+
 ## Phase 3a: Create a decision
 
 Before authoring decision body prose, load `Skill("smithy.helper-voice")` in
@@ -309,22 +354,7 @@ draft mode. Use it for the Context, Decision, Consequences, Establishes, and
 Citations prose while preserving the decision schema exactly as defined above.
 Do not inline the helper's taxonomy in this prompt.
 
-1. Search **every** resolved level for existing decisions whose `topics` /
-   `applies_to` overlap with the new topic, and handle each by where it sits
-   relative to the level resolved in Phase 0:
-   - **Same level**, and it would be replaced by what the user is proposing:
-     surface it and ask whether the new record should supersede it instead of
-     standing alone (jump to Phase 5 if yes).
-   - **Broader level**, and the new record would tighten it: no action — a
-     narrower record may tighten a broader one freely. Cite it.
-   - **Broader level**, and the new record would contradict it: this is an
-     exception, not a supersession. Surface the broader record, confirm the
-     contradiction with the user, and set `excepts: [<broader-id>]` on the new
-     record. Say in `## Context` what the broader rule requires, what this
-     level does instead, and why the narrower context makes that correct.
-   - **Narrower level**: leave it alone. A broader record never supersedes or
-     edits a narrower one; report it to the user as work they may want to
-     revisit at that level.
+1. Run the **cross-level comparison** above against existing decisions.
 2. Ask the user the four authoring questions:
    - **Context** — what prompted the decision; what was on the table.
    - **Decision** — the rule being put forward, stated in the present tense.
@@ -386,14 +416,17 @@ draft mode. Use it for the Rule, Rationale, and Citations prose while
 preserving the invariant schema and Known-Exceptions ledger shape exactly as
 defined above.
 
-1. Confirm the **establishing decision**: invariants always cite at least
+1. Run the **cross-level comparison** above against existing invariants
+   **and** decisions — an invariant can contradict a broader decision as
+   readily as a broader invariant.
+2. Confirm the **establishing decision**: invariants always cite at least
    one decision in `established_by`. If the caller did not pass one,
    either reference an existing decision (closest match by topic) or
    scaffold a fresh decision via Phase 3a first. `established_by` may point at
    a decision at this level or any **broader** one — a project invariant
    established by a user-level decision is expected and correct. It may never
    point at a narrower level.
-2. Write the invariant file with this shape:
+3. Write the invariant file with this shape:
 
    ```markdown
    ---
@@ -427,9 +460,9 @@ defined above.
    ```
 
    Fresh invariants always start `status: aligned` — the ledger is empty.
-3. If a fresh establishing decision was scaffolded in step 1, patch its
+4. If a fresh establishing decision was scaffolded in step 2, patch its
    `establishes:` to include this invariant's id.
-4. Run Phase 7, then commit and report. Commit message:
+5. Run Phase 7, then commit and report. Commit message:
    ```
    engrave(invariant): <id> <title>
    ```
@@ -448,12 +481,8 @@ new principle is rare. Before scaffolding, confirm with the user:
 > "Principles are apex, cross-domain, and resistant to release-to-release
 > churn. Would a `decision` referencing a principle work instead?"
 
-If the user still wants a principle, first run the **broader-level comparison
-from Phase 3a step 1** against every resolved level: a principle that
-contradicts a broader-level record needs `excepts: [<broader-id>]` and a body
-passage saying why, exactly as a decision would. Skipping the check authors an
-undeclared cross-level conflict that every later recall will keep reporting as
-unresolved.
+If the user still wants a principle, first run the
+**cross-level comparison** above against existing records of every kind.
 
 Then write the file with this shape:
 
@@ -525,9 +554,9 @@ of the one it replaces — never at the level you happen to be standing in.
    of the store it sits in. Abort if `status` is already `superseded` or
    `deprecated` — that decision is no longer load-bearing and superseding it
    would be misleading; tell the user and stop.
-2. Run Phase 3a to author the new decision **at the old decision's level**,
-   skipping Phase 0. The four authoring questions should focus on **what
-   changes** vs. the old rule. Set the new decision's `supersedes: [<old-id>]`.
+2. Run Phase 3a as a nested phase — it writes the new decision and does not
+   commit — **at the old decision's level**, skipping Phase 0. The four
+   authoring questions should focus on **what changes** vs. the old rule. Set the new decision's `supersedes: [<old-id>]`.
 
    If the user meant to override a broader rule from a narrower level rather
    than replace it, that is an exception, not a supersession: stop, explain
@@ -540,7 +569,8 @@ of the one it replaces — never at the level you happen to be standing in.
    invariant should now cite the new decision in `established_by:` (and
    optionally drop the old decision's id, or keep both). Patch the
    affected invariant frontmatter.
-5. Run Phase 7, then commit all changed files together:
+5. Run Phase 7, then commit the new decision, the old one, and any patched
+   invariants together in one commit:
    ```
    engrave(decision): <id> supersedes <old id> — <one-line summary>
    ```
@@ -614,9 +644,11 @@ for `Accepted:` rows, existing rows, resolution, removal, or conversion of a
    Clean up the temporary body file after the create attempt.
 
 If any auth, network, script, or JSON parsing failure occurs, leave the newly
-added `Temporary:` ledger row in place with its `Tracking Issue` cell as `—`.
-Do not roll back the invariant edit. Capture the failure text and surface it in
-the terminal summary after the engrave operation completes.
+added `Temporary:` ledger row in place with its `Tracking Issue` cell as `—`,
+and append ` (issue not created: <failure summary>)` to its Disposition cell
+so the record says why — a one-line summary, never a pipe character. Do not
+roll back the invariant edit. Surface the full failure text in the terminal
+summary after the engrave operation completes.
 
 After patching the ledger, **recompute** `status` and patch the
 frontmatter (`aligned` if zero `Temporary:` rows remain; `drifting`
@@ -640,10 +672,16 @@ files.
 
 Projection is a final, best-effort phase. Warnings from this phase are
 non-fatal: they do not roll back the record edit, do not fail the engrave or
-supersede operation, and do not block the record commit. Include any successful
-context-file projection edits in the same commit as the engraved record change.
-If one target warns or fails, keep processing the other targets and report the
-warning in the terminal summary.
+supersede operation, and do not block the record commit. If one target warns
+or fails, keep processing the other targets and report the warning in the
+terminal summary.
+
+Commit once per store. The context files are code-repo edits, so they share
+the record's commit only for an in-repo `repo`-level record. For any other
+store, commit the record in its store as above, then commit the context files
+on the code repo's working branch with
+`engrave: refresh engraved-knowledge pointer`. A failed projection commit is a
+stated warning, never a rollback of the record commit. Report both outcomes.
 
 ### Projection targets
 
@@ -761,16 +799,17 @@ marker handling until a no-change projection re-run is byte-identical.
 
 ## Rules
 
-- **One record per commit.** Exceptions: a Phase 5 supersession commit
-  patches the new and old decision file together; a Phase 3a "create
-  decision that also establishes an invariant" commit may include both
-  files together.
+- **One operation per commit, per store.** The outermost phase commits every
+  record it wrote together — a supersession's new and old decisions, a
+  decision and the invariant it establishes. The projection rides that commit
+  only when the record lives in the code repo.
 - **Never rewrite an accepted or superseded decision body.** Decisions
   are append-only. To change the rule, supersede.
 - **Never invent frontmatter fields** the per-kind tables above do not
   list. If a field is not in the schema, do not add it.
-- **Always quote the title** in YAML frontmatter — `title: "<topic>"` —
-  so titles containing `: ` survive the YAML parser.
+- **Always quote the title** in YAML frontmatter — `title: "<topic>"`,
+  escaped as the `title` row says — so titles containing `: `, `"`, or `\`
+  survive the YAML parser.
 - **The Known-Exceptions ledger column order is load-bearing.** Use
   `Where | What diverges | Disposition + Why | Tracking Issue | Severity`
   verbatim — the audit and parser depend on it.
@@ -805,7 +844,11 @@ Engraved <kind> <id> <title> at <path>
   status: <status>
   citations: <comma-separated edge summary, or "none">
   store: <store-root> (<committed|not versioned — record written, not committed>)
+  projection: <updated <files>|unchanged|no context files> (<committed with record|committed in code repo|not committed — reason>)
 ```
+
+Add a `warning:` line under `projection:` for each target that warned or
+failed.
 
 When the record declares `excepts`, add a line naming what it carves out from:
 
@@ -823,7 +866,7 @@ For Phase 6 (exception edits), print the recomputed status and the
 operation summary. When a `Temporary:` row was added, include a
 `drift issue:` line — show `#NNN` if the drift-tracking issue was created, or
 `not created — <failure summary>` if creation failed (the ledger row is kept
-with `Tracking Issue: —`). Omit the line for `Accepted:` rows, resolutions,
+with `Tracking Issue: —` and the reason in its Disposition cell). Omit the line for `Accepted:` rows, resolutions,
 removals, and conversions, which never create an issue:
 
 ```

@@ -31,8 +31,6 @@ renumbered id misdirects every citation to it (D-6).
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `commands/smithy.persona.prompt` (RFC mode) | Duplicate slugs in one batch overwrite each other | Temporary: detect in-batch collisions | #651 | low |
-| `commands/smithy.engrave.prompt` (path resolution) | A slug collision overwrites an existing record | Temporary: pick an unused path | #651 | medium |
-| `commands/smithy.engrave.prompt` (supersede) | The new decision commits before the old one is marked | Temporary: only the outermost phase commits | #651 | low |
 | `snippets/engraved-recall-rules.md` (empty states) | The empty state clears recorded citation hazards | Temporary: decide it after the hazards | #651 | medium |
 
 ## Citations
