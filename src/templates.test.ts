@@ -5622,6 +5622,72 @@ describe('getComposedTemplates', () => {
     // parser. The rule is asserted explicitly in the engrave prompt body.
     expect(engrave).toContain('title: "<topic>"');
     expect(engrave).toMatch(/Always quote the title/);
+    // The quoted form alone breaks on a topic containing `"` or `\`, so the
+    // schema states the escaping once and every scaffold refers to it.
+    expect(engrave).toContain('write each `\\` as `\\\\` and each `"` as `\\"`');
+    expect(engrave).toContain("single-quote it and double each `'`");
+  });
+
+  describe.each(['claude', 'codex'] as const)('engrave preservation and commit contract (%s)', (variant) => {
+    let engrave: string;
+    beforeAll(async () => {
+      engrave = (await getComposedTemplates(variant)).commands.get('smithy.engrave.md')!;
+    });
+
+    const phase = (heading: string): string => {
+      const start = engrave.indexOf(heading);
+      expect(start, heading).toBeGreaterThanOrEqual(0);
+      const end = engrave.indexOf('\n## ', start + heading.length);
+      return engrave.slice(start, end === -1 ? undefined : end);
+    };
+
+    it('gives the cross-level comparison one home that Phases 3a, 3b, and 3c all run', () => {
+      expect(engrave.match(/^## Cross-level comparison$/gm)).toHaveLength(1);
+      expect(engrave.match(/Broader level\*\*, and the new record would contradict it/g)).toHaveLength(1);
+      for (const heading of ['## Phase 3a: Create a decision', '## Phase 3c: Create a principle']) {
+        expect(phase(heading), heading).toContain('**cross-level comparison**');
+      }
+      const p3b = phase('## Phase 3b: Create an invariant');
+      expect(p3b).toMatch(/\*\*cross-level comparison\*\* above against existing invariants\s+\*\*and\*\* decisions/);
+      expect(phase('## Cross-level comparison')).toMatch(/will\s+not declare the exception, stop/);
+    });
+
+    it('never overwrites a record on a path collision', () => {
+      const p2 = phase('## Phase 2: Routing');
+      expect(p2).toContain('**Never overwrite on a collision.**');
+      expect(p2).toMatch(/already exists at that path,\s+append `-2`, `-3`/);
+      expect(p2).toMatch(/update, not a collision/);
+    });
+
+    it('commits only from the outermost phase, and supersession commits both decisions together', () => {
+      const where = phase('## Where "commit" lands, per level');
+      expect(where).toContain('**Only the\nouter');
+      expect(where).toMatch(/nested phase writes its files and returns without running\s+Phase 7 or committing/);
+      const p5 = phase('## Phase 5: Supersede a decision');
+      expect(p5).toMatch(/nested phase — it writes the new decision and does not\s+commit/);
+      expect(p5).toMatch(/commit the new decision, the old one, and any patched\s+invariants together in one commit/);
+    });
+
+    it('composes store-commit and commits the projection per store', () => {
+      expect(engrave).not.toContain('{{>store-commit}}');
+      expect(engrave).toContain('Do not `git push`** the store');
+      expect(engrave).not.toMatch(/same commit as the engraved record change/);
+      const p7 = phase('## Phase 7: Project the engraved-knowledge pointer');
+      expect(p7).toContain('Commit once per store.');
+      expect(p7).toMatch(/failed projection commit is a\s+stated warning/);
+      expect(phase('## Output')).toMatch(/^ {2}projection: /m);
+    });
+
+    it('records why a Temporary row has no tracking issue, in the form the audit accepts', () => {
+      const p6 = phase('## Phase 6: Add or resolve a Known-Exceptions ledger row');
+      expect(p6).toContain('append ` (issue not created: <failure summary>)` to its Disposition cell');
+      expect(engrave).toContain('`Temporary: <reason> (issue not created: <failure summary>)`');
+      expect(
+        fs.readFileSync(path.join(process.cwd(), 'src/templates/agent-skills/snippets/audit-checklist-engraved.md'), 'utf8'),
+      ).toContain(
+        'a Disposition ending `(issue not created: <reason>)` with `—` as the Tracking Issue',
+      );
+    });
   });
 
   it('engrave template enforces the alignment-derivation rule from the ledger', () => {
@@ -6784,6 +6850,7 @@ describe('forge task records, repo identity, and review categories', () => {
   it('keeps one home for the store-commit rules', () => {
     expect(readSource(snippetsDir, 'artifact-location-policy.md')).toContain('{{>store-commit}}');
     expect(readSource(snippetsDir, 'task-record-location.md')).toContain('{{>store-commit}}');
+    expect(readSource(path.join(process.cwd(), 'src/templates/agent-skills/commands'), 'smithy.engrave.prompt')).toContain('{{>store-commit}}');
     expect(readSource(snippetsDir, 'tdd-protocol.md')).toContain('{{>task-record-location}}');
   });
 
