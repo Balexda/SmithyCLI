@@ -31,7 +31,6 @@ done (D-8, D-7).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `commands/smithy.forge.prompt` (implementation repo check) | Repo identity is the worktree directory name | Temporary: use the common git dir and the remote | #649 | medium |
 | `commands/smithy.orders.prompt` (linking) | Hierarchy is linked as blocked-by | Temporary: use sub-issues | #652 | medium |
 | `skills/smithy.pr-review/scripts/get-comments.sh` | Reads one page of threads and of replies | Temporary: paginate both | #652 | medium |
 | `skills/smithy.pr-review` (handled filter) | A handled thread is decided by `isResolved`, with no marker | Temporary: filter on the response marker | #652 | medium |

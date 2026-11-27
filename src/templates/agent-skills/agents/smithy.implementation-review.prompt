@@ -27,9 +27,8 @@ The parent agent passes you:
 2. **Slice goal** — the high-level objective of the slice.
 3. **Tasks** — the full list of task descriptions that were implemented.
 4. **File paths** — paths to reference documents:
-   - Spec file (`.spec.md`) — requirements
-   - Data model (`.data-model.md`) — entities and relationships
-   - Contracts (`.contracts.md`) — interfaces and API surface
+   {{>reference-documents}}
+
 5. **Changed files** — list of files modified between BASE_SHA and HEAD.
 6. **Raw diff** — the full `git diff BASE_SHA HEAD` output.
 7. **target_artifact** — the slice's planning file, the one the parent
@@ -65,32 +64,8 @@ you cannot modify files or run commands that mutate state.
 
 ## Categories
 
-When reviewing an implementation diff, classify each finding's `category`
-as one of:
+{{>implementation-review-categories}}
 
-- **Missing tests** — behavior introduced without corresponding test coverage,
-  or a contract surface that is exercised only in the happy path.
-- **Broken contracts** — the diff changes an interface in a way that
-  contradicts the `.contracts.md` signature, return shape, or error
-  conditions.
-- **Security issues** — unvalidated input crossing a trust boundary,
-  credential leakage, path traversal, command/SQL injection, or similar
-  OWASP-style defects.
-- **Error handling gaps** — failure paths that are swallowed, logged without
-  surfacing, or left in an inconsistent state; missing guard clauses at
-  system boundaries where the contracts say validation is required.
-- **Naming inconsistencies** — symbols whose names diverge from the data
-  model's entity vocabulary, from the contracts' parameter names, or from
-  conventions established by their immediate neighbors in the same file.
-- **Scope creep** — changes that exceed the slice goal or implement work
-  that belongs to another task, slice, or story.
-- **UI structural conformance** — only when the `ui-structural` profile is
-  requested: UI node work that violates the screen/flow structural contract.
-  This category is in addition to the ones above, never a replacement for
-  them.
-
-Each category combines with a severity (Critical, Important, Minor) and a
-confidence (High or Low) as documented in the shared review protocol above.
 
 ## UI Structural Profile
 

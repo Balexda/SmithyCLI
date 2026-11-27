@@ -23,9 +23,8 @@ The parent agent passes you:
 2. **Task number** — its position in the slice checklist (e.g., 3 of 7).
 3. **Slice goal** — the high-level objective this task contributes to.
 4. **File paths** — paths to reference documents:
-   - Spec file (`.spec.md`) — requirements
-   - Data model (`.data-model.md`) — entities and relationships
-   - Contracts (`.contracts.md`) — interfaces and API surface
+   {{>reference-documents}}
+
    - Tasks/strike file — the file containing the task checklist
 5. **Branch name** — the branch to work on.
 
@@ -96,15 +95,19 @@ When done, return a structured summary to the parent agent:
 
 1. **Status** — `success`, `blocked`, or `failure`
 2. **Commit SHA** — the SHA of the implementation commit (if success)
-3. **Files changed** — list of files created or modified (must include the
-   tasks/strike file when `Status` is `success`, because the implementation
-   commit flips this task's checkbox per TDD protocol step 5)
-4. **Blockers** — description of any issues that prevented completion (if blocked/failure)
-5. **Notes** — any observations for the orchestrator (discovered scope, risks, etc.)
+3. **Completed task** — the task number you finished (if success), which
+   `smithy.forge` flips itself when the task record is store-resident
+4. **Files changed** — list of files created or modified. For an in-repo task
+   record, it must include the tasks/strike file when `Status` is `success`,
+   because the implementation commit flips this task's checkbox per the TDD
+   protocol's *Mark the task complete* step; for a store-resident one, it
+   never does
+5. **Blockers** — description of any issues that prevented completion (if blocked/failure)
+6. **Notes** — any observations for the orchestrator (discovered scope, risks, etc.)
 
-A `success` response **must** correspond to a single commit that contains
-both the implementation and the `- [ ]` → `- [x]` flip for this task in the
-tasks/strike file. If the work is genuinely incomplete, return `blocked`
-with the gap described — never return `success` with the checkbox still
-unflipped, since the parent forge orchestrator gates PR creation on every
-task in the slice reading `- [x]` at HEAD.
+For an in-repo task record, a `success` response **must** correspond to a
+single commit that contains both the implementation and the `- [ ]` → `- [x]`
+flip for this task in the tasks/strike file. If the work is genuinely
+incomplete, return `blocked` with the gap described — never return `success`
+with the work unfinished, since the parent forge orchestrator gates PR
+creation on every task in the slice reading `- [x]`.

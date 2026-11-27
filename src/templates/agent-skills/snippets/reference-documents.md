@@ -1,0 +1,3 @@
+- Spec file (`.spec.md`) — requirements
+- Data model (`.data-model.md`) — entities and relationships
+- Contracts (`.contracts.md`) — interfaces and API surface
