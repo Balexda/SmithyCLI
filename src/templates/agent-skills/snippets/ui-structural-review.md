@@ -1,7 +1,7 @@
 The `ui-structural` review profile is **additive**. It does not replace,
 narrow, or excuse any ordinary implementation-review category: correctness
-bugs, security issues, contract/data-model conformance, missing test coverage,
-error-handling gaps, naming inconsistencies, and scope creep all apply to UI
+bugs, missing tests, broken contracts, security issues, error handling gaps,
+naming inconsistencies, and scope creep all apply to UI
 node work exactly as they apply to backend work. The profile only adds the
 structural UI checks below and rules visual fidelity out of scope.
 

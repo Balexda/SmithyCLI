@@ -109,7 +109,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(43);
+    expect(snippets.size).toBe(47);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -125,6 +125,10 @@ describe('loadSnippets', () => {
       'competing-lenses-scoping.md',
       'guidance-shell.md',
       'tdd-protocol.md',
+      'task-record-location.md',
+      'store-commit.md',
+      'reference-documents.md',
+      'implementation-review-categories.md',
       'review-protocol.md',
       'one-shot-output.md',
       'pr-create-tool-choice.md',
@@ -3661,7 +3665,7 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toContain('**Check the implementation repo, if the slice declares one.**');
     expect(forge).toContain('**No declaration → nothing to check.**');
-    expect(forge).toContain('git rev-parse --show-toplevel');
+    expect(forge).toContain('--git-common-dir');
     expect(forge).toContain('Implementation repo mismatch');
   });
 
@@ -3839,7 +3843,7 @@ describe('getComposedTemplates', () => {
     expect(review).toMatch(
       /It does not replace,\s+narrow, or excuse any ordinary implementation-review category/,
     );
-    expect(review).toContain('security issues, contract/data-model conformance, missing test coverage');
+    expect(review).toContain('bugs, missing tests, broken contracts, security issues, error handling gaps');
     expect(review).toContain('This category is in addition to the ones above, never a replacement for');
     // ...while visual fidelity stays out of scope.
     expect(review).toContain(
@@ -4403,7 +4407,7 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     expect(forge).toContain('Slice Completion Check');
-    expect(forge).toContain('Forge owns the checkbox flip');
+    expect(forge).toContain('This re-read is the orchestrator\'s gate');
     expect(forge).toContain('STOP gate');
     expect(forge).toContain('wedges the downstream dispatch loop');
     expect(forge).toContain('Unchecked tasks at PR time');
@@ -4415,8 +4419,8 @@ describe('getComposedTemplates', () => {
   it('smithy-implement sub-agent output contract requires checkbox flip with success', () => {
     const implement = claudeComposed.agents.get('smithy.implement.md')!;
     expect(implement).toBeDefined();
-    expect(implement).toContain('flips this task\'s checkbox per TDD protocol step 5');
-    expect(implement).toContain('never return `success` with the checkbox still');
+    expect(implement).toMatch(/flips this task's checkbox per the TDD\s+protocol's \*Mark the task complete\* step/);
+    expect(implement).toContain('never return `success`');
   });
 
   // Issue #380: the shared TDD protocol snippet — used by both the
@@ -4427,7 +4431,7 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toBeDefined();
     // The snippet is inlined into the no-agent forge variant.
-    expect(forge).toContain('Include this edit in the implementation commit');
+    expect(forge).toMatch(/never a\s+follow-up commit or an amend/);
     expect(forge).toContain('mandatory');
   });
 
@@ -6312,11 +6316,13 @@ describe('issue #554 — audit defects D1–D10', () => {
     const defaultForge = composed.commands.get('smithy.forge.md')!;
     // Claude path: no inline protocol, so the citation points at the sub-agent.
     expect(claudeForge).not.toContain('## TDD Protocol');
-    expect(claudeForge).not.toContain('(see TDD protocol step 5 above)');
-    expect(claudeForge).toMatch(/step 5 of the TDD protocol that sub-agent\s+carries/);
+    expect(claudeForge).not.toContain('rules in the TDD protocol above');
+    expect(claudeForge).toMatch(/the TDD protocol's \*Mark the task complete\* step it carries/);
     // Degraded path: the snippet is inline, so "above" resolves.
     expect(defaultForge).toContain('## TDD Protocol');
-    expect(defaultForge).toContain('(see TDD protocol step 5 above)');
+    expect(defaultForge).toContain('*Task record location* rules in the TDD protocol above');
+    // Steps are cited by name, never by number, so a reorder cannot strand them.
+    for (const f of [claudeForge, defaultForge]) expect(f).not.toMatch(/TDD protocol step \d|step \d of the TDD/);
   });
 
   // D7 — mark scanned a bare `specs/` for existing spec folders, which is the
@@ -6711,5 +6717,106 @@ describe('one-shot pipeline closeout', () => {
     expect(clarify).not.toContain('All candidates Medium or Low confidence → zero assumptions');
     expect(clarify.match(/\| Candidate \| Confidence \| Kind gate \| Triage result \|/g)?.length).toBe(3);
     expect(flat(clarify)).toContain('every candidate was High confidence or failed the steering test');
+  });
+});
+
+describe('forge task records, repo identity, and review categories', () => {
+  const RECORD_CANARY = 'Where the tasks or strike file lives decides who commits its checkbox flip.';
+  const snippetsDir = path.join(process.cwd(), 'src/templates/agent-skills/snippets');
+  const agentsDir = path.join(process.cwd(), 'src/templates/agent-skills/agents');
+  const readSource = (dir: string, f: string) => fs.readFileSync(path.join(dir, f), 'utf8');
+  const renders: Array<[string, ComposedTemplates]> = [];
+  let gemini: ComposedTemplates;
+  let tdd: string;
+
+  beforeAll(async () => {
+    for (const variant of ['claude', 'codex'] as const) {
+      renders.push([`${variant} in-repo`, await getComposedTemplates(variant)]);
+      renders.push([`${variant} external`, await getComposedTemplates(variant, '~/.smithy/myrepo/')]);
+    }
+    gemini = await getComposedTemplates('gemini');
+    tdd = await composeSnippet('tdd-protocol');
+  });
+
+  /** Index of a `### N. <name>` step heading, wherever the protocol renders. */
+  const stepAt = (text: string, name: string) => text.search(new RegExp(`### \\d\\. ${name}\\n`));
+
+  it('marks the task complete before the commit step, and commits the record with the code', () => {
+    const texts: Array<[string, string]> = [['tdd-protocol', tdd], ['gemini forge', gemini.commands.get('smithy.forge.md')!]];
+    for (const [label, c] of renders) texts.push([`${label} implement`, c.agents.get('smithy.implement.md')!]);
+    for (const [label, text] of texts) {
+      const mark = stepAt(text, 'Mark the task complete');
+      const commit = stepAt(text, 'Commit');
+      expect(mark, label).toBeGreaterThan(-1);
+      expect(commit, label).toBeGreaterThan(mark);
+      expect(text.slice(commit), label).toMatch(/Stage the test, the implementation, and the tasks or strike file edit\s+together/);
+    }
+  });
+
+  it('decides the task record location at run time on every path that flips a box', () => {
+    for (const [label, c] of renders) {
+      const texts: Array<[string, string]> = [
+        ['forge', c.commands.get('smithy.forge.md')!],
+        ['implement', c.agents.get('smithy.implement.md')!],
+      ];
+      texts.push(['tdd-protocol', tdd], ['gemini forge', gemini.commands.get('smithy.forge.md')!]);
+      for (const [name, text] of texts) {
+        const where = `${label} ${name}`;
+        expect(text, where).toContain(RECORD_CANARY);
+        expect(text, where).toContain('git -C <store-root> add');
+        expect(text, where).toContain('git show HEAD:<tasks-file-path>');
+        // A sentence putting the flip in the implementation commit must be
+        // conditioned on an in-repo record.
+        const sentences = text.split(/(?<=[.;])\s+/).filter(s => /implementation commit/.test(s) && /flip|checkbox/.test(s));
+        for (const s of sentences) expect(s, where).toMatch(/in-repo|code only/i);
+      }
+    }
+  });
+
+  it('keeps one home for the store-commit rules', () => {
+    expect(readSource(snippetsDir, 'artifact-location-policy.md')).toContain('{{>store-commit}}');
+    expect(readSource(snippetsDir, 'task-record-location.md')).toContain('{{>store-commit}}');
+    expect(readSource(snippetsDir, 'tdd-protocol.md')).toContain('{{>task-record-location}}');
+  });
+
+  it('reads repo identity from the common git dir and the remote, never the checkout basename', () => {
+    for (const [label, c] of [...renders, ['gemini', gemini] as const]) {
+      const forge = c.commands.get('smithy.forge.md')!;
+      expect(forge, label).toContain('git rev-parse --path-format=absolute --git-common-dir');
+      expect(forge, label).toContain('git config --get remote.origin.url');
+      expect(forge, label).not.toMatch(/show-toplevel[^\n]*\n?[^\n]*basename/);
+      expect(forge, label).toContain('each value you compared it with');
+    }
+  });
+
+  it('lists every ordinary category the ui-structural profile names', () => {
+    const ui = readSource(snippetsDir, 'ui-structural-review.md');
+    const list = ui.match(/implementation-review category: ([\s\S]+?) all apply/)![1]!.replace(/\s+/g, ' ');
+    const names = list.split(/, (?:and )?/).map(n => n.toLowerCase());
+    expect(names).toContain('correctness bugs');
+    const geminiForge = gemini.commands.get('smithy.forge.md')!;
+    const sections: Array<[string, string]> = [['gemini forge', geminiForge.slice(geminiForge.indexOf('classify each finding\'s `category`'))]];
+    for (const [label, c] of renders) {
+      const review = c.agents.get('smithy.implementation-review.md')!;
+      sections.push([label, review.slice(review.indexOf('## Categories'), review.indexOf('## UI Structural Profile'))]);
+    }
+    for (const [label, text] of sections) {
+      const categories = [...text.matchAll(/^- \*\*([^*]+)\*\* — /gm)].map(m => m[1]!.toLowerCase());
+      expect(categories[0], label).toBe('correctness bugs');
+      for (const n of names) expect(categories, `${label}: ${n}`).toContain(n);
+    }
+  });
+
+  it('composes the reference-document inputs from one snippet in both forge agents', () => {
+    for (const f of ['smithy.implement.prompt', 'smithy.implementation-review.prompt']) {
+      const source = readSource(agentsDir, f);
+      expect(source, f).toContain('{{>reference-documents}}');
+      expect(source, f).not.toContain('- Spec file (`.spec.md`)');
+    }
+    for (const [label, c] of renders) {
+      for (const f of ['smithy.implement.md', 'smithy.implementation-review.md']) {
+        expect(c.agents.get(f), `${label} ${f}`).toMatch(/   - Contracts \(`\.contracts\.md`\) — interfaces and API surface\n/);
+      }
+    }
   });
 });

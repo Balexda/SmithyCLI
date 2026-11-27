@@ -23,24 +23,29 @@ and verify the new test **passes** and no existing tests have broken.
 If the implementation introduced duplication, unclear naming, or structural
 issues, clean it up now. Run the full test suite again to confirm nothing broke.
 
-### 4. Commit
-
-Stage the test and implementation together and commit with a concise, descriptive
-message that summarizes *what* was accomplished (not "add test" — describe the
-behavior).
-
-### 5. Mark the task complete
+### 4. Mark the task complete
 
 Update the task checkbox from `- [ ]` to `- [x]` in the tasks or strike file.
-**Include this edit in the implementation commit — not a follow-up commit.**
+The edit is staged with the implementation in the next step — never a
+follow-up commit or an amend. Skip it when the record is store-resident (see
+*Task record location* below): `smithy.forge` makes that flip.
 
 The checkbox flip is **mandatory**, not bookkeeping. The slice's parent
 orchestrator (`smithy.forge`) gates PR creation on every task in the slice
-reading `- [x]` at HEAD; a merged PR that leaves rows unchecked wedges the
+reading `- [x]`; a merged PR that leaves rows unchecked wedges the
 downstream dispatch loop (`smithy status` keeps the slice in progress while
 the merge-archive blocks re-dispatch). If you cannot legitimately mark the
 task complete (work is blocked, requirements unclear), do not fake the flip
 — stop and report the blocker per the constraints below.
+
+### 5. Commit
+
+Stage the test, the implementation, and the tasks or strike file edit
+together and create **one** commit, with a concise, descriptive message that
+summarizes *what* was accomplished (not "add test" — describe the behavior).
+
+{{>task-record-location}}
+
 
 ---
 

@@ -140,3 +140,10 @@ grammar:
   the control that does not depend on spelling is keeping the flag out of the
   allow table (which is what removes it for Gemini) and having no template
   that calls it.
+
+## Codex: task records outside the checkout
+
+When a tasks file lives in an artifacts or project store rather than the
+implementation repo, `smithy.forge` flips and commits its checkboxes in the
+store itself; the `workspace-write` implementer commits code only. Adding the
+store to Codex's `writable_roots` is therefore optional.

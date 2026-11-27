@@ -199,9 +199,6 @@ describe('template lint — no passage copied between templates', () => {
   const ALLOWED: ReadonlyArray<[string, RegExp]> = [
     // The copies still on the tree from when the lint landed, one INV-1
     // ledger row each. #646.
-    // implement and implementation-review: the reference-document input list.
-    ['agents/smithy.implement.prompt', /also in agents\/smithy\.implementation-review\.prompt: 4\. \*\*File paths\*\*/],
-    ['agents/smithy.implementation-review.prompt', /also in agents\/smithy\.implement\.prompt: 4\. \*\*File paths\*\*/],
     // plan and slice: the dispatch input list and the Decisions/Risks shape.
     ['agents/smithy.plan.prompt', /also in agents\/smithy\.slice\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
     ['agents/smithy.slice.prompt', /also in agents\/smithy\.plan\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
@@ -372,7 +369,13 @@ describe('template lint — one branch rule (D-7, INV-6)', () => {
   });
 
   it('names no worktree-shape test anywhere', () => {
-    const findings = findWorktreeShapeBranching(tree);
+    // Forge reads the repository's name from the common git dir so a worktree
+    // checkout is not mistaken for another repo (INV-6). That is identity, not
+    // a branch decision keyed on checkout shape.
+    const ALLOWED: ReadonlyArray<[string, RegExp]> = [
+      ['commands/smithy.forge.prompt', /worktree-shape wording `--git-common-dir`/],
+    ];
+    const findings = unallowed(findWorktreeShapeBranching(tree), ALLOWED);
     expect(findings, `worktree-shape wording:\n${report(findings)}`).toEqual([]);
   });
 
