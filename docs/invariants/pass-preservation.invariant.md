@@ -30,7 +30,6 @@ renumbered id misdirects every citation to it (D-6).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `commands/smithy.mark.prompt` (UI wire pass) | Overwrites `.design.md`, `.flow.md`, and the test body | Temporary: keep existing files | #650 | medium |
 | `commands/smithy.persona.prompt` (RFC mode) | Duplicate slugs in one batch overwrite each other | Temporary: detect in-batch collisions | #651 | low |
 | `commands/smithy.engrave.prompt` (path resolution) | A slug collision overwrites an existing record | Temporary: pick an unused path | #651 | medium |
 | `commands/smithy.engrave.prompt` (supersede) | The new decision commits before the old one is marked | Temporary: only the outermost phase commits | #651 | low |

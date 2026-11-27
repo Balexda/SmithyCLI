@@ -29,7 +29,6 @@ the answer (D-5).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `snippets/typed-ui-build-profiles.md` (flow-wire review handoff) | The reviewer never gets the worker's `test-body` fallback | Temporary: pass the same resolution | #650 | low |
 | `agents/smithy.prose.prompt` consumers (ignite, spark, persona) | The gaps section and markers are committed verbatim | Temporary: split them out and surface them | #651 | medium |
 | `agents/smithy.survey.prompt`, `commands/smithy.spark.prompt` | A failed verification falls through to the empty-market stub | Temporary: add an incomplete result and consume it | #651 | medium |
 
