@@ -25,5 +25,7 @@ git -C <store-root> commit --no-gpg-sign -m "forge: mark slice <N> task <M> comp
 
 For a store-resident record the gate reads the store's committed state,
 `git -C <store-root> show HEAD:<path-from-store-root>`, or the file itself
-when the store has no git. A store write or commit that fails is reported in
-forge's **Outstanding Issues** with the task and the error. It is not a STOP.
+when the store has no git. A store write or commit that fails is not a STOP:
+the gate counts that task done on the implementer's `success` report, and
+forge's **Outstanding Issues** names the task, the error, and the box the user
+must flip in the store.

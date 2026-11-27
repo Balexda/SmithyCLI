@@ -413,7 +413,8 @@ target slice, the slice is **not** ready to ship.
    while the merge-archive blocks re-dispatch) — never ship past this gate.
 
 Only after every task in the target slice reads `- [x]` in its committed
-state may you proceed to the Pull Request step.
+state, or is a store write failure reported under **Outstanding Issues**, may
+you proceed to the Pull Request step.
 
 ---
 
