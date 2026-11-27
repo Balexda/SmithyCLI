@@ -87,21 +87,15 @@ journey ever breaks, the product breaks — there is no library without it.
 
 ## Guards
 
-- **Confirm is disabled until the URL is valid.** The URL field is the only
-  required input the store cannot recover from; a permissive Confirm would
-  silently persist garbage.
-- **Submitting a duplicate URL is a no-op.** Duplicate detection lives in the
-  store, but the user-visible contract is "no second row appears" — the
-  flow asserts that surface so a regression that breaks dedup is caught.
-- **The back gesture returns to Library without persisting partial input.**
-  Half-filled rows would corrupt the library; the back-out path must drop
-  the draft.
+- **Confirm stays disabled until the URL is valid.** The URL field is the
+  only required input the store cannot recover from; a permissive Confirm
+  would silently persist garbage — including a non-empty but malformed URL.
 
 ## Entry / Exit
 
 - **Enter from**: Library screen, tap on `library-fab`.
 - **Exit on**: tap `add-title-confirm-button-enabled` with a valid URL →
-  return to Library list, new title visible at the top of `library-list`.
+  return to Library list, the new title's row visible in `library-list`.
 
 ## Coverage Caveat
 
@@ -122,7 +116,11 @@ TTS coverage.**
 # Selectors are keyed to testIDs. Never visible text, never layout position.
 appId: com.storyspider.app
 ---
-- launchApp
+# The fixture seeds the key the new record gets, so its row testID is known.
+- launchApp:
+    clearState: true
+    arguments:
+      seedNextRecordKey: "fixture-title-1"
 - assertVisible:
     id: "library-fab"
 - tapOn:
@@ -131,7 +129,7 @@ appId: com.storyspider.app
     id: "add-title-title-field"
 - assertVisible:
     id: "add-title-url-field"
-# Guard: confirm is disabled until the URL is valid.
+# Guard: confirm stays disabled until the URL is valid.
 - assertNotVisible:
     id: "add-title-confirm-button-enabled"
 - tapOn:
@@ -139,8 +137,11 @@ appId: com.storyspider.app
 - inputText: "The Magic Circle"
 - tapOn:
     id: "add-title-url-field"
+- inputText: "not a url"
+- assertNotVisible:
+    id: "add-title-confirm-button-enabled"
+- eraseText
 - inputText: "https://example.com/magic-circle.mp3"
-# Guard: with a valid URL, confirm becomes reachable.
 - assertVisible:
     id: "add-title-confirm-button-enabled"
 - tapOn:
@@ -148,12 +149,21 @@ appId: com.storyspider.app
 - assertVisible:
     id: "library-list"
 - assertVisible:
-    id: "library-row-the-magic-circle"
+    id: "library-row-fixture-title-1"
 ```
 
 Note what is *not* in the `.flow.md` body: no list of taps, no screen
 transitions, no copy strings, no per-step screenshots. Note what *is* in
-the executable test body: not just the happy path, but the `assertNotVisible` →
-`assertVisible` pair around `add-title-confirm-button-enabled` that proves
-the URL guard fires. The example uses Maestro yaml because that is Story
-Spider's driver; it is illustrative, not required by the schema.
+the executable test body: not just the happy path, but the guard block around
+`add-title-confirm-button-enabled` — hidden while the URL is empty, still
+hidden for a malformed one, visible once it is valid — so every bullet under
+`## Guards` has its `# Guard:` assertion. The row is keyed by the
+fixture-seeded record key, not the typed title.
+
+Rejecting a duplicate URL and backing out without persisting a draft are
+durable guarantees too, but they are different paths, so they are not guards
+of this flow. Each earns its own `FlowId` — `AddTitleDuplicateUrl` and
+`AddTitleBackOut` — with its own pair (test-body rule 1), and each lists only
+the guards its own test body asserts (rule 3). The example uses Maestro yaml
+because that is Story Spider's driver; it is illustrative, not required by the
+schema.

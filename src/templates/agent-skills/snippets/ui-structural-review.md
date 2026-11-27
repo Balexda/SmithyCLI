@@ -14,6 +14,11 @@ Screen-build (`SC<N>`) work is additionally checked for:
 - Representation of every brief state named by the referenced `.design.md` or
   task plan.
 
+**Test body resolution.** A flow-wire node's paired test body is the tasks
+file's `**Test Body**` header value, else the `test-body` front matter of the
+`.flow.md` named by its `**Durable Artifact**` header. The worker and the
+reviewer resolve it the same way.
+
 Flow-wire (`FL<N>`) work is additionally checked for:
 
 - Executable behavior keyed to stable test IDs, accessibility IDs, or semantic

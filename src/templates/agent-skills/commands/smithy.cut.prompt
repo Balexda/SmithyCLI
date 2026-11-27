@@ -234,12 +234,14 @@ Phase 0).
      existing backend user-story slicing behavior.
    - **Typed UI ledger**: the 6-column shape
      `ID | Kind | Title | Depends On | Design | Artifact`, which may contain any
-     mix of `SC<N>`, `FL<N>`, and `US<N>` rows — those kinds are allowed, not
-     all required. The smallest honest ledger (e.g. a single `SC<N>` row for a
-     screen-only feature with no flows or backend work) is valid; classify and
-     auto-select from whatever kinds are present.
+     mix of `SC<N>`, `FL<N>`, and `US<N>` rows, defined under **Typed UI
+     ledger** below. The smallest honest ledger (e.g. a single `SC<N>` row) is
+     valid; classify and auto-select from whatever kinds are present.
      Treat this as node-kind work, not as a
      backend-only user-story list.
+
+   {{>ui-spec-ledger}}
+
 5. Extract the target work node:
    - For backend story tables, extract the target user story — its title,
      acceptance scenarios, priority, and any FRs that trace to it.
@@ -581,6 +583,12 @@ row's `Kind`/ID prefix and produce a node-specific tasks file. This is the same
 cut pipeline as backend work: the task profile changes, but the output is still
 a `.tasks.md` file consumed by `smithy.forge`.
 
+Before routing, resolve the owning feature's `phase` and `flag`: follow the
+spec's `**Source Feature Map**` pointer and read both from that feature's
+metadata block — the same lookup forge does. A `wire` phase is the one that
+connects real data and settles the flag, per the feature map's kind/phase
+schema; with no pointer or no `phase`, plan as `build`.
+
 Use these profile rules:
 
 - **`SC<N>` / `screen` rows** route to **screen-build task planning**.
@@ -591,11 +599,25 @@ Use these profile rules:
   building the screen behind the feature `flag` against mock data, representing
   every brief state with the project's design-system tokens and reusable
   components. Do not author or modify the `.design.md`; it is mark-owned.
+  In a `wire` spec, an `SC<N>` row whose screen is already built (its
+  `component-path` resolves) is not re-planned as a mock build: plan only what
+  this feature adds to the existing component, or — when it adds nothing — one
+  slice that checks the component against the `.design.md` and adds any testIDs
+  the flows key on.
 - **`FL<N>` / `flow` rows** route to **flow-wire task planning**. The tasks
   file must identify the node kind as flow-wire, cite the referenced
   `design/flows/<FlowId>.flow.md`, cite the paired `test-body` named by that
   flow artifact, and include the dependency context from the ledger. Plan for
-  executable behavior in the paired test body, not in the `.flow.md`.
+  executable behavior in the paired test body, not in the `.flow.md`. For an
+  `FL<N>` row in a `wire` spec, or any real-data-dependent one, also plan the
+  production change: replacing the screen's mock data source with what its
+  upstream `US` artifacts provide, and the `**Flag Action**` as an explicit
+  acceptance criterion. When the feature declares a `flag`, exactly one
+  terminal `FL` slice carries `flip` or `remove`: one whose row's `Depends On`
+  reaches every other `FL` row, or — when no row does — one whose acceptance
+  criteria require every other `FL` row's slices to have landed first. The
+  others carry `honor-enabled` or `none`; an unflagged feature carries `none`
+  throughout.
 - **`US<N>` / `story` rows inside a typed UI ledger** route to the existing
   **backend-story task planning** behavior. UI ledger context may explain
   ordering, but it must not add UI-specific implementation steps or ask forge
@@ -634,6 +656,8 @@ For `FL` files, also include:
 
 ```markdown
 **Test Body**: `<repo-relative test-body path>`
+**Flag**: <the owning feature's `flag`, or —>
+**Flag Action**: <flip|remove|honor-enabled|none>
 **Flow Data Path**: mock-satisfiable if the ledger dependencies are only screen
 nodes; real-data-dependent if they include backend `US` nodes.
 ```

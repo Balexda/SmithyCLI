@@ -117,20 +117,14 @@ and review against its "Review checklist" section. The audit is structural and
 contractual only: do not judge visual fidelity, pixel polish, layout quality, or
 whether the eventual component visually matches a mockup.
 
-**One carve-out from that checklist.** Its `id` bullet checks membership against
-a feature-level `screens:` list. Features no longer carry one — screens are
-first-class `SC<N>` rows in the owning spec's typed `## Dependency Order`
-ledger. Resolve `id` against that ledger row instead, and only when the owning
-spec is reachable from the target. When it is not, skip the membership check —
-do **not** report a finding for a missing `screens:` list.
-
 Flag at least the following:
 
 - Missing or malformed YAML front-matter.
 - Missing required front-matter keys: `id`, `component-path`, and
   `design_system`.
-- `component-path` is empty, absolute, escapes the repo, names a framework
-  symbol instead of a repo-relative path, or does not resolve to a file.
+- `component-path` fails the skill checklist's checks, including its
+  pre-build exemption: before the screen's build slice lands, an unresolved
+  path is an informational note, not a finding.
 - `design_system` is empty or names a bundle/prototype rather than the
   committed design-system skill.
 - `bundle` is present without a `design_system`, or names a path that does not
@@ -147,13 +141,6 @@ skill and review against its "Review checklist" section. The audit checks the
 intent annotation and its declared executable test-body pair. Graph-level
 screen/flow/test consistency remains appropriate for `flow-lint`, but direct
 audit should still report unresolved references visible from this file.
-
-**One carve-out from that checklist.** Its `id` bullet checks membership against
-a feature-level `flows:` list. Features no longer carry one — flows are
-first-class `FL<N>` rows in the owning spec's typed `## Dependency Order`
-ledger. Resolve `id` against that ledger row instead, and only when the owning
-spec is reachable from the target. When it is not, skip the membership check —
-do **not** report a finding for a missing `flows:` list.
 
 Flag at least the following:
 

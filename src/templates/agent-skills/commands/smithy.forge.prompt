@@ -255,7 +255,9 @@ comparison shows no difference. Pass it:
   tasks-file path and its `**Node ID**`, `**Durable Artifact**`, and — for
   `FL` nodes — `**Test Body**` header values, so the reviewer reads the same
   `.design.md`, `.flow.md`, and paired test body the slice was built from
-  instead of guessing among a spec's several `SC`/`FL` rows.
+  instead of guessing among a spec's several `SC`/`FL` rows. An absent
+  `**Test Body**` is resolved per **Test body resolution** under **UI
+  Structural Review**, as the worker resolved it.
 
 The `ui-structural` profile is still the ordinary read-only implementation
 review agent and output contract, and it is **additive**: correctness,

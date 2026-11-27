@@ -47,7 +47,8 @@ The parent agent passes you:
     and (for `FL` nodes) `**Test Body**` header values. These name the
     `.design.md`, `.flow.md`, and paired test body whose states and guards the
     diff must honor — read them, because a spec with several `SC`/`FL` rows has
-    more than one candidate.
+    more than one candidate. When `**Test Body**` is absent, resolve the body
+    per **Test body resolution** below.
 
 Items 7–9 are the terms the routing step of the review protocol binds;
 you never write to either, you only name which one each finding is for.

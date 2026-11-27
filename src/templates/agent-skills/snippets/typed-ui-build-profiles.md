@@ -61,11 +61,11 @@ documentation, validation, and PR creation stay the same as ordinary work.
   below is scoped to that profile:
   - Read the referenced `design/flows/<FlowId>.flow.md` before editing any
     implementation files, and treat it as mark-owned durable flow intent.
-  - Read the paired executable test body named by the task plan's
-    `**Test Body**` line, or by the flow artifact's `test-body` front-matter
-    when the task plan omits it. Create behavior in that existing paired body
-    when it is still a stub; if the body is missing despite the `.flow.md`
-    contract naming it, stop instead of inventing a different path.
+  - Read the paired executable test body, resolved per **Test body
+    resolution** under **UI Structural Review** below. Create behavior in that
+    existing paired body when it is still a stub; if the body is missing
+    despite the `.flow.md` contract naming it, stop instead of inventing a
+    different path.
   - Use the task plan's `**Ledger Dependencies**` and `**Flow Data Path**`
     context to decide what must already be real. A mock-satisfiable flow depends
     only on its screen node(s) and can wire against the flagged screen/mock
@@ -77,12 +77,15 @@ documentation, validation, and PR creation stay the same as ordinary work.
     notes. For backend dependencies, consume the existing spec, data model,
     contracts, and completed backend artifact context exactly as ordinary forge
     work would.
-  - Resolve the feature `flag` from the task plan's design metadata, source
-    feature map, or upstream screen-build context before writing code. Honor an
-    already-enabled flag when the task plan requires it, or flip/remove the gate
-    only when the flow-wire task explicitly makes that part of definition of
-    done. Do not leave the wired flow unreachable behind the wrong flag state.
+  - Resolve the feature `flag` from the task plan's `**Flag**` line, source
+    feature map, or upstream screen-build context before writing code, then do
+    what the task plan's `**Flag Action**` says: `flip` or `remove` the gate,
+    `honor-enabled` (run with it on, change nothing), or `none`. A plan without
+    the line means `none`. Do not leave the wired flow unreachable behind the
+    wrong flag state.
   - Put executable user actions and assertions in the paired test body only.
+    Production wiring the task plan names — replacing a screen's mock data
+    source, the flag action — is in scope as ordinary implementation.
     Represent every guard and traversal assertion named by the `.flow.md` using
     the project's existing UI driver and stable test IDs, accessibility IDs, or
     semantic tags; never rely on visible text, layout position, or prose copied

@@ -18,7 +18,8 @@ this skill when:
 
 - Writing a `<FlowId>.flow.md` + placeholder test-body pair from `smithy.mark`
   for a `kind: ui` feature at `phase: wire`, or updating the executable
-  behavior in that existing test body downstream.
+  behavior in that existing test body downstream. An existing pair is updated
+  in place, never re-stubbed.
 - Auditing an existing flow for drift, redundancy, fragile selectors, or
   step-leakage from the executable test body into prose.
 - Emitting a mark-owned flow artifact and paired stub test body for a UI wire
@@ -62,8 +63,8 @@ Three keys, all required:
 
 | Key | Required | Notes |
 |-----|----------|-------|
-| `id` | Yes | Flat, stable `FlowId` (e.g. `AddTitle`). Matches the `.flow.md` filename stem and the paired executable test body named by `test-body`, plus the `flows:` list of the originating UI feature in `.features.md`. Never reused across flows. |
-| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must appear in some feature's `screens:` field; cross-file resolution is enforced by `smithy flow-lint`. |
+| `id` | Yes | Flat, stable `FlowId` (e.g. `AddTitle`). Matches the `.flow.md` filename stem and the paired executable test body named by `test-body`, plus the owning spec's `FL<N>` ledger row, which is authoritative — a feature's `flows:` field is only candidate input. Never reused across flows. |
+| `screens` | Yes | List of `ScreenId` the flow traverses, in entry order (e.g. `[Library, AddTitle]`). Each entry must have a matching `design/screens/<ScreenId>.design.md` annotation; `smithy flow-lint` enforces that resolution repo-wide. |
 | `test-body` | Yes | Repo-relative path to the paired executable test body in the project's UI driver (for example `maestro/flows/AddTitle.yaml` for Maestro, or `tests/e2e/add-title.spec.ts` for Playwright/Cypress). The path is the contract; renaming the test without updating this field is a `smithy flow-lint` failure. |
 
 No other keys. In particular, **no `feature:` or `kind:` field here** — flow
@@ -139,7 +140,8 @@ them:
     `button`, `confirm`, `back`, `list`, `row`).
   - **`<modifier>`** — when the element has multiple instances on the
     same scope, the specific field or state (`title-field`, `url-field`,
-    `confirm-button-enabled`, `row-<title-slug>`).
+    `confirm-button-enabled`, `row-<record-key>`). A per-instance key is
+    the record's stable id or a key the test fixture seeds.
 - **Stable across rewrites.** A testID is part of the screen's public
   surface. Renaming a testID is a breaking change to every flow that
   references it — treat it like an API rename.
@@ -155,7 +157,7 @@ them:
 | `add-title-confirm-button` | Confirm button on the AddTitle screen. |
 | `add-title-confirm-button-enabled` | Confirm button in its enabled state (used to assert the URL guard). |
 | `library-list` | The list container on the Library screen. |
-| `library-row-<title-slug>` | A specific row in the Library list, keyed by the title slug. |
+| `library-row-<record-key>` | A specific row in the Library list, keyed by the record's stable id or a fixture-seeded key — never its title or position. |
 
 ---
 
@@ -200,15 +202,16 @@ When auditing an existing flow pair, flag any of the following:
 - [ ] Missing required front-matter key in `.flow.md` (`id`, `screens`,
       `test-body`).
 - [ ] `test-body:` path does not resolve to an existing file in the repo.
-- [ ] `id` does not match the originating feature's `flows:` list, or is
-      reused across flows. Run `smithy flow-lint` for repo-wide flow ID
-      uniqueness.
+- [ ] `id` does not match an `FL<N>` row of the owning spec's typed ledger
+      (checked only when that spec is reachable), or is reused across flows.
+      Run `smithy flow-lint` for repo-wide flow ID uniqueness.
 - [ ] `screens:` is empty, not a list, contains non-string values, or
       references a `ScreenId` with no matching
       `design/screens/<ScreenId>.design.md` annotation. A direct review of
-      this pair checks only that each referenced annotation file **exists**;
-      whether that `ScreenId` is declared by some feature — and the rest of
-      the screen/flow/test graph — stays with `smithy flow-lint`.
+      this pair checks that each referenced annotation file **exists**;
+      `smithy flow-lint` checks the graph repo-wide — screen and flow ID
+      uniqueness, flow-to-annotation resolution, and test-body existence and
+      uniqueness.
 - [ ] `.flow.md` body contains a `## Steps`, `## Walkthrough`, `## Flow`,
       or `## Path` section.
 - [ ] `.flow.md` body contains click/tap sequences, selectors, assertions,

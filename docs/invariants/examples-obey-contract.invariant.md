@@ -28,7 +28,6 @@ teaches the defect (D-10).
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `agents/smithy.recall.prompt` (sample output) | An undeclared conflict names a `governing_id` | Temporary: `null` when undeclared | #651 | low |
-| `skills/smithy.helper-flow-definition/references/examples.prompt` | The test body asserts one of the three declared guards | Temporary: assert every guard | #650 | low |
 | `skills/smithy.helper-voice/references/worked-examples.prompt` | The "after" text invents incidents | Temporary: use only facts from the "before" | #653 | low |
 
 ## Citations
