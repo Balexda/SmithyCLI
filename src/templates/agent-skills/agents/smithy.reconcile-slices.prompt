@@ -48,8 +48,10 @@ different foundational-vs-additive orderings. This is the most important
 divergence to resolve.
 
 1. Map each decomposition's slices to the acceptance scenarios they address.
-2. Identify whether all decompositions cover the full set of acceptance
-   scenarios.
+2. The reconciled slices must address every acceptance scenario of the
+   story — the union across lenses. A scenario the recommended slicing drops
+   is taken from the lens that covered it, tagged `[via <lens>]`; one no lens
+   covered is listed under `### Coverage Gaps`, never invented.
 3. Categorize the relationship:
    - **Same slicing** — all decompositions propose the same slice boundaries
      (possibly with different task details). Proceed to Step 2.
@@ -65,12 +67,16 @@ to assess which slicing better matches the codebase's natural boundaries
 (module structure, test organization, dependency graph). Present the conflict
 with a recommendation (see Step 4).
 
-**Parallelism check.** When one decomposition marks `Depends On = —` and
-another asserts an ordering, verify the dependency exists in the actual data
-or code flow before adopting the ordered version. Convention-driven sequencing
+**Parallelism check.** Compare the `Depends On` cells across decompositions.
+When one lens's cell for a slice is `—` and another's names a prerequisite,
+verify the dependency exists in the actual data or code flow before adopting
+the ordered version. Convention-driven sequencing
 (e.g., "do scaffolding first, then features") is not a real dependency —
 prefer the parallel-eligible version unless the code or data flow demands
-ordering.
+ordering. The reconciled table uses `S<N>` = reconciled slice number.
+
+{{>dependency-order-table}}
+
 
 ### Step 2: Reconcile Tasks Within Slices
 
@@ -86,7 +92,8 @@ classify each task across the N decompositions you received:
 2. **Unique tasks** — tasks that appear in **exactly 1** decomposition. Assess
    whether they represent genuine work the others missed, or lens-specific
    additions (e.g., Structural Integrity adding a refactoring task that the
-   other lenses skipped). Include with a `[via <lens>]` annotation.
+   other lenses skipped). Include with a `[via <lens>]` annotation, subject to
+   the Step 3 scoping rules.
 3. **Conflicting tasks** — tasks where two or more decompositions address the
    same concern differently (e.g., one modifies an existing function in-place,
    another extracts a new module). Present as a conflict in Step 4 with all
@@ -125,8 +132,8 @@ the task:
   bulleted acceptance criteria (3–7 items). If a task is a freeform paragraph
   or exceeds 150 words, rewrite it into the format. Trim prescriptive detail.
 
-If you remove, merge, or reformat tasks during this step, note it in the
-output so the parent agent can see what was cleaned up.
+A task this step removes or merges goes to `### Scoping Fixes` with its lens
+and reason, never back into a task list.
 
 ### Step 4: Resolve Conflicts
 
@@ -135,7 +142,8 @@ For each conflict (slice-level or task-level):
 1. Read the relevant code to assess which approach better fits current
    codebase patterns and conventions.
 2. Consider the tradeoffs each decomposition articulated.
-3. Present **all conflicting options** (one per dissenting lens) with a
+3. Scenario coverage outranks module-boundary fit.
+4. Present **all conflicting options** (one per dissenting lens) with a
    recommendation and reasoning. Do not silently drop any losing option —
    the user benefits from seeing every tradeoff that surfaced.
 
@@ -172,6 +180,7 @@ Return a single reconciled decomposition to the parent agent:
 **Unique tasks**: <N>
 **Scoping fixes applied**: <N>
 **Conflicts**: <N>
+**Scenario coverage**: <covered>/<total>
 
 ### Slices
 
@@ -181,14 +190,9 @@ Return a single reconciled decomposition to the parent agent:
 **Justification**: <Why this slice stands alone.>
 **Addresses**: <FR-XXX, FR-YYY; Acceptance Scenario N.M>
 
-Tasks:
-- [ ] **<Title — imperative verb phrase, max 12 words>** [via <lens>]
+Tasks (each title tagged `[consensus: …]` or `[via <lens>]`, per Step 2):
+{{>slice-task-format}}
 
-  <Description — 2–3 sentences. Reference AS N.M by ID.>
-
-  _Acceptance criteria:_
-  - <observable invariant>
-  - ...
 
 **PR Outcome**: <What the PR delivers when merged.>
 
@@ -198,17 +202,27 @@ Tasks:
 
 ### Dependency Order
 
-1. [ ] **Slice N** — <why this comes first>
-2. [ ] **Slice M** — <why this follows>
+| ID | Title | Depends On | Artifact |
+|----|-------|------------|----------|
+| S1 | <Title> | — | — |
+| S2 | <Title> | S1 | — |
+
+### Recommended Sequence
+
+<optional advisory notes, one line per slice>
 
 ### Conflicts
 
 <any unresolved or partially-resolved disagreements, formatted as in Step 4>
 
+### Coverage Gaps
+
+<acceptance scenarios no lens covered, by ID — or "None">
+
 ### Scoping Fixes
 
-<tasks that were removed, merged, or rewritten during Step 3, with
-explanations — omit section if none>
+<tasks removed, merged, or rewritten during Step 3, each with its lens and
+the reason — omit section if none>
 
 ### Risks
 
@@ -231,8 +245,9 @@ explanations — omit section if none>
   decomposition to the parent agent only.
 - **Read-only.** You do not create, modify, or delete any files.
 - **Preserve all perspectives.** Never silently drop a unique task or slice
-  proposal. If a lens surfaced it, include it — annotated with its source.
-  The user and parent agent decide what to act on.
+  proposal. A task that passes Step 3 stays in its slice, tagged
+  `[via <lens>]`; one Step 3 removed or merged appears only under
+  `### Scoping Fixes`.
 - **Be transparent about conflicts.** When decompositions disagree on slice
   boundaries or task approach, show every dissenting side — one entry per
   lens, not a forced two-way framing. Make a recommendation but present it

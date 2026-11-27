@@ -37,11 +37,6 @@ records the evidence from the 2026-08 audit.
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `agents/smithy.clarify.prompt` Step 3b, `agents/smithy.refine.prompt` | Both compose the one `kind-gate` definition but reroute a rejected candidate differently — clarify into its assumption stream with `[Critical Assumption]`, refine into `refinements` — because neither emits a `kind` field for a parent to route on | Accepted: the gate itself is shared and identical; only the return channel differs, and each consumer states its own in two sentences beside the composed gate | — | low |
-| Dependency Order table in ignite, render, mark, cut | The table is restated in four commands | Temporary: one shared snippet | #649 | medium |
-| `agents/smithy.plan.prompt`, `agents/smithy.slice.prompt` (inputs, Decisions output) | The dispatch input list and Decisions/Risks shape are hand-copied | Temporary: one shared home | #646 | low |
-| `agents/smithy.slice.prompt`, `commands/smithy.cut.prompt` (slice scaffold) | The slice body scaffold is hand-copied | Temporary: one shared home | #646 | low |
-| `commands/smithy.ignite.prompt`, `commands/smithy.render.prompt`, `commands/smithy.mark.prompt` (reconciled plan) | The reconciled-plan presentation list is hand-copied | Temporary: one shared home | #646 | low |
-| `commands/smithy.mark.prompt`, `commands/smithy.render.prompt` (scout handling, plan inputs) | Scout-result handling and plan dispatch inputs are hand-copied | Temporary: one shared home | #646 | low |
 | `skills/smithy.gh-issue`, `skills/smithy.pr-review` (remote parsing) | Parsing the origin remote into owner and repo is hand-copied | Temporary: one shared home | #646 | low |
 | Voice-tag grammar in `skills/smithy.helper-voice` §8, `agent-skills/README.md`, `snippets/audit-checklist-voice.md` | The same tag grammar and keys table is maintained in three places | Temporary: pick one canonical home and point the other two at it | #551 | low |
 

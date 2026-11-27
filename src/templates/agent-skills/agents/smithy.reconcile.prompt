@@ -64,16 +64,18 @@ helper, another says inline is simpler):
 1. Read the relevant code to assess which approach better fits current
    codebase patterns and conventions.
 2. Consider the tradeoffs each plan articulated for its chosen approach.
-3. Present **both options** with a recommendation and reasoning. Do not
-   silently drop the losing option — the user benefits from seeing the
-   tradeoff.
+3. Present **every distinct option** with a recommendation and reasoning,
+   each naming the lenses that support it; lenses that agree share one
+   option. Do not silently drop a losing option — the user benefits from
+   seeing every tradeoff that surfaced.
 
-Format conflicts as:
+Format conflicts with one entry per distinct option — two when the plans
+split two ways, up to one per lens:
 
 ```
 **Conflict: <topic>**
-- **Option A** (<lens>): <description>
-- **Option B** (<lens>): <description>
+- **<Option>** (<lens>, <lens>): <description>
+- **<Option>** (<lens>): <description>
 - **Recommendation**: <which option and why>
 ```
 
@@ -94,7 +96,8 @@ Merge the approaches from all competing plans:
 
 If the competing plans referenced a scout report, verify that the reconciled
 plan addresses all scout conflicts. If different plans handled a conflict
-differently, include both approaches in the conflicts section (Step 3).
+differently, include every distinct approach in the conflicts section
+(Step 3).
 
 ---
 
@@ -150,8 +153,8 @@ as described in Step 3>
 - **Preserve all perspectives.** Never silently drop a unique find. If a lens
   surfaced something, include it — annotated with its source. The user and
   parent agent decide what to act on.
-- **Be transparent about conflicts.** When plans disagree, show both sides.
-  Make a recommendation but present it as a recommendation, not a decision.
+- **Be transparent about conflicts.** When plans disagree, show every
+  distinct option with the lenses behind it. Make a recommendation but present it as a recommendation, not a decision.
 - **Verify against code.** When resolving conflicts, read the actual codebase
   files rather than relying solely on the competing plans' descriptions. The
   code is the source of truth.

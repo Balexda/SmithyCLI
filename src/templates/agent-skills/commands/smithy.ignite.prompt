@@ -304,18 +304,14 @@ Pass each smithy-plan sub-agent:
 - **Planning context**: RFC artifact
 - **Feature/problem description**: the user's idea description or the PRD content read during intake
 - **Codebase file paths**: any existing RFC files found during the `{{artifactsRoot}}docs/rfcs/` scan (for context on existing patterns)
-- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
-- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+{{>plan-dispatch-context}}
 
-Present the reconciled plan to the user as:
 
-1. **Summary** — What you understand the idea to be and the proposed RFC structure.
-2. **Approach** — The reconciled approach for milestone decomposition and scope. Note any
-   items annotated with `[via <lens>]`.
-3. **Risks** — The reconciled risk assessment.
-4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
-   approaches, present them with both options and the reconciler's
-   recommendation. Let the user decide.
+Present the reconciled plan to the user. The proposed structure is the RFC's;
+the approach covers milestone decomposition and scope:
+
+{{>reconciled-plan-presentation}}
+
 
 {{else}}
 {{/ifAgent}}
@@ -652,7 +648,10 @@ Dispatch **smithy-plan** with:
 - **Planning context**: "Draft the Milestones section and Dependency Order table for this RFC"
 - **Feature/problem description**: the user's idea description plus the clarification output
 - **Codebase file paths**: the path to the accumulating `<slug>.rfc.md` (containing all prior sections)
-- **Additional planning directives**: produce the milestone decomposition followed immediately by a `## Dependency Order` 4-column table with `M<N>` IDs. Each milestone must be formatted as `### Milestone N: <Title>` followed by `**Description**` and `**Success Criteria**` bullets. The Dependency Order table uses columns `ID | Title | Depends On | Artifact`. In `Depends On`, each cell must be exactly `—` or a comma-separated list of `M<N>` IDs from the same table (e.g., `M1` or `M1, M2`); do not use prose or any other format. In `Artifact`, each cell starts as `—`; do not use checkboxes.
+- **Additional planning directives**: produce the milestone decomposition followed immediately by a `## Dependency Order` table with `M<N>` IDs whose `Artifact` cells all start as `—`. Each milestone must be formatted as `### Milestone N: <Title>` followed by `**Description**` and `**Success Criteria**` bullets. Pass the table rules below verbatim:
+
+  {{>dependency-order-table}}
+
 
 Append the returned content to the RFC file.
 

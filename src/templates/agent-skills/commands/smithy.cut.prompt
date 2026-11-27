@@ -329,10 +329,8 @@ Handle the scout report as follows:
 
 - **Conflicts**: Fold into the clarification criteria for Phase 3 — slices
   based on stale code understanding will produce wrong task boundaries.
-- **Warnings**: Proceed to Phase 3 but carry warnings as non-blocking context
-  for clarification. Mention them if they become relevant to a clarification
-  question, but do not force separate discussion of each warning.
-- **Clean**: Proceed directly to Phase 2.8 (or Phase 3 if not in agent mode) with no additional context.
+{{>scout-report-handling}}
+
 
 ### Engraved-Knowledge Consultation
 
@@ -370,18 +368,16 @@ Pass each smithy-slice sub-agent:
 - **Spec artifacts**: paths to the `.spec.md`, `.data-model.md`, and `.contracts.md`
 - **Codebase file paths**: the code areas mapped to acceptance scenarios during Phase 2
 - **Scout report**: the scout report from Phase 2.5 (if it contained conflicts or warnings)
-- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
-- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+{{>plan-dispatch-context}}
 
-Present the reconciled decomposition to the user as:
 
-1. **Summary** — What you understand the user story to deliver and the proposed slicing strategy.
-2. **Approach** — The reconciled approach for PR-sized slices and task ordering. Note any
-   items annotated with `[via <lens>]`.
-3. **Risks** — The reconciled risk assessment.
-4. **Conflicts** — If the reconciled decomposition contains unresolved conflicts
-   between approaches, present them with both options and the reconciler's
-   recommendation. Let the user decide.
+Present the reconciled decomposition to the user. The proposed structure is
+the slicing strategy; the approach covers PR-sized slices and task ordering:
+
+{{>reconciled-plan-presentation}}
+
+
+Show any `### Coverage Gaps` the reconciler listed beside the conflicts.
 
 {{else}}
 {{/ifAgent}}
@@ -457,14 +453,8 @@ Draft the tasks file with this structure:
 
 ### Tasks
 
-- [ ] **<Title — imperative verb phrase, max 12 words>**
+{{>slice-task-format}}
 
-  <Description — 2–3 sentences. Reference target files/modules
-   and acceptance scenarios by ID (e.g., "AS 2.1").>
-
-  _Acceptance criteria:_
-  - <observable invariant or behavior to verify>
-  - ...
 
 **PR Outcome**: <What the PR delivers when merged — observable behavior or capability.>
 
@@ -523,7 +513,8 @@ Guidelines for slicing:
   repos cannot be implemented at all. Split such a slice along the repo boundary.
 - Each slice MUST have a standalone goal — it delivers a working increment, not
   disconnected scaffolding.
-- Each slice MUST trace to at least one FR or acceptance scenario.
+- Each slice MUST trace to at least one FR or acceptance scenario, and every
+  acceptance scenario of the story MUST be addressed by at least one slice.
 - Tasks within a slice are ordered — execute them sequentially.
 - Slices are numbered sequentially starting at 1.
 - Include tests, docs, and validation steps within the slice that introduces the
@@ -532,7 +523,11 @@ Guidelines for slicing:
   {{>debt-from-clarify}}
 
 - Populate the `## Open Implementation Questions` section with the unknowns that surfaced during slicing but need no human decision — which field carries a value, which of two equivalent call sites to extend, which producer serves a surface. These are settled by building, testing, or reading source, and they belong here rather than in `## Specification Debt`, which is a decision queue for a human. Sources: rows demoted from the source spec's debt table in Phase 1 (`Origin: spec:SD-NNN`), and cut's own findings (`Origin: local`). Number from `IQ-001` independently of the `SD-NNN` sequence. Keep each `Question` cell to one sentence of 120 characters or fewer — the detail belongs in the slice body. Write the empty-state line when there are none; an empty section is the expected outcome for a well-understood story.
-- In the `## Dependency Order` table, `Depends On` must be exactly `—` or a comma-separated list of same-table `S<N>` IDs (e.g., `S1` or `S1, S2`); do not use prose. `Artifact` must always be `—` for every slice row — slices live inline as `## Slice N:` bodies and have no separate artifact file.
+- The `## Dependency Order` table uses `S<N>` IDs; the reconciled
+  decomposition's table maps onto it 1:1.
+
+  {{>dependency-order-table}}
+
 
 ### Declaring the implementation repo (cross-repo planning only)
 
@@ -665,19 +660,7 @@ tasks accordingly.
 
 ### Task format (mandatory)
 
-Every task must use this structure:
-
-```
-- [ ] **<Title — imperative verb phrase, max 12 words>**
-
-  <Description — 2–3 sentences. Name the target file/module and the outcome.
-   Reference acceptance scenarios by ID (e.g., "AS 2.1").>
-
-  _Acceptance criteria:_
-  - <observable invariant or behavior to verify>
-  - <another criterion>
-  - ...
-```
+Every task uses the structure shown under `### Tasks` in the tasks-file template above:
 
 - **Title**: bold imperative verb phrase, max 12 words. Scannable at a glance.
 - **Description**: 2–3 sentences. States WHAT changes and WHERE.

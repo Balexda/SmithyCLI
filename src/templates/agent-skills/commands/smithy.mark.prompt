@@ -162,10 +162,8 @@ Handle the scout report as follows:
 
 - **Conflicts**: Fold into the clarification criteria for Phase 2 — specs
   built on contradictory code state will produce incorrect requirements.
-- **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
-  for clarification. Mention them if they become relevant to a clarification
-  question, but do not force separate discussion of each warning.
-- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+{{>scout-report-handling}}
+
 
 ### Engraved-Knowledge Consultation
 
@@ -204,18 +202,15 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the feature description or RFC path with extracted goals and constraints from intake
 - **Codebase file paths**: the relevant codebase files explored during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
-- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
-- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+{{>plan-dispatch-context}}
 
-Present the reconciled plan to the user as:
 
-1. **Summary** — What you understand the feature to be and the proposed specification structure.
-2. **Approach** — The reconciled approach for user stories, data model scope, and contract boundaries. Note any
-   items annotated with `[via <lens>]`.
-3. **Risks** — The reconciled risk assessment.
-4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
-   approaches, present them with both options and the reconciler's
-   recommendation. Let the user decide.
+Present the reconciled plan to the user. The proposed structure is the
+specification's; the approach covers user stories, data model scope, and
+contract boundaries:
+
+{{>reconciled-plan-presentation}}
+
 
 {{else}}
 {{/ifAgent}}
@@ -378,14 +373,12 @@ Guidelines for the spec:
   `debt_items`.
   {{>debt-from-clarify}}
 
-- The `## Dependency Order` section lists all user stories in recommended
-  implementation sequence as a 4-column table using `US<N>` IDs (e.g., `US1`,
-  `US2`). Order rows by dependency graph, not by priority — stories with no
-  dependencies come first, stories that depend on others come after their
-  prerequisites. The `Depends On` column contains `—` or a comma-separated list
-  of same-table IDs (e.g., `US1, US3`); no prose justifications. The `Artifact`
-  column starts as `—` and is populated by `smithy.cut` when it creates the
-  tasks file. Do NOT use checkboxes in the `## Dependency Order` section.
+- The `## Dependency Order` section lists every user story with `US<N>` IDs,
+  ordered by dependency graph, not by priority; `Artifact` starts as `—` and
+  `smithy.cut` sets it to the tasks file it creates.
+
+  {{>dependency-order-table}}
+
 
 ### UI Authoring Path Spec Ledger
 

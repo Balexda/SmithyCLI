@@ -197,21 +197,8 @@ describe('template lint — no passage copied between templates', () => {
    * it; the extraction deletes both sides' entries.
    */
   const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // The copies still on the tree from when the lint landed, one INV-1
-    // ledger row each. #646.
-    // plan and slice: the dispatch input list and the Decisions/Risks shape.
-    ['agents/smithy.plan.prompt', /also in agents\/smithy\.slice\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
-    ['agents/smithy.slice.prompt', /also in agents\/smithy\.plan\.prompt: (3\. \*\*Codebase file paths\*\*|5\. \*\*Additional planning directives\*\*|\| Decision \| Alternatives \| Rationale \|)/],
-    // slice and cut: the slice body scaffold.
-    ['agents/smithy.slice.prompt', /also in commands\/smithy\.cut\.prompt: \*\*Addresses\*\*/],
-    ['commands/smithy.cut.prompt', /also in agents\/smithy\.slice\.prompt: \*\*Addresses\*\*/],
-    // ignite, render and mark: presenting the reconciled plan.
-    ['commands/smithy.ignite.prompt', /also in commands\/smithy\.(mark|render)\.prompt: items annotated with/],
-    ['commands/smithy.mark.prompt', /also in commands\/smithy\.(ignite|render)\.prompt: items annotated with/],
-    ['commands/smithy.render.prompt', /also in commands\/smithy\.(ignite|mark)\.prompt: items annotated with/],
-    // mark and render: scout-result handling and the plan dispatch inputs.
-    ['commands/smithy.mark.prompt', /also in commands\/smithy\.render\.prompt: (- \*\*Warnings\*\*|- \*\*Scout report\*\*)/],
-    ['commands/smithy.render.prompt', /also in commands\/smithy\.mark\.prompt: (- \*\*Warnings\*\*|- \*\*Scout report\*\*)/],
+    // The copy still on the tree from when the lint landed, one INV-1
+    // ledger row. #646.
     // gh-issue and pr-review: parsing the origin remote into owner and repo.
     ['skills/smithy.gh-issue/SKILL.prompt', /also in skills\/smithy\.pr-review\/SKILL\.prompt: git config --get remote\.origin\.url/],
     ['skills/smithy.pr-review/SKILL.prompt', /also in skills\/smithy\.gh-issue\/SKILL\.prompt: git config --get remote\.origin\.url/],
@@ -293,15 +280,8 @@ describe('template lint — no passage copied between templates', () => {
 });
 
 describe('template lint — Dependency Order is a table (INV-8)', () => {
-  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // Both decomposition agents emit their slice ordering as a numbered
-    // checkbox list instead of the four-column table. #649.
-    ['agents/smithy.slice.prompt', /checkbox under Dependency Order/],
-    ['agents/smithy.reconcile-slices.prompt', /checkbox under Dependency Order/],
-  ];
-
-  it('shows no checkbox list under a Dependency Order heading', () => {
-    const findings = unallowed(findDependencyOrderCheckboxes(tree), ALLOWED);
+  it('shows no checkbox list under a Dependency Order heading, with no allowlist', () => {
+    const findings = findDependencyOrderCheckboxes(tree);
     expect(findings, `checkbox Dependency Order lists:\n${report(findings)}`).toEqual([]);
   });
 

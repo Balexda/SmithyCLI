@@ -109,7 +109,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(47);
+    expect(snippets.size).toBe(54);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -159,6 +159,13 @@ describe('loadSnippets', () => {
       'drift-categories.md',
       'clarify-bail-out-check.md',
       'commit-push-pr.md',
+      'dependency-order-table.md',
+      'slice-task-format.md',
+      'planning-agent-inputs.md',
+      'planning-agent-tables.md',
+      'reconciled-plan-presentation.md',
+      'scout-report-handling.md',
+      'plan-dispatch-context.md',
     ];
     for (const file of expectedFiles) {
       expect(snippets.has(file)).toBe(true);
@@ -6816,6 +6823,107 @@ describe('forge task records, repo identity, and review categories', () => {
     for (const [label, c] of renders) {
       for (const f of ['smithy.implement.md', 'smithy.implementation-review.md']) {
         expect(c.agents.get(f), `${label} ${f}`).toMatch(/   - Contracts \(`\.contracts\.md`\) — interfaces and API surface\n/);
+      }
+    }
+  });
+});
+
+// One Dependency Order table for every level, reconcilers that keep every
+// option and scenario, and a scout that reports what it did not scan. Every
+// guard matches a snippet canary or a heading in the claude and codex renders.
+describe('shared Dependency Order table, reconcilers, and scout reporting', () => {
+  const renders: Array<[string, ComposedTemplates]> = [];
+  beforeAll(async () => {
+    renders.push(['claude', await getComposedTemplates('claude')]);
+    renders.push(['codex', await getComposedTemplates('codex')]);
+  });
+  const get = (c: ComposedTemplates, f: string) => c.commands.get(f) ?? c.agents.get(f);
+  const section = (body: string, heading: string) => {
+    const start = body.indexOf(heading);
+    expect(start, heading).toBeGreaterThan(-1);
+    const rest = body.slice(start + heading.length);
+    const end = rest.search(/\n#{1,3} /);
+    return end === -1 ? rest : rest.slice(0, end);
+  };
+
+  const DEP_CANARY = 'Name only real prerequisites (data, contract, or code flow), never an order by convention.';
+  const DEP_COMPOSERS = [
+    'smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md',
+    'smithy.slice.md', 'smithy.reconcile-slices.md',
+  ];
+
+  it('every Dependency Order composer carries the shared table rules', () => {
+    for (const [label, c] of renders) {
+      for (const f of DEP_COMPOSERS) {
+        const body = get(c, f);
+        expect(body, `${label} ${f}`).toBeDefined();
+        expect(body, `${label} ${f}`).toContain(DEP_CANARY);
+      }
+    }
+  });
+
+  it('both decomposition agents emit the four-column table under ### Dependency Order', () => {
+    for (const [label, c] of renders) {
+      for (const f of ['smithy.slice.md', 'smithy.reconcile-slices.md']) {
+        const body = c.agents.get(f)!;
+        expect(body, `${label} ${f}`).toMatch(/### Dependency Order\n\n\| ID \| Title \| Depends On \| Artifact \|\n/);
+        expect(section(body, '### Dependency Order\n'), `${label} ${f}`).not.toMatch(/\[[ x]\]/);
+      }
+    }
+  });
+
+  it('reconcile-slices covers every acceptance scenario and reports the gaps', () => {
+    for (const [label, c] of renders) {
+      const body = c.agents.get('smithy.reconcile-slices.md')!;
+      expect(body, label).toMatch(/must address every acceptance scenario of the\s+story — the union across lenses/);
+      expect(body, label).toContain('**Scenario coverage**: <covered>/<total>');
+      expect(body, label).toContain('### Coverage Gaps');
+      expect(body, label).toMatch(/goes to `### Scoping Fixes` with its lens\s+and reason, never back into a task list/);
+      const cut = c.commands.get('smithy.cut.md')!;
+      expect(cut, label).toMatch(/every\s+acceptance scenario of the story MUST be addressed by at least one slice/);
+      expect(cut, label).toContain('Show any `### Coverage Gaps` the reconciler listed beside the conflicts.');
+    }
+  });
+
+  it('no reconciler or reconciler-dispatching command frames a conflict as two-sided', () => {
+    const files = [
+      'smithy.reconcile.md', 'smithy.reconcile-slices.md',
+      'smithy.strike.md', 'smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md',
+    ];
+    for (const [label, c] of renders) {
+      for (const f of files) {
+        expect(get(c, f), `${label} ${f}`).not.toMatch(/both (options|approaches|sides)/i);
+      }
+      expect(c.agents.get('smithy.reconcile.md'), label).toContain('Present **every distinct option**');
+    }
+  });
+
+  it('scout treats a dead export as a warning and reports what the cap left out', () => {
+    for (const [label, c] of renders) {
+      const scout = c.agents.get('smithy.scout.md')!;
+      expect(scout, label).not.toContain('**Conflict** (deep)');
+      expect(scout, label).not.toContain('(always included)');
+      expect(scout, label).toContain('**Not scanned**: <scoped files omitted by the cap, or "none">');
+      expect(section(scout, '### Warnings\n'), label).toContain('Dead export');
+      expect(section(scout, '### Conflicts\n'), label).not.toContain('Dead export');
+      expect(scout, label).toContain('If the explicit files alone exceed the cap, scan the first N and expand\nnothing.');
+      expect(c.agents.get('smithy.maid.md'), label).toMatch(/a missing-docs finding is always\s+reported/);
+    }
+  });
+
+  it.each([
+    ['planning-agent-inputs', 'parent agent that guide your emphasis without changing your coverage. When', ['smithy.plan.md', 'smithy.slice.md']],
+    ['planning-agent-tables', '| ... | ... | ... | <which directive favors this, if any> |', ['smithy.plan.md', 'smithy.slice.md']],
+    ['slice-task-format', '- [ ] **<Title — imperative verb phrase, max 12 words>**', ['smithy.slice.md', 'smithy.reconcile-slices.md', 'smithy.cut.md']],
+    ['reconciled-plan-presentation', 'with every option it lists (each naming the lenses that support it)', ['smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md']],
+    ['scout-report-handling', 'Never read a clean or warning-only report as covering them.', ['smithy.render.md', 'smithy.mark.md', 'smithy.cut.md']],
+    ['plan-dispatch-context', 'the lens directive from the competing-lenses section above (each run gets a different directive)', ['smithy.strike.md', 'smithy.ignite.md', 'smithy.render.md', 'smithy.mark.md', 'smithy.cut.md']],
+  ])('%s reaches every consumer exactly once', (_name, canary, consumers) => {
+    for (const [label, c] of renders) {
+      for (const f of consumers) {
+        const body = get(c, f)!;
+        expect(body, `${label} ${f}`).toBeDefined();
+        expect(body.split(canary).length - 1, `${label} ${f}`).toBe(1);
       }
     }
   });
