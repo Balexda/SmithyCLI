@@ -387,25 +387,10 @@ When the selected feature's authoring path is `kind: ui`, keep the same
 table with a typed UI Spec Ledger. This is the ordering graph for the UI
 feature; it is not a layout or flow-body document.
 
-Use this exact column set for the UI ledger:
+{{>ui-spec-ledger}}
 
-```markdown
-| ID | Kind | Title | Depends On | Design | Artifact |
-|----|------|-------|------------|--------|----------|
-| SC1 | screen | <Screen title> → `design/screens/<ScreenId>.design.md` | — | <none/import/brief> | — |
-| FL1 | flow | <Flow title> → `design/flows/<FlowId>.flow.md` | SC1 | — | — |
-| US1 | story | <Backend story title> | — | — | — |
-```
-
-UI ledger rules:
-- `ID` values are typed and unique in the table: `SC<N>` for screen-build rows,
-  `FL<N>` for flow-wire rows, and `US<N>` for backend story rows. Use no leading
-  zeros.
-- `Kind` is exactly `screen`, `flow`, or `story`, matching the row's ID prefix.
-- `Depends On` is exactly `—` or a comma-separated list of same-table IDs. This
-  is the only place intra-feature ordering and parallelism are expressed.
-- `Design` is required for `screen` rows and is one of `none`, `import`, or
-  `brief`; use `—` for `flow` and `story` rows.
+Mark-specific rules for that ledger:
+- Each `screen` row's `Design` mode means:
   - `none` means no visual loop; no bundle or prototype recommendation is
     required for a simple pass-through screen. It still produces the ordinary
     mark-owned `.design.md` intent, but no visual-tool ceremony is added.
@@ -420,14 +405,6 @@ UI ledger rules:
 - `Artifact` is `—` for every row in mark's output. It holds the
   `cut`-produced `.tasks.md` path only after `smithy.cut` runs; mark never
   pre-fills a tasks path in this column.
-- Screen and flow row titles must name their durable files with pointer text
-  — `→ design/screens/<ScreenId>.design.md` for screen rows and
-  `→ design/flows/<FlowId>.flow.md` for flow rows — so the title is the stable
-  reference edge downstream tooling and later artifact creation resolve to the
-  durable file. Titles and cells must not carry layout,
-  state, interaction-step, visual-positioning, or implementation prose.
-- Flow rows are first-class `FL<N>` rows, not entries in a `flows: [...]` list
-  and not nested under a screen row.
 - Direct all screen and flow intent into the durable artifacts described by the
   UI Spec Ledger and Screen/Flow node entities in the data model. Do not
   duplicate the screen or flow artifact body schemas in the spec ledger.
@@ -494,24 +471,31 @@ rules below abort; every one of them ends with mark continuing:
   prototype expectation, or recommendation. Author the same ordinary durable
   screen intent and continue.
 
-Then write, matching the ledger pointers:
-- One `design/screens/<ScreenId>.design.md` per `SC<N>` row, per
-  `smithy.helper-screen-design`.
-- One `design/flows/<FlowId>.flow.md` per `FL<N>` row, per
-  `smithy.helper-flow-definition`, **and** the paired stub test body at that
-  flow's `test-body` path, so every flow has a 1:1 `.flow.md` + test-body pair
-  immediately after `mark`. The stub is a placeholder only — comments or a
+Then write, matching the ledger pointers. A durable file that already exists
+at a pointer's path — from an earlier `build` spec, or a re-run — is **updated
+in place** per its helper skill: keep its front matter and rationale unless this
+feature changes them.
+- One `design/screens/<ScreenId>.design.md` per `SC<N>` row, created or
+  updated, per `smithy.helper-screen-design`.
+- One `design/flows/<FlowId>.flow.md` per `FL<N>` row, created or updated, per
+  `smithy.helper-flow-definition`, **and** a stub test body at that flow's
+  `test-body` path **only when nothing exists there**, so every flow has a 1:1
+  `.flow.md` + test-body pair immediately after `mark`. An existing test body is
+  never replaced or truncated. The stub is a placeholder only — comments or a
   skipped placeholder in the driver's format, with no executable assertions,
   traversal steps, or real selectors that could pass as the completed flow.
   `smithy.forge` fills in the executable behavior during the flow-wire build.
 
 The mark output set for `kind: ui` is:
 - the UI `.spec.md` with the typed `## Dependency Order` ledger;
-- one `design/screens/<ScreenId>.design.md` per `SC<N>` row;
-- one `design/flows/<FlowId>.flow.md` per `FL<N>` row;
-- one paired stub test body at each `.flow.md` `test-body` path;
+- one `design/screens/<ScreenId>.design.md` per `SC<N>` row, created or updated;
+- one `design/flows/<FlowId>.flow.md` per `FL<N>` row, created or updated;
+- a stub test body at each `.flow.md` `test-body` path, when absent;
 - the `.features.md` dependency-order write-back when the input was a feature
   map.
+
+List every reused durable file — updated in place, or a test body left as
+found — in the developer-facing summary.
 
 For `kind: ui`, include a short design-gate note in the developer-facing
 summary for any bundle-less screen that earned a gate recommendation above. The

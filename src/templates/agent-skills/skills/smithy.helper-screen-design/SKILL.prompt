@@ -51,7 +51,7 @@ fences. Four keys, three required:
 
 | Key | Required | Notes |
 |-----|----------|-------|
-| `id` | Yes | Flat, stable `ScreenId`. Matches the `screens:` list of the originating UI feature in `.features.md`; never reused across screens. |
+| `id` | Yes | Flat, stable `ScreenId`. Matches the owning spec's `SC<N>` ledger row, which is authoritative — a feature's `screens:` field is only the candidate input `mark` confirms into that ledger; never reused across screens. |
 | `component-path` | Yes | Repo-relative path to the owning UI component file in the project's framework (for example a Compose file such as `app/src/main/kotlin/io/balexda/readercompose/ui/views/library/LibraryScreen.kt`, or a React component such as `src/screens/LibraryScreen.tsx`). Paths survive package/module renames; the path is the contract, not a framework-specific symbol name. |
 | `design_system` | Yes | Reference to the committed design skill (e.g. `story-spider-design`). Source of truth even when a `bundle` is present — bundle wins on layout & visual intent, skill wins on implementation dialect. A screen with a `bundle` is invalid without `design_system`. |
 | `bundle` | No | Repo-relative path to the originating visual prototype boundary object (for example a Figma export, Claude Design export, or equivalent visual-tool bundle). A visual/structural reference, not a drop-in. Omit the key entirely when no bundle exists — do not set it to `null` or an empty string. |
@@ -111,10 +111,16 @@ following:
 
 - [ ] Missing required front-matter key (`id`, `component-path`,
       `design_system`).
-- [ ] `component-path:` path does not resolve to an existing file in the repo.
-- [ ] `id` does not match the feature's `screens:` list, or is reused
-      across screens. Run `smithy flow-lint` for repo-wide screen ID
-      uniqueness and flow `screens:` cross-reference validation.
+- [ ] `component-path:` is empty, absolute, escapes the repo, or names a
+      framework symbol instead of a repo-relative path.
+- [ ] `component-path:` does not resolve to an existing file **after the
+      screen's build slice has landed**. `mark` writes the annotation before
+      `forge` builds the component, so before that an unresolved path is an
+      informational note, not a finding (pre-build exemption).
+- [ ] `id` does not match an `SC<N>` row of the owning spec's typed ledger
+      (checked only when that spec is reachable), or is reused across
+      screens. Run `smithy flow-lint` for repo-wide screen ID uniqueness and
+      flow-to-annotation resolution.
 - [ ] `design_system:` empty even when a `bundle:` is set (bundle without
       skill is invalid — skill is source of truth).
 - [ ] Body contains a `## Layout`, `## States`, `## Flow`, `## Steps`, or

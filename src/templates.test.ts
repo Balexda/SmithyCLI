@@ -109,12 +109,13 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(54);
+    expect(snippets.size).toBe(55);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
       'audit-checklist-features.md',
       'audit-checklist-spec.md',
+      'ui-spec-ledger.md',
       'audit-checklist-tasks.md',
       'audit-checklist-strike.md',
       'audit-checklist-voice.md',
@@ -2874,7 +2875,7 @@ describe('getComposedTemplates', () => {
     // edit copies them back into the README, the guard fires.
     expect(readme).not.toContain('add-title-url-field');
     expect(readme).not.toContain('add-title-confirm-button-enabled');
-    expect(readme).not.toContain('library-row-<title-slug>');
+    expect(readme).not.toContain('library-row-<record-key>');
     expect(readme).not.toContain('assertNotVisible');
     expect(readme).not.toContain('appId: com.storyspider.app');
   });
@@ -3716,8 +3717,8 @@ describe('getComposedTemplates', () => {
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toContain('**`FL<N>` / `flow-wire` tasks** select the flow-wire profile');
     expect(forge).toContain('Read the referenced `design/flows/<FlowId>.flow.md` before editing');
-    expect(forge).toContain('`**Test Body**` line');
-    expect(forge).toContain("the flow artifact's `test-body` front-matter");
+    expect(forge).toContain('**Test body resolution.**');
+    expect(forge).toMatch(/`test-body` front matter of the\s+`\.flow\.md` named by its `\*\*Durable Artifact\*\*` header/);
     expect(forge).toContain('`**Ledger Dependencies**` and `**Flow Data Path**`');
     expect(forge).toContain('real-data-dependent flow also depends on backend `US` nodes');
     expect(forge).toContain('Resolve the feature `flag`');
@@ -6926,5 +6927,90 @@ describe('shared Dependency Order table, reconcilers, and scout reporting', () =
         expect(body.split(canary).length - 1, `${label} ${f}`).toBe(1);
       }
     }
+  });
+});
+
+// Typed UI: audit, wiring, review, and the worked flow example agree with the
+// screen and flow ledger. Each guard reads both sub-agent-capable renders.
+describe.each(['claude', 'codex'])('typed UI ledger consistency (%s)', (variant) => {
+  let composed: ComposedTemplates;
+  const ledgerSnippet = fs.readFileSync(
+    path.join(agentSkillsDir, 'snippets', 'ui-spec-ledger.md'), 'utf8');
+  const typedHeader = ledgerSnippet.split('\n').find(l => l.startsWith('| ID | Kind |'))!;
+
+  beforeAll(async () => {
+    composed = await getComposedTemplates(variant);
+  });
+
+  it('audits a typed UI ledger from the one header home', () => {
+    expect(typedHeader).toBe('| ID | Kind | Title | Depends On | Design | Artifact |');
+    const audit = composed.commands.get('smithy.audit.md')!;
+    const row = audit.split('\n').find(l => l.startsWith('| **Dependency Order (typed UI ledger)** |'))!;
+    expect(row).toBeDefined();
+    expect(row).toContain('`SC<N>`');
+    expect(row).toContain('`FL<N>`');
+    expect(row).toContain('`→ design/...` pointer that resolves');
+    for (const name of ['smithy.audit.md', 'smithy.mark.md', 'smithy.cut.md']) {
+      expect(composed.commands.get(name)!, name).toContain(typedHeader);
+    }
+  });
+
+  it('exempts an unbuilt component-path in the screen skill and the audit', () => {
+    const skill = composed.skills.get('smithy.helper-screen-design')!.prompt;
+    expect(skill).toContain('pre-build exemption');
+    expect(skill).toMatch(/after the\s+screen's build slice has landed/);
+    expect(composed.commands.get('smithy.audit.md')!).toContain('pre-build exemption');
+  });
+
+  it('mark updates existing UI artifacts in place and stubs only an absent test body', () => {
+    const mark = composed.commands.get('smithy.mark.md')!;
+    expect(mark).toMatch(/\*\*updated\s+in place\*\*/);
+    expect(mark).toContain('**only when nothing exists there**');
+    expect(mark).toContain('never replaced or truncated');
+    expect(mark).toContain('a stub test body at each `.flow.md` `test-body` path, when absent');
+  });
+
+  it('cut plans the wire production change and one terminal flag action', () => {
+    const cut = composed.commands.get('smithy.cut.md')!;
+    expect(cut).toContain('**Flag Action**: <flip|remove|honor-enabled|none>');
+    expect(cut).toContain("replacing the screen's mock data source");
+    expect(cut).toMatch(/exactly one terminal `FL`\s+slice/);
+    expect(cut).toContain('is not re-planned as a mock build');
+    const forge = composed.commands.get('smithy.forge.md')!;
+    expect(forge).toContain("the task plan's `**Flag Action**` says");
+  });
+
+  it('worker and reviewer resolve the test body by the same fallback', () => {
+    const rule = 'else the `test-body` front matter of the';
+    const review = composed.agents.get('smithy.implementation-review.md')!;
+    const implement = composed.agents.get('smithy.implement.md')!;
+    expect(review).toContain(rule);
+    expect(implement).toContain(rule);
+    expect(composed.commands.get('smithy.forge.md')!.split(rule)).toHaveLength(2);
+  });
+
+  it('names the spec ledger, not the feature list, as the screen and flow authority', () => {
+    const screen = composed.skills.get('smithy.helper-screen-design')!.prompt;
+    expect(screen).toContain('`SC<N>` ledger row');
+    expect(screen).not.toContain("the feature's `screens:` list");
+    expect(composed.commands.get('smithy.audit.md')!).not.toContain('Features no longer carry');
+    const flow = composed.skills.get('smithy.helper-flow-definition')!.prompt;
+    expect(flow).not.toMatch(/some feature's `screens:`|declared by some feature/);
+  });
+
+  it('keeps the worked flow example inside its own contract', () => {
+    const skill = composed.skills.get('smithy.helper-flow-definition')!;
+    const examples = String(skill.resources.get('references/examples.md')!);
+    expect(skill.prompt).not.toContain('title-slug');
+    expect(examples).not.toContain('title-slug');
+    const worked = examples.slice(examples.indexOf('## Worked example — `design/flows/AddTitle.flow.md`'));
+    const guards = worked.slice(worked.indexOf('## Guards'), worked.indexOf('## Entry / Exit'));
+    const body = worked.slice(worked.indexOf('## Worked example — `maestro/flows/AddTitle.yaml`'));
+    const bullets = guards.match(/^- \*\*/gm) ?? [];
+    expect(bullets.length).toBeGreaterThan(0);
+    expect((body.match(/^# Guard:/gm) ?? []).length).toBe(bullets.length);
+    expect(body).toContain('"not a url"');
+    expect(examples).toContain('`AddTitleDuplicateUrl`');
+    expect(examples).toContain('`AddTitleBackOut`');
   });
 });
