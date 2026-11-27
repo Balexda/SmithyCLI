@@ -7135,6 +7135,12 @@ describe.each(['claude', 'codex'] as const)('recall, prose, survey and persona c
     }
   });
 
+  it('ignite persists held prose gaps for 3e and keeps repair writes through the 3g rewrite', () => {
+    const ignite = command('ignite');
+    expect(ignite).toContain('so a resumed run still has it');
+    expect(ignite).toContain('any debt row the repair appended survive the rewrite');
+  });
+
   it('survey returns an incomplete shape and spark consumes it', () => {
     const survey = agent('survey');
     expect(survey).toContain('### Incomplete-survey shape');

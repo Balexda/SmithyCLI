@@ -414,7 +414,8 @@ sessions on this RFC can deduplicate against them:
 4. **Append** the new session entry to
    `.smithy/clarify-logs/<YYYY>-<NNN>-<slug>.clarify-log.md`. The log is
    append-only — never overwrite prior sessions, and never modify existing
-   `### Session YYYY-MM-DD` entries. If the file does not yet exist, create
+   `### Session YYYY-MM-DD` entries, except for the held prose gaps
+   **Prose Return Handling** adds to the latest session's debt block. If the file does not yet exist, create
    it with the new entry as its first session.
 
 ---
@@ -443,6 +444,11 @@ all. See Sub-phase 3b for the full projection-and-gap procedure and Sub-phase
 ### Prose Return Handling
 
 {{>prose-return-handling}}
+
+In this command a gap held for sub-phase 3e is persisted before the draft is
+appended: add it as one line to the `**Specification Debt Candidates**` block
+of the latest clarify-log session (replacing `- None`), with `Origin: local`,
+so a resumed run still has it.
 
 {{#ifAgent}}
 ### RFC File Creation
@@ -638,7 +644,8 @@ block below:
 {{>debt-from-clarify}}
 
 The one other source this section takes is the `steering` gaps **Prose Return
-Handling** held from sub-phases 3a and 3b; write them after clarify's rows.
+Handling** persisted from sub-phases 3a and 3b to the clarify-log session's
+`**Specification Debt Candidates**` block; write them after clarify's rows.
 
 The RFC has **no `## Open Questions` section**. Genuinely unresolved
 uncertainty is already captured as `SD-NNN` rows in `## Specification Debt`
@@ -771,7 +778,9 @@ sub-agents are dispatched in 3g.
    still missing, empty, or misplaced, halt the pipeline with a diagnostic
    pointing at the Phase 2 clarification record and the durable persona
    coverage record.
-4. Rewrite the file in place with the harmonized content.
+4. Rewrite the file in place with the harmonized content. Build it from the
+   file as the Personas repair left it, so the replaced `## Personas` section
+   and any debt row the repair appended survive the rewrite.
 
 Confirm the harmonize step completed before proceeding to Phase 4.
 
