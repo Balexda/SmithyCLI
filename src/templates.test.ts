@@ -6974,7 +6974,8 @@ describe.each(['claude', 'codex'])('typed UI ledger consistency (%s)', (variant)
     const cut = composed.commands.get('smithy.cut.md')!;
     expect(cut).toContain('**Flag Action**: <flip|remove|honor-enabled|none>');
     expect(cut).toContain("replacing the screen's mock data source");
-    expect(cut).toMatch(/exactly one terminal `FL`\s+slice/);
+    expect(cut).toMatch(/exactly one\s+terminal `FL` slice carries `flip` or `remove`/);
+    expect(cut).toContain("an unflagged feature carries `none`");
     expect(cut).toContain('is not re-planned as a mock build');
     const forge = composed.commands.get('smithy.forge.md')!;
     expect(forge).toContain("the task plan's `**Flag Action**` says");

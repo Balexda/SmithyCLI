@@ -612,9 +612,12 @@ Use these profile rules:
   `FL<N>` row in a `wire` spec, or any real-data-dependent one, also plan the
   production change: replacing the screen's mock data source with what its
   upstream `US` artifacts provide, and the `**Flag Action**` as an explicit
-  acceptance criterion. With several `FL` rows, exactly one terminal `FL`
-  slice — last in dependency order — carries `flip` or `remove`; the others
-  carry `honor-enabled` or `none`.
+  acceptance criterion. When the feature declares a `flag`, exactly one
+  terminal `FL` slice carries `flip` or `remove`: one whose row's `Depends On`
+  reaches every other `FL` row, or — when no row does — one whose acceptance
+  criteria require every other `FL` row's slices to have landed first. The
+  others carry `honor-enabled` or `none`; an unflagged feature carries `none`
+  throughout.
 - **`US<N>` / `story` rows inside a typed UI ledger** route to the existing
   **backend-story task planning** behavior. UI ledger context may explain
   ordering, but it must not add UI-specific implementation steps or ask forge

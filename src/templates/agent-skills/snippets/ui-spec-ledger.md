@@ -14,6 +14,8 @@
 - `Kind` is exactly `screen`, `flow`, or `story`, matching the row's ID prefix.
 - `Depends On` is exactly `—` or a comma-separated list of same-table IDs. This
   is the only place intra-feature ordering and parallelism are expressed.
+  Every `FL<N>` row depends on at least one `SC<N>` row; screen-only and
+  story-only ledgers stay valid.
 - `Design` is required for `screen` rows and is one of `none`, `import`, or
   `brief`; use `—` for `flow` and `story` rows.
 - `Artifact` is `—` or the repo-relative `.tasks.md` path `smithy.cut` wrote
