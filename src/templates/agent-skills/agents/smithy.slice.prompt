@@ -29,16 +29,8 @@ The parent agent passes you:
 2. **Spec artifacts** — paths to the `.spec.md`, `.data-model.md`, and
    `.contracts.md` files. Read these for full context on requirements, entities,
    and interfaces.
-3. **Codebase file paths** — relevant files discovered during the parent's
-   exploration phase. These are your starting point — you may read additional
-   files as needed.
-4. **Scout report** (optional) — conflicts and warnings from a prior
-   **smithy-scout** run. Conflicts represent codebase inconsistencies that
-   must be accounted for in your decomposition.
-5. **Additional planning directives** (optional) — extra instructions from the
-   parent agent that guide your emphasis without changing your coverage. When
-   provided, follow these directives to bias your attention toward specific
-   concerns while still producing all output sections.
+{{>planning-agent-inputs}}
+
 
 ---
 
@@ -84,7 +76,11 @@ Identify natural boundaries for PR-sized slices:
 - Consider which changes are foundational (must come first) vs. additive.
 - Each slice must deliver a **working increment** — not disconnected scaffolding.
 
-For each slice, produce an ordered list of implementation tasks.
+For each slice, produce an ordered list of implementation tasks, and declare
+its prerequisites in the Dependency Order table (`S<N>` = slice number).
+
+{{>dependency-order-table}}
+
 
 ### Step 5: Validate Tasks Against Scoping Rules
 
@@ -163,14 +159,8 @@ Return a structured decomposition to the parent agent:
 **Addresses**: <FR-XXX, FR-YYY; Acceptance Scenario N.M>
 
 Tasks:
-- [ ] **<Title — imperative verb phrase, max 12 words>**
+{{>slice-task-format}}
 
-  <Description — 2–3 sentences. Reference target files/modules
-   and acceptance scenarios by ID (e.g., "AS 2.1").>
-
-  _Acceptance criteria:_
-  - <observable invariant or behavior to verify>
-  - ...
 
 **PR Outcome**: <What the PR delivers when merged.>
 
@@ -180,26 +170,17 @@ Tasks:
 
 ### Dependency Order
 
-1. [ ] **Slice N** — <why this comes first>
-2. [ ] **Slice M** — <why this follows>
+| ID | Title | Depends On | Artifact |
+|----|-------|------------|----------|
+| S1 | <Title> | — | — |
+| S2 | <Title> | S1 | — |
 
-### Decisions
+### Recommended Sequence
 
-| Decision | Alternatives | Rationale |
-|----------|-------------|-----------|
-| ... | ... | ... |
+<optional advisory notes, one line per slice>
 
-### Risks
+{{>planning-agent-tables}}
 
-| Risk | Likelihood | Mitigation |
-|------|-----------|------------|
-| ... | ... | ... |
-
-### Tradeoffs
-
-| Alternative | Pros | Cons | Directive relevance |
-|------------|------|------|---------------------|
-| ... | ... | ... | <which directive favors this, if any> |
 ```
 
 ---

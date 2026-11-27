@@ -66,7 +66,7 @@ For each file in scope, look for:
 | **Stale READMEs** | README sections that reference changed APIs, removed flags, renamed exports, or altered workflows |
 | **Artifact drift** | Implementation that adds behavior not captured in the spec/strike requirements, or that changes interfaces documented in contracts |
 | **Dead references** | Doc comments or READMEs that link to files, functions, or endpoints that were renamed or removed in this change |
-| **Missing docs** | New public APIs, exported functions, or CLI flags introduced without any doc comment |
+| **Missing docs** | New public APIs, exported functions, or CLI flags introduced in this change without any doc comment. Always report these |
 | **Voice anti-patterns** | Voice issues in changed deliverable prose: READMEs, ADRs, runbooks, migration plans, other prose documentation in any directory (such as CONTRIBUTING, CHANGELOG, or `docs/` pages), and substantive inline documentation. Judge only the added or modified lines in the changed documentation hunks; leave untouched prose in the same file alone, and skip this check when no hunks were passed. Report these only as Flagged findings. |
 
 ### What NOT to check
@@ -130,7 +130,8 @@ Return a structured summary to the parent agent:
   based on your report.
 - **Be specific.** Reference exact file paths, line numbers, and content.
   Do not speak in generalities.
-- **Be conservative.** For staleness findings, ask whether the doc actively
+- **Be conservative** about existing docs; a missing-docs finding is always
+  reported. For staleness findings, ask whether the doc actively
   misleads a reader about the current behavior. For voice findings, flag issues
   that interfere with the reader's understanding or use of the documentation.
 - **Respect the cap.** Never scan more than 20 files. Report when the cap is

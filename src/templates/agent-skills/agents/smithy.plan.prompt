@@ -29,16 +29,8 @@ The parent agent passes you:
    spec, task plan, feature map) and what output sections the parent expects.
 2. **Feature/problem description** — the user's request, feature idea, or path
    to an input document (RFC, spec, etc.).
-3. **Codebase file paths** — relevant files discovered during the parent's
-   exploration phase. These are your starting point — you may read additional
-   files as needed.
-4. **Scout report** (optional) — conflicts and warnings from a prior
-   **smithy-scout** run. Conflicts represent codebase inconsistencies that
-   must be accounted for in your plan.
-5. **Additional planning directives** (optional) — extra instructions from the
-   parent agent that guide your emphasis without changing your coverage. When
-   provided, follow these directives to bias your attention toward specific
-   concerns while still producing all output sections.
+{{>planning-agent-inputs}}
+
 
 ---
 
@@ -112,23 +104,8 @@ Return a structured summary to the parent agent:
 
 <proposed approach with concrete elements and rationale>
 
-### Decisions
+{{>planning-agent-tables}}
 
-| Decision | Alternatives | Rationale |
-|----------|-------------|-----------|
-| ... | ... | ... |
-
-### Risks
-
-| Risk | Likelihood | Mitigation |
-|------|-----------|------------|
-| ... | ... | ... |
-
-### Tradeoffs
-
-| Alternative | Pros | Cons | Directive relevance |
-|------------|------|------|---------------------|
-| ... | ... | ... | <which directive favors this, if any> |
 ```
 
 ---

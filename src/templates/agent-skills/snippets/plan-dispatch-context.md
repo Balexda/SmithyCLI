@@ -1,0 +1,2 @@
+- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
+- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)

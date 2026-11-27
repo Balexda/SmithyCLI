@@ -234,10 +234,8 @@ Handle the scout report as follows:
 
 - **Conflicts**: Fold into the clarification criteria for Phase 2 — the user
   should be aware of codebase inconsistencies before defining feature boundaries.
-- **Warnings**: Proceed to Phase 2 but carry warnings as non-blocking context
-  for clarification. Mention them if they become relevant to a clarification
-  question, but do not force separate discussion of each warning.
-- **Clean**: Proceed directly to Phase 1.8 (or Phase 2 if not in agent mode) with no additional context.
+{{>scout-report-handling}}
+
 
 ### Engraved-Knowledge Consultation
 
@@ -276,18 +274,15 @@ Pass each smithy-plan sub-agent:
 - **Feature/problem description**: the RFC path and the target milestone number, title, description, and success criteria
 - **Codebase file paths**: the RFC file path plus any codebase files read during Phase 1
 - **Scout report**: the scout report from Phase 1.5 (if it contained conflicts or warnings)
-- **Recall result**: the engraved-knowledge recall result from the Engraved-Knowledge Consultation above (if it surfaced relevant records, candidate invariant conflicts, or superseded/deprecated citation hazards)
-- **Additional planning directives**: the lens directive from the competing-lenses section above (each run gets a different directive)
+{{>plan-dispatch-context}}
 
-Present the reconciled plan to the user as:
 
-1. **Summary** — What you understand the milestone to deliver and the proposed feature decomposition.
-2. **Approach** — The reconciled approach for feature boundaries and grouping. Note any
-   items annotated with `[via <lens>]`.
-3. **Risks** — The reconciled risk assessment.
-4. **Conflicts** — If the reconciled plan contains unresolved conflicts between
-   approaches, present them with both options and the reconciler's
-   recommendation. Let the user decide.
+Present the reconciled plan to the user. The proposed structure is the
+milestone's feature decomposition; the approach covers feature boundaries and
+grouping:
+
+{{>reconciled-plan-presentation}}
+
 
 {{else}}
 {{/ifAgent}}
@@ -542,13 +537,12 @@ in the same diff.
   parallel by other agents. Each agent owns exactly one milestone.
 - **DO** note cross-milestone dependencies in the feature map (as
   "Cross-Milestone Dependencies") without pulling that work into your features.
-- **DO** include a `## Dependency Order` section listing every feature as a
-  4-column table with `F<N>` IDs (e.g., `F1`, `F2`). Order rows by dependency
-  graph — features with no dependencies come first, dependent features come
-  after their prerequisites. The `Depends On` column contains `—` or a
-  comma-separated list of same-table IDs. The `Artifact` column starts as `—`
-  and is populated by `smithy.mark` when it creates the spec folder. Do NOT
-  use checkboxes in the `## Dependency Order` section.
+- **DO** include a `## Dependency Order` section listing every feature with
+  `F<N>` IDs; `Artifact` starts as `—` and `smithy.mark` sets it to the spec
+  folder it creates.
+
+  {{>dependency-order-table}}
+
 - **DO** type every feature with a `yaml` metadata block per the `feature-kinds`
   schema in Phase 3 (every feature has a `kind`; flag-gated UI splits into a
   `build` + `wire` pair sharing one `flag`).

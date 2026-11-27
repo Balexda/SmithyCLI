@@ -1,0 +1,3 @@
+- **Warnings**: carry them into clarification as non-blocking context. Mention a warning only when it becomes relevant to a clarification question; do not force separate discussion of each one.
+- **Not scanned**: files the cap left out stay unverified. Never read a clean or warning-only report as covering them.
+- **Clean**: proceed to the next phase with no additional context.

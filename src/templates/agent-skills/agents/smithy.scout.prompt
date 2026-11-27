@@ -24,7 +24,9 @@ report. You do **not** interact with the user — findings go back to the parent
 The parent agent passes you:
 
 1. **Scope** — a list of files and/or directories to scan. This is the starting
-   set; depth level determines whether you expand beyond it.
+   set; depth level determines whether you expand beyond it. Glob each
+   directory to its own files (not subdirectories), source and docs first,
+   skipping generated and vendored files; those count as in scope.
 2. **Depth** — one of `shallow`, `medium`, or `deep`. Controls how far beyond
    the starting scope you look.
 3. **Context** — what artifact is being planned (feature map, spec, task plan)
@@ -36,7 +38,7 @@ The parent agent passes you:
 
 ### Shallow (5–10 files)
 
-Scan **only** the files explicitly listed in the scope.
+Scan **only** the files in the resolved scope.
 
 Check for:
 - Function/method signatures that don't match their doc comments
@@ -46,7 +48,7 @@ Check for:
 
 ### Medium (15–25 files)
 
-Scan the listed files **plus their direct imports and dependents**.
+Scan the files in the resolved scope **plus their direct imports and dependents**.
 
 For each file in scope, identify files that import it or that it imports (one
 hop). Add those to the scan set, up to 25 files total.
@@ -61,7 +63,7 @@ In addition to shallow checks, also check:
 
 ### Deep (max 50 files)
 
-Scan the listed files **plus their full dependency tree** (imports of imports),
+Scan the files in the resolved scope **plus their full dependency tree** (imports of imports),
 capped at 50 files.
 
 In addition to medium checks, also check:
@@ -72,7 +74,7 @@ In addition to medium checks, also check:
   within the scanned set? (e.g., `camelCase` vs `snake_case` for the same
   concept across files)
 - **Dead code indicators** — exported symbols with zero importers within the
-  scanned set
+  scanned set (a Warning: importers may sit outside the scan)
 
 ---
 
@@ -84,13 +86,15 @@ In addition to medium checks, also check:
 | Medium | 25 |
 | Deep | 50 |
 
-If the expansion exceeds the cap, prioritize:
-1. Files explicitly listed in scope (always included)
-2. Direct imports of scoped files
-3. Direct dependents of scoped files (files that import scoped files)
-4. Transitive imports (deep only)
+When the scan set would exceed the cap, fill it in this order:
+1. Files explicitly listed in scope, in the parent's order
+2. Files resolved from scoped directories
+3. Import expansion: direct imports, then direct dependents, then transitive
+   imports (deep only)
 
-Stop expanding once the cap is reached. Include this in the report so the parent agent knows the scan was partial.
+If the explicit files alone exceed the cap, scan the first N and expand
+nothing. Stop once the cap is reached, and list every scoped file the cap
+left out under **Not scanned** so the parent knows the scan was partial.
 
 ---
 
@@ -117,6 +121,7 @@ to the user — the parent handles that.
 
 **Depth**: <shallow|medium|deep>
 **Files scanned**: <N> (cap reached: yes|no)
+**Not scanned**: <scoped files omitted by the cap, or "none">
 **Context**: <what artifact is being planned>
 
 ### Clean
@@ -132,6 +137,7 @@ Minor inconsistencies unlikely to derail planning:
 | ... | ... | Stale doc comment | <description> |
 | ... | ... | TODO marker | <description> |
 | ... | ... | Missing test file | <expected path> |
+| ... | ... | Dead export | <symbol exported but no importer in the scanned set> |
 
 ### Conflicts
 
@@ -140,7 +146,6 @@ Inconsistencies that could mislead planning decisions:
 | File | Line | Conflict | Details | Risk |
 |------|------|----------|---------|------|
 | ... | ... | Signature mismatch | <function expects X but docs say Y> | Spec may reference wrong interface |
-| ... | ... | Dead export | <symbol exported but never imported> | Plan may depend on unused API |
 | ... | ... | Import of removed symbol | <file imports X from Y but X no longer exists> | Code area is broken |
 ```
 
@@ -153,7 +158,7 @@ Inconsistencies that could mislead planning decisions:
 | Missing test file | Gaps in coverage, not misleading | **Warning** |
 | Import of nonexistent symbol | Code area is actually broken | **Conflict** |
 | Naming drift across files | Cosmetic inconsistency | **Warning** |
-| Exported symbol with zero importers | Potentially dead code | **Warning** (shallow/medium), **Conflict** (deep) |
+| Exported symbol with zero importers in the scanned set | Possibly dead; importers may sit outside the scan | **Warning** (every depth) |
 
 ---
 
@@ -161,8 +166,9 @@ Inconsistencies that could mislead planning decisions:
 
 - **Non-interactive.** You do not talk to the user. Return findings to the
   parent agent only.
-- **Respect the caps.** Never scan more than the depth-level maximum. Report
-  when the cap is reached.
+- **Respect the caps.** Never scan more than the depth-level maximum. When
+  the cap is reached, fill it in the Hard Caps order and report what it left
+  out under **Not scanned**.
 - **Be specific.** Reference exact file paths, line numbers, and content.
 - **Be fast.** Scout is optimized for speed over completeness. If you cannot
   determine whether something is a conflict within a quick read, classify it
