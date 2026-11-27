@@ -3,7 +3,7 @@ id: INV-7
 kind: invariant
 domain: system
 title: "The orchestrator enforces what a dispatch declares"
-status: drifting
+status: aligned
 topics: [sub-agent-sandbox, read-only-dispatch, untrusted-input, scope-binding, outbound-queries, codex, template-authoring]
 scope: [src/templates/agent-skills/commands/**, src/templates/agent-skills/agents/**, src/templates/agent-skills/snippets/**, src/agent-models.ts, src/agents/codex.ts]
 applies_to: [deployed commands, sub-agents, Codex agent TOML, review-finding apply step, web research]
@@ -30,7 +30,6 @@ open to injected text (D-9).
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
 | `src/agent-models.ts` (`smithy-implement`) | A read-only parent overrides the agent's `workspace-write` default, and forge does not probe for it | Accepted: forge writes the branch and base state before any dispatch, so a read-only parent fails there first | — | low |
-| `src/templates/agent-skills/agents/smithy.survey.prompt` (queries) | Constraint text goes into queries verbatim | Temporary: use generic public terms | #651 | medium |
 
 ## Citations
 

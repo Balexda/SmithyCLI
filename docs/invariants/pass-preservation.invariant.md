@@ -3,7 +3,7 @@ id: INV-5
 kind: invariant
 domain: system
 title: "Passes preserve what earlier passes recorded"
-status: drifting
+status: aligned
 topics: [artifact-writes, specification-debt, stable-ids, template-authoring]
 scope: [src/templates/agent-skills/commands/**, src/templates/agent-skills/snippets/**, src/templates/agent-skills/agents/**]
 applies_to: [planning artifacts, engraved records, durable UI artifacts, deployed commands]
@@ -30,8 +30,7 @@ renumbered id misdirects every citation to it (D-6).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `commands/smithy.persona.prompt` (RFC mode) | Duplicate slugs in one batch overwrite each other | Temporary: detect in-batch collisions | #651 | low |
-| `snippets/engraved-recall-rules.md` (empty states) | The empty state clears recorded citation hazards | Temporary: decide it after the hazards | #651 | medium |
+| — | — | — | — | — |
 
 ## Citations
 

@@ -3,7 +3,7 @@ id: INV-4
 kind: invariant
 domain: system
 title: "Every sub-agent return field has a consumer"
-status: drifting
+status: aligned
 topics: [sub-agent-contracts, dispatch, control-signals, template-authoring]
 scope: [src/templates/agent-skills/commands/**, src/templates/agent-skills/agents/**, src/templates/agent-skills/snippets/**]
 applies_to: [deployed commands, sub-agents, sub-agent return contracts]
@@ -29,8 +29,7 @@ the answer (D-5).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `agents/smithy.prose.prompt` consumers (ignite, spark, persona) | The gaps section and markers are committed verbatim | Temporary: split them out and surface them | #651 | medium |
-| `agents/smithy.survey.prompt`, `commands/smithy.spark.prompt` | A failed verification falls through to the empty-market stub | Temporary: add an incomplete result and consume it | #651 | medium |
+| — | — | — | — | — |
 
 ## Citations
 
