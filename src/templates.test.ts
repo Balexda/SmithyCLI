@@ -1849,11 +1849,12 @@ describe('getComposedTemplates', () => {
     expect(script).toContain('--input "$BODY_FILE"');
   });
 
-  it('skills map includes smithy.gh-issue with the four expected scripts', () => {
+  it('skills map includes smithy.gh-issue with the five expected scripts', () => {
     const skill = claudeComposed.skills.get('smithy.gh-issue');
     expect(skill).toBeDefined();
     expect(skill!.prompt).toBeTruthy();
-    expect(skill!.scripts.size).toBe(4);
+    expect(skill!.scripts.size).toBe(5);
+    expect(skill!.scripts.has('link-sub-issue.sh')).toBe(true);
     expect(skill!.scripts.has('check-env.sh')).toBe(true);
     expect(skill!.scripts.has('search-issues.sh')).toBe(true);
     expect(skill!.scripts.has('create-issue.sh')).toBe(true);
@@ -1868,6 +1869,7 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh *)');
   });
 
   it('smithy.gh-issue scripts start with bash shebang and set strict mode', () => {
@@ -2069,8 +2071,101 @@ describe('getComposedTemplates', () => {
     expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/search-issues.sh');
     expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/create-issue.sh');
     expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh');
+    expect(orders).toContain('./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh');
     expect(orders).not.toContain('${CLAUDE_SKILL_DIR}');
     expect(orders).not.toContain('./.gemini/skills/smithy.gh-issue');
+  });
+
+  describe('orders links hierarchy as sub-issues and renders fallback bodies', () => {
+    const variants = () => [
+      ['claude', claudeComposed, '${CLAUDE_SKILL_DIR}/scripts/'],
+      ['codex', codexComposed, './.agents/skills/smithy.gh-issue/scripts/'],
+    ] as const;
+    const section = (text: string, from: string, to: string) => {
+      const start = text.indexOf(from);
+      expect(start, from).toBeGreaterThan(-1);
+      const end = text.indexOf(to, start + from.length);
+      return text.slice(start, end === -1 ? undefined : end);
+    };
+
+    it('gh-issue ships a granted, idempotent Link Sub-Issue operation', () => {
+      for (const [name, c, scripts] of variants()) {
+        const skill = c.skills.get('smithy.gh-issue')!;
+        const op = section(skill.prompt, '## Operation: Link Sub-Issue', '## Operation: Link Blocked-By');
+        expect(op, name).toContain('`mcp__github__sub_issue_write` with `method: "add"`');
+        expect(op, name).toMatch(/`sub_issue_id` set to the\s+child's numeric issue \*\*id\*\* — not its number/);
+        expect(op, name).toMatch(/`id` equals the child's id, the link exists/);
+        expect(op, name).toContain(`${scripts}link-sub-issue.sh <parent-number> <child-number>`);
+        const script = skill.scripts.get('link-sub-issue.sh')!;
+        expect(script).toContain('sub_issue_id="$CHILD_ID"');
+        expect(script).toContain('--paginate');
+        expect(script).toContain('already-linked');
+      }
+      const claude = claudeComposed.skills.get('smithy.gh-issue')!.prompt;
+      expect(claude).toMatch(/^allowed-tools: .*Bash\(\$\{CLAUDE_SKILL_DIR\}\/scripts\/link-sub-issue\.sh \*\)/m);
+      expect(claude).toMatch(/^allowed-tools: .*mcp__github__sub_issue_write/m);
+      expect(claude).toMatch(/^allowed-tools: .*mcp__github__issue_read/m);
+    });
+
+    it('orders Phase 6 links parent to child as sub-issues and siblings as blocked-by', () => {
+      for (const [name, c, scripts] of variants()) {
+        const orders = c.commands.get('smithy.orders.md')!;
+        const phase6 = section(orders, '## Phase 6: Parent-Child Linking', '## Phase 7');
+        expect(phase6, name).toContain('**Parent → child: Link Sub-Issue.**');
+        expect(phase6, name).toContain(`${scripts}link-sub-issue.sh <parent-number> <child-number>`);
+        expect(phase6, name).toContain('**Sibling → sibling: Link Blocked-By, only for `Depends On`.**');
+        expect(phase6, name).toContain(`${scripts}link-blocked-by.sh <dependent-number> <dependency-number>`);
+        expect(phase6, name).toMatch(/every pair left unlinked is listed in the Phase 7 summary/);
+        // No sentence links a child as blocked by its parent.
+        expect(orders, name).not.toMatch(/blocked-by` link from each child to its parent/);
+        expect(orders, name).not.toContain('link-blocked-by.sh <child-number> <parent-number>');
+        expect(orders, name).not.toMatch(/no extra step needed/);
+        expect(orders, name).toContain('### Unlinked Pairs');
+        // Slice parents must come from the tasks file's own source spec.
+        expect(orders, name).toMatch(/accept a match only when its body's `Spec:` line\s+names this tasks file's source spec/);
+      }
+    });
+
+    it('orders falls back to the input path for features_path, never empty', () => {
+      for (const [name, c] of variants()) {
+        const orders = c.commands.get('smithy.orders.md')!;
+        expect(orders, name).not.toMatch(/set the downstream `\{\{features_path\}\}` value to\s+empty/);
+        expect(orders, name).not.toMatch(/capture empty string instead of leaving a literal\s+`\{\{features_path\}\}`/);
+        const parse = section(orders, '- **Feature map path for interpolation**', '### For `.spec.md`');
+        expect(parse, name).toMatch(/is the\s+artifact path argument `smithy\.orders` was invoked with/);
+        expect(parse, name).toMatch(/the value is never empty/);
+      }
+    });
+
+    it('every mapping loads, then renders, then writes; the built-in body is rendered too', () => {
+      const headings = {
+        rfc: '### Ticket mapping: `.rfc.md`',
+        features: '### Ticket mapping: `.features.md`',
+        spec: '### Ticket mapping: `.spec.md`',
+        tasks: '### Ticket mapping: `.tasks.md`',
+      } as const;
+      for (const [name, c] of variants()) {
+        const orders = c.commands.get('smithy.orders.md')!;
+        expect(orders, name).not.toMatch(/cat > [^\n]*<< 'BODY'/);
+        expect(orders, name).not.toContain("<< 'BODY'");
+        for (const type of ORDERS_TEMPLATE_TYPES) {
+          const mapping = section(orders, headings[type], '### Ticket mapping:');
+          const load = mapping.indexOf('**Load the template body.**');
+          const render = mapping.indexOf('**Render the loaded body** — whichever source it came from.');
+          const write = mapping.indexOf('**Write and create.** Only after rendering');
+          const builtIn = mapping.indexOf('**Built-in default body.**');
+          expect(load, `${name}/${type}`).toBeGreaterThan(-1);
+          expect(render, `${name}/${type}`).toBeGreaterThan(load);
+          expect(write, `${name}/${type}`).toBeGreaterThan(render);
+          expect(builtIn, `${name}/${type}`).toBeGreaterThan(write);
+          expect(mapping.slice(load, render)).toContain('load\n   the **built-in default body** below instead');
+          // The built-in body is a fenced markdown block equal to the canonical default.
+          const fence = mapping.slice(builtIn).match(/```markdown\n([\s\S]*?)\n```/);
+          expect(fence, `${name}/${type}`).not.toBeNull();
+          expect(fence![1]!.trim(), `${name}/${type}`).toBe(ORDERS_DEFAULT_TEMPLATES[type].trim());
+        }
+      }
+    });
   });
 
   it('smithy.forge renders sub-agent orchestration for Codex', () => {
@@ -6336,7 +6431,7 @@ describe('issue #554 — audit defects D1–D10', () => {
     // The script fallbacks survive — MCP is preferred, not exclusive.
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
-    expect(skill.scripts.size).toBe(4);
+    expect(skill.scripts.size).toBe(5);
   });
 
   it('D4: Validate Environment has a gh-free MCP path', () => {

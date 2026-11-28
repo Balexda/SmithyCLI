@@ -232,19 +232,18 @@ Parse the feature map to extract:
        and the field value is `payments.rfc.md`, resolve to
        `docs/rfcs/payments/payments.rfc.md`.
     If the field is absent or the resolved RFC path cannot be located on disk,
-    keep parsing features but set the downstream `\{{features_path}}` value to
-    empty string.
+    keep parsing features; only the milestone parent lookup is lost, and
+    `\{{features_path}}` falls back to the input path as described below.
   - **Milestone number** — from the `**Milestone**: <N> — <Title>` field. Use
     the number `<N>` as the stable lookup key; do not match by milestone title
     because names can collide across RFCs.
-- **Feature map path for interpolation** — when the Source RFC can be read and
-  the milestone number is known, read the source RFC's `## Dependency Order`
-  table, find the row whose ID is `M<N>` for the feature map's milestone
-  number, and capture that row's `Artifact` column value as
-  `\{{features_path}}` for Phase 5. If the `## Dependency Order` table is
-  missing, the matching milestone row is absent, the `Artifact` cell is absent,
-  or the cell is `—`, capture empty string instead of leaving a literal
-  `\{{features_path}}` token in the rendered body.
+- **Feature map path for interpolation** — `\{{features_path}}` is the
+  artifact path argument `smithy.orders` was invoked with, unless the Source
+  RFC overrides it: when the RFC can be read and the milestone number is
+  known, find the row whose ID is `M<N>` in the RFC's `## Dependency Order`
+  table, and if that row's `Artifact` cell is present and not `—`, use the
+  cell's value instead. A missing RFC, table, row, or cell keeps the input
+  path; the value is never empty.
 
 ### For `.spec.md`
 
@@ -287,9 +286,14 @@ If no matches are found for any tickets, proceed without prompting.
 for canonical ticket title formats and check for repo-level overrides in the
 project's CLAUDE.md. Apply those conventions to all issue titles.
 
-For each ticket, write the body to a temp file with a heredoc, then call
-`create-issue.sh`. The script returns `{"number": N, "url": "..."}` — capture
-the number for parent/child linking and the summary table.
+Every body goes through the same three steps: **load** it (the template file,
+or the built-in default body when the file is absent), **render** it (fill
+every value), then **write** the rendered text to `/tmp/orders_body.md` and
+call `create-issue.sh`. The built-in defaults below are templates, not
+finished bodies: they are rendered exactly as a template file is, and no body
+is written while it still holds an unfilled `<slot>` or a known context
+token. `create-issue.sh` returns `{"number": N, "url": "..."}` — capture the
+number for Phase 6 linking and the summary table.
 
 ### Title Conventions
 
@@ -302,10 +306,10 @@ the number for parent/child linking and the summary table.
 
 ### Ticket mapping: `.rfc.md`
 
-**Parent**: one epic/tracking issue for the RFC.
+**Parent**: one epic/tracking issue for the RFC. Fill each `<...>` slot,
+write the result to `/tmp/orders_body.md`, then create the issue:
 
-```bash
-cat > /tmp/orders_body.md << 'BODY'
+```markdown
 ## RFC Tracking Issue
 
 **Source**: `<path-to-rfc>`
@@ -319,25 +323,22 @@ cat > /tmp/orders_body.md << 'BODY'
 - ...
 
 **Next step for each milestone**: `smithy.render` to produce a feature map.
-BODY
+```
 
+```bash
 {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC] <rfc-title>" /tmp/orders_body.md
 ```
 
-**Children**: one issue per milestone, linked to the parent. The body
-below is the built-in fallback used when `<manifestDir>/templates/orders/rfc.md`
-is absent (US4); when present, US2's template-resolution path wins and
-this heredoc is bypassed.
+**Children**: one issue per milestone, linked to the parent in Phase 6.
 
-**Template-driven rendering (preferred path).** Before falling back to the
-heredoc below, attempt to render the body from the user-overridable rfc
+**Template-driven rendering.** Load the body from the user-overridable rfc
 template provisioned by `smithy init` under
 `<manifestDir>/templates/orders/rfc.md`. `<manifestDir>` is the value
 captured at the end of Phase 1's "Manifest Discovery and `<manifestDir>`
 Resolution" sub-section — do not re-probe the filesystem; reuse the
 already-resolved value. Only the per-milestone child issue is rendered
 through the template; the RFC parent tracking issue above keeps its
-hardcoded heredoc and is intentionally out of scope for template
+hardcoded body and is intentionally out of scope for template
 overrides.
 
 For **each** milestone extracted in Phase 3, perform the following steps:
@@ -371,10 +372,13 @@ For **each** milestone extracted in Phase 3, perform the following steps:
      `\{{next_step}}` becomes the fully-resolved command rather than a
      command still containing `\{{rfc_path}}` / `\{{milestone_number}}`.
 
-2. **Read the template file.** Using the `Read` tool, attempt to read
-   `<manifestDir>/templates/orders/rfc.md`.
+2. **Load the template body.** Using the `Read` tool, read
+   `<manifestDir>/templates/orders/rfc.md`. If the file does not exist, load
+   the **built-in default body** below instead. Do **not** treat any other
+   read failure (permission denied, I/O error) as "absent" — surface those
+   errors and stop.
 
-3. **If the read succeeds** (the template file exists): perform a
+3. **Render the loaded body** — whichever source it came from. Perform a
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. Because
@@ -387,25 +391,18 @@ For **each** milestone extracted in Phase 3, perform the following steps:
    Unknown `\{{variable}}` names (any token not in the rfc-row context
    above) are **left as literal text** — do not error and do not delete them.
 
-   Write the rendered body to `/tmp/orders_body.md` and then call:
+4. **Write and create.** Only after rendering, write the rendered body to
+   `/tmp/orders_body.md` and then call:
 
    ```bash
    {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
    ```
 
-   Skip the heredoc fallthrough below for this milestone.
+**Built-in default body.** Loaded by step 2 when
+`<manifestDir>/templates/orders/rfc.md` is absent, and rendered by step 3
+like a template file:
 
-4. **If the read fails** because the file does not exist (i.e.,
-   `<manifestDir>/templates/orders/rfc.md` is absent on disk): fall
-   through to the heredoc body below so `orders` still produces an
-   issue. Do **not** treat any other read failure (permission denied,
-   I/O error) as "absent" — surface those errors and stop.
-
-**Fallthrough heredoc body.** Used only when the template file at
-`<manifestDir>/templates/orders/rfc.md` is absent:
-
-```bash
-cat > /tmp/orders_body.md << 'BODY'
+```markdown
 # \{{title}}
 
 **Milestone \{{milestone_number}}**: \{{milestone_title}}
@@ -425,9 +422,6 @@ cat > /tmp/orders_body.md << 'BODY'
 ## Next Step
 
 Run `\{{next_step}}` to produce a feature map for this milestone.
-BODY
-
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.features.md`
@@ -445,13 +439,9 @@ path. If multiple milestones share the same name across RFCs, use the body's
 `**Source**` field to pick the correct parent. If found, reference it in the
 child ticket body.
 
-**Children**: one issue per feature. Template-driven rendering for
-the features type uses `<manifestDir>/templates/orders/features.md` when the
-file exists; otherwise it falls through to the heredoc below so `orders` still
-produces an issue.
+**Children**: one issue per feature.
 
-**Template-driven rendering (preferred path).** Before falling back to the
-heredoc below, attempt to render the body from the user-overridable features
+**Template-driven rendering.** Load the body from the user-overridable features
 template provisioned by `smithy init` under
 `<manifestDir>/templates/orders/features.md`. `<manifestDir>` is the value
 captured at the end of Phase 1's "Manifest Discovery and `<manifestDir>`
@@ -473,46 +463,40 @@ For **each** feature extracted in Phase 3, perform the following steps:
    - `\{{parent_issue}}` ← the `#<n>` reference for the matched
      `[RFC][Milestone] <milestone-title>` issue. If no parent issue was found,
      use empty string.
-   - `\{{features_path}}` ← the value captured in Phase 3 from the source RFC's
-     `## Dependency Order` table `Artifact` column for this milestone. When
-     Phase 3 could not locate the source RFC, could not find the matching
-     milestone row by number, or found an empty/`—` artifact cell, use empty
-     string.
+   - `\{{features_path}}` ← the value resolved in Phase 3: the RFC's `M<N>`
+     `Artifact` cell when present and not `—`, otherwise the input
+     feature-map path.
    - `\{{next_step}}` ← the literal instruction `smithy.mark` on this
      feature. Include enough context for the
      operator to run mark on the specific feature, e.g.
-     `smithy.mark <features_path> <feature_number>` when that source path and
-     feature number are known; otherwise use `smithy.mark` on this feature.
+     `smithy.mark <features_path> <feature_number>` when the feature number
+     is known; otherwise `smithy.mark <features_path>` on this feature.
 
-2. **Read the template file.** Using the `Read` tool, attempt to read
-   `<manifestDir>/templates/orders/features.md`.
+2. **Load the template body.** Using the `Read` tool, read
+   `<manifestDir>/templates/orders/features.md`. If the file does not exist, load
+   the **built-in default body** below instead. Do **not** treat any other
+   read failure (permission denied, I/O error) as "absent" — surface those
+   errors and stop.
 
-3. **If the read succeeds** (the template file exists): perform a
+3. **Render the loaded body** — whichever source it came from. Perform a
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. Unknown
    `\{{variable}}` names (any token not in the features-type context above)
    are **left as literal text** — do not error and do not delete them.
 
-   Write the rendered body to `/tmp/orders_body.md` and then call:
+4. **Write and create.** Only after rendering, write the rendered body to
+   `/tmp/orders_body.md` and then call:
 
    ```bash
    {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Feature] <feature-title>" /tmp/orders_body.md
    ```
 
-   Skip the heredoc fallthrough below for this feature.
+**Built-in default body.** Loaded by step 2 when
+`<manifestDir>/templates/orders/features.md` is absent, and rendered by step 3
+like a template file:
 
-4. **If the read fails** because the file does not exist (i.e.,
-   `<manifestDir>/templates/orders/features.md` is absent on disk): fall
-   through to the heredoc body below so `orders` still produces an
-   issue. Do **not** treat any other read failure (permission denied,
-   I/O error) as "absent" — surface those errors and stop.
-
-**Fallthrough heredoc body.** Used only when the template file at
-`<manifestDir>/templates/orders/features.md` is absent:
-
-```bash
-cat > /tmp/orders_body.md << 'BODY'
+```markdown
 # \{{title}}
 
 \{{feature_description}}
@@ -526,20 +510,13 @@ cat > /tmp/orders_body.md << 'BODY'
 ## Next Step
 
 Run `\{{next_step}}` on this feature to produce a spec with user stories.
-BODY
-
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Feature] <feature-title>" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.spec.md`
 
 **Children**: one issue per user story. No parent ticket is created.
-The body below is the built-in fallback used when
-`<manifestDir>/templates/orders/spec.md` is absent (US4); when present,
-US2's template-resolution path wins and this heredoc is bypassed.
 
-**Template-driven rendering (preferred path).** Before falling back to the
-heredoc below, attempt to render the body from the user-overridable spec
+**Template-driven rendering.** Load the body from the user-overridable spec
 template provisioned by `smithy init` under
 `<manifestDir>/templates/orders/spec.md`. `<manifestDir>` is the value
 captured at the end of Phase 1's "Manifest Discovery and `<manifestDir>`
@@ -579,10 +556,13 @@ For **each** user story extracted in Phase 3, perform the following steps:
      `\{{next_step}}` becomes the fully-resolved command rather than a
      command still containing `\{{spec_folder}}` / `\{{user_story_number}}`.
 
-2. **Read the template file.** Using the `Read` tool, attempt to read
-   `<manifestDir>/templates/orders/spec.md`.
+2. **Load the template body.** Using the `Read` tool, read
+   `<manifestDir>/templates/orders/spec.md`. If the file does not exist, load
+   the **built-in default body** below instead. Do **not** treat any other
+   read failure (permission denied, I/O error) as "absent" — surface those
+   errors and stop.
 
-3. **If the read succeeds** (the template file exists): perform a
+3. **Render the loaded body** — whichever source it came from. Perform a
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. This single
@@ -596,25 +576,18 @@ For **each** user story extracted in Phase 3, perform the following steps:
    the spec-type context above) are **left as literal text** — do not
    error and do not delete them.
 
-   Write the rendered body to `/tmp/orders_body.md` and then call:
+4. **Write and create.** Only after rendering, write the rendered body to
+   `/tmp/orders_body.md` and then call:
 
    ```bash
    {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Story] <story-title>" /tmp/orders_body.md
    ```
 
-   Skip the heredoc fallthrough below for this user story.
+**Built-in default body.** Loaded by step 2 when
+`<manifestDir>/templates/orders/spec.md` is absent, and rendered by step 3
+like a template file:
 
-4. **If the read fails** because the file does not exist (i.e.,
-   `<manifestDir>/templates/orders/spec.md` is absent on disk): fall
-   through to the heredoc body below so `orders` still produces an
-   issue. Do **not** treat any other read failure (permission denied,
-   I/O error) as "absent" — surface those errors and stop.
-
-**Fallthrough heredoc body.** Used only when the template file at
-`<manifestDir>/templates/orders/spec.md` is absent:
-
-```bash
-cat > /tmp/orders_body.md << 'BODY'
+```markdown
 # \{{title}}
 
 **Priority**: \{{priority}} | **Story #\{{user_story_number}}**
@@ -634,9 +607,6 @@ cat > /tmp/orders_body.md << 'BODY'
 ## Next Step
 
 Run `\{{next_step}}` (equivalent to `smithy.cut \{{spec_folder}} \{{user_story_number}}`) to decompose this story into implementable slices, then `smithy.forge` on each slice.
-BODY
-
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Story] <story-title>" /tmp/orders_body.md
 ```
 
 ### Ticket mapping: `.tasks.md`
@@ -653,16 +623,14 @@ using the same `[Story]` title prefix:
 
 Match by story title (the `<story-title>` from `### User Story N: <Title>` —
 or `### User Story N — <Title>` in older specs — the same title used in the
-`[Story] <story-title>` issue created by the `.spec.md` mapping). If found,
-reference it in the child ticket body.
+`[Story] <story-title>` issue created by the `.spec.md` mapping). Story titles
+can repeat across specs, so accept a match only when its body's `Spec:` line
+names this tasks file's source spec. If found, reference it in the child
+ticket body; if no match belongs to that spec, treat the parent as not found.
 
-**Children**: one issue per slice. The body below is the built-in
-fallback used when `<manifestDir>/templates/orders/tasks.md` is absent
-(US4); when present, US2's template-resolution path wins and this
-heredoc is bypassed.
+**Children**: one issue per slice.
 
-**Template-driven rendering (preferred path).** Before falling back to the
-heredoc below, attempt to render the body from the user-overridable tasks
+**Template-driven rendering.** Load the body from the user-overridable tasks
 template provisioned by `smithy init` under
 `<manifestDir>/templates/orders/tasks.md`. `<manifestDir>` is the value
 captured at the end of Phase 1's "Manifest Discovery and `<manifestDir>`
@@ -694,10 +662,13 @@ For **each** slice extracted in Phase 3, perform the following steps:
      a CLI-shaped command with placeholder slots, so there are no nested
      `\{{…}}` references to resolve within it).
 
-2. **Read the template file.** Using the `Read` tool, attempt to read
-   `<manifestDir>/templates/orders/tasks.md`.
+2. **Load the template body.** Using the `Read` tool, read
+   `<manifestDir>/templates/orders/tasks.md`. If the file does not exist, load
+   the **built-in default body** below instead. Do **not** treat any other
+   read failure (permission denied, I/O error) as "absent" — surface those
+   errors and stop.
 
-3. **If the read succeeds** (the template file exists): perform a
+3. **Render the loaded body** — whichever source it came from. Perform a
    **global** substitution of every variable in the context built in
    step 1 across the entire template body. Every occurrence of every
    known placeholder must be replaced — not just the first. When the
@@ -708,25 +679,18 @@ For **each** slice extracted in Phase 3, perform the following steps:
    the tasks-type context above) are **left as literal text** — do not
    error and do not delete them.
 
-   Write the rendered body to `/tmp/orders_body.md` and then call:
+4. **Write and create.** Only after rendering, write the rendered body to
+   `/tmp/orders_body.md` and then call:
 
    ```bash
    {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Slice] <slice-title>" /tmp/orders_body.md
    ```
 
-   Skip the heredoc fallthrough below for this slice.
+**Built-in default body.** Loaded by step 2 when
+`<manifestDir>/templates/orders/tasks.md` is absent, and rendered by step 3
+like a template file:
 
-4. **If the read fails** because the file does not exist (i.e.,
-   `<manifestDir>/templates/orders/tasks.md` is absent on disk): fall
-   through to the heredoc body below so `orders` still produces an
-   issue. Do **not** treat any other read failure (permission denied,
-   I/O error) as "absent" — surface those errors and stop.
-
-**Fallthrough heredoc body.** Used only when the template file at
-`<manifestDir>/templates/orders/tasks.md` is absent:
-
-```bash
-cat > /tmp/orders_body.md << 'BODY'
+```markdown
 # \{{title}}
 
 **Slice \{{slice_number}}**
@@ -746,34 +710,41 @@ cat > /tmp/orders_body.md << 'BODY'
 ## Next Step
 
 Run `\{{next_step}}` to implement this slice as a PR.
-BODY
-
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Slice] <slice-title>" /tmp/orders_body.md
 ```
 
 ---
 
 ## Phase 6: Parent-Child Linking
 
-After creating all tickets, establish parent-child relationships:
+After creating all tickets, link them. A `#<n>` reference in a body is not a
+link, so every artifact type needs this step.
 
-1. For `.rfc.md`: each milestone body already references the RFC tracking
-   issue (`#<parent>`); no extra step needed beyond what was written in Phase 5.
-2. For `.features.md` and `.tasks.md`: the parent reference was added during
-   creation if a matching parent issue was found.
-3. If GitHub sub-issues / `blocked-by` are available in this repo, also add a
-   `blocked-by` link from each child to its parent:
+1. **Parent → child: Link Sub-Issue.** Make each child a sub-issue of the
+   ticket that tracks it — each milestone under the `[RFC]` tracking issue,
+   each feature under its matched milestone issue, each slice under its
+   matched story issue. `.spec.md` creates no parent, so it has no
+   sub-issue links. A child whose parent was not found has nothing to link
+   to; report it.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <child-number> <parent-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <parent-number> <child-number>
 ```
 
-Link Blocked-By is the one operation with **no MCP path** — GitHub's MCP
-server exposes no `addBlockedBy` equivalent — so this script is the only way
-to make the link. Treat failures as best-effort: print a brief note and
-continue rather than aborting the orders run. A host without `gh` falls under
-the same rule — the issues themselves were already created through the MCP
-path, so report which pairs went unlinked and finish the run.
+2. **Sibling → sibling: Link Blocked-By, only for `Depends On`.** For each
+   child whose row in the artifact's `## Dependency Order` table lists
+   sibling IDs in `Depends On`, link the child as blocked by each listed
+   sibling's issue. Blocked-by expresses only these sibling edges — a child
+   is never linked as blocked by its parent.
+
+```bash
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <dependent-number> <dependency-number>
+```
+
+Link Blocked-By has **no MCP path** — GitHub's MCP server exposes no
+`addBlockedBy` equivalent — so on a host without `gh` those pairs stay
+unlinked. Both kinds of link are best-effort: a failed link never aborts the
+run, and every pair left unlinked is listed in the Phase 7 summary with its
+reason.
 
 ---
 
@@ -792,6 +763,11 @@ Present a summary table of all created tickets:
 | #<num> | [RFC] <title> | Epic | — | — |
 | #<num> | [RFC][Milestone] <title> | Milestone | #<parent> | render |
 | ... | ... | ... | ... | ... |
+
+### Unlinked Pairs
+
+- <child> → <parent or dependency> (sub-issue | blocked-by): <reason>
+  (omit this section only when Phase 6 made every link)
 
 ### Follow-up Actions
 
@@ -814,11 +790,11 @@ Present a summary table of all created tickets:
   MCP tools and fall back to the skill's own `gh` scripts, so permissions
   stay scoped either way.
 - **Do NOT** treat a missing `gh` CLI as a dead end. Only Link Blocked-By
-  requires it; creation and search have MCP paths, and an unlinkable pair is
-  reported best-effort rather than aborting the run.
-- **DO**, on the script-fallback path, write issue bodies to a temp file with a
-  heredoc and pass the file path to `create-issue.sh`, to avoid markdown
-  quoting issues. On the MCP path pass the body string directly — no temp file.
+  requires it; creation, search, and sub-issue linking have MCP paths, and an
+  unlinkable pair is reported best-effort rather than aborting the run.
+- **DO**, on the script-fallback path, write the rendered issue body to a temp
+  file and pass the file path to `create-issue.sh`, to avoid markdown quoting
+  issues. On the MCP path pass the rendered body string directly — no temp file.
 - **DO** link child tickets to parent tickets when parent tickets can be found.
 - **DO** include the next pipeline step in every ticket body.
 - **DO** present duplicate matches to the user before proceeding.

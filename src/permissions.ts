@@ -573,10 +573,12 @@ export const extraPermissions: string[] = [
   ".claude/skills/smithy.gh-issue/scripts/search-issues.sh *",
   ".claude/skills/smithy.gh-issue/scripts/create-issue.sh *",
   ".claude/skills/smithy.gh-issue/scripts/link-blocked-by.sh *",
+  ".claude/skills/smithy.gh-issue/scripts/link-sub-issue.sh *",
   "*/smithy.gh-issue/scripts/check-env.sh",
   "*/smithy.gh-issue/scripts/search-issues.sh *",
   "*/smithy.gh-issue/scripts/create-issue.sh *",
   "*/smithy.gh-issue/scripts/link-blocked-by.sh *",
+  "*/smithy.gh-issue/scripts/link-sub-issue.sh *",
 ];
 
 /**
@@ -773,6 +775,8 @@ export const claudeToolPermissions: string[] = [
   "mcp__github__add_reply_to_pull_request_comment",
   "mcp__github__issue_write",
   "mcp__github__search_issues",
+  "mcp__github__issue_read",
+  "mcp__github__sub_issue_write",
 ];
 
 /**
