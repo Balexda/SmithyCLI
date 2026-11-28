@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Read the supplied artifact's project declaration**
+- [x] **Read the supplied artifact's project declaration**
 
   Add artifact metadata reading at the shared CLI project boundary described in the Contracts. Apply the Declaration normalization rules from the Data Model and cover AS 1.2, 1.6, and 1.7.
 
@@ -27,7 +27,7 @@
   - Only document-level metadata in the supplied artifact is eligible. The reader does not search parent artifacts or directories.
   - Read failures and malformed or duplicate headers identify the input artifact. A syntactically well-formed header containing an invalid slug reaches declaration validation.
 
-- [ ] **Resolve declarations against the named project store**
+- [x] **Resolve declarations against the named project store**
 
   Complete the explicit branch of the shared CLI project policy using the Project Outcome and State Transitions in the Data Model. Build on the existing safe-segment validation and project-root conventions in `src/engraved/roots.ts` and cover AS 1.1–1.7 at the resolver boundary.
 
