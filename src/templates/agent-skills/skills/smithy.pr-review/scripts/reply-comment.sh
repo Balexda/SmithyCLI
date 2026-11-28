@@ -3,13 +3,13 @@
 #
 # Usage: ${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh <owner/repo> <pr-number> <comment-id> <body-file>
 #
-# body-file: path to a JSON file with content: {"body": "your reply text"}
-# Write it with a heredoc before calling this script to avoid quoting issues:
+# comment-id: the thread's root comment databaseId.
+# body-file:  a plain Markdown file holding the reply text. Write it with your
+#             file-writing tool, not a shell heredoc.
 #
-#   cat > /tmp/smithy_reply_<id>.json << 'EOF'
-#   {"body": "Fixed in abc1234: changed X to Y because Z"}
-#   EOF
-#   ${CLAUDE_SKILL_DIR}/scripts/reply-comment.sh owner/repo 42 123456 /tmp/smithy_reply_123456.json
+# Appends the marker <!-- smithy-pr-review-response-to:<comment-id> --> when
+# the body does not already carry it, so get-comments.sh treats the thread as
+# handled until a reviewer replies again.
 
 set -euo pipefail
 
@@ -18,6 +18,12 @@ PR="$2"
 COMMENT_ID="$3"
 BODY_FILE="$4"
 
+MARKER="<!-- smithy-pr-review-response-to:$COMMENT_ID -->"
+BODY=$(cat "$BODY_FILE")
+if [[ "$BODY" != *"$MARKER"* ]]; then
+  BODY="$BODY"$'\n\n'"$MARKER"
+fi
+
 gh api "repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" \
   --method POST \
-  --input "$BODY_FILE"
+  -f body="$BODY"
