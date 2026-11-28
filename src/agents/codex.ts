@@ -32,6 +32,7 @@ const SMITHY_SKILL_SCRIPT_RULES = [
   './.agents/skills/smithy.gh-issue/scripts/search-issues.sh',
   './.agents/skills/smithy.gh-issue/scripts/create-issue.sh',
   './.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh',
+  './.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh',
 ];
 
 /**

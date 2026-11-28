@@ -1,7 +1,7 @@
 ---
 name: smithy.gh-issue
-description: "GitHub issue operations: validate environment, search issues, create issues from a body file, and link blocked-by relationships. Use when an agent needs to read or create issues in the current repo."
-allowed-tools: Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh) Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *) mcp__github__issue_write mcp__github__search_issues
+description: "GitHub issue operations: validate environment, search issues, create issues from a body file, and link sub-issue and blocked-by relationships. Use when an agent needs to read or create issues in the current repo."
+allowed-tools: Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh) Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh *) mcp__github__issue_write mcp__github__search_issues mcp__github__issue_read mcp__github__sub_issue_write
 ---
 # smithy.gh-issue
 
@@ -15,7 +15,7 @@ Provides GitHub issue operations through two interchangeable paths:
    the one exception: even on this path it reads the git remote through a
    single stable shell call, so a host with MCP tools but no shell at all
    must be given `owner` / `repo` some other way.
-2. **Bundled `gh`-CLI shell scripts** (fallback) — four scripts in this
+2. **Bundled `gh`-CLI shell scripts** (fallback) — five scripts in this
    skill's `scripts/` directory wrap `gh` invocations. Use these when the
    GitHub MCP server is not configured, and for Link Blocked-By, which has
    no MCP equivalent.
@@ -32,6 +32,7 @@ relative path `./.gemini/skills/smithy.gh-issue/scripts/<script-name>`.{{/ifAgen
 | Validate Environment | `git config --get remote.origin.url` (no `gh` needed) | `check-env.sh` |
 | Search Issues | `mcp__github__search_issues` | `search-issues.sh <state> <query> [limit]` |
 | Create Issue | `mcp__github__issue_write` (`method: "create"`) | `create-issue.sh "<title>" <body-file>` |
+| Link Sub-Issue | `mcp__github__sub_issue_write` (`method: "add"`) | `link-sub-issue.sh <parent> <child>` |
 | Link Blocked-By | *(none — GitHub's MCP server exposes no `addBlockedBy` mutation)* | `link-blocked-by.sh <child> <blocker>` |
 
 Each script is small and stable with a fixed set of `gh` calls (most use one;
@@ -182,10 +183,38 @@ creation.
 
 ---
 
+## Operation: Link Sub-Issue
+
+Makes one issue a sub-issue of another: the parent tracks the child. Use it
+for hierarchy (epic → milestone, milestone → feature, story → slice), never
+blocked-by, which would show every child blocked until its parent closes.
+
+### MCP path
+
+Call `mcp__github__sub_issue_write` with `method: "add"`, `owner`, `repo`,
+`issue_number` set to the **parent's** number, and `sub_issue_id` set to the
+child's numeric issue **id** — not its number. Read the id from
+`mcp__github__issue_read` (`method: "get"`) on the child. First call
+`issue_read` with `method: "get_sub_issues"` on the parent, reading every
+page; if the child is already listed, the link exists — count it as done and
+make no call.
+
+### Script fallback
+
+```bash
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <parent-number> <child-number>
+```
+
+The script does the id lookup and the existing-link check itself. Output:
+JSON `{"parent": N, "child": N, "status": "linked" | "already-linked"}`.
+Errors surface on stderr; treat them as best-effort, as for Link Blocked-By.
+
+---
+
 ## Operation: Link Blocked-By
 
 Marks one issue as blocked by another via the GitHub `addBlockedBy` GraphQL
-mutation. Use this after both the parent and child issues exist.
+mutation. Use it for ordering between siblings, after both issues exist.
 
 **There is no MCP path for this operation** — the GitHub MCP server exposes
 no `addBlockedBy` equivalent (`sub_issue_write` writes parent/child hierarchy,

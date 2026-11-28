@@ -205,6 +205,8 @@ describe('flattenPermissions', () => {
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/search-issues.sh *');
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/create-issue.sh *');
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/link-blocked-by.sh *');
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/link-sub-issue.sh *');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/link-sub-issue.sh *');
   });
 
   it('grants `smithy status` and nothing else from the smithy CLI (issue #559)', () => {
