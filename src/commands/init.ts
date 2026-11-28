@@ -7,8 +7,10 @@ import {
   promptDeployLocation,
   promptOverwriteOrdersTemplates,
   promptPermissions,
+  promptReviewers,
   promptToolchains,
 } from '../interactive.js';
+import { deployReviewerBaseline } from '../reviewers.js';
 import { detectLanguages } from '../language-detect.js';
 import { detectPlatforms } from '../platform-detect.js';
 import type { LanguageToolchain, PlatformPackageManager } from '../permissions.js';
@@ -37,6 +39,7 @@ export interface InitOptions {
   agents?: AgentName[];
   location?: DeployLocation;
   permissions?: boolean;
+  reviewers?: boolean;
   /**
    * When true (default), deploys the Claude Code session-title UserPromptSubmit
    * hook so `/smithy.<cmd>` invocations get a meaningful session title.
@@ -110,6 +113,13 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     ));
     process.exitCode = 1;
     return;
+  }
+
+  let deployReviewers = false;
+  if (deployLocation === 'repo') {
+    deployReviewers = opts.reviewers ?? (opts.yes || await promptReviewers());
+  } else if (opts.reviewers !== false) {
+    console.log('  Reviewer baseline: skipped (per-repository)');
   }
 
   // 3. Permissions — y/n at the selected deploy location
@@ -235,6 +245,10 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     }
   }
 
+  if (deployReviewers) {
+    deployedFiles.reviewers = deployReviewerBaseline(targetDir);
+  }
+
   // Remove stale files from previous deployment
   const allCurrentFiles = Object.values(deployedFiles).flat();
   const staleRemoved = removeStaleFiles(targetDir, oldManifest, allCurrentFiles);
@@ -248,6 +262,7 @@ export async function initAction(opts: InitOptions = {}): Promise<void> {
     location: deployLocation,
     agents: [...agentsToSetup],
     permissions: deployPermissions,
+    reviewers: deployReviewers,
     sessionTitles: deploySessionTitles,
     languages,
     platforms: platformManagers,

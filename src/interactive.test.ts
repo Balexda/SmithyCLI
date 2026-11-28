@@ -8,7 +8,7 @@ vi.mock('@inquirer/prompts', () => ({
   checkbox: vi.fn(),
 }));
 
-import { promptOverwriteOrdersTemplates } from './interactive.js';
+import { promptOverwriteOrdersTemplates, promptReviewers } from './interactive.js';
 
 describe('promptOverwriteOrdersTemplates', () => {
   beforeEach(() => {
@@ -38,5 +38,14 @@ describe('promptOverwriteOrdersTemplates', () => {
       message: 'Overwrite existing orders templates at /home/alice/.smithy/templates/orders/?',
       default: false,
     });
+  });
+});
+
+it('offers repository reviewer deployment by default and honors a decline', async () => {
+  confirmMock.mockReset().mockResolvedValueOnce(false);
+  await expect(promptReviewers()).resolves.toBe(false);
+  expect(confirmMock).toHaveBeenCalledWith({
+    message: 'Deploy the repository reviewer baseline?',
+    default: true,
   });
 });

@@ -18,7 +18,7 @@
 
 ### Tasks
 
-- [ ] **Ship a portable reviewer baseline**
+- [x] **Ship a portable reviewer baseline**
 
   Package the three Smithy-general files listed in data model §3 under `src/templates/`. Serve them through a baseline path shared by all agent selections, preserving the metadata in AS 1.9.
 
@@ -29,7 +29,7 @@
   - CI applies the existing portability check to the baseline source and enforces byte parity with SmithyCLI's three reviewer files.
   - The repository's deployed-snapshot guidance records the whole-file parity exception.
 
-- [ ] **Select and persist reviewer deployment on init**
+- [x] **Select and persist reviewer deployment on init**
 
   Wire the reviewer choice through `src/cli.ts`, the interactive prompts, and `src/commands/init.ts`. Record the choice and whole-file inventory through `src/manifest.ts` per C1 and C2.
 
@@ -40,7 +40,7 @@
   - Init reports the paths written and names each existing file whose bytes differ before replacement per FR-005 and C6.
   - Repeating init with identical inputs preserves the deployed bytes.
 
-- [ ] **Replay reviewer settings and reconcile tracked files**
+- [x] **Replay reviewer settings and reconcile tracked files**
 
   Pass the saved reviewer choice from `src/commands/update.ts` through init and use manifest stale-file cleanup to reconcile the inventory. Share reconciliation with explicit disable on re-init.
 
@@ -49,7 +49,7 @@
   - Re-init with reviewers disabled satisfies AS 1.7 for whole files.
   - A manifest with a reviewer file inventory and an absent reviewer setting self-heals per C2.
 
-- [ ] **Remove reviewer files and report dangling references**
+- [x] **Remove reviewer files and report dangling references**
 
   Extend the manifest-driven uninit path in `src/commands/uninit.ts` and `src/manifest.ts` for AS 1.8. Use the tracked reviewer paths to report dangling references in repository-layer review rules.
 

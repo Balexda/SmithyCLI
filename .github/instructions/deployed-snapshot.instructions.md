@@ -7,7 +7,8 @@ excludeAgent: "coding-agent"
 These files are the output of an earlier `smithy init` run against this
 repository. They are generated from `src/templates/agent-skills/`, tracked in
 `.smithy/smithy-manifest.json`, and intentionally allowed to drift from the
-templates between releases.
+templates between releases. The whole-file reviewer baseline under
+`.github/` has a separate byte-parity check against `src/templates/reviewers/`.
 
 - A pull request that edits source templates should **not** touch these
   files. If it does, ask why. Refreshes happen in dedicated chore pull

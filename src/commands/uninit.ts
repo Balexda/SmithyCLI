@@ -2,6 +2,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 import { promptConfirmUninit, promptManifestChoice } from '../interactive.js';
 import { readManifest, removeManifestFiles, resolveManifestDir } from '../manifest.js';
+import { reportDanglingReviewerReferences } from '../reviewers.js';
 import { removeIfExists } from '../utils.js';
 import * as gemini from '../agents/gemini.js';
 import * as claude from '../agents/claude.js';
@@ -93,7 +94,9 @@ export async function uninitAction(opts: UninitOptions = {}): Promise<void> {
       if (manifest?.sessionTitles) {
         claude.removeSessionTitleHook(targetDir, location);
       }
-      removedCount += removeManifestFiles(targetDir, location);
+      const removedReviewers: string[] = [];
+      removedCount += removeManifestFiles(targetDir, location, file => removedReviewers.push(file));
+      if (location === 'repo') reportDanglingReviewerReferences(targetDir, removedReviewers);
     }
   }
 

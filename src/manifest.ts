@@ -61,7 +61,8 @@ export interface SmithyManifest {
    * `manifest.artifactsLocation ?? 'repo'`.
    */
   artifactsLocation?: ArtifactsLocation;
-  files: Record<string, string[]>;  // agent name → relative file paths
+  reviewers?: true;
+  files: Record<string, string[]>;  // agent name or reviewers → relative file paths
 }
 
 /**
@@ -328,6 +329,7 @@ export interface WriteManifestOptions {
    * field out of the manifest entirely — legacy manifests stay byte-identical.
    */
   artifactsLocation?: ArtifactsLocation;
+  reviewers?: boolean;
   files: Record<string, string[]>;
 }
 
@@ -352,6 +354,7 @@ export function writeManifest(opts: WriteManifestOptions): void {
     // byte-identical, which matters for the .smithy/smithy-manifest.json
     // diff noise teams see in source control.
     ...(opts.artifactsLocation === 'external' ? { artifactsLocation: 'external' as const } : {}),
+    ...(opts.reviewers ? { reviewers: true as const } : {}),
     files: opts.files,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -361,18 +364,24 @@ export function writeManifest(opts: WriteManifestOptions): void {
  * Remove all files listed in a manifest and delete the manifest itself.
  * Used during uninit.
  */
-export function removeManifestFiles(targetDir: string, location: DeployLocation): number {
+export function removeManifestFiles(
+  targetDir: string,
+  location: DeployLocation,
+  onReviewerRemoved?: (file: string) => void,
+): number {
   const manifest = readManifest(targetDir, location);
   if (!manifest) return 0;
 
   const baseDir = location === 'user' ? os.homedir() : targetDir;
   const emptiedDirs: string[] = [];
+  const reviewerFiles = new Set(manifest.files.reviewers);
   let removed = 0;
   for (const file of allManifestFiles(manifest)) {
     const absPath = path.join(baseDir, file);
     if (removeIfExists(absPath)) {
       removed++;
       emptiedDirs.push(path.dirname(absPath));
+      if (reviewerFiles.has(file)) onReviewerRemoved?.(file);
     }
   }
   for (const dir of emptiedDirs) {

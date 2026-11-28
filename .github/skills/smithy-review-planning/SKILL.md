@@ -16,9 +16,18 @@ complete, not whether the prose is polished. Work through the steps in order.
 |--------------|----------------|
 | `.rfc.md` | a `.prd.md`, when the header names one |
 | `.features.md` | the RFC named in its header |
-| `.spec.md`, `.data-model.md`, `.contracts.md` | the feature map and RFC named in its header |
+| `.spec.md` | the feature map and RFC named in its header, when the header names them |
+| `.data-model.md`, `.contracts.md` | the sibling `.spec.md` in the same folder, then the feature map and RFC named in the spec's header, when it names them |
 | `.tasks.md` | the spec named on its `**Source**:` line |
 | `.strike.md` | none; it is one self-contained slice |
+
+Only the parents qualified with "when the header names" are optional: a PRD
+for an RFC, and the feature map and RFC for a spec marked from a direct
+description (and so for that spec's companions). When an optional parent is absent, skip step 3 for it and review
+against the checklist alone; the absence is not a finding. Every other parent
+is required. A `.features.md` with no RFC, or a `.tasks.md` with no
+`**Source**:` spec, is a finding: report the missing parent and the checks it
+blocks.
 
 ## 2. Load the checklist for that artifact type
 
@@ -30,15 +39,26 @@ find the table headed `Audit Checklist (<suffix>)`:
 - `.agents/skills/smithy-audit/SKILL.md`
 - `.gemini/skills/smithy-audit/SKILL.md`
 
-Apply every row of that table to the changed artifact. When the repository's
+Apply every row of that table to the changed artifact. A `.data-model.md` or
+`.contracts.md` change uses the `.spec.md` table: apply its Cross-Document
+Consistency, Data Model Integrity, and Contract Completeness rows to the
+companion, read against the sibling spec, and apply the other rows only when
+the pull request also changes the spec. When the repository's
 own instructions name a newer source for the same checklists, prefer it. The
 spec checklist describes the backend table; a UI spec's typed ledger
 satisfies the same row.
 
 ## 3. Check the artifact against its parent
 
-- **The link exists.** The parent's row for this child has its `Artifact`
-  cell set to this file or folder, in the same pull request.
+- **The link exists.** The immediate parent's row for this child has its
+  `Artifact` cell set to this file or folder. A link set by an earlier pull
+  request counts when it still resolves; the parent must change in the same
+  pull request only when this one adds the child or moves it. Only
+  the adjacent level holds that row: a spec's link is in the feature map, and
+  the feature map's link is in the RFC. The RFC has no row for the spec. A
+  `.data-model.md` or `.contracts.md` has no `Artifact` row. It links to its
+  spec by sitting in the spec's folder under the same file stem, so check that
+  instead and compare its content against the sibling spec.
 - **Nothing is widened.** No requirement, story, or slice appears without a
   parent row behind it. Narrowing is fine when the parent's out-of-scope
   section or debt table records it.
@@ -68,9 +88,16 @@ stubs.
 An open `SD-NNN` row says a person must choose before the work can go on.
 Rows added in follow-up commits that answer review comments are the ones most
 likely to fail that bar. Check every open row the pull request adds or edits,
-including the rows' detail sections, against the gate in the deployed
-`smithy-plan-review` agent: "The steering test", "Alternatives that do not
-count", and "Recommend first". Flag the row when:
+including the rows' detail sections, against the deployed kind gate:
+"The steering test", "Alternatives that do not count", and "Recommend first".
+The gate ships in whichever of these exists:
+
+- `.claude/agents/smithy.plan-review.md`
+- `.codex/agents/smithy-plan-review.toml`
+- `.gemini/skills/smithy-forge/SKILL.md`, which inlines the gate because
+  Gemini installs no sub-agents
+
+Flag the row when:
 
 - **One option keeps the defect.** An alternative is "document current
   behavior", "accept the attempted semantics", or "leave as shipped" for code
@@ -104,7 +131,7 @@ in one top-level comment and name the rows that fail the gate.
 - **A choice only a person can make.** Phrase it so it can be answered in one
   sitting without opening an editor, name the alternatives, and say which you
   would pick and why. The full test is under "The steering test" in the
-  deployed `smithy-plan-review` agent.
+  deployed kind gate (step 5 lists where it ships).
 - **An unknown that building, testing, or reading the code will settle** is
   not debt. In a tasks file it belongs under
   `## Open Implementation Questions`.

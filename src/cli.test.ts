@@ -2626,3 +2626,112 @@ describe('CLI status', () => {
     });
   });
 });
+
+describe('CLI reviewer baseline lifecycle', () => {
+  let target: string;
+  let home: string;
+  const manifestFile = '.smithy/smithy-manifest.json';
+  const files = [
+    '.github/instructions/smithy.review-stance.instructions.md',
+    '.github/instructions/smithy.planning-artifacts.instructions.md',
+    '.github/skills/smithy-review-planning/SKILL.md',
+  ];
+  const at = (file: string) => path.join(target, file);
+  const init = ['init', '--agent', 'gemini', '--no-permissions'];
+  const run = (...args: string[]) => execFileSync('node', [CLI, ...args, '-y'], {
+    cwd: target,
+    env: { ...process.env, HOME: home, USERPROFILE: home },
+    encoding: 'utf8',
+  });
+  const readManifest = () => JSON.parse(fs.readFileSync(at(manifestFile), 'utf8'));
+
+  beforeEach(() => {
+    target = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-reviewers-repo-'));
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'smithy-reviewers-home-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(target, { recursive: true, force: true });
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+
+  it('installs for Gemini alone, then repairs missing and changed files and removes obsolete inventory on update', () => {
+    const output = run(...init);
+    const manifest = readManifest();
+    expect(manifest.agents).toEqual(['gemini']);
+    expect(manifest.reviewers).toBe(true);
+    expect(manifest.files.reviewers).toEqual(files);
+    const expected = files.map(file => {
+      expect(output).toContain(`wrote ${file}`);
+      const source = fs.readFileSync(path.resolve('src/templates/reviewers', file));
+      expect(fs.readFileSync(at(file))).toEqual(source);
+      return source;
+    });
+    expect(manifest.files.gemini.join('\n')).not.toContain('smithy-review-planning');
+    run(...init);
+    files.forEach((file, i) => expect(fs.readFileSync(at(file))).toEqual(expected[i]));
+
+    fs.writeFileSync(at(files[0]!), 'previous version');
+    fs.unlinkSync(at(files[1]!));
+    const obsolete = '.github/instructions/smithy.obsolete.instructions.md';
+    fs.writeFileSync(at(obsolete), 'obsolete');
+    manifest.files.reviewers.push(obsolete);
+    fs.writeFileSync(at(manifestFile), JSON.stringify(manifest));
+
+    expect(run('update')).toContain(`replaced ${files[0]} (differed from the shipped baseline)`);
+    expect(fs.existsSync(at(obsolete))).toBe(false);
+    files.forEach((file, i) => expect(fs.readFileSync(at(file))).toEqual(expected[i]));
+    expect(readManifest().files.reviewers).toEqual(files);
+  });
+
+  it('keeps a disabled baseline off and self-heals a stray reviewer inventory', () => {
+    run(...init, '--no-reviewers');
+    const manifest = readManifest();
+    expect(manifest).not.toHaveProperty('reviewers');
+    expect(manifest.files).not.toHaveProperty('reviewers');
+    run('update');
+    expect(fs.existsSync(at('.github'))).toBe(false);
+
+    run(...init, '--reviewers');
+    const orphaned = readManifest();
+    delete orphaned.reviewers;
+    fs.writeFileSync(at(manifestFile), JSON.stringify(orphaned));
+    run('update');
+    expect(readManifest().files).not.toHaveProperty('reviewers');
+    files.forEach(file => expect(fs.existsSync(at(file))).toBe(false));
+
+    run(...init);
+    run(...init, '--no-reviewers');
+    expect(readManifest()).not.toHaveProperty('reviewers');
+    expect(readManifest().files).not.toHaveProperty('reviewers');
+    files.forEach(file => expect(fs.existsSync(at(file))).toBe(false));
+  });
+
+  it('skips the reviewer baseline at user location', () => {
+    expect(run('init', '--agent', 'claude', '--location', 'user', '--no-permissions'))
+      .toContain('Reviewer baseline: skipped (per-repository)');
+    const manifest = JSON.parse(fs.readFileSync(path.join(home, manifestFile), 'utf8'));
+    expect(manifest).not.toHaveProperty('reviewers');
+    expect(manifest.files).not.toHaveProperty('reviewers');
+    expect(fs.existsSync(at('.github'))).toBe(false);
+    expect(fs.existsSync(path.join(home, '.github'))).toBe(false);
+  });
+
+  it('removes tracked files on uninit and reports references in preserved rules', () => {
+    run(...init);
+    const localRule = '.github/instructions/local.instructions.md';
+    const contents = `Read \`${files[0]}\` and the \`smithy-review-planning\` skill.\r\n`;
+    fs.writeFileSync(at(localRule), contents);
+    const agents = 'Load the `smithy-review-planning` review skill. Ignore smithy-review-planning-extra.\n';
+    fs.writeFileSync(at('AGENTS.md'), agents);
+    const output = run('uninit');
+    expect(output).toContain(`${localRule} still references ${files[0]}`);
+    expect(output).toContain(`${localRule} still references ${files[2]}`);
+    expect(output).toContain(`AGENTS.md still references ${files[2]}`);
+    expect(output).not.toContain(`AGENTS.md still references ${files[0]}`);
+    expect(fs.readFileSync(at(localRule), 'utf8')).toBe(contents);
+    expect(fs.readFileSync(at('AGENTS.md'), 'utf8')).toBe(agents);
+    expect(fs.existsSync(at('.github/skills'))).toBe(false);
+    files.forEach(file => expect(fs.existsSync(at(file))).toBe(false));
+  });
+});

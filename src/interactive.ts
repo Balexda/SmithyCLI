@@ -77,6 +77,13 @@ export async function promptDeployLocation(agent: AgentChoice): Promise<DeployLo
   });
 }
 
+export async function promptReviewers(): Promise<boolean> {
+  return await confirm({
+    message: 'Deploy the repository reviewer baseline?',
+    default: true,
+  });
+}
+
 export async function promptPermissions(): Promise<boolean> {
   return await confirm({
     message: 'Deploy Smithy permissions?',
