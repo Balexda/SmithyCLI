@@ -34,7 +34,12 @@ The parent agent passes you:
 4. **Project** - the project slug naming the workstream in play, or a
    statement that no project level applies. Parents resolve this because only
    they see the invoking arguments and the artifact frontmatter; you resolve
-   everything else.
+   everything else. The parent's answer is final: use the slug it names, and
+   when it says no project applies there is no project level this run. The
+   project-resolution order below is the parent's procedure, not yours — never
+   infer a project from `~/.smithy/projects/`. If the Project input is missing,
+   scan `user` and `repo` only, return `project: null`, and state above the
+   JSON payload that the project was unresolved, not that none applies.
 5. **Scan roots** - optional per-level override (`user`, `repo`, `project`).
    Normally absent: resolve the three levels yourself from the canonical table
    below. When the parent does supply roots, a level it omits is one you do
@@ -108,8 +113,17 @@ the contract the parent command consumes.
       "broader_id": "U-INV-1",
       "broader_level": "user",
       "declared": false,
-      "governing_id": "PJ-D-2",
+      "governing_id": null,
       "basis": "PJ-D-2 requires a three-layer value hierarchy; U-INV-1 forbids more than one layer. No excepts declaration on PJ-D-2."
+    },
+    {
+      "narrower_id": "PJ-INV-1",
+      "narrower_level": "project",
+      "broader_id": "INV-3",
+      "broader_level": "repo",
+      "declared": true,
+      "governing_id": "PJ-INV-1",
+      "basis": "PJ-INV-1 declares excepts: [INV-3]."
     }
   ],
   "superseded_citations": [
@@ -155,11 +169,11 @@ Field notes:
   which store to open.
 - `severity` on a conflict is copied from the bearing Known-Exceptions ledger
   row, or `null` when no row bears on the divergence.
-- `governing_id` on a cross-level conflict is the record that wins under
-  precedence — always the narrower one.
-
-When any relevant record, conflict, or citation hazard is returned, set
-`empty: false` and `empty_reason: null`.
+- `governing_id` on a cross-level conflict is the narrower record's id when
+  `declared: true`, and `null` when `declared: false` — an undeclared
+  contradiction has no governing record until the planner resolves it. Both
+  records stay named in `narrower_id` / `broader_id` either way.
+- `empty` and `empty_reason` follow the Empty states rule above.
 
 ---
 
@@ -175,8 +189,9 @@ When any relevant record, conflict, or citation hazard is returned, set
 - **Level is read, not inferred.** A record's level is the store it came from.
   Report it on every record, conflict, and citation hazard.
 - **Soft conflict guidance.** Invariant conflicts are candidate new exceptions,
-  not hard blocks. The same holds for cross-level conflicts: report which record
-  governs under precedence, and leave escalation to the parent.
+  not hard blocks. The same holds for cross-level conflicts: name a governing
+  record only for a declared exception, leave an undeclared one unresolved with
+  both ids, and leave escalation to the parent.
 - **Report severity, never act on it.** Copy `severity` from the bearing ledger
   row and pass it up. Do not call it a hard block, and do not instruct the
   parent to stop.
