@@ -75,17 +75,29 @@ describe('link-sub-issue.sh', () => {
     const post = res.calls.find(c => c.includes('--method POST'));
     expect(post).toBe('api --method POST repos/acme/widgets/issues/10/sub_issues -F sub_issue_id=987654');
     // The listing that decides "not yet linked" reads every page.
-    expect(res.calls).toContain("api --paginate repos/acme/widgets/issues/10/sub_issues --jq .[].number");
+    expect(res.calls).toContain("api --paginate repos/acme/widgets/issues/10/sub_issues --jq .[].id");
   });
 
   it('treats an existing link as success and writes nothing', () => {
     fixture('repos/acme/widgets/issues/10/sub_issues', [{ number: 11, id: 555001 }, { number: 12, id: 987654 }]);
+    fixture('repos/acme/widgets/issues/12', { number: 12, id: 987654 });
 
     const res = run('10', '12');
 
     expect(res.status, res.stderr).toBe(0);
     expect(JSON.parse(res.stdout)).toEqual({ parent: 10, child: 12, status: 'already-linked' });
     expect(res.calls.some(c => c.includes('--method POST'))).toBe(false);
+  });
+
+  it('matches by id, so a same-numbered sub-issue from another repo is not this link', () => {
+    fixture('repos/acme/widgets/issues/10/sub_issues', [{ number: 12, id: 111222 }]);
+    fixture('repos/acme/widgets/issues/12', { number: 12, id: 987654 });
+
+    const res = run('10', '12');
+
+    expect(res.status, res.stderr).toBe(0);
+    expect(JSON.parse(res.stdout).status).toBe('linked');
+    expect(res.calls).toContain('api --method POST repos/acme/widgets/issues/10/sub_issues -F sub_issue_id=987654');
   });
 
   it('fails clearly when the child issue does not exist', () => {

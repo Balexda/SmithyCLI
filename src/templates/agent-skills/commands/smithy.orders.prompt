@@ -623,8 +623,10 @@ using the same `[Story]` title prefix:
 
 Match by story title (the `<story-title>` from `### User Story N: <Title>` —
 or `### User Story N — <Title>` in older specs — the same title used in the
-`[Story] <story-title>` issue created by the `.spec.md` mapping). If found,
-reference it in the child ticket body.
+`[Story] <story-title>` issue created by the `.spec.md` mapping). Story titles
+can repeat across specs, so accept a match only when its body's `Spec:` line
+names this tasks file's source spec. If found, reference it in the child
+ticket body; if no match belongs to that spec, treat the parent as not found.
 
 **Children**: one issue per slice.
 

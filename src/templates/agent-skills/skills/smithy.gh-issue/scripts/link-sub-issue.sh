@@ -3,7 +3,7 @@
 #
 # Usage: ${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh <parent-number> <child-number>
 #
-# Idempotent: when the child is already a sub-issue of the parent, nothing is
+# Idempotent: when the child (matched by id) is already a sub-issue of the parent, nothing is
 # written and the run still succeeds. The REST endpoint takes the child's
 # numeric issue id, not its number, so the script looks the id up first.
 # Output: JSON {"parent": N, "child": N, "status": "linked" | "already-linked"}.
@@ -30,17 +30,18 @@ emit() {
     '{parent: $parent, child: $child, status: $status}'
 }
 
-# Read every page of the parent's sub-issues before deciding the link is absent.
-EXISTING=$(gh api --paginate "$BASE/$PARENT/sub_issues" --jq '.[].number')
-if grep -qx "$CHILD" <<<"$EXISTING"; then
-  emit already-linked
-  exit 0
-fi
-
 CHILD_ID=$(gh api "$BASE/$CHILD" --jq '.id')
 if [ -z "$CHILD_ID" ] || [ "$CHILD_ID" = "null" ]; then
   echo "Issue $CHILD not found in $OWNER/$NAME." >&2
   exit 1
+fi
+
+# Sub-issues may come from other repos, so match on id, not number. Read every
+# page of the parent's sub-issues before deciding the link is absent.
+EXISTING=$(gh api --paginate "$BASE/$PARENT/sub_issues" --jq '.[].id')
+if grep -qx "$CHILD_ID" <<<"$EXISTING"; then
+  emit already-linked
+  exit 0
 fi
 
 gh api --method POST "$BASE/$PARENT/sub_issues" -F sub_issue_id="$CHILD_ID" >/dev/null

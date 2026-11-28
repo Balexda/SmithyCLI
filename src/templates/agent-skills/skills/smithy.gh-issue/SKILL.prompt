@@ -196,8 +196,9 @@ Call `mcp__github__sub_issue_write` with `method: "add"`, `owner`, `repo`,
 child's numeric issue **id** — not its number. Read the id from
 `mcp__github__issue_read` (`method: "get"`) on the child. First call
 `issue_read` with `method: "get_sub_issues"` on the parent, reading every
-page; if the child is already listed, the link exists — count it as done and
-make no call.
+page; if an entry's `id` equals the child's id, the link exists — count it
+as done and make no call. Compare ids, not numbers: a sub-issue may belong to
+another repository.
 
 ### Script fallback
 

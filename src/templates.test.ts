@@ -2094,7 +2094,7 @@ describe('getComposedTemplates', () => {
         const op = section(skill.prompt, '## Operation: Link Sub-Issue', '## Operation: Link Blocked-By');
         expect(op, name).toContain('`mcp__github__sub_issue_write` with `method: "add"`');
         expect(op, name).toMatch(/`sub_issue_id` set to the\s+child's numeric issue \*\*id\*\* — not its number/);
-        expect(op, name).toMatch(/already listed, the link exists/);
+        expect(op, name).toMatch(/`id` equals the child's id, the link exists/);
         expect(op, name).toContain(`${scripts}link-sub-issue.sh <parent-number> <child-number>`);
         const script = skill.scripts.get('link-sub-issue.sh')!;
         expect(script).toContain('sub_issue_id="$CHILD_ID"');
@@ -2121,6 +2121,8 @@ describe('getComposedTemplates', () => {
         expect(orders, name).not.toContain('link-blocked-by.sh <child-number> <parent-number>');
         expect(orders, name).not.toMatch(/no extra step needed/);
         expect(orders, name).toContain('### Unlinked Pairs');
+        // Slice parents must come from the tasks file's own source spec.
+        expect(orders, name).toMatch(/accept a match only when its body's `Spec:` line\s+names this tasks file's source spec/);
       }
     });
 
