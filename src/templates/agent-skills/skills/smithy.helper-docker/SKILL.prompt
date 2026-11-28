@@ -35,8 +35,9 @@ timeout 300 docker compose build
 timeout 90 docker compose up --detach --wait --wait-timeout 60
 
 # Single run: a named container with no --rm, so Diagnose can still
-# inspect it after it exits. Capture the exit code.
-timeout 120 docker run --name forge-diag-<slug> <image> <command>
+# inspect it after it exits. --cidfile records the id this run created
+# (use a fresh path). Capture the exit code.
+timeout 120 docker run --name forge-diag-<slug> --cidfile <cidfile> <image> <command>
 echo "exit=$?"
 ```
 
@@ -77,9 +78,10 @@ docker compose ps
 docker compose logs --tail=200 <service>
 ```
 
-For a single run, `<name-or-id>` is the `forge-diag-<slug>` name you gave it.
-Once diagnostics are captured, remove that container with
-`docker rm forge-diag-<slug>`.
+For a single run, `<name-or-id>` is the id in `<cidfile>`. Once diagnostics
+are captured, remove that container with `docker rm "$(cat <cidfile>)"`. If
+`<cidfile>` is empty or missing, this run created no container — a
+`name already in use` failure goes to the ownership check below instead.
 
 Quick triage from the `.State` JSON returned by `docker inspect`:
 
@@ -104,10 +106,11 @@ After diagnostics, choose one path. **Never silently retry the same command.**
 - Stale container name (`name already in use`) → run the ownership check
   first: `docker inspect <name> | jq '.[0] | {State: .State.Status, Created, Labels: .Config.Labels}'`.
   Remove it with plain `docker rm <name>` and retry **once** only when it is
-  not running **and** is evidently this run's leftover — it carries this
-  compose project's `com.docker.compose.project` label, or was created
-  earlier in this session. Otherwise stop and report its name, state, and
-  labels to the user; it may be someone else's work.
+  not running **and** its id is one this run recorded when creating it (a
+  `<cidfile>`, or `docker compose ps -q` captured after this run's `up`). A
+  project label or a recent creation time does not prove that. Otherwise
+  stop and report its name, state, and labels to the user; it may be
+  someone else's work.
 - Missing image → `docker pull <image>` (with timeout), retry **once**.
 
 **Escalate to the user** when:

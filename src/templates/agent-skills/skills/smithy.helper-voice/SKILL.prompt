@@ -17,7 +17,7 @@ either of two modes:
   the taxonomy, fixes anti-patterns,
   suggests diagrams, and compresses dense Reference prose. Add or
   correct audience tags only when the file is a Smithy template that
-  declares section specs (§8). Return the original and the revised version side by
+  declares section specs, or the user asks for tags (§8). Return the original and the revised version side by
   side so a human can judge whether the new voice is an improvement —
   the side-by-side compare is the primary validation path.
 
@@ -188,7 +188,7 @@ writes, and `smithy.audit`'s voice-tag lint checks each carried tag
 against its section body. An artifact with no tags is skipped.
 
 When reviewing, add or correct tags only in a Smithy template that
-declares section specs. A generated planning artifact already carries
+declares section specs, or where the user asks for them. A generated planning artifact already carries
 its tags from its command.
 
 **For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,

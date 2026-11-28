@@ -40,7 +40,7 @@ child Reference section, not in the Motivation.
 voice spec, carried under each heading as the generating command
 writes it:
 
-```
+````
 ## Goals
 <!-- audience: reviewer; mode: explanation; length: 1-2 paragraphs; diagram: optional; examples: discouraged -->
 
@@ -56,7 +56,11 @@ stable enough to wire into CI.
 | `kind`  | The node's kind |
 | `state` | The node's state |
 | `path`  | The node's path |
+
+```json
+{ "nodes": [ { "id": "<id>", "kind": "<kind>", "state": "<state>", "path": "<path>" } ] }
 ```
+````
 
 ## (c) Dense-prose `.contracts.md` that should have been signatures or N/A
 

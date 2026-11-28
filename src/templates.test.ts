@@ -2378,9 +2378,10 @@ describe('getComposedTemplates', () => {
       expect(runLine).toContain('--name ');
       expect(runLine).not.toContain('--rm');
       expect(body).not.toMatch(/docker rm -f/);
+      expect(body).toMatch(/A\s+project label or a recent creation time does not prove that/);
+      expect(runLine).toContain('--cidfile');
       expect(body).toMatch(/run the ownership check/);
-      expect(body).toMatch(/com\.docker\.compose\.project/);
-      expect(body).toMatch(/Otherwise stop and report its name, state, and\s+labels/);
+      expect(body).toMatch(/Otherwise\s+stop and report its name, state, and labels/);
     }
   });
 
@@ -2609,7 +2610,7 @@ describe('getComposedTemplates', () => {
       expect(section8).toMatch(/voice-tag lint checks each carried tag/);
       expect(section8).not.toMatch(/not inline in every/);
       const reviewBullet = body.split('- **Review / cleanup mode**')[1]!.split('\n\n')[0]!;
-      expect(reviewBullet).toMatch(/Add or\s+correct audience tags only when the file is a Smithy template that\s+declares section specs \(§8\)/);
+      expect(reviewBullet).toMatch(/Add or\s+correct audience tags only when the file is a Smithy template that\s+declares section specs, or the user asks for tags \(§8\)/);
     }
   });
 
