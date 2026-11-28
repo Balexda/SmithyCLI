@@ -131,7 +131,8 @@ The CLI's text renderer is authoritative.
    completion questions ("is X complete?"), counts read from a named
    tasks file ("how many slices are in <tasks file>?"), and "show me
    everything". When the question names one slice or row ("is S1
-   complete?"), add `--all` too: only `all` mode keeps done graph nodes.
+   complete?"), run with `--all` and without `--pending` (the CLI rejects the pair):
+   only `all` mode keeps done graph nodes.
 
 2. Parse the JSON. The payload follows the `StatusJsonPayload` contract that
    `smithy status --format json` emits:

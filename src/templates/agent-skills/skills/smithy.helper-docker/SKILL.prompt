@@ -80,8 +80,9 @@ docker compose logs --tail=200 <service>
 
 For a single run, `<name-or-id>` is the id in `<cidfile>`. Once diagnostics
 are captured, remove that container with `docker rm "$(cat <cidfile>)"`. If
-`<cidfile>` is empty or missing, this run created no container — a
-`name already in use` failure goes to the ownership check below instead.
+`<cidfile>` is empty or missing, ownership is unknown — docker can create the
+container and still fail to write the file — so remove nothing and use the
+ownership check below.
 
 Quick triage from the `.State` JSON returned by `docker inspect`:
 
