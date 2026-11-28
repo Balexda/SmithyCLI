@@ -51,16 +51,16 @@ to be deployed in the `.gemini/skills/` directory.{{/ifAgent}}
 to be deployed in the `.agents/skills/` directory.{{/ifAgent}}
 
 Then run the skill's **Validate Environment** operation to resolve
-`owner` / `repo` / `ownerRepo`.
-
-On the MCP path this is a single `git config --get remote.origin.url` read,
-parsed per the skill — no `gh` involved. On the fallback path it is:
+`owner` / `repo` / `ownerRepo` once, from a single
+`git config --get remote.origin.url` read parsed per the skill — no `gh`
+involved. Pass that same `ownerRepo` to every script below. On the fallback
+path, also confirm `gh` can reach it:
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}} <ownerRepo>
 ```
 
-Capture the resolved `ownerRepo` for use in the summary. Stop only when
+Capture the resolved `ownerRepo` for every later script call and the summary. Stop only when
 **neither** path resolves the repo — a `check-env.sh` failure reporting that
 `gh` is missing is not a stop condition if the GitHub MCP tools are available;
 switch to the MCP path and carry on. When both paths are unavailable, surface
@@ -266,7 +266,7 @@ Parse the tasks file to extract:
 For each ticket you plan to create, search for existing matches by title:
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} all "<title keywords>" 5
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <ownerRepo> all "<title keywords>" 5
 ```
 
 If matches are found:
@@ -326,7 +326,7 @@ write the result to `/tmp/orders_body.md`, then create the issue:
 ```
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC] <rfc-title>" /tmp/orders_body.md
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "[RFC] <rfc-title>" /tmp/orders_body.md
 ```
 
 **Children**: one issue per milestone, linked to the parent in Phase 6.
@@ -395,7 +395,7 @@ For **each** milestone extracted in Phase 3, perform the following steps:
    `/tmp/orders_body.md` and then call:
 
    ```bash
-   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "[RFC][Milestone] <milestone-title>" /tmp/orders_body.md
    ```
 
 **Built-in default body.** Loaded by step 2 when
@@ -431,7 +431,7 @@ Run `\{{next_step}}` to produce a feature map for this milestone.
 disambiguate across RFCs. Use both the RFC title and milestone title in the search:
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} open "[RFC][Milestone] <milestone-title> in:title" 10
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <ownerRepo> open "[RFC][Milestone] <milestone-title> in:title" 10
 ```
 
 Verify the match by checking that the issue body references the same source RFC
@@ -489,7 +489,7 @@ For **each** feature extracted in Phase 3, perform the following steps:
    `/tmp/orders_body.md` and then call:
 
    ```bash
-   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Feature] <feature-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "[Feature] <feature-title>" /tmp/orders_body.md
    ```
 
 **Built-in default body.** Loaded by step 2 when
@@ -580,7 +580,7 @@ For **each** user story extracted in Phase 3, perform the following steps:
    `/tmp/orders_body.md` and then call:
 
    ```bash
-   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Story] <story-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "[Story] <story-title>" /tmp/orders_body.md
    ```
 
 **Built-in default body.** Loaded by step 2 when
@@ -618,7 +618,7 @@ matches this tasks file's story number (`<NN>` from the filename
 using the same `[Story]` title prefix:
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} open "[Story] <story-title>" 10
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <ownerRepo> open "[Story] <story-title>" 10
 ```
 
 Match by story title (the `<story-title>` from `### User Story N: <Title>` —
@@ -683,7 +683,7 @@ For **each** slice extracted in Phase 3, perform the following steps:
    `/tmp/orders_body.md` and then call:
 
    ```bash
-   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "[Slice] <slice-title>" /tmp/orders_body.md
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "[Slice] <slice-title>" /tmp/orders_body.md
    ```
 
 **Built-in default body.** Loaded by step 2 when
@@ -727,7 +727,7 @@ link, so every artifact type needs this step.
    to; report it.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <parent-number> <child-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <ownerRepo> <parent-number> <child-number>
 ```
 
 2. **Sibling → sibling: Link Blocked-By, only for `Depends On`.** For each
@@ -737,7 +737,7 @@ link, so every artifact type needs this step.
    is never linked as blocked by its parent.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <dependent-number> <dependency-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <ownerRepo> <dependent-number> <dependency-number>
 ```
 
 Link Blocked-By has **no MCP path** — GitHub's MCP server exposes no

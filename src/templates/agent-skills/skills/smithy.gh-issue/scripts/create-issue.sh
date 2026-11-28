@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# create-issue.sh — Create a GitHub issue in the current repo from a body file.
+# create-issue.sh — Create a GitHub issue in one repository from a body file.
 #
-# Usage: ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh <title> <body-file>
+# Usage: ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh <ownerRepo> <title> <body-file>
 #
-# Write the body to a temp file with a heredoc before calling, to avoid quoting
-# issues with markdown content:
+# ownerRepo is owner/repo, resolved once by the caller. Write the body to a
+# temp file with your file-writing tool (not a shell heredoc) before calling:
 #
-#   cat > /tmp/smithy_issue_body.md << 'BODY'
-#   ## My Issue
-#   ...
-#   BODY
-#   ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh "[Story] My Title" /tmp/smithy_issue_body.md
+#   ${CLAUDE_SKILL_DIR}/scripts/create-issue.sh acme/widgets "[Story] My Title" /tmp/smithy_issue_body.md
 #
 # Output: JSON {"number": N, "url": "https://github.com/owner/repo/issues/N"}.
 
 set -euo pipefail
 
-TITLE="${1:?title required}"
-BODY_FILE="${2:?body file path required}"
+OWNER_REPO="${1:?ownerRepo (owner/repo) required}"
+if ! [[ "$OWNER_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+  echo "ownerRepo must look like owner/repo (got: $OWNER_REPO)." >&2
+  exit 1
+fi
+TITLE="${2:?title required}"
+BODY_FILE="${3:?body file path required}"
 
 if [ ! -f "$BODY_FILE" ]; then
   echo "Body file not found: $BODY_FILE" >&2
@@ -32,7 +33,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-URL=$(gh issue create --title "$TITLE" --body-file "$BODY_FILE")
+URL=$(gh issue create -R "$OWNER_REPO" --title "$TITLE" --body-file "$BODY_FILE")
 URL="${URL//[$'\t\r\n ']/}"
 NUMBER="${URL##*/}"
 
