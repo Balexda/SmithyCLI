@@ -569,12 +569,12 @@ export const extraPermissions: string[] = [
   // The gh-issue scripts are the issue-creation path for `smithy.orders` and
   // `smithy.engrave`. Without these, every non-MCP host prompts once per
   // issue — which, on an orders run over a feature map, is once per feature.
-  ".claude/skills/smithy.gh-issue/scripts/check-env.sh",
+  ".claude/skills/smithy.gh-issue/scripts/check-env.sh *",
   ".claude/skills/smithy.gh-issue/scripts/search-issues.sh *",
   ".claude/skills/smithy.gh-issue/scripts/create-issue.sh *",
   ".claude/skills/smithy.gh-issue/scripts/link-blocked-by.sh *",
   ".claude/skills/smithy.gh-issue/scripts/link-sub-issue.sh *",
-  "*/smithy.gh-issue/scripts/check-env.sh",
+  "*/smithy.gh-issue/scripts/check-env.sh *",
   "*/smithy.gh-issue/scripts/search-issues.sh *",
   "*/smithy.gh-issue/scripts/create-issue.sh *",
   "*/smithy.gh-issue/scripts/link-blocked-by.sh *",
@@ -722,9 +722,10 @@ export const denyPermissions: string[] = [
  * check + the smithy.pr-review skill's Find Open PR operation),
  * `pull_request_read` (smithy.pr-review's List PR Comments operation),
  * `add_reply_to_pull_request_comment` (smithy.pr-review's Reply to an
- * Inline Comment operation), and `issue_write` (the example tool the
- * `guidance-shell` snippet calls out for issue creation, also used by
- * smithy.pr-review's Reply to Conversation Comment operation).
+ * Inline Comment operation), `add_issue_comment` (its Reply to Conversation
+ * Comment operation), `get_me` (the viewer its List PR Comments filter reads),
+ * and `issue_write` (the example tool the `guidance-shell` snippet calls out
+ * for issue creation).
  *
  * Anything broader — destructive operations like `merge_pull_request` /
  * `delete_file` / `fork_repository` / `create_repository` /
@@ -773,6 +774,8 @@ export const claudeToolPermissions: string[] = [
   "mcp__github__list_pull_requests",
   "mcp__github__pull_request_read",
   "mcp__github__add_reply_to_pull_request_comment",
+  "mcp__github__add_issue_comment",
+  "mcp__github__get_me",
   "mcp__github__issue_write",
   "mcp__github__search_issues",
   "mcp__github__issue_read",

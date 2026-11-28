@@ -3,7 +3,7 @@ id: INV-6
 kind: invariant
 domain: system
 title: "Git and GitHub side effects are idempotent and complete"
-status: drifting
+status: aligned
 topics: [git-side-effects, github-operations, idempotency, retries, pagination, repo-identity, git-branching, template-authoring]
 scope: [src/templates/agent-skills/commands/**, src/templates/agent-skills/skills/**, src/templates/agent-skills/snippets/**]
 applies_to: [deployed commands, smithy.gh-issue, smithy.pr-review, pull requests, issues, branches]
@@ -31,11 +31,7 @@ done (D-8, D-7).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `skills/smithy.pr-review/scripts/get-comments.sh` | Reads one page of threads and of replies | Temporary: paginate both | #652 | medium |
-| `skills/smithy.pr-review` (handled filter) | A handled thread is decided by `isResolved`, with no marker | Temporary: filter on the response marker | #652 | medium |
-| `skills/smithy.pr-review/scripts/find-pr.sh`; `skills/smithy.gh-issue` scripts | Repo identity is resolved more than once | Temporary: resolve `ownerRepo` once and pass it | #652 | medium |
-| `skills/smithy.gh-issue`, `skills/smithy.pr-review` (path selection) | A connection error triggers the fallback without checking whether the write landed | Temporary: check before falling back | #652 | medium |
-| `skills/smithy.pr-review` (MCP path) | Skips conversation comments and replies with the wrong tool | Temporary: complete the MCP path | #652 | medium |
+| — | — | — | — | — |
 
 ## Citations
 

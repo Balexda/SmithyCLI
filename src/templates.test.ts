@@ -109,7 +109,7 @@ describe('resolveSnippets', () => {
 describe('loadSnippets', () => {
   it('loads all snippet files', () => {
     const snippets = loadSnippets();
-    expect(snippets.size).toBe(56);
+    expect(snippets.size).toBe(58);
 
     const expectedFiles = [
       'audit-checklist-rfc.md',
@@ -134,6 +134,8 @@ describe('loadSnippets', () => {
       'review-protocol.md',
       'one-shot-output.md',
       'pr-create-tool-choice.md',
+      'github-origin-remote.md',
+      'github-write-retry.md',
       'branch-policy.md',
       'default-branch.md',
       'feature-kinds.md',
@@ -1409,7 +1411,8 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('mcp__github__list_pull_requests');
     expect(skill.prompt).toContain('mcp__github__pull_request_read');
     expect(skill.prompt).toContain('mcp__github__add_reply_to_pull_request_comment');
-    expect(skill.prompt).toContain('mcp__github__issue_write');
+    expect(skill.prompt).toContain('mcp__github__add_issue_comment');
+    expect(skill.prompt).toContain('mcp__github__get_me');
     // gh-CLI script fallback. `${CLAUDE_SKILL_DIR}` is expanded by Claude
     // Code in the rule and in the body that names the script, so the grant
     // matches the exact command the skill tells the agent to run; the
@@ -1826,7 +1829,7 @@ describe('getComposedTemplates', () => {
     expect(script).toContain('gh api graphql');
     expect(script).toContain('reviewThreads');
     expect(script).toContain('viewer { login }');
-    expect(script).toContain('comments(last: 100)');
+    expect(script).toContain('pageInfo { hasNextPage endCursor }');
     expect(script).toContain('conversation_comment');
     expect(script).toContain('smithy-pr-review-response-to:');
     expect(script).toContain('isResolved');
@@ -1838,7 +1841,7 @@ describe('getComposedTemplates', () => {
     const script = skill.scripts.get('add-comment.sh')!;
     expect(script).toContain('repos/$REPO/issues/$PR/comments');
     expect(script).toContain('--method POST');
-    expect(script).toContain('--input "$BODY_FILE"');
+    expect(script).toContain('-f body="$(cat "$BODY_FILE")"');
   });
 
   it('reply-comment.sh uses correct REST API path with pr number', () => {
@@ -1846,7 +1849,8 @@ describe('getComposedTemplates', () => {
     const script = skill.scripts.get('reply-comment.sh')!;
     expect(script).toContain('repos/$REPO/pulls/$PR/comments/$COMMENT_ID/replies');
     expect(script).toContain('--method POST');
-    expect(script).toContain('--input "$BODY_FILE"');
+    expect(script).toContain('-f body="$BODY"');
+    expect(script).toContain('smithy-pr-review-response-to:$COMMENT_ID');
   });
 
   it('skills map includes smithy.gh-issue with the five expected scripts', () => {
@@ -1865,7 +1869,7 @@ describe('getComposedTemplates', () => {
     const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     expect(skill.prompt).toMatch(/^---\s*\n/);
     expect(skill.prompt).toContain('name: smithy.gh-issue');
-    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *)');
@@ -1893,7 +1897,7 @@ describe('getComposedTemplates', () => {
   it('create-issue.sh writes via --body-file and emits JSON with number', () => {
     const skill = claudeComposed.skills.get('smithy.gh-issue')!;
     const script = skill.scripts.get('create-issue.sh')!;
-    expect(script).toContain('gh issue create --title "$TITLE" --body-file "$BODY_FILE"');
+    expect(script).toContain('gh issue create -R "$OWNER_REPO" --title "$TITLE" --body-file "$BODY_FILE"');
     expect(script).toContain('jq -n');
     expect(script).toContain('number: $number');
   });
@@ -2076,6 +2080,75 @@ describe('getComposedTemplates', () => {
     expect(orders).not.toContain('./.gemini/skills/smithy.gh-issue');
   });
 
+  describe('GitHub skills resolve the repository once and retry writes safely', () => {
+    const rendered = () => [
+      ['claude', claudeComposed],
+      ['codex', codexComposed],
+    ] as const;
+    const body = (c: ComposedTemplates, skill: string) => c.skills.get(skill)!.prompt;
+
+    it('each skill reads the origin remote once and no script derives the repository itself', () => {
+      for (const [name, c] of rendered()) {
+        for (const skill of ['smithy.gh-issue', 'smithy.pr-review']) {
+          const prompt = body(c, skill);
+          if (skill === 'smithy.pr-review' && name === 'codex') continue; // the Codex app path takes repo_full_name
+          expect(prompt.match(/^git config --get remote\.origin\.url$/gm), `${name} ${skill}`).toHaveLength(1);
+          expect(prompt, `${name} ${skill}`).toContain('Pass this one value to every later operation, on either path.');
+          for (const [file, script] of c.skills.get(skill)!.scripts) {
+            expect(script, `${skill}/${file}`).not.toMatch(/gh repo view --json/);
+          }
+        }
+      }
+      // Every gh-issue script takes ownerRepo as its first argument and validates it.
+      for (const [file, script] of claudeComposed.skills.get('smithy.gh-issue')!.scripts) {
+        expect(script, file).toContain('OWNER_REPO="${1:?ownerRepo (owner/repo) required}"');
+        expect(script, file).toContain('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$');
+      }
+    });
+
+    it('both skills check an uncertain write before retrying it', () => {
+      for (const [name, c] of rendered()) {
+        for (const skill of ['smithy.gh-issue', 'smithy.pr-review']) {
+          const prompt = body(c, skill);
+          const selection = prompt.slice(prompt.indexOf('## Path Selection'), prompt.indexOf('## Operation:'));
+          expect(selection, `${name} ${skill}`).toContain('When a call fails, decide by whether it ran.');
+          expect(selection, `${name} ${skill}`).toMatch(/A read-only operation may fall back at once/);
+          expect(selection, `${name} ${skill}`).toMatch(/Make the write only if that\s+check finds nothing/);
+        }
+      }
+    });
+
+    it('pr-review completes the MCP path and marks every reply', () => {
+      const claude = body(claudeComposed, 'smithy.pr-review');
+      expect(claude).not.toContain('issue_write');
+      expect(claude).toMatch(/^allowed-tools: .*mcp__github__get_me/m);
+      expect(claude).toMatch(/^allowed-tools: .*mcp__github__add_issue_comment/m);
+      const list = claude.slice(claude.indexOf('## Operation: List PR Comments'), claude.indexOf('### Script fallback', claude.indexOf('## Operation: List PR Comments')));
+      expect(list).toContain('Call `mcp__github__get_me` once');
+      expect(list).toContain('`method: "get_comments"`');
+      expect(list).toMatch(/increment `page` until a page returns\s+fewer than `perPage` comments/);
+      expect(list).toMatch(/never by who commented last/);
+      expect(list).toMatch(/An unmarked comment is kept whoever wrote it/);
+      expect(claude).toContain('Call `mcp__github__add_issue_comment` with:');
+
+      for (const [name, c] of rendered()) {
+        const prompt = body(c, 'smithy.pr-review');
+        const inline = prompt.slice(prompt.indexOf('## Operation: Reply to Inline Comment'), prompt.indexOf('### Script fallback', prompt.indexOf('## Operation: Reply to Inline Comment')));
+        expect(inline, name).toContain('<!-- smithy-pr-review-response-to:<rootDatabaseId> -->');
+        expect(body(c, 'smithy.pr-review'), name).not.toContain('issue_write');
+      }
+    });
+
+    it('neither skill writes a body file with an ungranted heredoc', () => {
+      for (const [name, c] of [...rendered(), ['gemini', geminiComposed] as const]) {
+        for (const skill of ['smithy.gh-issue', 'smithy.pr-review']) {
+          expect(body(c, skill), `${name} ${skill}`).not.toMatch(/cat > \/tmp|<< '?(EOF|BODY)/);
+          expect(body(c, skill), `${name} ${skill}`).toMatch(/with your\s+file-writing tool, not a\s+shell heredoc/);
+        }
+      }
+    });
+  });
+
   describe('orders links hierarchy as sub-issues and renders fallback bodies', () => {
     const variants = () => [
       ['claude', claudeComposed, '${CLAUDE_SKILL_DIR}/scripts/'],
@@ -2095,7 +2168,7 @@ describe('getComposedTemplates', () => {
         expect(op, name).toContain('`mcp__github__sub_issue_write` with `method: "add"`');
         expect(op, name).toMatch(/`sub_issue_id` set to the\s+child's numeric issue \*\*id\*\* — not its number/);
         expect(op, name).toMatch(/`id` equals the child's id, the link exists/);
-        expect(op, name).toContain(`${scripts}link-sub-issue.sh <parent-number> <child-number>`);
+        expect(op, name).toContain(`${scripts}link-sub-issue.sh <ownerRepo> <parent-number> <child-number>`);
         const script = skill.scripts.get('link-sub-issue.sh')!;
         expect(script).toContain('sub_issue_id="$CHILD_ID"');
         expect(script).toContain('--paginate');
@@ -2112,9 +2185,9 @@ describe('getComposedTemplates', () => {
         const orders = c.commands.get('smithy.orders.md')!;
         const phase6 = section(orders, '## Phase 6: Parent-Child Linking', '## Phase 7');
         expect(phase6, name).toContain('**Parent → child: Link Sub-Issue.**');
-        expect(phase6, name).toContain(`${scripts}link-sub-issue.sh <parent-number> <child-number>`);
+        expect(phase6, name).toContain(`${scripts}link-sub-issue.sh <ownerRepo> <parent-number> <child-number>`);
         expect(phase6, name).toContain('**Sibling → sibling: Link Blocked-By, only for `Depends On`.**');
-        expect(phase6, name).toContain(`${scripts}link-blocked-by.sh <dependent-number> <dependency-number>`);
+        expect(phase6, name).toContain(`${scripts}link-blocked-by.sh <ownerRepo> <dependent-number> <dependency-number>`);
         expect(phase6, name).toMatch(/every pair left unlinked is listed in the Phase 7 summary/);
         // No sentence links a child as blocked by its parent.
         expect(orders, name).not.toMatch(/blocked-by` link from each child to its parent/);
@@ -6429,7 +6502,7 @@ describe('issue #554 — audit defects D1–D10', () => {
     expect(skill.prompt).toMatch(/\*\*Try MCP first\.\*\*/);
     expect(skill.prompt).toMatch(/\*\*Fall back to the script\*\*/);
     // The script fallbacks survive — MCP is preferred, not exclusive.
-    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)');
+    expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh *)');
     expect(skill.prompt).toContain('Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *)');
     expect(skill.scripts.size).toBe(5);
   });

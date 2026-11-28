@@ -710,9 +710,11 @@ export function snippetConsumers(source: TemplateSource = loadTemplateSource()):
   const consumers = new Map<string, Set<string>>();
   for (const name of snippetNames(source)) consumers.set(name, new Set());
   for (const t of source.templates) {
+    // A skill body is always `SKILL.prompt`, so it is named by its directory.
+    const file = path.basename(t.id) === 'SKILL.prompt' ? path.basename(path.dirname(t.id)) : path.basename(t.id);
     const label = t.category === 'snippets'
-      ? path.basename(t.id).replace(/\.md$/, '')
-      : path.basename(t.id).replace(/^smithy\./, '').replace(/\.prompt$/, '');
+      ? file.replace(/\.md$/, '')
+      : file.replace(/^smithy\./, '').replace(/\.prompt$/, '');
     for (const m of t.source.matchAll(/\{\{>\s*([\w-]+)\s*\}\}/g)) {
       consumers.get(m[1]!)?.add(label);
     }
