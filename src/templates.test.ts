@@ -2113,7 +2113,8 @@ describe('getComposedTemplates', () => {
           const selection = prompt.slice(prompt.indexOf('## Path Selection'), prompt.indexOf('## Operation:'));
           expect(selection, `${name} ${skill}`).toContain('When a call fails, decide by whether it ran.');
           expect(selection, `${name} ${skill}`).toMatch(/A read-only operation may fall back at once/);
-          expect(selection, `${name} ${skill}`).toMatch(/Make the write only if that\s+check finds nothing/);
+          expect(selection, `${name} ${skill}`).toMatch(/Make the write\s+only if that check finds nothing/);
+          expect(selection, `${name} ${skill}`).toMatch(/newer than the\s+comment it answers; an older marked reply does not count/);
         }
       }
     });

@@ -169,6 +169,15 @@ describe('pr-review scripts', () => {
       expect(conversation).toEqual([2, 4]);
     });
 
+    it('fails instead of looping when a page repeats its cursor', () => {
+      fixture('threads__first', threadsPage([], 'P2'));
+      fixture('threads__P2', threadsPage([], 'P2'));
+      const res = run('get-comments.sh', ['acme/widgets', '42']);
+      expect(res.status).not.toBe(0);
+      expect(res.stderr).toContain('did not advance');
+      expect(res.calls.filter(c => c.startsWith('api graphql'))).toHaveLength(2);
+    });
+
     it('rejects a malformed ownerRepo before calling gh', () => {
       const res = run('get-comments.sh', ['acme', '42']);
       expect(res.status).not.toBe(0);

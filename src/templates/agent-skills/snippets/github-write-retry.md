@@ -7,5 +7,6 @@
   already have landed, so before retrying it on either path, look for what it
   would have made: the issue (search for its exact title), the link (read the
   parent's sub-issues or the issue's blockers), or the reply (list the
-  comments and look for its response marker). Make the write only if that
-  check finds nothing.
+  comments for one carrying its response marker that is newer than the
+  comment it answers; an older marked reply does not count). Make the write
+  only if that check finds nothing.

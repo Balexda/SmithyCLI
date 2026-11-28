@@ -33,7 +33,7 @@ done
 if [ "$method" = "POST" ]; then echo '{}'; exit 0; fi
 fixture="$STUB_FIXTURES/$(echo "$endpoint" | tr '/' '_').json"
 [ -f "$fixture" ] || { echo "HTTP 404: Not Found ($endpoint)" >&2; exit 1; }
-jq -r "$jq_filter" "$fixture"
+jq -r "\${jq_filter:-.}" "$fixture"
 `;
 
 describe('gh-issue scripts', () => {

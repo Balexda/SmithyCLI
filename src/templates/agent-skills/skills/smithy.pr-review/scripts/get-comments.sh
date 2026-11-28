@@ -89,6 +89,16 @@ query(\$owner: String!, \$name: String!, \$pr: Int!, \$after: String) {
   }
 }"
 
+# next_cursor <previous> <new>: fail rather than loop or return a partial
+# listing when a page says there is more but its cursor does not advance.
+next_cursor() {
+  if [ -z "$2" ] || [ "$2" = "null" ] || [ "$2" = "$1" ]; then
+    echo "Pagination cursor did not advance (after: ${1:-<start>}); refusing a partial listing." >&2
+    exit 1
+  fi
+  printf '%s' "$2"
+}
+
 # page_all <file> <connection-jq-path> <gh args...>: read a connection to its
 # last page, appending each page's nodes as one JSON line to <file>.
 # The first page's raw response is kept in <file>.first.
@@ -105,7 +115,7 @@ page_all() {
     fi
     jq -c "$conn.nodes" <<<"$page" >> "$out"
     [ "$(jq -r "$conn.pageInfo.hasNextPage" <<<"$page")" = "true" ] || break
-    after=$(jq -r "$conn.pageInfo.endCursor" <<<"$page")
+    after=$(next_cursor "$after" "$(jq -r "$conn.pageInfo.endCursor" <<<"$page")")
   done
 }
 
@@ -127,7 +137,7 @@ jq -c '.[] | select(.comments.pageInfo.hasNextPage)' "$WORK/threads" | while IFS
       "$WORK/thread" > "$WORK/thread.next"
     mv "$WORK/thread.next" "$WORK/thread"
     [ "$(jq -r '.data.node.comments.pageInfo.hasNextPage' "$WORK/page")" = "true" ] || break
-    cursor=$(jq -r '.data.node.comments.pageInfo.endCursor' "$WORK/page")
+    cursor=$(next_cursor "$cursor" "$(jq -r '.data.node.comments.pageInfo.endCursor' "$WORK/page")")
   done
   cat "$WORK/thread" >> "$WORK/complete"
 done
