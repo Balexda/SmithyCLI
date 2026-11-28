@@ -1387,6 +1387,17 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toContain('allowed-tools: Bash(smithy status *)');
   });
 
+  it('smithy.status drops --pending for completion questions and named-tasks-file counts', () => {
+    for (const c of [claudeComposed, codexComposed]) {
+      const body = c.skills.get('smithy.status')!.prompt;
+      const rule = body.split('Drop `--pending`')[1]!.split('\n\n')[0]!;
+      expect(rule).toMatch(/completion questions \("is X complete\?"\)/);
+      expect(rule).toMatch(/counts read from a named\s+tasks file/);
+      expect(rule).not.toContain('how many tasks are done');
+      expect(body).toMatch(/Run without\s+`--pending` for this question, because a finished tasks file has no\s+record under `--pending`/);
+    }
+  });
+
   it('smithy.pr-review prompt retains frontmatter including allowed-tools', () => {
     // Frontmatter is kept at deploy time so Claude Code can read allowed-tools from SKILL.md
     const skill = claudeComposed.skills.get('smithy.pr-review')!;
@@ -2356,6 +2367,23 @@ describe('getComposedTemplates', () => {
     expect(rfcBlock).toMatch(/###\s+Milestone\s+N/i);
   });
 
+  it('smithy.helper-docker bounds every compose step, keeps the diagnosed container, and removes only its own', async () => {
+    for (const variant of ['claude', 'codex']) {
+      const body = (await getComposedTemplates(variant)).skills.get('smithy.helper-docker')!.prompt;
+      const composeLines = body.split('\n').filter((l) => /^\s*(timeout \d+ )?docker compose (pull|build|up)\b/.test(l));
+      expect(composeLines.length, variant).toBeGreaterThanOrEqual(3);
+      for (const line of composeLines) expect(line, variant).toMatch(/^\s*timeout \d+ docker compose/);
+      expect(body).toMatch(/\| `docker compose build` \|/);
+      const runLine = body.split('\n').find((l) => /docker run /.test(l) && /timeout/.test(l))!;
+      expect(runLine).toContain('--name ');
+      expect(runLine).not.toContain('--rm');
+      expect(body).not.toMatch(/docker rm -f/);
+      expect(body).toMatch(/run the ownership check/);
+      expect(body).toMatch(/com\.docker\.compose\.project/);
+      expect(body).toMatch(/Otherwise stop and report its name, state, and\s+labels/);
+    }
+  });
+
   it('smithy.helper-docker is body-only (no scripts) with frontmatter retained', () => {
     const skill = composed.skills.get('smithy.helper-docker');
     expect(skill).toBeDefined();
@@ -2542,29 +2570,57 @@ describe('getComposedTemplates', () => {
     expect(skill.prompt).toMatch(/N\/A —/);
   });
 
-  it('keeps the voice-tag examples enum and shipped lint wording aligned', () => {
-    const skill = composed.skills.get('smithy.helper-voice')!;
-    const skillSection = skill.prompt.split('## 8. Audience tag grammar')[1]?.split('\n## ')[0] ?? '';
-    const readme = fs.readFileSync(path.join(agentSkillsDir, 'README.md'), 'utf8');
-    const convention = readme.split('## Voice and Audience Tagging Convention')[1]?.split('\n## Feature Kinds')[0] ?? '';
-    const grammar = skill.resources.get('references/audience-tags.md')!.toString();
-    const audit = composed.commands.get('smithy.audit.md')!;
-    const checklist = audit.split('Voice & Audience Tag Lint')[1] ?? '';
-    const examples = ['required', 'recommended', 'discouraged', 'optional', 'forbidden'];
+  it('gives the voice-tag grammar one home, composed by the skill reference and the audit lint', async () => {
+    const snippetBody = loadSnippets().get('voice-tag-grammar.md')!;
+    const grammarLine = snippetBody.match(/examples: <([^>]+)>/)?.[1]?.split('|');
+    expect(grammarLine).toEqual(['required', 'recommended', 'discouraged', 'optional', 'forbidden']);
+    expect(snippetBody).toContain('`optional` imposes no example constraint');
+    const keysRow = snippetBody.match(/^\| `examples` \|[^\n]*/m)?.[0] ?? '';
+    expect(keysRow).toContain('`optional`');
 
-    for (const surface of [skillSection, grammar, convention, checklist]) {
-      expect(surface.match(/examples: <([^>]+)>/)?.[1]?.split('|')).toEqual(examples);
-      expect(surface).toContain('`optional` imposes no example constraint');
+    for (const variant of ['claude', 'codex']) {
+      const c = await getComposedTemplates(variant);
+      const reference = c.skills.get('smithy.helper-voice')!.resources.get('references/audience-tags.md')!.toString();
+      const checklist = c.commands.get('smithy.audit.md')!
+        .split('Voice & Audience Tag Lint')[1]!;
+      for (const surface of [reference, checklist]) {
+        expect(surface, variant).toContain(snippetBody.trim());
+      }
+      // The skill body points at the reference rather than carrying an enum copy.
+      const section8 = c.skills.get('smithy.helper-voice')!.prompt
+        .split('## 8. Audience tag grammar')[1]!.split('\n## ')[0]!;
+      expect(section8).not.toMatch(/examples: <required\|/);
+      expect(section8).toContain('(references/audience-tags.md)');
     }
-    for (const surface of [grammar, convention, checklist]) {
-      const row = surface.match(/^(?:\| |- )`examples`[^.\n]*/m)?.[0] ?? '';
-      const values = [...row.matchAll(/`([a-z]+)`/g)].slice(1).map((match) => match[1]);
-      expect(values).toEqual(examples);
+
+    // The source-only README cites the snippet and keeps no copy of the enum.
+    const readme = fs.readFileSync(path.join(agentSkillsDir, 'README.md'), 'utf8');
+    const convention = readme.split('## Voice and Audience Tagging Convention')[1]!.split('\n## Feature Kinds')[0]!;
+    expect(convention).toContain('snippets/voice-tag-grammar.md');
+    expect(convention).not.toMatch(/examples: <required\|/);
+    expect(convention).not.toMatch(/^\| `examples` \|/m);
+  });
+
+  it('smithy.helper-voice says the generating command carries tags, and review mode tags only Smithy templates', async () => {
+    for (const variant of ['claude', 'codex']) {
+      const body = (await getComposedTemplates(variant)).skills.get('smithy.helper-voice')!.prompt;
+      const section8 = body.split('## 8. Audience tag grammar')[1]!.split('\n## ')[0]!;
+      expect(section8, variant).toMatch(/generating\s+command carries the tag under each `##` heading into the artifact/);
+      expect(section8).toMatch(/voice-tag lint checks each carried tag/);
+      expect(section8).not.toMatch(/not inline in every/);
+      const reviewBullet = body.split('- **Review / cleanup mode**')[1]!.split('\n\n')[0]!;
+      expect(reviewBullet).toMatch(/Add or\s+correct audience tags only when the file is a Smithy template that\s+declares section specs \(§8\)/);
     }
-    for (const surface of [skillSection, grammar, convention]) {
-      expect(surface).not.toMatch(/is wired through\s+it will/);
-      expect(surface).toMatch(/`smithy\.audit`[^.]*voice-tag lint/);
-    }
+  });
+
+  it('worked example (a) states its incident fact in the Before text, not only the After', () => {
+    const examples = composed.skills.get('smithy.helper-voice')!.resources.get('references/worked-examples.md')!.toString();
+    const exampleA = examples.split('## (a)')[1]!.split('\n## (b)')[0]!;
+    const before = exampleA.split('**Before**')[1]!.split('**After**')[0]!.replace(/\n> /g, ' ');
+    const after = exampleA.split('**After**')[1]!.replace(/\n> /g, ' ');
+    expect(after).toContain('three P1 incidents last quarter');
+    expect(before).toContain('three P1 incidents last quarter traced back to drift the manual process missed');
+    expect(before).toMatch(/Every new\s+service adds/);
   });
 
   it('smithy.helper-voice is provider-neutral (no Claude/Gemini/Codex syntax in the body)', () => {
