@@ -3,7 +3,7 @@ id: INV-8
 kind: invariant
 domain: system
 title: "Examples obey the contract they illustrate"
-status: drifting
+status: aligned
 topics: [worked-examples, sample-payloads, output-contracts, template-authoring]
 scope: [src/templates/agent-skills/**]
 applies_to: [deployed commands, sub-agents, skills, skill reference files, snippets]
@@ -27,7 +27,7 @@ teaches the defect (D-10).
 
 | Where | What diverges | Disposition + Why | Tracking Issue | Severity |
 |-------|---------------|-------------------|----------------|----------|
-| `skills/smithy.helper-voice/references/worked-examples.prompt` | The "after" text invents incidents | Temporary: use only facts from the "before" | #653 | low |
+| — | — | — | — | — |
 
 ## Citations
 

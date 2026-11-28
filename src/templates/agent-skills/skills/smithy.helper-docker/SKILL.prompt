@@ -28,11 +28,16 @@ attach an explicit timeout so a stuck container fails fast with a diagnostic
 signal.
 
 ```bash
-# Compose: --wait blocks until services are healthy; --wait-timeout caps it.
-docker compose up --detach --wait --wait-timeout 60
+# Compose: --wait-timeout caps only the readiness wait, not the pull or
+# build that runs first, so give each step its own external timeout.
+timeout 120 docker compose pull
+timeout 300 docker compose build
+timeout 90 docker compose up --detach --wait --wait-timeout 60
 
-# Single run with an external timeout and exit-code capture:
-timeout 60 docker run --rm <image> <command>
+# Single run: a named container with no --rm, so Diagnose can still
+# inspect it after it exits. --cidfile records the id this run created
+# (use a fresh path). Capture the exit code.
+timeout 120 docker run --name forge-diag-<slug> --cidfile <cidfile> <image> <command>
 echo "exit=$?"
 ```
 
@@ -40,8 +45,9 @@ Recommended budgets:
 
 | Operation | Default timeout |
 |-----------|-----------------|
-| `docker pull` | 120s (network-bound) |
-| `docker compose up --wait` | 60s |
+| `docker pull` / `docker compose pull` | 120s (network-bound) |
+| `docker compose build` | 300s |
+| `docker compose up --wait` | 60s readiness, 90s outer `timeout` |
 | Healthcheck-gated start | 90s |
 | Single `docker run` for tests | 120s |
 
@@ -72,6 +78,13 @@ docker compose ps
 docker compose logs --tail=200 <service>
 ```
 
+For a single run, `<name-or-id>` is the id in `<cidfile>`. Once diagnostics
+are captured, stop and remove that container: `docker stop "$(cat <cidfile>)"`,
+then `docker rm "$(cat <cidfile>)"`. If
+`<cidfile>` is empty or missing, ownership is unknown — docker can create the
+container and still fail to write the file — so remove nothing and use the
+ownership check below.
+
 Quick triage from the `.State` JSON returned by `docker inspect`:
 
 | Signal | Likely cause | Action |
@@ -92,7 +105,15 @@ After diagnostics, choose one path. **Never silently retry the same command.**
 **Recover** (only if the cause is mechanical and locally fixable):
 
 - Port conflict (`bind: address already in use`) → free the port or remap, retry **once**.
-- Stale container name (`name already in use`) → `docker rm -f <name>`, retry **once**.
+- Stale container name (`name already in use`) → run the ownership check
+  first: `docker inspect <name> | jq '.[0] | {State: .State.Status, Created, Labels: .Config.Labels}'`.
+  Remove it with plain `docker rm <name>` and retry **once** only when it is
+  not running **and** its id is one this run recorded when creating it (a
+  `<cidfile>`, or for compose an id absent from a `docker compose ps -aq`
+  list taken before this run's `up` — compose reuses existing containers). A
+  project label or a recent creation time does not prove that. Otherwise
+  stop and report its name, state, and labels to the user; it may be
+  someone else's work.
 - Missing image → `docker pull <image>` (with timeout), retry **once**.
 
 **Escalate to the user** when:

@@ -16,25 +16,9 @@ a finding.
 
 ### Tag grammar
 
-A voice tag is a single HTML comment on the first non-blank line beneath a
-`##` heading:
-
-```
-## <Section title>
 {{>voice-tag-grammar}}
-```
 
-Parse the comment body into `key: value` pairs split on `;`. Keys and values
-are case-sensitive and lowercase. Recognized keys and their value domains:
-
-| Key | Value domain | Notes |
-|-----|--------------|-------|
-| `audience` | `stakeholder`, `reviewer`, `builder` — optionally with a `+ai-input` suffix (e.g. `builder+ai-input`) | Fixed enum (base role). |
-| `mode` | `explanation`, `reference`, `how-to`, `tutorial` | Fixed enum. |
-| `length` | free-text budget (`2-3 sentences`, `3-6 paragraphs`, `tables only`, `5-15 steps`) | Not enum-checked; parsed for the length budget rule below. |
-| `diagram` | `required`, `recommended`, `optional` | Fixed enum. |
-| `examples` | `required`, `recommended`, `discouraged`, `optional`, `forbidden` | Fixed enum. `optional` imposes no example constraint. |
-| `applicability` | free-text condition (e.g. `code-shaped features only`) | Optional. Not enum-checked. Its presence licenses an `N/A` body (see below). |
+The `length` budget is parsed for the length rule below.
 
 ### Lint rules
 

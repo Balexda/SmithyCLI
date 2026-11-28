@@ -15,8 +15,9 @@ either of two modes:
 - **Review / cleanup mode** — given an existing artifact, an arbitrary
   file path, or pasted text, produce a revised version that applies
   the taxonomy, fixes anti-patterns,
-  suggests diagrams, compresses dense Reference prose, and inserts
-  audience tags. Return the original and the revised version side by
+  suggests diagrams, and compresses dense Reference prose. Add or
+  correct audience tags only when the file is a Smithy template that
+  declares section specs, or the user asks for tags (§8). Return the original and the revised version side by
   side so a human can judge whether the new voice is an improvement —
   the side-by-side compare is the primary validation path.
 
@@ -180,25 +181,23 @@ Each section's voice is described by a small set of keys: `audience`,
 `mode`, `length`, `diagram`, `examples`, and an optional
 `applicability`. **For Smithy planning artifacts** (`.rfc.md`,
 `.features.md`, `.spec.md`, `.tasks.md`, `.contracts.md`,
-`.data-model.md`), the spec for each section lives in the *template*
-used by the generating command (`smithy.ignite`, `smithy.render`,
-`smithy.mark`, `smithy.cut`) — not inline in every generated artifact.
-One source of truth, no per-file drift; the artifact itself stays
-clean prose. `smithy.audit`'s voice-tag lint checks only the inline
-voice tags an artifact carries; an artifact with no tags is skipped, not
-checked against these specs.
+`.data-model.md`, `.strike.md`), each section's spec is authored once,
+in the artifact skeleton the generating command emits. The generating
+command carries the tag under each `##` heading into the artifact it
+writes, and `smithy.audit`'s voice-tag lint checks each carried tag
+against its section body. An artifact with no tags is skipped.
+
+When reviewing, add or correct tags only in a Smithy template that
+declares section specs, or where the user asks for them. A generated planning artifact already carries
+its tags from its command.
 
 **For non-Smithy prose** (READMEs, ADRs, migration plans, runbooks,
 inline documentation), there is no template to inherit from. Use the
 taxonomy as authoring discipline — pick Role × Mode before drafting
-and stay in it — but do not litter the file with HTML-comment
-metadata unless the user explicitly asks for audience tags.
+and stay in it — but add no HTML-comment metadata unless the user
+explicitly asks for audience tags.
 
-The examples directive uses `examples: <required|recommended|discouraged|optional|forbidden>`.
-`optional` imposes no example constraint.
-
-The full tag syntax and a worked
-example — lives in
+The tag syntax, the keys and their values, and a worked example live in
 [`references/audience-tags.md`](references/audience-tags.md). Read it
 when you are writing or checking a tag; the policy above is all you need
 when you are only deciding whether a tag belongs at all.

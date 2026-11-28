@@ -12,7 +12,9 @@ want a pattern to match against; the rules themselves are in `SKILL.md`.
 > reconciliation script is written in bash and uses `jq` to diff the
 > JSON, which is brittle when fields are added. Specifically, the
 > `services.yaml` file has a `replicas` field that defaults to 1, but
-> some teams override it to 3 in their staging branch...
+> some teams override it to 3 in their staging branch... Every new
+> service adds another set of fields to diff, and three P1 incidents
+> last quarter traced back to drift the manual process missed.
 
 **After** — stays in Stakeholder×Explanation:
 
@@ -21,8 +23,9 @@ want a pattern to match against; the rules themselves are in `SKILL.md`.
 > new service multiplies the diff surface, and three P1 incidents last
 > quarter traced back to drift the manual process missed.
 
-The `jq` script and the `replicas` field belong in a child Reference
-section, not in the Motivation.
+The After adds no fact the Before lacks: it reorders, tightens, and
+leads with impact. The `jq` script and the `replicas` field belong in a
+child Reference section, not in the Motivation.
 
 ## (b) Commingled Requirements section
 
@@ -34,10 +37,10 @@ section, not in the Motivation.
 > stable before we wire status into CI.
 
 **After** — split into two sections, each governed by its own template
-voice spec (shown inline below for the reader's benefit; in real Smithy
-artifacts the specs live in the template, not in the rendered file):
+voice spec, carried under each heading as the generating command
+writes it:
 
-```
+````
 ## Goals
 <!-- audience: reviewer; mode: explanation; length: 1-2 paragraphs; diagram: optional; examples: discouraged -->
 
@@ -47,13 +50,17 @@ stable enough to wire into CI.
 ## Status JSON Schema
 <!-- audience: builder+ai-input; mode: reference; length: tables only; diagram: recommended; examples: required -->
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id`   | string | Canonical artifact ID |
-| `kind` | enum   | `rfc` \| `spec` \| `tasks` |
-| `state`| enum   | `pending` \| `done` |
-| `path` | string | Repo-relative path |
+| Field | Holds |
+|-------|-------|
+| `id`    | The node's identifier |
+| `kind`  | The node's kind |
+| `state` | The node's state |
+| `path`  | The node's path |
+
+```json
+{ "nodes": [ { "id": "<id>", "kind": "<kind>", "state": "<state>", "path": "<path>" } ] }
 ```
+````
 
 ## (c) Dense-prose `.contracts.md` that should have been signatures or N/A
 
@@ -69,8 +76,8 @@ stable enough to wire into CI.
 
 | Operation | Input | Output |
 |-----------|-------|--------|
-| draft  | section assignment, audience, length budget | prose |
-| review | existing artifact path                      | revised artifact + findings |
+| draft  | idea, target audience | prose |
+| review | existing artifact     | revised version |
 
 **After option 2** — mark `N/A` if no code-shaped contract:
 
