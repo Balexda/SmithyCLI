@@ -79,7 +79,8 @@ docker compose logs --tail=200 <service>
 ```
 
 For a single run, `<name-or-id>` is the id in `<cidfile>`. Once diagnostics
-are captured, remove that container with `docker rm "$(cat <cidfile>)"`. If
+are captured, stop and remove that container: `docker stop "$(cat <cidfile>)"`,
+then `docker rm "$(cat <cidfile>)"`. If
 `<cidfile>` is empty or missing, ownership is unknown — docker can create the
 container and still fail to write the file — so remove nothing and use the
 ownership check below.
@@ -108,7 +109,8 @@ After diagnostics, choose one path. **Never silently retry the same command.**
   first: `docker inspect <name> | jq '.[0] | {State: .State.Status, Created, Labels: .Config.Labels}'`.
   Remove it with plain `docker rm <name>` and retry **once** only when it is
   not running **and** its id is one this run recorded when creating it (a
-  `<cidfile>`, or `docker compose ps -q` captured after this run's `up`). A
+  `<cidfile>`, or for compose an id absent from a `docker compose ps -aq`
+  list taken before this run's `up` — compose reuses existing containers). A
   project label or a recent creation time does not prove that. Otherwise
   stop and report its name, state, and labels to the user; it may be
   someone else's work.

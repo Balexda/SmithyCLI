@@ -228,8 +228,8 @@ The CLI's text renderer is authoritative.
      ID that appears in `depends_on` but is *missing* from `graph.nodes`
      is already `done` (the serializer drops only done nodes from
      `nodes`, and the parser moves an id that never resolved out of
-     `depends_on` into `graph.dangling_refs`), so it does not block; in `all` mode you can confirm via
-     each referenced node's `status` field directly. (The
+     `depends_on` into `graph.dangling_refs`), so it does not block; in `all` mode count a dependency as
+     blocking only when its node's `status` is not `done`. (The
      `next_action.suppressed_by_ancestor` flag only marks suppression by
      a not-started ancestor in the rendered tree — it is not a
      dependency-blocked signal.)
