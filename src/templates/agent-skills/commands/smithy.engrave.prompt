@@ -602,7 +602,8 @@ Run this step only when adding a new `Temporary:` ledger row. Do not run it
 for `Accepted:` rows, existing rows, resolution, removal, or conversion of a
 `Temporary:` row to `Accepted:`.
 
-1. Load `Skill("smithy.gh-issue")`.
+1. Load `Skill("smithy.gh-issue")` and run its **Validate Environment**
+   operation once for the `ownerRepo` every later call takes.
 2. Build the issue title from the `What diverges` text. Keep it concise and
    action-oriented, for example: `Close invariant drift: <What diverges>`.
 3. Write the issue body to a temporary file using this template:
@@ -635,7 +636,7 @@ for `Accepted:` rows, existing rows, resolution, removal, or conversion of a
    installed, invoked for the current agent as:
 
    ```bash
-   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "<title>" <temporary-body-file>
+   {{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "<title>" <temporary-body-file>
    ```
 
 5. Capture the new issue's JSON `number` — from the MCP response, or by

@@ -197,11 +197,11 @@ describe('flattenPermissions', () => {
     // Without these, `smithy.orders` and `smithy.engrave` hit a permission
     // prompt per issue on any host that does not apply the skill's own
     // `allowed-tools` grant.
-    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/check-env.sh');
+    expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/check-env.sh *');
     expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/search-issues.sh *');
     expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/create-issue.sh *');
     expect(extraPermissions).toContain('.claude/skills/smithy.gh-issue/scripts/link-blocked-by.sh *');
-    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/check-env.sh');
+    expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/check-env.sh *');
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/search-issues.sh *');
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/create-issue.sh *');
     expect(extraPermissions).toContain('*/smithy.gh-issue/scripts/link-blocked-by.sh *');

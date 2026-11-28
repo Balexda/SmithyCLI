@@ -31,7 +31,7 @@ Three more documented properties the rules in `src/permissions.ts` depend on:
 - **A `*` spans anything, including `/` and spaces.** One wildcard can cover
   several arguments, so `Bash(git *)` matches `git log --oneline --all`.
 - **Wildcards work at any position**, not just the end: `Bash(* --version)`
-  and `Bash(*/smithy.gh-issue/scripts/check-env.sh)` are both real rules.
+  and `Bash(*/smithy.gh-issue/scripts/check-env.sh *)` are both real rules.
 - **Compound commands are matched per subcommand.** A rule matching
   `safe-cmd` does not approve `safe-cmd && rm -rf /`; each side of `&&`,
   `||`, `;`, `|`, `&`, and a newline must match on its own.
@@ -82,11 +82,11 @@ rules *and* in the skill body. Smithy uses that in both places at once, so the
 rule matches the exact command the body tells the agent to run:
 
 ```yaml
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/find-pr.sh)
 ```
 
 ```markdown
-Run `${CLAUDE_SKILL_DIR}/scripts/check-env.sh`.
+Run `${CLAUDE_SKILL_DIR}/scripts/find-pr.sh`.
 ```
 
 Settings-level rules get no such substitution, so the `extraPermissions`

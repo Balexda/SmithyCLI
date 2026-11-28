@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 # link-blocked-by.sh — Mark one issue as blocked-by another via GraphQL.
 #
-# Usage: ${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh <child-number> <blocker-number>
+# Usage: ${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh <ownerRepo> <child-number> <blocker-number>
 #
-# Looks up node IDs for both issues in the current repo, then posts an
-# addBlockedBy mutation. Output: JSON {"child": N, "blocker": N} on success.
+# Looks up node IDs for both issues in <ownerRepo> (owner/repo, resolved once
+# by the caller), then posts an addBlockedBy mutation. Output: JSON {"child": N, "blocker": N} on success.
 
 set -euo pipefail
 
-CHILD="${1:?child issue number required}"
-BLOCKER="${2:?blocker issue number required}"
+OWNER_REPO="${1:?ownerRepo (owner/repo) required}"
+if ! [[ "$OWNER_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+  echo "ownerRepo must look like owner/repo (got: $OWNER_REPO)." >&2
+  exit 1
+fi
+CHILD="${2:?child issue number required}"
+BLOCKER="${3:?blocker issue number required}"
 
 # Validate inputs are bare positive integers — leading '#', whitespace, or any
 # non-digit produces a confusing GraphQL Int coercion error or jq parse failure
@@ -21,9 +26,8 @@ for arg in "$CHILD" "$BLOCKER"; do
   fi
 done
 
-REPO_JSON=$(gh repo view --json owner,name)
-OWNER=$(echo "$REPO_JSON" | jq -r '.owner.login')
-NAME=$(echo "$REPO_JSON" | jq -r '.name')
+OWNER="${OWNER_REPO%%/*}"
+NAME="${OWNER_REPO##*/}"
 
 # Look up the GraphQL node ID for an issue number; emit a clear stderr error
 # if the issue does not exist in this repo (otherwise we'd pass null to the

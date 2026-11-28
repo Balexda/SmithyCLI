@@ -581,7 +581,7 @@ describe('buildClaudeAllowList', () => {
     expect(list).toContain('Bash(*/smithy.pr-review/scripts/add-comment.sh *)');
     // gh-issue got the same treatment in issue #559 — without it, every
     // orders/engrave issue call prompts on a non-MCP host.
-    expect(list).toContain('Bash(.claude/skills/smithy.gh-issue/scripts/check-env.sh)');
+    expect(list).toContain('Bash(.claude/skills/smithy.gh-issue/scripts/check-env.sh *)');
     expect(list).toContain('Bash(.claude/skills/smithy.gh-issue/scripts/create-issue.sh *)');
     expect(list).toContain('Bash(*/smithy.gh-issue/scripts/search-issues.sh *)');
     expect(list).toContain('Bash(*/smithy.gh-issue/scripts/link-blocked-by.sh *)');

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # link-sub-issue.sh — Add one issue as a sub-issue of another via REST.
 #
-# Usage: ${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh <parent-number> <child-number>
+# Usage: ${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh <ownerRepo> <parent-number> <child-number>
 #
+# ownerRepo is owner/repo, resolved once by the caller.
 # Idempotent: when the child (matched by id) is already a sub-issue of the parent, nothing is
 # written and the run still succeeds. The REST endpoint takes the child's
 # numeric issue id, not its number, so the script looks the id up first.
@@ -10,8 +11,13 @@
 
 set -euo pipefail
 
-PARENT="${1:?parent issue number required}"
-CHILD="${2:?child issue number required}"
+OWNER_REPO="${1:?ownerRepo (owner/repo) required}"
+if ! [[ "$OWNER_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+  echo "ownerRepo must look like owner/repo (got: $OWNER_REPO)." >&2
+  exit 1
+fi
+PARENT="${2:?parent issue number required}"
+CHILD="${3:?child issue number required}"
 
 for arg in "$PARENT" "$CHILD"; do
   if ! [[ "$arg" =~ ^[0-9]+$ ]]; then
@@ -20,10 +26,7 @@ for arg in "$PARENT" "$CHILD"; do
   fi
 done
 
-REPO_JSON=$(gh repo view --json owner,name)
-OWNER=$(echo "$REPO_JSON" | jq -r '.owner.login')
-NAME=$(echo "$REPO_JSON" | jq -r '.name')
-BASE="repos/$OWNER/$NAME/issues"
+BASE="repos/$OWNER_REPO/issues"
 
 emit() {
   jq -n --argjson parent "$PARENT" --argjson child "$CHILD" --arg status "$1" \
@@ -32,7 +35,7 @@ emit() {
 
 CHILD_ID=$(gh api "$BASE/$CHILD" --jq '.id')
 if [ -z "$CHILD_ID" ] || [ "$CHILD_ID" = "null" ]; then
-  echo "Issue $CHILD not found in $OWNER/$NAME." >&2
+  echo "Issue $CHILD not found in $OWNER_REPO." >&2
   exit 1
 fi
 

@@ -1,7 +1,7 @@
 ---
 name: smithy.gh-issue
 description: "GitHub issue operations: validate environment, search issues, create issues from a body file, and link sub-issue and blocked-by relationships. Use when an agent needs to read or create issues in the current repo."
-allowed-tools: Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh) Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh *) mcp__github__issue_write mcp__github__search_issues mcp__github__issue_read mcp__github__sub_issue_write
+allowed-tools: Bash(git config --get remote.origin.url) Bash(${CLAUDE_SKILL_DIR}/scripts/check-env.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/search-issues.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/create-issue.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh *) Bash(${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh *) mcp__github__issue_write mcp__github__search_issues mcp__github__issue_read mcp__github__sub_issue_write
 ---
 # smithy.gh-issue
 
@@ -29,15 +29,16 @@ relative path `./.gemini/skills/smithy.gh-issue/scripts/<script-name>`.{{/ifAgen
 
 | Operation | MCP-first path | Script fallback |
 |-----------|----------------|-----------------|
-| Validate Environment | `git config --get remote.origin.url` (no `gh` needed) | `check-env.sh` |
-| Search Issues | `mcp__github__search_issues` | `search-issues.sh <state> <query> [limit]` |
-| Create Issue | `mcp__github__issue_write` (`method: "create"`) | `create-issue.sh "<title>" <body-file>` |
-| Link Sub-Issue | `mcp__github__sub_issue_write` (`method: "add"`) | `link-sub-issue.sh <parent> <child>` |
-| Link Blocked-By | *(none — GitHub's MCP server exposes no `addBlockedBy` mutation)* | `link-blocked-by.sh <child> <blocker>` |
+| Validate Environment | `git config --get remote.origin.url` (no `gh` needed) | the same read, then `check-env.sh <ownerRepo>` |
+| Search Issues | `mcp__github__search_issues` | `search-issues.sh <ownerRepo> <state> <query> [limit]` |
+| Create Issue | `mcp__github__issue_write` (`method: "create"`) | `create-issue.sh <ownerRepo> "<title>" <body-file>` |
+| Link Sub-Issue | `mcp__github__sub_issue_write` (`method: "add"`) | `link-sub-issue.sh <ownerRepo> <parent> <child>` |
+| Link Blocked-By | *(none — GitHub's MCP server exposes no `addBlockedBy` mutation)* | `link-blocked-by.sh <ownerRepo> <child> <blocker>` |
 
 Each script is small and stable with a fixed set of `gh` calls (most use one;
-`link-blocked-by.sh` makes a few — repo lookup, two node-id lookups, then the
-mutation). The host's permission prompt sees one stable command per operation
+`link-blocked-by.sh` makes a few — two node-id lookups, then the mutation).
+Every script takes the `ownerRepo` Validate Environment resolved as its first
+argument and never looks the repository up itself. The host's permission prompt sees one stable command per operation
 instead of a long, ad-hoc `gh` invocation. This mirrors the
 `smithy.pr-review` pattern.
 
@@ -49,9 +50,11 @@ For each operation:
    use it. The MCP path is faster (no shell hop for Search Issues or Create
    Issue), avoids permission prompts, and works regardless of whether `gh` is
    installed.
-2. **Fall back to the script** if MCP is unavailable, returns a "tool not
-   found" / connection error, or the host clearly lacks the MCP server. The
-   scripts assume `gh` is on `PATH` and authenticated.
+2. **Fall back to the script** if MCP is unavailable or the host clearly
+   lacks the MCP server, and after a failed call as the rule below allows.
+   The scripts assume `gh` is on `PATH` and authenticated.
+
+{{>github-write-retry}}
 
 Decide path-by-path, not session-globally — some hosts may expose only a
 subset of the MCP tools. Never call `gh` ad-hoc for these operations; go
@@ -68,33 +71,18 @@ authenticated. Do not silently skip issue creation and report success.
 
 Resolves the `owner` / `repo` / `ownerRepo` values every other operation
 needs. Run this **once** at the start of any flow that will create or query
-issues.
+issues; both paths use the value it resolves.
 
-### MCP path
-
-Read the git origin remote — this needs no `gh` and no MCP call:
-
-```bash
-git config --get remote.origin.url
-```
-
-Parse the output:
-
-- `git@github.com:OWNER/REPO.git` → owner `OWNER`, repo `REPO`
-- `https://github.com/OWNER/REPO.git` → owner `OWNER`, repo `REPO`
-- `https://github.com/OWNER/REPO` (no `.git`) → owner `OWNER`, repo `REPO`
-
-Strip a trailing `.git` if present. `ownerRepo` is `<owner>/<repo>`. If the
-command returns nothing, there is no GitHub remote — stop and say so.
+{{>github-origin-remote}}
 
 ### Script fallback
 
-Verifies the `gh` CLI is installed and the current directory is a GitHub
-repo. Returns JSON with `owner`, `repo`, and `ownerRepo`. Exits non-zero with
-a friendly stderr message on failure.
+After resolving `ownerRepo` as above, verify the `gh` CLI is installed and can
+reach that repository. Returns JSON with `owner`, `repo`, and `ownerRepo`.
+Exits non-zero with a friendly stderr message on failure.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/check-env.sh{{/ifAgent}} <ownerRepo>
 ```
 
 ---
@@ -134,7 +122,7 @@ a duplicate.
 ### Script fallback
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <state> <search-query> [limit]
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/search-issues.sh{{/ifAgent}} <ownerRepo> <state> <search-query> [limit]
 ```
 
 - `state`: `open`, `closed`, or `all`.
@@ -161,21 +149,13 @@ parent/child linking and for the orders summary table.
 
 ### Script fallback
 
-Always write the body to a temp file first to avoid quoting problems with
-markdown.
-
-**Step 1 — write the body:**
-```bash
-cat > /tmp/smithy_issue_body.md << 'BODY'
-## Heading
-
-Body content with `code`, **bold**, etc.
-BODY
-```
+**Step 1 — write the body** to a temp file such as
+`/tmp/smithy_issue_body.md` with your file-writing tool, not a shell heredoc.
+A file avoids quoting problems with markdown.
 
 **Step 2 — create the issue:**
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} "<title>" /tmp/smithy_issue_body.md
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/create-issue.sh{{/ifAgent}} <ownerRepo> "<title>" /tmp/smithy_issue_body.md
 ```
 
 Output: JSON `{"number": N, "url": "..."}`. Clean up the temp body file after
@@ -203,7 +183,7 @@ another repository.
 ### Script fallback
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <parent-number> <child-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-sub-issue.sh{{/ifAgent}} <ownerRepo> <parent-number> <child-number>
 ```
 
 The script does the id lookup and the existing-link check itself. Output:
@@ -223,7 +203,7 @@ which is a different relationship, so do not substitute it). The script is
 the only path.
 
 ```bash
-{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <child-number> <blocker-number>
+{{#ifAgent 'claude'}}${CLAUDE_SKILL_DIR}/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'gemini'}}./.gemini/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}}{{#ifAgent 'codex'}}./.agents/skills/smithy.gh-issue/scripts/link-blocked-by.sh{{/ifAgent}} <ownerRepo> <child-number> <blocker-number>
 ```
 
 The script handles node-ID lookup and the mutation itself. Output: JSON

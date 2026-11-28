@@ -196,13 +196,7 @@ describe('template lint — no passage copied between templates', () => {
    * D-1). Each entry is one side of a copy and names the issue that extracts
    * it; the extraction deletes both sides' entries.
    */
-  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // The copy still on the tree from when the lint landed, one INV-1
-    // ledger row. #646.
-    // gh-issue and pr-review: parsing the origin remote into owner and repo.
-    ['skills/smithy.gh-issue/SKILL.prompt', /also in skills\/smithy\.pr-review\/SKILL\.prompt: git config --get remote\.origin\.url/],
-    ['skills/smithy.pr-review/SKILL.prompt', /also in skills\/smithy\.gh-issue\/SKILL\.prompt: git config --get remote\.origin\.url/],
-  ];
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [];
 
   const passage = [
     'When the reviewer returns a finding with no evidence, discard it and record why.',
@@ -456,13 +450,7 @@ describe('template lint — agent tool grants cover what the body invokes', () =
 });
 
 describe('template lint — skill grants cover what the body invokes (INV-3)', () => {
-  const ALLOWED: ReadonlyArray<[string, RegExp]> = [
-    // Both GitHub skills tell the agent to write its body file with a
-    // `cat > … << 'EOF'` heredoc that `allowed-tools` does not grant, so the
-    // step prompts on every run. #652.
-    ['skills/smithy.gh-issue/SKILL.prompt', /invokes Bash\(cat > \/tmp\//],
-    ['skills/smithy.pr-review/SKILL.prompt', /invokes Bash\(cat > \/tmp\//],
-  ];
+  const ALLOWED: ReadonlyArray<[string, RegExp]> = [];
   const SKILL = 'skills/smithy.status/SKILL.prompt';
   const CODEX_SKILL = 'skills/smithy.pr-review/SKILL.prompt';
 

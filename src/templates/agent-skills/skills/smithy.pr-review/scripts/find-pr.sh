@@ -3,6 +3,10 @@
 #
 # Usage: ${CLAUDE_SKILL_DIR}/scripts/find-pr.sh
 #
+# Resolves the PR the way `gh pr view` does — by the branch's tracking ref —
+# and takes owner/repo from that PR's own URL, so the repository is never
+# guessed from a second lookup.
+#
 # Output: JSON with owner, repo, pr, ownerRepo fields.
 # Returns empty object ({}) if no open PR exists for the current branch.
 
@@ -16,17 +20,20 @@ if [ -z "$BRANCH" ]; then
   exit 0
 fi
 
-PR_JSON=$(gh pr list --head "$BRANCH" --json number --state open --limit 1)
-
-# Check if any PR exists
-if [ "$PR_JSON" = "[]" ]; then
-  echo '{}'
-  exit 0
+GH_STDERR=$(mktemp)
+trap 'rm -f "$GH_STDERR"' EXIT
+if ! PR_JSON=$(gh pr view --json number,state,url 2>"$GH_STDERR"); then
+  # "No PR" is an answer; anything else (auth, network) is an error to surface.
+  if grep -qi 'no pull requests found' "$GH_STDERR"; then
+    echo '{}'
+    exit 0
+  fi
+  cat "$GH_STDERR" >&2
+  exit 1
 fi
 
-PR=$(echo "$PR_JSON" | jq -r '.[0].number')
-OWNER=$(gh repo view --json owner --jq '.owner.login')
-NAME=$(gh repo view --json name --jq '.name')
-
-jq -n --arg owner "$OWNER" --arg repo "$NAME" --argjson pr "$PR" \
-  '{owner: $owner, repo: $repo, pr: $pr, ownerRepo: "\($owner)/\($repo)"}'
+jq -c '
+  if .state != "OPEN" then {}
+  else (.url | capture("^https?://[^/]+/(?<owner>[^/]+)/(?<repo>[^/]+)/pull/")) as $r
+    | {owner: $r.owner, repo: $r.repo, pr: .number, ownerRepo: "\($r.owner)/\($r.repo)"}
+  end' <<<"$PR_JSON"
