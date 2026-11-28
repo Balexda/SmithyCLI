@@ -467,33 +467,21 @@ Task paths stay repo-relative and unchanged in shape (`lib/constants/Experiment.
 
 Each `##` section in a Smithy planning artifact carries a voice spec —
 audience, mode, length budget, diagram requirement, examples policy —
-recorded by an HTML-comment tag with the grammar below. **The tag lives
-in the planning-artifact template** (the markdown code-fence block that
-`smithy.ignite`, `smithy.render`, `smithy.mark`, and `smithy.cut` emit
-as the artifact shape), **not in every generated artifact instance**.
-That keeps the spec in one place for template authors to edit.
+recorded by an HTML-comment tag. **The spec is authored once, in the
+artifact skeleton** (the markdown code-fence block that `smithy.ignite`,
+`smithy.render`, `smithy.mark`, `smithy.cut`, and `smithy.strike` emit as the
+artifact shape). The generating command carries each tag under its `##`
+heading into the artifact it writes, and `smithy.audit`'s voice-tag lint
+checks each carried tag against its section body.
 The full Role × Mode taxonomy — conciseness budgets, diagram-
 first framing, depth-control rules — lives in the `smithy.helper-voice`
 skill body. Authors of new command templates should follow it rather
 than redefining voice rules inline.
 
-The tag grammar (as it appears in templates):
-
-```
-## <Section title>
-<!-- audience: <role>[+ai-input]; mode: <mode>; length: <budget>; diagram: <required|recommended|optional>; examples: <required|recommended|discouraged|optional|forbidden>[; applicability: <free-text>] -->
-```
-
-Keys:
-
-| Key | Values |
-|-----|--------|
-| `audience` | `stakeholder` \| `reviewer` \| `builder`; append `+ai-input` when a Smithy sub-agent is the primary consumer (e.g., `builder+ai-input`). |
-| `mode` | `explanation` \| `reference` \| `how-to` \| `tutorial`. |
-| `length` | Sentence or paragraph budget (`2-3 sentences`, `3-6 paragraphs`, `tables only`, `5-15 steps`). |
-| `diagram` | `required` \| `recommended` \| `optional`. |
-| `examples` | `required` \| `recommended` \| `discouraged` \| `optional` \| `forbidden`. `optional` imposes no example constraint. |
-| `applicability` (optional) | Free-text condition under which the section legitimately resolves to `N/A` (e.g., `code-shaped features only` on `.data-model.md` / `.contracts.md`). |
+The tag grammar and keys table have one home,
+`snippets/voice-tag-grammar.md`, composed into the skill's
+`references/audience-tags.prompt` and into `snippets/audit-checklist-voice.md`.
+Edit the grammar there; this README keeps no copy.
 
 Authoring rule: when adding a new `##` section to a planning-artifact
 template, drop the tag immediately under the heading inside the
